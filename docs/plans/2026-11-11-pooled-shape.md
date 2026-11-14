@@ -218,11 +218,22 @@ milestone if the orchestrator wants one.
   with passkeys' `pk-6-sign-in-ended`). `stack.test.ts` gains the case that a company added on `b2`
   through the front is read back from `b2`'s service and not from the home box's, red once (the
   stack's BFF handed no boxes: the make answers 400). The walk was not run: it is the human's.
-- [ ] **5. Hardened, the pages true.** Coverage at 100 % with no new hint; `docs/architecture.md`'s
+- [x] **5. Hardened, the pages true.** Coverage at 100 % with no new hint; `docs/architecture.md`'s
   and `docs/architecture-detail.md`'s pooled sections rewritten to what is built (no figure of
   companies a box, no box of the operator's own, no memory of the lookup), `docs/memo/bff.md` on the
   lookup and the 503. *Done when:* `pnpm check` ends `== exit 0` at 100 %, the citation test exits 0,
   `git grep -nE '/Users/|~/'` finds nothing new. *Size:* 10 (the store's step 3, 10).
+  *Ticked 2026-11-14:* coverage held at 100 % by the whole gate with no new hint (the code of steps 1
+  to 4 carried its own tests; nothing was added to the code). `docs/architecture.md`'s and
+  `docs/architecture-detail.md`'s pooled sections now say what is built (the line's box, `STORAGE_BOXES`,
+  the lookup with no memory, the 503, the operator's list of boxes, two boxes on the local stack) and
+  what is not (a box added to ridge by command, the move, the address), with no figure of companies a
+  box and no box of the operator's own; `docs/memo/bff.md`'s tenant section carries the lookup, the
+  absence that holds the box's check, and the 503. Two walk changes of step 4 made with it: the
+  boxes' mask is now a block over each line's figures alone (`boxFigures` in `walk/support.ts`, used
+  by screens 2, 4, 8, 9 and 10 of the operator walk and `pk-6-sign-in-ended` of both passkeys
+  passes), so those pictures show each box's name, its radio and the chosen one. The citation test
+  exited 0 and `git grep` for local paths found nothing new. The walk was not run: it is the human's.
 - [ ] **5r. Reviewed, fixed, recapped.** A model other than the author's, one fix pass, a recap.
   *Done when:* every finding tagged in the recap, the fix pass's gate `== exit 0`, the recap
   committed. *Size:* 14 and 3 (the cross-company tests' review, fix and reread, 6, 6 and 2; recap 3).

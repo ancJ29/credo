@@ -1,7 +1,7 @@
 import { type Language, STACK_ENV } from '@credo/shared';
 import { DICTIONARIES } from '@credo/ui/words';
 import { expect, type Locator, type Page, test } from '@playwright/test';
-import { required, shot, WIDTHS } from '../support';
+import { boxFigures, required, shot, WIDTHS } from '../support';
 
 /**
  * The operator's walk: ten screens, each in Vietnamese and in English at the three widths
@@ -78,11 +78,13 @@ async function walk(page: Page, language: Language, width: number) {
   /** A form's heading is clicked, so no field is left focused for the picture. */
   const unfocus = () => page.getByRole('heading', { level: 2 }).click();
   /** The add form's list of boxes, which the stack gives two of: each line holds the box's free disk and
-   * its companies, which are real on a stack and invented on the fake, so the picture covers the list
-   * and the walk reads the list's words. Held by bff/src/routes/boxes.route.test.ts (case 8) and
+   * its companies, which are real on a stack and invented on the fake, so the picture covers those
+   * figures alone (`figures`) and shows each box's name, its radio and the one chosen. Held by bff/src/routes/boxes.route.test.ts (case 8) and
    * ui/src/parts/NewClientBoxes.test.tsx ("C9: The form lists each box with its free disk and its
    * companies, the home box chosen"). */
   const boxes = () => page.getByRole('radiogroup', { name: words.operator.box });
+  /** The mask over the figures alone of the list's lines (`boxFigures`). */
+  const figures = async () => boxFigures(boxes());
   const fillClient = async () => {
     await typed(words.operator.code, 'minh-phat');
     await typed(words.operator.companyName, 'Minh Phát');
@@ -125,7 +127,7 @@ async function walk(page: Page, language: Language, width: number) {
   await fillClient();
   await expect(boxes()).toBeVisible();
   await unfocus();
-  await at('op-2-new-client', [boxes()]);
+  await at('op-2-new-client', await figures());
 
   // 3. Made: the link, the root's name and its first password, once. The link's address and the
   // password differ between the fake and the stack, so both are masked (QA rule 7). Held by
@@ -147,7 +149,7 @@ async function walk(page: Page, language: Language, width: number) {
   await expect(page.getByRole('alert')).toHaveText(words.operator.taken);
   await expect(boxes()).toBeVisible();
   await unfocus();
-  await at('op-4-code-taken', [boxes()]);
+  await at('op-4-code-taken', await figures());
 
   // 8. A code not in the form, said on its field before anything is sent.
   await open(page, language, { path: '/operator/clients/new', operator: true });
@@ -157,7 +159,7 @@ async function walk(page: Page, language: Language, width: number) {
   await expect(page.getByText(words.operator.codeInvalid, { exact: true })).toBeVisible();
   await expect(boxes()).toBeVisible();
   await unfocus();
-  await at('op-8-code-invalid', [boxes()]);
+  await at('op-8-code-invalid', await figures());
 
   // 9. A client not made: the fake answers the make with a 503 once; on the stack it is stubbed.
   await open(page, language, {
@@ -171,7 +173,7 @@ async function walk(page: Page, language: Language, width: number) {
   await expect(field(words.operator.code)).toHaveValue('minh-phat');
   await expect(boxes()).toBeVisible();
   await unfocus();
-  await at('op-9-make-failed', [boxes()]);
+  await at('op-9-make-failed', await figures());
 
   // 10. The second box chosen, which the stack runs as `b2`: its line is picked by its name, since
   // its free disk is the machine's own, and the client is made on it.
@@ -181,7 +183,7 @@ async function walk(page: Page, language: Language, width: number) {
   await typed(words.operator.companyName, 'Minh Phát B2');
   await boxes().getByRole('radio', { name: /^b2:/ }).check();
   await unfocus();
-  await at('op-10-box-chosen', [boxes()]);
+  await at('op-10-box-chosen', await figures());
   await press(words.operator.make);
   await expect(title(words.operator.madeTitle)).toBeVisible();
 }

@@ -11,8 +11,8 @@ and the store only keeps what it is handed** — which is why the picture below 
 and why the walk under it is short.
 
 **Every tenant of an environment shares that back end and, today, that environment's one box.**
-The shape intended for production, and not built, keeps the one back end and pools the tenants on
-several boxes, about twenty a box, all in the environment's one stack;
+The shape for production, built in the back end and not yet on ridge, keeps the one back end and
+pools the tenants on several boxes, all in the environment's one stack;
 [where a tenant's records live](#where-a-tenants-records-live) says which part is which.
 
 **The system, and what passes between its parts.**
@@ -31,7 +31,7 @@ flowchart LR
       cs["c-storage<br/>[Go service, systemd] six routes, no rules"]
       db[("the records<br/>[one SQLite file] copied to its own bucket within a second · built, not yet run on an environment; ridge holds only invented companies")]
     end
-    more["more boxes, each holding a group of tenants, and one for the operator<br/>[EC2] the pooled shape · intended, not built"]
+    more["more boxes, each holding the tenants the operator puts on it<br/>[EC2] the pooled shape · the back end reaches them, none is added on ridge yet"]
   end
   ab["audit-backbone<br/>[Go service, in the repo] the activity log · shipped to the box by the release, not yet run on ridge"]
   browser -- "asks for a screen, then calls /api/*" --> cdn
@@ -54,9 +54,10 @@ the VPC is a network with no way out of it, and the box is one small server carr
 box and arrow are **built and not yet run on ridge**: the back end writes an entry to
 `services/audit-backbone/` for every change a person makes, in the local copy, and the release carries it to the
 box beside c-storage, its first run there still to be read — the whole of that is [`docs/activity-log.md`](activity-log.md). The
-second dashed box is **intended and not built**: the further boxes of the pooled shape, each holding
-the tenants the operator puts on it, which [where a tenant's records live](#where-a-tenants-records-live)
-describes.
+second dashed box is **built in the back end and not on ridge**: the further boxes of the pooled
+shape, each holding the tenants the operator puts on it, which [where a tenant's records
+live](#where-a-tenants-records-live) describes. The back end and the local stack reach a second box
+today; no command yet adds one to ridge's stack.
 
 **On this machine the picture is the same.** `scripts/src/running/front.ts` stands where CloudFront and the
 HTTP API stand, so the app the walks picture is the app that deploys.
@@ -78,9 +79,9 @@ record written at step 9 — never the shape.
    HTTP API invokes the BFF's one Lambda function.
 4. **The company.** The BFF's first hook reads the client's code from its header, finds the one index
    record that maps that code to the client's minted id, and puts the id on the request. **It scopes
-   and never authenticates.** Today that record names no box, because an environment has only one;
-   in the pooled shape, intended and not built, it also names the tenant's box, and the call goes
-   there ([below](#where-a-tenants-records-live)).
+   and never authenticates.** That record also names the tenant's box, none meaning the first
+   box, and the call goes there ([below](#where-a-tenants-records-live)); a record naming a box the
+   back end was not handed is a 503.
 5. **Who is calling.** The route asks for the signed-in person: the session handle is hashed, its
    record read, checked against the device it was issued to and against the sign-in's generation,
    then slid forward.
@@ -173,33 +174,36 @@ here is a ___" finishes in a word the product itself uses
 **Today an environment is one stack with one box, and every tenant of it lives in that box.**
 `ops/env.yml` makes everything an environment has in one stack: its box, the back end's function,
 the HTTP API, the bucket of screens, the distribution in front of them and the role its deploys
-take. The back end is given that one box's address and keys (`bff/src/env.ts`'s `storageShape`), so
-a call has to find its tenant and never its box: step 4 above. The network under every environment
+take. The back end is given that one box's address and keys (`bff/src/env.ts`'s `storageShape`) and,
+when the environment has more, the others in `STORAGE_BOXES`; on ridge there is the one. The network under every environment
 and the account's GitHub provider are stacks of their own, for reasons that are not about tenants.
 
-**Intended, and not built: the tenants pooled on boxes, about twenty a box, in the same one
-stack.** For companies of the size the human gave, under ten thousand calls and five hundred records
-a day each, one small box holds about twenty, and its disk runs out before its requests, writes or
-memory do. So production is to stay one stack per environment, holding several
-boxes. This is the human's own shape, from 2026-11-10 and 2026-11-11, and nothing in the repository
-implements it yet.
+**Built: the tenants pooled on boxes, in the same one stack.** For companies of the size the human
+gave, under ten thousand calls and five hundred records a day each, one small box holds several, and
+its disk runs out before its requests, writes or memory do. So production is to stay one stack per
+environment, holding several boxes. This is the human's own shape, from 2026-11-10 and 2026-11-11.
+What is built is the back end's reach to a second box, the operator's choice of box and the local
+stack with two boxes; a box added to ridge by one command, and moving a company between boxes, are
+not built yet.
 
-- **What is pooled.** The back end, the HTTP API and the distribution are shared by every tenant, as
-  they are today. The boxes are pooled in groups: the operator puts each new tenant on a box and can
-  move it later, and the code holds no rule for which. A tenant who pays for it is a group of one,
-  on a box of its own. The operator's own records, the tenant list among them, move to a box of
-  their own.
-- **How a call finds its box.** The way step 4 finds its tenant: the code, then the one record that
-  maps it, with that record now naming the tenant's box as well. The back end keeps what it read for
-  a minute, so the lookup costs a call almost nothing.
-- **Where the one config lives.** In that record, written by the operator's form and read by the
-  back end alone. It names a box and never a key: the keys stay in the back end's own environment,
-  set from the boxes at each deploy. It is not a file, because a file in the bucket can be read by
-  anyone and a file in the build is public with the repository. The screens read only their own
-  tenant's settings, through the back end, and a box reads nothing about tenants at all.
+- **What is pooled.** The back end, the HTTP API and the distribution are shared by every tenant.
+  The first box is the home box: it keeps the list of companies and the operator's records, and any
+  company with no box named is on it. The operator puts each new company on a box from the form,
+  which lists each box with its free disk and the companies it holds, and the code holds no rule
+  for which and no number of companies a box. A tenant who pays for it is a group of one, on a box
+  of its own.
+- **How a call finds its box.** The code, then the one record that maps it, read from the home box
+  at every call with no memory kept: the record names the company's id and its box, and the back end
+  makes that company's client over the box. A record naming a box the back end was not handed
+  answers 503, as a store that does not answer does.
+- **Where the one config lives.** The line names a box and never a key: the keys of the other boxes
+  are in the back end's own environment (`STORAGE_BOXES`), set at each deploy. It is not a file,
+  because a file in the bucket can be read by anyone and a file in the build is public with the
+  repository. The screens read only their own tenant's settings, through the back end, and a box
+  reads nothing about tenants at all.
 - **The address.** Each tenant at `<tenant-code>.<credo-domain>`, through the distribution that
   already serves the screens, under one wildcard certificate, and the operator at one name of its
-  own. The domain is a setting, never written into the code.
+  own: intended, not built. The domain is a setting, never written into the code.
 - **What it costs.** The one back end holds every box's key, and on a shared box the back end's own
   check is the only wall between that box's tenants: one box down stops all of them, and a restore
   rolls all of them back. A tenant whose contract needs its keys or its code kept apart takes a stack
