@@ -54,6 +54,8 @@ permissions:
 # Vitest starts a worker per core for each test file, ~2 s of startup each under load. With the
 # jobs running at once (act runs them all on one Mac), a test that takes 2 s alone passes its 5 s
 # limit. Two workers a package: GitHub's runner has four cores and each package job has a runner of its own.
+# The app-scripts job alone, the longest and bound by its two workers, runs four on GitHub (its gate step's env,
+# which can read ACT); under act it keeps two.
 env:
   VITEST_MAX_WORKERS: 2
 
@@ -292,6 +294,8 @@ jobs:
       - name: Install
         run: pnpm install --frozen-lockfile
       - name: Gate scripts
+        env:
+          VITEST_MAX_WORKERS: ${{ env.ACT && 2 || 4 }}
         run: pnpm --filter @credo/scripts --fail-if-no-match check
 
   app-shared:
