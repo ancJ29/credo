@@ -250,11 +250,13 @@ milestone if the orchestrator wants one.
   "Adding a box".
 - [ ] **6r. Reviewed, fixed, recapped**, done as 5r. *Size:* 20 and 12, then 3 (a review about 20 by
   this ledger; the ops fixes ran 4 and 23).
-- [ ] 👤 **Once the landing is on `main`, your push**; its deploy runs on the one box. Then
-  `ops/stack.sh env ridge --more-boxes b2 --plan`, point 2, then without `--plan`. *Done when:* the
-  machine reads the log: the box and its disk added, the home box unchanged, `== exit 0`.
-- [ ] 👤 **`ops/release.sh ridge`, `ops/app.sh ridge`, then `ops/check.sh ridge`.** *Done when:* each
-  log ends `== exit 0`, the check reading both boxes.
+- [ ] 👤 **Once the landing is on `main`, your push**; its deploy runs on the one box. Then, in one
+  sitting, ridge being a test environment that returns to one box: `ops/stack.sh env ridge
+  --more-boxes b2 --plan`, point 2, then without `--plan`; `ops/release.sh ridge`, `ops/app.sh ridge`,
+  then `ops/check.sh ridge`; then `b2` taken out of the list and its retained box removed by the
+  runbook's "A retained box". *Done when:* the machine reads the logs: the box and its disk added, the
+  home box unchanged, each log ending `== exit 0`, the check reading both boxes, then the removal
+  ending `== exit 0` with ridge on its one box.
 
 **Third landing: the move** (after the store's copy tool is on `pre-merge`).
 
@@ -262,9 +264,10 @@ milestone if the orchestrator wants one.
   page. Two parts, *size* 10 and 8, the shapes of steps 1 and 3. *Done when:* `pnpm check` ends `==
   exit 0`; cases 16 and 17 red once.
 - [ ] **7r. Reviewed, fixed, recapped**, done and sized as 5r: 14 and 3.
-- [ ] 👤 **On ridge:** a company added on `b2` at `/operator`, signed into, then moved to the home
-  box: point 3. Then `b2` taken out of the list and its retained box removed by the runbook's "A
-  retained box", since a second box on ridge is a fixed charge with no need after the rehearsal.
+- [ ] 👤 **On ridge, in its own sitting:** `b2` added again (`ops/stack.sh env ridge --more-boxes b2`),
+  a company added on `b2` at `/operator`, signed into, then moved to the home box: point 3. Then `b2`
+  taken out of the list and its retained box removed by the runbook's "A retained box", since ridge
+  runs one box and a second one is a fixed charge with no need after the rehearsal.
 
 ## The case table
 
