@@ -1,5 +1,5 @@
-import type { CreateClientReply } from '@credo/shared';
-import { useState } from 'react';
+import type { BoxItem, CreateClientReply } from '@credo/shared';
+import { useEffect, useState } from 'react';
 import { type Api } from '../../api';
 import { ClientMade } from '../../parts/ClientMade';
 import { NewClient } from '../../parts/NewClient';
@@ -12,11 +12,24 @@ type Props = { api: Api; onSignedOut: () => void };
 export function AddClientPage({ api, onSignedOut }: Props) {
   const [status, setStatus] = useState<'idle' | 'busy' | 'failed' | 'taken'>('idle');
   const [made, setMade] = useState<CreateClientReply | null>(null);
+  const [boxes, setBoxes] = useState<BoxItem[]>([]);
 
-  async function submit(code: string, name: string) {
+  /** The list the operator picks a box from. A list that does not come leaves the form without a
+   * choice, so a company is made on the home box as before. */
+  useEffect(() => {
+    void (async () => {
+      try {
+        setBoxes(await api.operatorBoxes());
+      } catch {
+        // no list, no choice
+      }
+    })();
+  }, [api]);
+
+  async function submit(code: string, name: string, box?: string) {
     setStatus('busy');
     try {
-      const result = await api.makeClient(code, name);
+      const result = await api.makeClient(code, name, ...(box === undefined ? [] : [box]));
       if (result.kind === 'taken') return setStatus('taken');
       setStatus('idle');
       setMade(result.client);
@@ -34,6 +47,6 @@ export function AddClientPage({ api, onSignedOut }: Props) {
       onAnother={() => setMade(null)}
     />
   ) : (
-    <NewClient status={status} onSubmit={(c, n) => void submit(c, n)} />
+    <NewClient status={status} boxes={boxes} onSubmit={(c, n, b) => void submit(c, n, b)} />
   );
 }

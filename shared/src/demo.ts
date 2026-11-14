@@ -127,6 +127,14 @@ export const DEMO_SERVICES = {
   checkedAt: Date.UTC(2026, 9, 31, 12),
 };
 
+/** The boxes the operator's form lists on the fake: the home box, which holds the data set's
+ * companies, and a second, empty one with more room. Free disk in bytes; no company counts here,
+ * since the fake counts the companies as the operator makes them. */
+export const DEMO_BOXES = [
+  { name: 'home', freeBytes: 38 * 1024 ** 3 },
+  { name: 'b2', freeBytes: 112 * 1024 ** 3 },
+];
+
 /** The secret of the QR code the data set holds for one person, whose link the phone's walk opens. */
 export const DEMO_QR_SECRET = 'fake-qr-secret-0001';
 /** The same for the driver `EMP-0005`, whose link the driver's walk opens on the fake. */

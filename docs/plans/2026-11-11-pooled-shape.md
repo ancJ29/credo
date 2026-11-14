@@ -179,6 +179,18 @@ milestone if the orchestrator wants one.
   *size* 8 (the shared record page's add screen, 8). Then the boxes route and the status call
   (decision 8), once the continuous copy's reading is on `pre-merge`: *done when* `pnpm check` ends
   `== exit 0`, case 8 red once; *size* 10, step 1's shape.
+  *First part ticked 2026-11-14:* the add-company form lists each box (name, free disk in GB, its
+  companies) when there is more than one, the home box chosen, a box that did not answer shown so and
+  not choosable; the home box chosen sends no box, another sends it; the page reads the list through
+  `operatorBoxes`, and a list that does not come leaves the form as before. `shared/src/wire.ts` gains
+  the route name and the reply's shape, `DEMO_BOXES` the fake's two boxes (`home`, `b2`), the fake
+  counts a company made on `b2` there. Case 9 red once by three mutations (the form's default box
+  `b2`, the page not passing the box, a down box left choosable), put back. Two old tests gained a
+  stub line for the new call (`App.test.tsx`, `OperatorApp.test.tsx`) and `fake.test.tsx`'s list of
+  the fake's calls one name, no expectation changed. *Second part not built:* the continuous copy's
+  c-storage reading (`GET /api/status`) is not on `pre-merge` (no `status` call in
+  `shared/src/c-storage.ts`), so the boxes route and case 8 wait for it. Look: `pnpm fake`, the
+  operator's add-a-client screen.
 - [ ] **4. Two boxes on this machine, and the screen to look at.** `pnpm stack` registers a second
   service as box `b2` and hands it in `STORAGE_BOXES`; the operator walk gains, appended and never
   inserted, the form with its list of boxes. *Done when:* `pnpm --filter @credo/scripts check` and
