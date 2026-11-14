@@ -1,11 +1,14 @@
 import { defineConfig } from 'vitest/config';
-import { SizeShardSequencer } from './src/shard-sequencer';
+import { TableShardSequencer } from './src/shard-sequencer';
+import { TimesReporter } from './src/shard-times';
 
 export default defineConfig({
   test: {
     include: ['src/**/*.test.ts'],
-    // A shard's files are split by size, not by vitest's path hash (src/shard-sequencer.ts).
-    sequence: { sequencer: SizeShardSequencer },
+    // A shard's files are split by their time in src/shard-times.json, not by vitest's path hash (src/shard-sequencer.ts).
+    // `pnpm times` (SCRIPTS_WRITE_TIMES set) writes that table after a green local run.
+    sequence: { sequencer: TableShardSequencer },
+    reporters: process.env.SCRIPTS_WRITE_TIMES ? ['default', new TimesReporter()] : ['default'],
     // The tests build the UI in this process, and a build under `test` ships React's development
     // build, a third larger: past the bundle warning's 1000 kB, where the real build is about 700.
     env: { NODE_ENV: 'production' },

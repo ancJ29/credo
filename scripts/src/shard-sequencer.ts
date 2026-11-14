@@ -1,12 +1,13 @@
-import { statSync } from 'node:fs';
 import { BaseSequencer, type TestSpecification } from 'vitest/node';
+import { readTable, TABLE_PATH, weigh } from './shard-times';
 
 /**
- * Which of `count` shards each file runs in, by file size: the biggest file first, each into the shard whose total is
- * smallest so far (ties: the first shard; equal sizes: path order). The tests' time follows their file's size closely
- * enough here (on the two saved GitHub runs the slowest shard came out within 3 % of a third of the total, where
- * vitest's own split by path hash gave 1.6 times a third), and a size needs no table to keep: a new test file lands
- * in a shard on its own. Every runner reads the same files, so every runner draws the same split.
+ * Which of `count` shards each file runs in, by weight: the heaviest file first, each into the shard whose total is
+ * smallest so far (ties: the first shard; equal weights: path order). The weight is the file's time from
+ * `shard-times.json` where the table holds its content's hash, else its size scaled to the table's time (`weigh` in
+ * shard-times.ts), so a changed or new file lands by its size until a local run refreshes the table. The by-size split
+ * alone left the slowest shard 27 % over a third on GitHub's run, vitest's hash split 1.6 times. Every runner reads
+ * the same files and the same table, so every runner draws the same split.
  */
 export function assignShards(
   files: readonly { path: string; size: number }[],
@@ -23,16 +24,17 @@ export function assignShards(
 }
 
 /** Vitest's `--shard=i/n` with that split in place of its hash split (`sequence.sequencer` in vitest.config.ts). */
-export class SizeShardSequencer extends BaseSequencer {
+export class TableShardSequencer extends BaseSequencer {
+  protected tablePath = TABLE_PATH;
+
   override shard(files: TestSpecification[]): Promise<TestSpecification[]> {
     const shard = this.ctx.config.shard;
     if (!shard) return Promise.resolve(files);
-    const mine = new Set(
-      assignShards(
-        files.map((spec) => ({ path: spec.moduleId, size: statSync(spec.moduleId).size })),
-        shard.count,
-      )[shard.index - 1],
+    const weights = weigh(
+      files.map((spec) => spec.moduleId),
+      readTable(this.tablePath),
     );
+    const mine = new Set(assignShards(weights, shard.count)[shard.index - 1]);
     return Promise.resolve(files.filter((spec) => mine.has(spec.moduleId)));
   }
 }

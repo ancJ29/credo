@@ -7,6 +7,7 @@
     "./pixels": "./src/running/pixels.ts"
   },
   "scripts": {
+    "times": "SCRIPTS_WRITE_TIMES=1 vitest run",
     "typecheck": "tsc --noEmit",
     "check": "bash ../ops/gate.sh scripts",
     "test": "vitest run --coverage",
