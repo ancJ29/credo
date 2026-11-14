@@ -71,6 +71,21 @@ describe('ClientsPage', () => {
     expect(await screen.findByRole('button', { name: 'Copied: binh-an' })).toBeTruthy();
   });
 
+  it('From the operator’s address a client’s copied link is the company’s own address', async () => {
+    vi.stubGlobal('location', new URL('https://operator.ridge.example.test/operator'));
+    try {
+      draw(<ClientsPage api={list(SOME) as unknown as Api} onSignedOut={vi.fn()} />);
+      const user = userEvent.setup();
+      const copied = vi.spyOn(navigator.clipboard, 'writeText');
+
+      await user.click(await screen.findByRole('button', { name: 'Copy the link: binh-an' }));
+
+      expect(copied).toHaveBeenCalledExactlyOnceWith('https://binh-an.ridge.example.test/login');
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('With no client yet, the list says so and still offers to add the first', async () => {
     draw(<ClientsPage api={list([]) as unknown as Api} onSignedOut={vi.fn()} />);
 

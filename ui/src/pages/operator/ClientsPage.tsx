@@ -1,4 +1,4 @@
-import type { Language } from '@credo/shared';
+import { clientAddress, type Language } from '@credo/shared';
 import { Button, Group, Stack, Table, Text, Title } from '@mantine/core';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
@@ -48,7 +48,7 @@ export function ClientsPage({ api, onSignedOut }: Props) {
                     <Table.Td>{dayOf(client.madeAt, i18n.language as Language)}</Table.Td>
                     <Table.Td>
                       <CopyText
-                        value={`${window.location.origin}${client.link}`}
+                        value={clientAddress(window.location.origin, client.code)}
                         label={t('operator.copyLink')}
                         about={client.code}
                       />

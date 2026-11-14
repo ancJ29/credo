@@ -15,6 +15,10 @@ type Props = {
   build: string;
   /** Tests switch Mantine's transitions off. */
   test?: boolean;
+  /** The web address's name (`location.hostname`), given by the page that is the app's own. Where it
+   * names a company, that company opens; given none, as every test and the walks page draw the app,
+   * the link and the device decide alone. */
+  address?: string;
   /** Set where the app is drawn inside another page's window, as the walks page draws a scene. */
   look?: Look;
   /** The office's day now, for a client's pages; the browser's own when none is given. */

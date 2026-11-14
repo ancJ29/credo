@@ -150,13 +150,20 @@ address in the same run.
   writing pass: the stand-in's `describe-stacks` line lost a closing brace, which turned every stack run red (exit 5).
   cfn-lint's W1030 is ignored on `Distribution` (`ops/env.yml`) because the empty default fails the certificate's
   pattern, though the branch that reads it runs only when `Domain` is set and a Rule sets the two together.
-- [ ] **2. The screens read the address.** The rule and the link maker in `shared/src/wire.ts`;
+- [x] **2. The screens read the address.** The rule and the link maker in `shared/src/wire.ts`;
   `App.tsx`'s property passed to `ClientApp.tsx`, whose `linkedCode` becomes address-first;
   `main.tsx` passes `location.hostname`; the two operator pages call the link maker, the add page
   keeping the code it sent;
   `ui/src/parts/ClientMade.tsx#L7`'s comment. Cases 6 to 10. *Done when:* `pnpm --filter
   @credo/shared check` and `pnpm --filter @credo/ui check` each end `== exit 0`, each case red once,
   and no file under `walk/` or `visual/` changes (`git diff --stat`). **About 12 min.**
+  *Done 2026-11-14:* `pnpm --filter @credo/shared check` and `pnpm --filter @credo/ui check` each `== exit 0`
+  (typecheck, eslint, prettier, tests at 100 %, knip all 0); `git diff --stat -- walk visual` empty. Each case seen red
+  by one mutation, reverted, files compared equal: 6 (the kept-back check removed from `companyOfAddress`), 7 (the link
+  read before the address), 8 (the first part taken from any name), 9 (a default address given to the app), 10 (the
+  operator's branch of `clientAddress` made unreachable; its `startsWith` clause alone changes no test, since the
+  three-part test also holds for the sample name). The address reaches `ClientApp` as the property `address`, passed
+  by `main.tsx` only outside the fake build.
 - [ ] **3. The kept codes and the scripts' link.** `createClient`'s refusal; `local.ts#L445` through
   the link maker. Cases 11 and 12. *Done when:* `pnpm --filter @credo/bff check` and `pnpm --filter
   @credo/scripts check` each end `== exit 0`, each case red once. **About 8 min.**

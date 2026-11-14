@@ -1,4 +1,4 @@
-import type { BoxItem, CreateClientReply } from '@credo/shared';
+import { clientAddress, type BoxItem, type CreateClientReply } from '@credo/shared';
 import { useEffect, useState } from 'react';
 import { type Api } from '../../api';
 import { ClientMade } from '../../parts/ClientMade';
@@ -11,7 +11,7 @@ type Props = { api: Api; onSignedOut: () => void };
  * so a reload or a step away loses it and the password is never shown twice. */
 export function AddClientPage({ api, onSignedOut }: Props) {
   const [status, setStatus] = useState<'idle' | 'busy' | 'failed' | 'taken'>('idle');
-  const [made, setMade] = useState<CreateClientReply | null>(null);
+  const [made, setMade] = useState<(CreateClientReply & { address: string }) | null>(null);
   const [boxes, setBoxes] = useState<BoxItem[]>([]);
 
   /** The list the operator picks a box from. A list that does not come leaves the form without a
@@ -32,7 +32,7 @@ export function AddClientPage({ api, onSignedOut }: Props) {
       const result = await api.makeClient(code, name, ...(box === undefined ? [] : [box]));
       if (result.kind === 'taken') return setStatus('taken');
       setStatus('idle');
-      setMade(result.client);
+      setMade({ ...result.client, address: clientAddress(window.location.origin, code) });
     } catch (error) {
       refusal(error, { onSignedOut });
       setStatus('failed');
@@ -41,7 +41,7 @@ export function AddClientPage({ api, onSignedOut }: Props) {
 
   return made ? (
     <ClientMade
-      link={`${window.location.origin}${made.link}`}
+      link={made.address}
       rootName={made.rootName}
       password={made.password}
       onAnother={() => setMade(null)}
