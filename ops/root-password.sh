@@ -29,7 +29,7 @@ shift
 CODES=("$@")
 STEPS=5
 # Neither the local stack's port (3181), the check's (3191), the tunnel's (3192), the deploy's
-# (3193), the operator's (3194) nor the seed's (3195).
+# (3193), the operator's (3194), the seed's (3195), the demo remake's (3197) nor the key script's (3198).
 LOCAL_PORT=${ROOT_PASSWORD_LOCAL_PORT:-3196}
 
 # A stop before the first write is a refusal (walk/run.sh's form), lib.sh's guards included: they call
@@ -76,7 +76,7 @@ log_start root-password "$ENVNAME"
 mkwork
 
 step "ridge alone, a terminal, main, and this commit"
-[ "$ENVNAME" = ridge ] || die "root-password.sh holds ridge's demo copies alone: a client's own stack is the console's (docs/plans/2026-11-01-console-root-password.md)"
+refuse_real "$ENVNAME" "root-password.sh holds ridge's demo copies alone: a client's own stack is the console's (docs/plans/2026-11-01-console-root-password.md)"
 [ "${GITHUB_ACTIONS:-}" != true ] || die "the password is typed on a terminal, never in a job: run this by hand"
 # fd 3 is the terminal (log_start keeps it past the log). OPS_TEST_NO_TTY is ops/test.sh's alone, on a
 # machine that cannot open a pseudo-terminal: the two typings then come from a pipe.

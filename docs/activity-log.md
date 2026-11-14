@@ -1,8 +1,10 @@
-# The activity log: built in the back end, not yet on ridge
+# The activity log: built in the back end, shipped to the box by the release, not yet run on ridge
 
 > **Written** 2026-11-09 as the decisions, **rewritten** 2026-11-10 once the back end wrote its
-> entries ([the plan](plans/2026-11-10-audit-bff.md)). What is built is said as built and cited by
-> name; what is still only decided (ridge, the history screen, a mitigation) is said as decided.
+> entries ([the plan](plans/2026-11-10-audit-bff.md)), and **amended** 2026-11-13 once the release, the
+> deploy and the check carried it to the box ([the plan](plans/2026-11-12-activity-log.md)). What is built is
+> said as built and cited by name; what is still only decided (the history screen, a mitigation) is said as
+> decided, and what has not yet run on ridge is said as not read.
 >
 > **This page is one of the citation check's living documents** (`scripts/src/citations.ts`'s
 > `LIVING`), so every name it cites is greped in the file that is named and the gate reds when one
@@ -13,8 +15,9 @@ packages and `cmd/server`, its own SQLite file, its own gate, five rules `AB1` t
 calls it:** every route that changes a client's data declares its entry in `bff/src/audit.ts`'s
 `declare`, and one hook in `buildApp` (`bff/src/app.ts`) sends the entry to the service's keyed
 write before the reply. The local copy starts the service beside c-storage (`scripts/src/stack.ts`'s
-`startStack`). **Nothing else runs it:** `ops/` ships nothing of it, and the CI workflow has no job for
-it. Its single write path is `Writer.Do` in `services/audit-backbone/internal/batch/writer.go` and its
+`startStack`). **On the box it is shipped, and has not yet run there:** `ops/release.sh` installs it as its own unit,
+`ops/audit-backbone.service`, beside c-storage's, and the CI workflow gates it in its own `audit` job.
+No release has carried it to ridge yet, so nothing on ridge is read. Its single write path is `Writer.Do` in `services/audit-backbone/internal/batch/writer.go` and its
 store is `Store` in `services/audit-backbone/internal/activity/store.go`. What was changed on the way in
 and what was left behind is its recap, [`recaps/2026-11-09-audit-backbone-move.md`](recaps/2026-11-09-audit-backbone-move.md).
 
@@ -27,14 +30,14 @@ says how to run it). No screen shows entries yet; the history screen and its und
 client's entries are not swept with its records: they live in the service's own file and outlast the
 deletion until their 180 days end.
 
-**Its store, which is the second one in the repository and the only one on no machine.**
+**Its store, which is the second one in the repository and the only one the continuous copy does not yet take.**
 `audit-backbone` opens its own SQLite file at its own `DB_PATH`, with its own schema and its own
 single writer: `Store` in `services/audit-backbone/internal/activity/store.go`, every write funnelled through
 `Writer.Do` in `services/audit-backbone/internal/batch/writer.go`, which blocks until the commit
-(`services/audit-backbone/CLAUDE.md`'s `AB3`). On ridge nothing writes to it and nothing deploys it, so
-[`architecture.md`](architecture.md)'s one sentence about storage is still the whole truth of every
-deployment there: **one SQLite file, and it is the only copy.** In the local copy the file is the
-second one, in the copy's own data folder, and its removal takes it.
+(`services/audit-backbone/CLAUDE.md`'s `AB3`). On the box it is a second file, in the unit's own state folder, with no copy of it yet, so
+[`architecture.md`](architecture.md)'s one sentence about storage holds for it: **one SQLite file, and it is
+the only copy.** In the local copy the file is the second one, in the copy's own data folder, and its
+removal takes it.
 
 **Its gate, which is its own and reaches no further.** `make check`, run from inside the package
 (`services/audit-backbone/CLAUDE.md`'s `Gate: make check`), cross-compiling for the box's `arm64` so a
@@ -46,14 +49,24 @@ unused-code step do not claim files a Go gate owns ([`.prettierignore`](../.pret
 [`knip.json`](../knip.json)). Those two lines are all the root knows about it, and nothing makes a
 newcomer add them for the next such package: that is [open item 200](open-items.md).
 
-**Nothing ships it.** There is no systemd unit for it, no release step and no CI job: `ci.yml` does
-not mention it at all — zero hits, against a control of `c-storage`, which the same file names in
-its path filters and its Go version — and its `Makefile`'s own first line says nothing there calls
-`make dist` yet. **So on ridge the back end runs without it:** the function reads `AUDIT_URL` and
-`AUDIT_KEY` as optional, together or not at all (`bff/src/env.ts`), and with neither each change is
-saved and writes the request-log line a lost entry writes. Carrying the service to ridge is the next
-plan: a unit beside `ops/c-storage.service`, one more rule from the back end's group to the keyed port
-alone, the key in the function's variables, and whether CI gains a job.
+**How it ships.** A release sends the binary to the box with its checksum and refuses one that arrives
+differently (`ops/release.sh`), makes the write key once in a file only root reads
+(`/etc/audit-backbone/keys.env`) and never rewrites it, and installs the unit, which runs as a user of its
+own, its folder closed to others, its writing port bound to the box's private address and its reading port
+to loopback (`ops/audit-backbone.service`). The log's half runs after c-storage's, and a failure in it says
+that c-storage is released and runs. The deploy job builds the binary from the commit it runs on and names
+it to the release (`RELEASE_AUDIT_BINARY`), and waits on the `audit` job
+(`.github/workflows/ci.yml`). `ops/app.sh` reads the key on the box and puts `AUDIT_URL` and `AUDIT_KEY`
+in the function's settings; the box's security group admits the log's writing port from the back end's
+group alone (`ops/env.yml`'s `BoxFromBffActivity`). `ops/check.sh` reads the unit, both listeners, the key
+file and the commit the log names, adds one customer through the app's address and finds that entry on the
+box by its record, with no key in it, and prints each program's memory beside the box's free memory.
+**Not yet read on ridge:** a release that names the commit on both `/health` reads, the customer's entry
+found by the check, and the memory figures: the human's push, and the check after it, are what read them.
+Until a stack run and a release have happened there, the function reads `AUDIT_URL` and `AUDIT_KEY` as
+optional, together or not at all (`bff/src/env.ts`), and each change is saved and writes the request-log
+line a lost entry writes. Its file is not yet copied: the continuous copy of the records takes it in a later
+step of the plan.
 
 ### The path, as built
 
@@ -64,7 +77,7 @@ flowchart LR
   work["the work<br/>permission, read, write — or a refusal"]
   mw["the middleware<br/>records intent + outcome"]
   res["the response"]
-  ab["audit-backbone<br/>reached locally, not on ridge"]
+  ab["audit-backbone<br/>on the box: writes on its private address, reads on loopback"]
   req --> ctl --> work --> mw --> res
   mw -. "the entry, before the response<br/>600 ms, fail open" .-> ab
   classDef intended stroke-dasharray: 6 4
@@ -108,7 +121,7 @@ on the record. *Why:* a check that passes by staying silent is
 exactly what this repository spent 2026-11-09 removing. *Price:* one line on every new mutating
 route, and a named reason on every exemption.
 
-### Where it runs: open, and cheap to leave open
+### Where it runs: the box, beside c-storage; its fit unmeasured
 
 The box is a `t4g.nano` (`ops/env.yml`'s `Default: t4g.nano`, and `ops/stack.sh`'s
 `offers t4g.nano` refuses a region with no zone that offers one). AWS's published spec for that type
@@ -121,10 +134,10 @@ unmeasured in this project's own records.** `docs/open-items.md`'s `The nano is 
 has been parked since 2026-10-27 on exactly that reading — its memory and any OOM kill — and the
 measurement needs the environment running, which is the human's hand.
 
-**So it is not decided here, and deferring it costs nothing: the hook points at a URL (`AUDIT_URL`).** The
-same box or a box of its own is then a configuration value and a deploy, not a rewrite. Build against
-a URL, measure once the environment is back, and decide then; [open item 2](open-items.md) is the
-thing that decides it.
+**So the plan put it on the same box and left the other door open: the hook points at a URL (`AUDIT_URL`).** A
+box of its own is then a configuration value and a deploy, not a rewrite. The check prints each program's
+memory beside the box's free memory and stays red on any out-of-memory kill; its first reading on ridge
+is not yet taken, and [open item 2](open-items.md) is what the figure settles.
 
 **In the pooled shape, intended and not built**
 ([how a call finds its tenant's box](architecture-detail.md#how-a-call-finds-its-tenants-box)), the

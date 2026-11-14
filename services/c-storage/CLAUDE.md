@@ -2,7 +2,7 @@
 Stack: Go 1.26, modernc.org/sqlite · Gate: make check · Ship: none yet
 
 Key-value records for the BFF, each under its own service: one Go binary, one SQLite file, one
-listener. Six routes, each with a caller in [the app frame](../../docs/plans/2026-10-27-app-frame.md) or
+listener. Seven routes, each with a caller in [the app frame](../../docs/plans/2026-10-27-app-frame.md) or
 [the employee list](../../docs/plans/2026-10-29-employee-list.md#the-records).
 Why it is built so: [the memo](../../docs/memo/c-storage.md), one section per decision or hazard.
 
@@ -65,8 +65,9 @@ bind as written there.
 - **The listener binds one address:** `LISTEN_ADDR`, a single IP and never an unspecified one,
   loopback when unset; on ridge the box's private address
   ([why](../../docs/memo/c-storage.md#the-listener-binds-one-address)).
-- **The database file is the only copy since its last backup;** a live copy goes through SQLite's
-  own backup, never a plain file copy ([why](../../docs/memo/c-storage.md#the-file-is-the-only-copy)).
+- **A second copy follows the file within a second (Litestream, the unit's);** a copy by hand goes through
+  SQLite's own backup, never a plain file copy
+  ([why](../../docs/memo/c-storage.md#a-second-copy-follows-the-file-within-a-second)).
 - **Tests bind loopback ports** (`internal/lifecycle`'s run the process on real sockets, because the
   shutdown order is only visible there). In the agent's sandbox: set `GOCACHE` under `$TMPDIR`, and
   `GOPROXY=off GOFLAGS=-mod=mod` where the module cache holds everything; `/usr/bin/make` may print

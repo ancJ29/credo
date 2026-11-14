@@ -16,6 +16,9 @@
 # workflow's guards.
 # Expected length: about a minute with a cold Go cache, about 40 seconds with a warm one.
 set -euo pipefail
+# The tests' own marker: lib.sh's real_ok refuses the tests' two switches on an environment that may hold
+# real data unless this is set beside them.
+export OPS_TESTS_RUNNING=1
 
 # shellcheck source=lib.sh
 . "$(dirname "$0")/lib.sh"
@@ -162,12 +165,44 @@ refuses "an update on a stack holding another prefix is refused, and appends not
   add_subject_param repo:bob@333/demo@444
 STACK_JSON=''
 
+echo "== the Slack alarm's two IDs go together, and an update keeps the stack's"
+described_slack() { # <workspace> <channel>, or nothing
+  jq -nc --arg w "${1:-}" --arg c "${2:-}" '{Stacks: [{StackName: "ridge", Parameters: (if $w == "" then [] else [{ParameterKey: "SlackWorkspaceId", ParameterValue: $w}, {ParameterKey: "SlackChannelId", ParameterValue: $c}] end)}]}'
+}
+slack_plan() { CREDO_SLACK_WORKSPACE_ID="$1" CREDO_SLACK_CHANNEL_ID="$2" slack_param_plan; }
+slack_add() { PARAMS='[]'; CREDO_SLACK_WORKSPACE_ID="$1" CREDO_SLACK_CHANNEL_ID="$2" add_slack_params; echo "$PARAMS"; }
+STACK_JSON=$(described_slack)
+refuses "a workspace ID without a channel ID is refused" "go together" slack_plan T01ABCDEF ''
+refuses "a channel ID without a workspace ID is refused" "go together" slack_plan '' C01ABCDEF
+check "neither ID on a stack that holds none adds nothing (the template's none)" default "$(slack_plan '' '')"
+check "  and appends no parameter" '[]' "$(slack_add '' '')"
+check "both IDs are set" set "$(slack_plan T01ABCDEF C01ABCDEF)"
+check "  and appended as given" '[{"ParameterKey":"SlackWorkspaceId","ParameterValue":"T01ABCDEF"},{"ParameterKey":"SlackChannelId","ParameterValue":"C01ABCDEF"}]' "$(slack_add T01ABCDEF C01ABCDEF)"
+check "none and none on a stack that holds none is set" '[{"ParameterKey":"SlackWorkspaceId","ParameterValue":"none"},{"ParameterKey":"SlackChannelId","ParameterValue":"none"}]' "$(slack_add none none)"
+STACK_JSON=$(described_slack T09OLDOLD C09OLDOLD)
+check "an update with no IDs keeps the stack's" previous "$(slack_plan '' '')"
+check "  as previous values" '[{"ParameterKey":"SlackWorkspaceId","UsePreviousValue":true},{"ParameterKey":"SlackChannelId","UsePreviousValue":true}]' "$(slack_add '' '')"
+check "an update with both IDs takes the new ones" '[{"ParameterKey":"SlackWorkspaceId","ParameterValue":"T01ABCDEF"},{"ParameterKey":"SlackChannelId","ParameterValue":"C01ABCDEF"}]' "$(slack_add T01ABCDEF C01ABCDEF)"
+refuses "an update with one ID is refused too" "go together" slack_add T01ABCDEF ''
+refuses "none for the workspace and a real channel ID is refused (no channel, silently)" "is none and the other is an ID" slack_plan none C01ABCDEF
+refuses "a real workspace ID and none for the channel is refused" "is none and the other is an ID" slack_plan T01ABCDEF none
+refuses "  and on an update, through the function that appends" "is none and the other is an ID" slack_add none C01ABCDEF
+check "none and none on a stack that holds a channel is set (the removal, which the guard then asks to take)" set "$(slack_plan none none)"
+slack_plan_creation() { CS_TYPE=CREATE slack_plan "$1" "$2"; }
+check "a creation takes no previous value, though a REVIEW_IN_PROGRESS stack lists the IDs" default "$(slack_plan_creation '' '')"
+check "  and an update does" previous "$(CS_TYPE=UPDATE slack_plan '' '')"
+STACK_JSON=''
+
 # trust_guard <template>: dies unless the deploy role's trust reads SubjectPrefix, not the repository
 # shellcheck disable=SC2016 # the template's literal text
 trust_guard() {
   grep -qxF -- '                token.actions.githubusercontent.com:sub: !Sub ${SubjectPrefix}:environment:${Env}' "$1" ||
     die "the trust's sub is not \${SubjectPrefix}:environment:\${Env}"
-  ! grep -qF 'StringLike' "$1" || die "the trust uses StringLike, which takes wildcards"
+  # every role's trust document (the lines under each AssumeRolePolicyDocument: key), whatever the resources are
+  # named: a role's own policy may use StringLike (BoxRole's list is held to its box's path), a trust may not
+  # shellcheck disable=SC2016 # awk's program, in single quotes
+  ! awk '/^ *AssumeRolePolicyDocument:/ {match($0, /^ */); ind = RLENGTH; f = 1; next} f {match($0, /^ */); if (length($0) > 0 && RLENGTH <= ind) f = 0; else print}' "$1" | grep -qF 'StringLike' ||
+    die "the trust uses StringLike, which takes wildcards"
   ! grep -qF 'repo:${Repository}' "$1" || die "the trust still builds the subject from Repository"
   grep -qxF -- '                token.actions.githubusercontent.com:aud: sts.amazonaws.com' "$1" || die "the trust lost its audience condition"
 }
@@ -182,8 +217,12 @@ passes "the template's trust uses the prefix, and keeps its audience" trust_guar
 # shellcheck disable=SC2016 # the template's literal text
 sed 's/!Sub ${SubjectPrefix}:environment/!Sub repo:${Repository}:environment/' "$OPS_DIR/env.yml" >"$WORK/env-old-trust.yml"
 refuses "a trust built from Repository again is refused" "sub is not" trust_guard "$WORK/env-old-trust.yml"
-awk '!done && /^ *StringEquals:$/ {sub(/StringEquals/, "StringLike"); done = 1} {print}' "$OPS_DIR/env.yml" >"$WORK/env-like.yml"
+# the first StringEquals under an AssumeRolePolicyDocument: a trust (the file's first StringEquals is a bucket policy's)
+awk '/^ *AssumeRolePolicyDocument:/ {match($0, /^ */); ind = RLENGTH; f = 1; print; next} f {match($0, /^ */); if (length($0) > 0 && RLENGTH <= ind) f = 0} f && !done && /^ *StringEquals:$/ {sub(/StringEquals/, "StringLike"); done = 1} {print}' "$OPS_DIR/env.yml" >"$WORK/env-like.yml"
 refuses "a trust that matches with StringLike is refused" "StringLike" trust_guard "$WORK/env-like.yml"
+# the box's profile renamed leaves the role's cut with no end in the old guard: a StringLike in the deploy role's trust must still be seen
+sed 's/BoxProfile/BoxProfileRenamed/g' "$OPS_DIR/env.yml" | awk '/^  DeployRole:/ {d = 1} d && !done && /^ *StringEquals:$/ {sub(/StringEquals/, "StringLike"); done = 1} {print}' >"$WORK/env-like-renamed.yml"
+refuses "  and so is one in the deploy role's trust with the box's profile renamed" "StringLike" trust_guard "$WORK/env-like-renamed.yml"
 # shellcheck disable=SC2016 # the template's literal text
 sed 's/^\( *\)\(token.actions.githubusercontent.com:sub: !Sub \${SubjectPrefix}:environment:\${Env}\)$/\1\2\
 \1token.actions.githubusercontent.com:sub: !Sub repo:${Repository}:environment:${Env}/' "$OPS_DIR/env.yml" >"$WORK/env-both.yml"
@@ -246,23 +285,27 @@ mut() {
 # must <json> <what the template must hold> <jq test>: dies naming what is wrong
 must() { jq -e "$3" "$1" >/dev/null || die "$2"; }
 
-# row 22: the BFF's group sends to c-storage's port on the box's group alone; the function sits in
-# ridge's subnet under that group alone; the box admits the BFF's group on that port and nothing
-# but ssh from the endpoint's group besides.
+# row 22: the BFF's group sends to c-storage's port and the activity log's writing port on the box's group
+# alone; the function sits in ridge's subnet under that group alone; the box admits the BFF's group on those
+# two ports, one rule each, and nothing but ssh from the endpoint's group besides.
 bff_network_guard() {
-  must "$1" "BffGroup does not send to c-storage's port on the box's group alone" \
-    '.Resources.BffGroup.Properties.SecurityGroupEgress == [{"IpProtocol":"tcp","FromPort":{"Ref":"BoxPort"},"ToPort":{"Ref":"BoxPort"},"DestinationSecurityGroupId":{"Fn::GetAtt":["BoxGroup","GroupId"]}}]'
+  must "$1" "BffGroup does not send to c-storage's port and the activity log's writing port on the box's group alone" \
+    '.Resources.BffGroup.Properties.SecurityGroupEgress == [{"IpProtocol":"tcp","FromPort":{"Ref":"BoxPort"},"ToPort":{"Ref":"BoxPort"},"DestinationSecurityGroupId":{"Fn::GetAtt":["BoxGroup","GroupId"]}},{"IpProtocol":"tcp","FromPort":{"Ref":"AuditPort"},"ToPort":{"Ref":"AuditPort"},"DestinationSecurityGroupId":{"Fn::GetAtt":["BoxGroup","GroupId"]}}]'
   must "$1" "BffGroup admits traffic in" '.Resources.BffGroup.Properties.SecurityGroupIngress == null'
   must "$1" "the function is not in ridge's subnet under BffGroup alone" \
     '.Resources.Bff.Properties.VpcConfig == {"SubnetIds":[{"Ref":"Subnet"}],"SecurityGroupIds":[{"Fn::GetAtt":["BffGroup","GroupId"]}]}'
   must "$1" "the box's second rule is not c-storage's port from BffGroup alone" \
     '.Resources.BoxFromBff.Properties | . == {"GroupId":{"Fn::GetAtt":["BoxGroup","GroupId"]},"IpProtocol":"tcp","FromPort":{"Ref":"BoxPort"},"ToPort":{"Ref":"BoxPort"},"SourceSecurityGroupId":{"Fn::GetAtt":["BffGroup","GroupId"]}, "Description": .Description}'
-  must "$1" "a rule other than BoxFromBff opens the box" \
-    '[.Resources | to_entries[] | select(.value.Type == "AWS::EC2::SecurityGroupIngress" or .value.Type == "AWS::EC2::SecurityGroupEgress") | .key] == ["BoxFromBff"]'
+  must "$1" "the box's third rule is not the activity log's writing port from BffGroup alone" \
+    '.Resources.BoxFromBffActivity.Properties | . == {"GroupId":{"Fn::GetAtt":["BoxGroup","GroupId"]},"IpProtocol":"tcp","FromPort":{"Ref":"AuditPort"},"ToPort":{"Ref":"AuditPort"},"SourceSecurityGroupId":{"Fn::GetAtt":["BffGroup","GroupId"]}, "Description": .Description}'
+  must "$1" "a rule other than BoxFromBff and BoxFromBffActivity opens the box" \
+    '[.Resources | to_entries[] | select(.value.Type == "AWS::EC2::SecurityGroupIngress" or .value.Type == "AWS::EC2::SecurityGroupEgress") | .key] == ["BoxFromBff","BoxFromBffActivity"]'
   must "$1" "the box's own rules are not ssh from the endpoint's group alone" \
     '.Resources.BoxGroup.Properties.SecurityGroupIngress | length == 1 and .[0].FromPort == 22 and .[0].ToPort == 22 and (.[0] | keys == ["FromPort","IpProtocol","SourceSecurityGroupId","ToPort"])'
   must "$1" "BoxPort has a default, so a stack.sh that forgets it would not be refused" \
     '.Parameters.BoxPort.Type == "Number" and (.Parameters.BoxPort | has("Default") | not)'
+  must "$1" "AuditPort has a default, so a stack.sh that forgets it would not be refused" \
+    '.Parameters.AuditPort.Type == "Number" and (.Parameters.AuditPort | has("Default") | not)'
 }
 # row 25: the rewrite, the behaviours, no error pages
 rewrite_guard() {
@@ -307,16 +350,18 @@ bucket_guard() {
     '.Resources.UiAccess.Properties.OriginAccessControlConfig | .OriginAccessControlOriginType == "s3" and .SigningBehavior == "always" and .SigningProtocol == "sigv4"'
 }
 # row 29: the deploy role holds exactly its actions, the function's code and settings held to
-# ridge's subnet and group, the bucket's put; no list, stack, IAM or CloudFront right
+# ridge's subnet and group, the bucket's put; no list, stack or IAM right, and on CloudFront the read of its own distribution alone
 deploy_role_guard() {
   local got want
   got=$(jq -r '.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | .Action | if type == "array" then .[] else . end' "$1" | sort | tr '\n' ' ')
-  want='cloudformation:DescribeStacks ec2-instance-connect:OpenTunnel ec2-instance-connect:SendSSHPublicKey ec2:DescribeInstanceConnectEndpoints ec2:DescribeInstances ec2:DescribeInternetGateways ec2:DescribeSecurityGroups ec2:DescribeSubnets ec2:DescribeVpcs ec2:GetSecurityGroupsForVpc lambda:GetFunctionConfiguration lambda:UpdateFunctionCode lambda:UpdateFunctionConfiguration s3:GetBucketPolicy s3:GetBucketPublicAccessBlock s3:PutObject '
+  want='cloudformation:DescribeStacks cloudfront:GetDistributionConfig ec2-instance-connect:OpenTunnel ec2-instance-connect:SendSSHPublicKey ec2:DescribeInstanceConnectEndpoints ec2:DescribeInstances ec2:DescribeInternetGateways ec2:DescribeSecurityGroups ec2:DescribeSubnets ec2:DescribeVpcs ec2:GetSecurityGroupsForVpc lambda:GetFunctionConfiguration lambda:UpdateFunctionCode lambda:UpdateFunctionConfiguration s3:GetBucketPolicy s3:GetBucketPublicAccessBlock s3:ListBucket s3:PutObject '
   [ "$got" = "$want" ] || die "the deploy role's actions are not the wanted ones: $got"
   must "$1" "a lambda action reaches a function other than Bff" \
     '[.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | select(.Action | tostring | contains("lambda:")) | .Resource] | all(. == {"Fn::GetAtt":["Bff","Arn"]})'
   must "$1" "an s3 action reaches a bucket other than UiBucket" \
-    '[.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | select(.Action | tostring | contains("s3:")) | .Resource | tostring] | all(contains("UiBucket"))'
+    '[.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | select(.Action | tostring | contains("s3:")) | select(.Action != "s3:ListBucket") | .Resource | tostring] | all(contains("UiBucket"))'
+  must "$1" "the deploy role's list reaches a bucket other than CopyBucket, or lists more than it" \
+    '[.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | select(.Action == "s3:ListBucket")] | length == 1 and .[0].Resource == {"Fn::GetAtt":["CopyBucket","Arn"]} and .[0].Effect == "Allow" and (.[0] | has("Condition") | not)'
   must "$1" "UpdateFunctionConfiguration is not held to ridge's subnet and the BFF's group" \
     '[.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | select(.Action | tostring | contains("UpdateFunctionConfiguration"))] | length == 1 and (.[0].Action == "lambda:UpdateFunctionConfiguration") and (.[0].Condition | has("ForAllValues:StringEquals")) and .[0].Condition["ForAllValues:StringEquals"] == {"lambda:SubnetIds":[{"Ref":"Subnet"}],"lambda:SecurityGroupIds":[{"Fn::GetAtt":["BffGroup","GroupId"]}]}'
   must "$1" "UpdateFunctionConfiguration passes a request whose subnet and group lists are absent or empty (no Null condition requiring both keys)" \
@@ -361,11 +406,23 @@ api_log_guard() {
 }
 
 passes "the BFF's network: its group, the function in ridge's subnet, the box's rule (row 22)" bff_network_guard "$WORK/env.json"
-refuses "  a BFF group that also sends anywhere (a second egress rule) is refused" "send to c-storage's port on the box's group alone" \
+refuses "  a BFF group that also sends anywhere (a third egress rule) is refused" "writing port on the box's group alone" \
   bff_network_guard "$(mut '.Resources.BffGroup.Properties.SecurityGroupEgress += [{"IpProtocol":"-1","CidrIp":"0.0.0.0/0"}]')"
+refuses "  a BFF group that also sends to a third port on the box (the log's reading port) is refused" "writing port on the box's group alone" \
+  bff_network_guard "$(mut '.Resources.BffGroup.Properties.SecurityGroupEgress += [{"IpProtocol":"tcp","FromPort":3185,"ToPort":3185,"DestinationSecurityGroupId":{"Fn::GetAtt":["BoxGroup","GroupId"]}}]')"
+refuses "  a BFF group that sends the log's port to an address range is refused" "writing port on the box's group alone" \
+  bff_network_guard "$(mut '.Resources.BffGroup.Properties.SecurityGroupEgress[1] |= (del(.DestinationSecurityGroupId) | .CidrIp = "10.0.0.0/16")')"
+refuses "  a BFF group that lost the log's rule is refused" "writing port on the box's group alone" \
+  bff_network_guard "$(mut '.Resources.BffGroup.Properties.SecurityGroupEgress |= .[0:1]')"
+refuses "  a log rule on the box for the whole VPC is refused" "box's third rule" \
+  bff_network_guard "$(mut '.Resources.BoxFromBffActivity.Properties |= (del(.SourceSecurityGroupId) | .CidrIp = "10.0.0.0/16")')"
+refuses "  a log rule on the box from another group is refused" "box's third rule" \
+  bff_network_guard "$(mut '.Resources.BoxFromBffActivity.Properties.SourceSecurityGroupId = {"Fn::GetAtt":["BoxGroup","GroupId"]}')"
+refuses "  a log rule on the box for c-storage's port is refused" "box's third rule" \
+  bff_network_guard "$(mut '.Resources.BoxFromBffActivity.Properties.FromPort = {"Ref":"BoxPort"}')"
 refuses "  a box rule for the whole VPC is refused" "box's second rule" \
   bff_network_guard "$(mut '.Resources.BoxFromBff.Properties |= (del(.SourceSecurityGroupId) | .CidrIp = "10.0.0.0/16")')"
-refuses "  a third rule on the box is refused" "other than BoxFromBff opens the box" \
+refuses "  a fourth rule on the box is refused" "other than BoxFromBff and BoxFromBffActivity opens the box" \
   bff_network_guard "$(mut '.Resources.BoxFromAny = {"Type":"AWS::EC2::SecurityGroupIngress","Properties":{"GroupId":{"Fn::GetAtt":["BoxGroup","GroupId"]},"IpProtocol":"tcp","FromPort":3181,"ToPort":3181,"CidrIp":"0.0.0.0/0"}}')"
 refuses "  a function in another group is refused" "ridge's subnet under BffGroup alone" \
   bff_network_guard "$(mut '.Resources.Bff.Properties.VpcConfig.SecurityGroupIds = [{"Fn::GetAtt":["BoxGroup","GroupId"]}]')"
@@ -373,6 +430,8 @@ refuses "  a function out of the subnet is refused" "ridge's subnet under BffGro
   bff_network_guard "$(mut 'del(.Resources.Bff.Properties.VpcConfig)')"
 refuses "  a port with a default is refused" "BoxPort has a default" \
   bff_network_guard "$(mut '.Parameters.BoxPort.Default = 3181')"
+refuses "  the log's port with a default is refused" "AuditPort has a default" \
+  bff_network_guard "$(mut '.Parameters.AuditPort.Default = 3184')"
 
 passes "the page rewrite, the behaviours and no error pages (row 25)" rewrite_guard "$WORK/env.json"
 check "  a path with no extension is the app's page, a file is itself, the query is kept" "$rewrite_wanted" "$(rewrite_run "$WORK/env.json")"
@@ -468,7 +527,15 @@ volume_guard() {
     "[$inst | (.Properties.BlockDeviceMappings // []) as \$m | (\$m | length > 0) and all(\$m[]; .Ebs.DeleteOnTermination == false)] | all"
   must "$1" "Box's root device is not gp3, encrypted, at VolumeSize" \
     '.Resources.Box.Properties.BlockDeviceMappings[0].Ebs | .VolumeType == "gp3" and .Encrypted == true and .VolumeSize == {"Ref":"VolumeSize"}'
-  # Not held yet (second slice, item 6's backup half): an AWS::EC2::Volume added later with no policy passes this guard.
+  # Any volume resource carries both policies (a volume can snapshot; Retain is legal too), so one added with none is refused.
+  must "$1" "a volume resource has no DeletionPolicy and UpdateReplacePolicy of Retain or Snapshot" \
+    '[.Resources | to_entries[] | select(.value.Type == "AWS::EC2::Volume") | .value | (.DeletionPolicy == "Retain" or .DeletionPolicy == "Snapshot") and (.UpdateReplacePolicy == "Retain" or .UpdateReplacePolicy == "Snapshot")] | all'
+  must "$1" "RecordsVolume is not gp3, encrypted, in the box's zone, at RecordsVolumeSize" \
+    '.Resources.RecordsVolume.Properties | .VolumeType == "gp3" and .Encrypted == true and .Size == {"Ref":"RecordsVolumeSize"} and .AvailabilityZone == {"Fn::GetAtt":["Subnet","AvailabilityZone"]}'
+  must "$1" "RecordsVolume is not kept on a stack delete and a replacement" \
+    '.Resources.RecordsVolume | (.DeletionPolicy == "Retain" or .DeletionPolicy == "Snapshot") and (.UpdateReplacePolicy == "Retain" or .UpdateReplacePolicy == "Snapshot")'
+  must "$1" "RecordsAttachment does not attach RecordsVolume to Box" \
+    '.Resources.RecordsAttachment.Properties | .InstanceId == {"Ref":"Box"} and .VolumeId == {"Ref":"RecordsVolume"}'
 }
 
 passes "the box keeps its disk: Retain on a stack delete and a replacement, and DeleteOnTermination false" volume_guard "$WORK/env.json"
@@ -491,6 +558,18 @@ refuses "  a Delete DeletionPolicy is refused" "Box has no DeletionPolicy of Ret
   volume_guard "$(mut '.Resources.Box.DeletionPolicy = "Delete"')"
 refuses "  an UpdateReplacePolicy of RetainExceptOnCreate (a DeletionPolicy value only) is refused" "Box has no UpdateReplacePolicy of Retain" \
   volume_guard "$(mut '.Resources.Box.UpdateReplacePolicy = "RetainExceptOnCreate"')"
+refuses "  a volume added with no policy is refused (row 5)" "a volume resource has no DeletionPolicy" \
+  volume_guard "$(mut '.Resources.Volume2 = {"Type":"AWS::EC2::Volume","Properties":{}}')"
+refuses "  a records disk with its policies removed is refused" "a volume resource has no DeletionPolicy" \
+  volume_guard "$(mut 'del(.Resources.RecordsVolume.DeletionPolicy)')"
+refuses "  a records disk that is not encrypted is refused (row 4)" "RecordsVolume is not gp3, encrypted" \
+  volume_guard "$(mut '.Resources.RecordsVolume.Properties.Encrypted = false')"
+refuses "  a records disk of another type is refused" "RecordsVolume is not gp3, encrypted" \
+  volume_guard "$(mut '.Resources.RecordsVolume.Properties.VolumeType = "gp2"')"
+refuses "  a records disk at a fixed size, not its parameter, is refused" "RecordsVolume is not gp3, encrypted" \
+  volume_guard "$(mut '.Resources.RecordsVolume.Properties.Size = 8')"
+refuses "  a records disk deleted with its stack is refused" "a volume resource has no DeletionPolicy" \
+  volume_guard "$(mut '.Resources.RecordsVolume.DeletionPolicy = "Delete"')"
 refuses "  a second instance with both attributes but a disk deleted on termination is refused" "an instance resource has a disk that does not keep itself" \
   volume_guard "$(mut '.Resources.Box2 = {"Type":"AWS::EC2::Instance","DeletionPolicy":"Retain","UpdateReplacePolicy":"Retain","Properties":{"BlockDeviceMappings":[{"DeviceName":"/dev/xvda","Ebs":{"DeleteOnTermination":true}}]}}')"
 
@@ -501,27 +580,724 @@ box_port_guard() {
   grep -B2 '^ *add_param BoxPort' "$1" | grep -q '^ *add_param Env ' || die "BoxPort is not passed beside Env, on both paths"
 }
 passes "stack.sh passes BoxPort from the unit's port, on a creation and on an update" box_port_guard "$OPS_DIR/stack.sh"
+# slack_params_guard <stack.sh>: dies unless the env branch calls add_slack_params once, beside the BoxPort line and before the creation/update split
+# shellcheck disable=SC2016 # grep patterns, in single quotes
+slack_params_guard() {
+  [ "$(grep -c '^ *add_slack_params$' "$1" || true)" = 1 ] || die "stack.sh does not call add_slack_params once"
+  grep -B3 '^ *add_slack_params$' "$1" | grep -q '^ *add_param BoxPort ' || die "add_slack_params is not called beside BoxPort, before the creation and update paths split"
+}
+passes "stack.sh appends the Slack IDs once, before the creation and update paths split" slack_params_guard "$OPS_DIR/stack.sh"
+grep -v '^ *add_slack_params$' "$OPS_DIR/stack.sh" >"$WORK/stack-noslack.sh"
+refuses "  a stack.sh that forgets the Slack IDs is refused" "does not call add_slack_params once" slack_params_guard "$WORK/stack-noslack.sh"
 grep -v 'add_param BoxPort' "$OPS_DIR/stack.sh" >"$WORK/stack-noport.sh"
 refuses "  a stack.sh that forgets the port is refused" "does not pass BoxPort" box_port_guard "$WORK/stack-noport.sh"
+# audit_port_guard <stack.sh>: dies unless the env branch passes AuditPort once, from the log's unit's port, beside BoxPort
+# shellcheck disable=SC2016 # grep patterns, in single quotes
+audit_port_guard() {
+  [ "$(grep -c '^ *add_param AuditPort "\$AUDIT_PORT"$' "$1" || true)" = 1 ] || die "stack.sh does not pass AuditPort from the log's unit's port"
+  grep -B1 '^ *add_param AuditPort' "$1" | grep -q '^ *add_param BoxPort ' || die "AuditPort is not passed beside BoxPort, on both paths"
+}
+passes "stack.sh passes AuditPort from the log's unit's port, on a creation and on an update" audit_port_guard "$OPS_DIR/stack.sh"
+grep -v 'add_param AuditPort' "$OPS_DIR/stack.sh" >"$WORK/stack-noaudit.sh"
+refuses "  a stack.sh that forgets the log's port is refused" "does not pass AuditPort" audit_port_guard "$WORK/stack-noaudit.sh"
+check "the log's port is read from its unit, and is not the store's" "3184 3181" "$AUDIT_PORT $BOX_PORT"
+
+echo "== the watch (plan 2026-11-11-slack-alarm, step 2): four alarms to one topic, the channel behind two IDs and a deny-all guardrail"
+# watch_guard <template json>: dies naming what is wrong. Read from the parsed template, never grepped.
+# Each case below names the one mutation that must turn it red.
+# shellcheck disable=SC2016 # jq programs and the template's ${Env}, in single quotes
+watch_guard() {
+  local alarm
+  # row 1: each alarm sends its alarm and its return to normal to Alerts, and nowhere else
+  for alarm in AlarmCalls AlarmErrors AlarmRefusals AlarmBox; do
+    must "$1" "$alarm does not send its alarm to Alerts alone" \
+      ".Resources.$alarm.Properties.AlarmActions == [{\"Ref\":\"Alerts\"}]"
+    must "$1" "$alarm does not send its return to normal to Alerts alone" \
+      ".Resources.$alarm.Properties.OKActions == [{\"Ref\":\"Alerts\"}]"
+    must "$1" "$alarm sends something on missing data besides its own rule" \
+      ".Resources.$alarm.Properties.InsufficientDataActions == null"
+    must "$1" "$alarm is not an alarm on the watch's own topic and a condition-free resource" \
+      ".Resources.$alarm | .Type == \"AWS::CloudWatch::Alarm\" and .Condition == null"
+  done
+  # every alarm's whole rule, pinned: operator, threshold, period, evaluation periods, statistic, switched on, every datapoint counted
+  must "$1" "AlarmCalls, AlarmErrors or AlarmRefusals is not Sum, 300 s, one period, threshold 1, at or above, switched on, every datapoint counted" \
+    '[.Resources.AlarmCalls, .Resources.AlarmErrors, .Resources.AlarmRefusals] | all(.Properties | .Statistic == "Sum" and .Period == 300 and .EvaluationPeriods == 1 and .Threshold == 1 and .ComparisonOperator == "GreaterThanOrEqualToThreshold" and (.ActionsEnabled | . == null or . == true) and (.DatapointsToAlarm // .EvaluationPeriods) == .EvaluationPeriods)'
+  must "$1" "AlarmBox is not Maximum, 60 s, three periods, threshold 1, at or above, switched on, every datapoint counted" \
+    '.Resources.AlarmBox.Properties | .Statistic == "Maximum" and .Period == 60 and .EvaluationPeriods == 3 and .Threshold == 1 and .ComparisonOperator == "GreaterThanOrEqualToThreshold" and (.ActionsEnabled | . == null or . == true) and (.DatapointsToAlarm // .EvaluationPeriods) == .EvaluationPeriods'
+  must "$1" "a resource other than the four alarms and the channel acts on Alerts" \
+    '[.Resources | to_entries[] | select(.value.Properties | tostring | test("\"Ref\":\"Alerts\"")) | .key] | sort == ["AlarmBox","AlarmCalls","AlarmErrors","AlarmRefusals","AlertsChannel"]'
+  # row 2: the calls alarm reads this stack's own API and stage; a 5xx in five minutes; no calls is no failure
+  must "$1" "AlarmCalls does not read this stack's API and stage 5xx" \
+    '.Resources.AlarmCalls.Properties | .Namespace == "AWS/ApiGateway" and .MetricName == "5xx" and .Dimensions == [{"Name":"ApiId","Value":{"Ref":"Api"}},{"Name":"Stage","Value":{"Ref":"ApiStage"}}]'
+  must "$1" "AlarmCalls is not one 5xx in five minutes, with no calls counting as no failure" \
+    '.Resources.AlarmCalls.Properties | .Statistic == "Sum" and .Period == 300 and .EvaluationPeriods == 1 and .Threshold == 1 and .ComparisonOperator == "GreaterThanOrEqualToThreshold" and .TreatMissingData == "notBreaching"'
+  # row 3: the errors and the refusals alarms read this stack's own function
+  must "$1" "AlarmErrors does not read this stack's function Errors" \
+    '.Resources.AlarmErrors.Properties | .Namespace == "AWS/Lambda" and .MetricName == "Errors" and .Dimensions == [{"Name":"FunctionName","Value":{"Ref":"Bff"}}] and .Statistic == "Sum" and .TreatMissingData == "notBreaching"'
+  must "$1" "AlarmRefusals does not read this stack's function Throttles" \
+    '.Resources.AlarmRefusals.Properties | .Namespace == "AWS/Lambda" and .MetricName == "Throttles" and .Dimensions == [{"Name":"FunctionName","Value":{"Ref":"Bff"}}] and .Statistic == "Sum" and .TreatMissingData == "notBreaching"'
+  # row 4: the box alarm reads this stack's own box, and a box reporting nothing for three minutes is down
+  must "$1" "AlarmBox does not read this stack's box StatusCheckFailed" \
+    '.Resources.AlarmBox.Properties | .Namespace == "AWS/EC2" and .MetricName == "StatusCheckFailed" and .Dimensions == [{"Name":"InstanceId","Value":{"Ref":"Box"}}]'
+  must "$1" "AlarmBox does not count three minutes of failed or missing reports as down" \
+    '.Resources.AlarmBox.Properties | .Period == 60 and .EvaluationPeriods == 3 and .Threshold == 1 and .TreatMissingData == "breaching"'
+  # row 5: with no Slack IDs the topic and the four alarms stay, the channel and its role go
+  must "$1" "HasSlack is not both IDs given" \
+    '.Conditions.HasSlack == {"Fn::And":[{"Fn::Not":[{"Fn::Equals":[{"Ref":"SlackWorkspaceId"},"none"]}]},{"Fn::Not":[{"Fn::Equals":[{"Ref":"SlackChannelId"},"none"]}]}]}'
+  must "$1" "the topic is not made with no Slack IDs" '.Resources.Alerts | .Type == "AWS::SNS::Topic" and .Condition == null'
+  must "$1" "the channel and its role are not both held to HasSlack" \
+    '.Resources | (.AlertsChannel.Condition == "HasSlack") and (.AlertsChannelRole.Condition == "HasSlack") and ([.[] | select(.Condition == "HasSlack")] | length) == 2'
+  # row 6: the channel's role grants nothing, and the guardrail is the managed deny-all, not AWS's default
+  must "$1" "the channel's role holds a policy" \
+    '.Resources.AlertsChannelRole.Properties | .Policies == null and .ManagedPolicyArns == null'
+  must "$1" "the channel's guardrail is not AWS's deny-all alone (unset is AdministratorAccess)" \
+    '.Resources.AlertsChannel.Properties.GuardrailPolicies == [{"Fn::Sub":"arn:${AWS::Partition}:iam::aws:policy/AWSDenyAll"}]'
+  must "$1" "the channel logs errors" '.Resources.AlertsChannel.Properties.LoggingLevel == "ERROR"'
+  must "$1" "the channel's role is not the channel's own, or the channel does not read the topic" \
+    '.Resources.AlertsChannel.Properties | .IamRoleArn == {"Fn::GetAtt":["AlertsChannelRole","Arn"]} and .SnsTopicArns == [{"Ref":"Alerts"}]'
+  # row 7: both IDs are parameters defaulting to none; the channel reads them by Ref; a typed name fails the pattern
+  must "$1" "a Slack ID does not default to none" \
+    '.Parameters | .SlackWorkspaceId.Default == "none" and .SlackChannelId.Default == "none"'
+  must "$1" "the channel does not read both IDs from the parameters" \
+    '.Resources.AlertsChannel.Properties | .SlackWorkspaceId == {"Ref":"SlackWorkspaceId"} and .SlackChannelId == {"Ref":"SlackChannelId"}'
+  must "$1" "an ID's pattern admits a channel's typed name, or refuses an ID or none" \
+    '.Parameters as $p | ($p.SlackChannelId.AllowedPattern as $c | ($p.SlackWorkspaceId.AllowedPattern) as $w | ("alerts-ridge" | test($c) | not) and ("C01ABCDEF" | test($c)) and ("none" | test($c)) and ("my-workspace" | test($w) | not) and ("T01ABCDEF" | test($w)) and ("none" | test($w)))'
+  # row 10: each alarm's description says in plain words which environment and what failed
+  must "$1" "an alarm's description does not name the environment and what failed" \
+    '[.Resources | to_entries[] | select(.key | startswith("Alarm")) | {k: .key, d: (.value.Properties.AlarmDescription["Fn::Sub"] // "")}] | map(select(.d | contains("${Env}"))) | map({(.k): .d}) | add | (.AlarmCalls | contains("calls are failing")) and (.AlarmErrors | contains("back end is failing")) and (.AlarmRefusals | contains("refusing work")) and (.AlarmBox | contains("box is down"))'
+}
+passes "the watch: four alarms to one topic, the channel behind two IDs, nothing granted" watch_guard "$WORK/env.json"
+refuses "  an alarm that sends to a second topic is refused (row 1)" "AlarmErrors does not send its alarm to Alerts alone" \
+  watch_guard "$(mut '.Resources.AlarmErrors.Properties.AlarmActions += [{"Ref":"Other"}]')"
+refuses "  an alarm with no return to normal is refused (row 1)" "AlarmBox does not send its return to normal" \
+  watch_guard "$(mut 'del(.Resources.AlarmBox.Properties.OKActions)')"
+refuses "  a fifth resource acting on the topic is refused (row 1)" "a resource other than the four alarms and the channel acts on Alerts" \
+  watch_guard "$(mut '.Resources.Extra = {"Type":"AWS::CloudWatch::Alarm","Properties":{"AlarmActions":[{"Ref":"Alerts"}]}}')"
+refuses "  a calls alarm on another stage is refused (row 2)" "AlarmCalls does not read this stack's API and stage" \
+  watch_guard "$(mut '.Resources.AlarmCalls.Properties.Dimensions[1].Value = "prod"')"
+refuses "  a calls alarm on the 4xx metric is refused (row 2)" "AlarmCalls does not read this stack's API and stage" \
+  watch_guard "$(mut '.Resources.AlarmCalls.Properties.MetricName = "4xx"')"
+refuses "  a calls alarm that counts no calls as a failure is refused (row 2)" "AlarmCalls is not one 5xx in five minutes" \
+  watch_guard "$(mut '.Resources.AlarmCalls.Properties.TreatMissingData = "breaching"')"
+refuses "  an errors alarm on another function is refused (row 3)" "AlarmErrors does not read this stack's function" \
+  watch_guard "$(mut '.Resources.AlarmErrors.Properties.Dimensions[0].Value = "other-function"')"
+refuses "  a refusals alarm on the wrong metric is refused (row 3)" "AlarmRefusals does not read this stack's function" \
+  watch_guard "$(mut '.Resources.AlarmRefusals.Properties.MetricName = "Errors"')"
+refuses "  a box alarm on another instance is refused (row 4)" "AlarmBox does not read this stack's box" \
+  watch_guard "$(mut '.Resources.AlarmBox.Properties.Dimensions[0].Value = "i-0123456789abcdef0"')"
+refuses "  a box alarm that reads missing data as normal is refused (row 4)" "AlarmBox does not count three minutes" \
+  watch_guard "$(mut '.Resources.AlarmBox.Properties.TreatMissingData = "notBreaching"')"
+refuses "  a channel made with no Slack IDs is refused (row 5)" "the channel and its role are not both held to HasSlack" \
+  watch_guard "$(mut 'del(.Resources.AlertsChannel.Condition)')"
+refuses "  a topic that waits for the IDs is refused (row 5)" "the topic is not made with no Slack IDs" \
+  watch_guard "$(mut '.Resources.Alerts.Condition = "HasSlack"')"
+refuses "  a condition that wants one ID only is refused (row 5)" "HasSlack is not both IDs given" \
+  watch_guard "$(mut '.Conditions.HasSlack = {"Fn::Not":[{"Fn::Equals":[{"Ref":"SlackChannelId"},"none"]}]}')"
+refuses "  a channel role with a policy is refused (row 6)" "the channel's role holds a policy" \
+  watch_guard "$(mut '.Resources.AlertsChannelRole.Properties.ManagedPolicyArns = ["arn:aws:iam::aws:policy/ReadOnlyAccess"]')"
+refuses "  a channel with no guardrail (AWS then applies AdministratorAccess) is refused (row 6)" "the channel's guardrail is not AWS's deny-all" \
+  watch_guard "$(mut 'del(.Resources.AlertsChannel.Properties.GuardrailPolicies)')"
+refuses "  AdministratorAccess as the guardrail is refused (row 6)" "the channel's guardrail is not AWS's deny-all" \
+  watch_guard "$(mut '.Resources.AlertsChannel.Properties.GuardrailPolicies = ["arn:aws:iam::aws:policy/AdministratorAccess"]')"
+refuses "  a Slack ID with a real-looking default is refused (row 7)" "a Slack ID does not default to none" \
+  watch_guard "$(mut '.Parameters.SlackChannelId.Default = "C01ABCDEF"')"
+refuses "  a channel with its ID written in is refused (row 7)" "the channel does not read both IDs from the parameters" \
+  watch_guard "$(mut '.Resources.AlertsChannel.Properties.SlackChannelId = "C01ABCDEF"')"
+refuses "  a channel ID pattern that admits a typed name is refused (row 7)" "admits a channel's typed name" \
+  watch_guard "$(mut '.Parameters.SlackChannelId.AllowedPattern = "^(none|[A-Za-z0-9-]+)$"')"
+refuses "  an alarm description that names no environment is refused (row 10)" "an alarm's description does not name the environment" \
+  watch_guard "$(mut '.Resources.AlarmCalls.Properties.AlarmDescription = {"Fn::Sub":"the app'"'"'s calls are failing."}')"
+# shellcheck disable=SC2016 # the template's ${Env}, in single quotes
+refuses "  an alarm description that says nothing of what failed is refused (row 10)" "an alarm's description does not name the environment" \
+  watch_guard "$(mut '.Resources.AlarmBox.Properties.AlarmDescription = {"Fn::Sub":"${Env}: an alarm."}')"
+
+refuses "  an alarm with its actions switched off is refused (all four)" "is not Sum, 300 s" \
+  watch_guard "$(mut '.Resources.AlarmCalls.Properties.ActionsEnabled = false')"
+refuses "  a box alarm that a failed check never fires (above, not at or above, 1) is refused" "AlarmBox is not Maximum, 60 s" \
+  watch_guard "$(mut '.Resources.AlarmBox.Properties.ComparisonOperator = "GreaterThanThreshold"')"
+refuses "  an errors alarm with a threshold of 1000 is refused" "is not Sum, 300 s" \
+  watch_guard "$(mut '.Resources.AlarmErrors.Properties.Threshold = 1000')"
+refuses "  an errors alarm over a day is refused" "is not Sum, 300 s" \
+  watch_guard "$(mut '.Resources.AlarmErrors.Properties.Period = 86400')"
+refuses "  a refusals alarm that fires below its threshold is refused" "is not Sum, 300 s" \
+  watch_guard "$(mut '.Resources.AlarmRefusals.Properties.ComparisonOperator = "LessThanThreshold"')"
+refuses "  a calls alarm that wants five datapoints is refused" "is not Sum, 300 s" \
+  watch_guard "$(mut '.Resources.AlarmCalls.Properties.DatapointsToAlarm = 5')"
+refuses "  a box alarm with its actions switched off is refused" "AlarmBox is not Maximum, 60 s" \
+  watch_guard "$(mut '.Resources.AlarmBox.Properties.ActionsEnabled = false')"
 
 echo "== the update on ridge adds layer four and modifies the deploy role in place (a change set as describe-change-set shows it)"
-# adds_and_one_modify <change set> <template json>: dies unless every resource the template gained is an
-# Add, the one Modify is DeployRole, in place, and the guard names nothing
+# adds_and_one_modify <change set> <template json>: dies unless the recorded change set adds exactly layer
+# four's own resources (pinned below by name, so a later piece's resources in the template leave it alone),
+# the template holds each of them, the one Modify is DeployRole, in place, and the guard names nothing
 adds_and_one_modify() {
-  local seen gained old='Box BoxGroup DeployRole Subnet SubnetRoutes'
+  local seen lost layer4='Api ApiIntegration ApiInvoke ApiLogs ApiRoute ApiStage Bff BffGroup BffLogs BffRole BoxFromBff Distribution UiAccess UiBucket UiBucketPolicy UiRewrite'
   seen=$(jq -r '[.Changes[].ResourceChange | select(.Action == "Add") | .LogicalResourceId] | sort | join(" ")' "$1")
-  gained=$(jq -r --arg old "$old" '[.Resources | keys[] | select(. as $k | ($old | split(" ") | index($k)) | not)] | sort | join(" ")' "$2")
-  [ "$seen" = "$gained" ] || die "the change set adds '$seen', the template gained '$gained'"
+  [ "$seen" = "$layer4" ] || die "the change set adds '$seen', not layer four's own '$layer4'"
+  lost=$(jq -r --arg l "$layer4" '.Resources as $r | [($l | split(" "))[] | select($r[.] == null)] | join(" ")' "$2")
+  [ -z "$lost" ] || die "the template lacks layer four's '$lost'"
   seen=$(jq -r '[.Changes[].ResourceChange | select(.Action != "Add") | "\(.Action) \(.LogicalResourceId) \(.Replacement // "none")"] | join(",")' "$1")
   [ "$seen" = "Modify DeployRole False" ] || die "the change set's other changes are not a Modify of DeployRole in place: $seen"
   [ -z "$(jq -r --argjson take '[]' -f "$OPS_DIR/unsafe-changes.jq" "$1")" ] || die "the guard names a change in it"
 }
 passes "layer four's change set is adds and a Modify of DeployRole in place, and the guard passes" \
   adds_and_one_modify "$OPS_DIR/testdata/changeset-app.json" "$WORK/env.json"
-refuses "  a template resource the change set lacks is refused" "the template gained" \
+passes "  a later piece's resource in the template leaves it alone (the watch's topic, any other)" \
   adds_and_one_modify "$OPS_DIR/testdata/changeset-app.json" "$(mut '.Resources.Extra = {"Type":"AWS::SNS::Topic"}')"
+refuses "  a layer-four resource the template lost is refused" "the template lacks layer four's 'UiRewrite'" \
+  adds_and_one_modify "$OPS_DIR/testdata/changeset-app.json" "$(mut 'del(.Resources.UiRewrite)')"
+refuses "  a change set that adds a resource beyond layer four's is refused" "not layer four's own" \
+  adds_and_one_modify "$(jq -c '.Changes += [{"Type":"Resource","ResourceChange":{"Action":"Add","LogicalResourceId":"Alerts","ResourceType":"AWS::SNS::Topic","Scope":[],"Details":[]}}]' "$OPS_DIR/testdata/changeset-app.json" >"$WORK/cs-alerts.json"; echo "$WORK/cs-alerts.json")" "$WORK/env.json"
 refuses "  a box that would be replaced is not that update" "not a Modify of DeployRole in place" \
   adds_and_one_modify "$(jq -c '.Changes += [{"Type":"Resource","ResourceChange":{"Action":"Modify","LogicalResourceId":"Box","ResourceType":"AWS::EC2::Instance","Replacement":"True","Scope":["Properties"],"Details":[]}}]' "$OPS_DIR/testdata/changeset-app.json" >"$WORK/cs-box.json"; echo "$WORK/cs-box.json")" "$WORK/env.json"
+
+echo "== the records' copy: the S3 door, the bucket, the box's role, and the box kept in place (rows 1 to 4 of docs/plans/2026-11-11-continuous-copy.md)"
+tojson "$OPS_DIR/network.yml" >"$WORK/network.json"
+# nmut <jq program> → a copy of the network's JSON with the program applied
+nmut() {
+  jq -c "$1" "$WORK/network.json" >"$WORK/network-mut.json"
+  echo "$WORK/network-mut.json"
+}
+# row 1: S3's gateway door on the one route table; still no internet gateway, no NAT, no address to put on one
+# shellcheck disable=SC2016 # jq programs, in single quotes
+network_guard() {
+  must "$1" "the network has no S3 gateway door on its route table" \
+    '.Resources.S3Door | .Type == "AWS::EC2::VPCEndpoint" and .Properties.VpcEndpointType == "Gateway" and .Properties.ServiceName == {"Fn::Sub":"com.amazonaws.${AWS::Region}.s3"} and .Properties.RouteTableIds == [{"Ref":"Routes"}] and .Properties.VpcId == {"Ref":"Vpc"}'
+  must "$1" "the network has a way out other than the door (an internet gateway, a NAT, an elastic address, a route, or an interface endpoint)" \
+    '([.Resources[] | .Type] | all(. != "AWS::EC2::InternetGateway" and . != "AWS::EC2::NatGateway" and . != "AWS::EC2::EIP" and . != "AWS::EC2::Route" and . != "AWS::EC2::VPCGatewayAttachment")) and ([.Resources[] | select(.Type == "AWS::EC2::VPCEndpoint") | .Properties.VpcEndpointType] | all(. == "Gateway"))'
+}
+passes "the network gains an S3 gateway door on its route table, and has no internet gateway and no NAT (row 1)" network_guard "$WORK/network.json"
+refuses "  a network with no door is refused" "no S3 gateway door" network_guard "$(nmut 'del(.Resources.S3Door)')"
+refuses "  an interface endpoint in place of the gateway is refused" "no S3 gateway door" \
+  network_guard "$(nmut '.Resources.S3Door.Properties.VpcEndpointType = "Interface"')"
+refuses "  an internet gateway is refused" "a way out other than the door" \
+  network_guard "$(nmut '.Resources.Igw = {"Type":"AWS::EC2::InternetGateway"}')"
+refuses "  a NAT is refused" "a way out other than the door" \
+  network_guard "$(nmut '.Resources.Nat = {"Type":"AWS::EC2::NatGateway","Properties":{}}')"
+
+# row 2: the copy's bucket
+copy_bucket_guard() {
+  must "$1" "CopyBucket does not block all public access" \
+    '.Resources.CopyBucket.Properties.PublicAccessBlockConfiguration == {"BlockPublicAcls":true,"BlockPublicPolicy":true,"IgnorePublicAcls":true,"RestrictPublicBuckets":true}'
+  must "$1" "CopyBucket is not encrypted" '.Resources.CopyBucket.Properties.BucketEncryption.ServerSideEncryptionConfiguration | length == 1'
+  must "$1" "CopyBucket is not kept on a stack delete and a replacement" \
+    '.Resources.CopyBucket | .DeletionPolicy == "Retain" and .UpdateReplacePolicy == "Retain"'
+  must "$1" "CopyBucket does not expire copies after seven days" \
+    '.Resources.CopyBucket.Properties.LifecycleConfiguration.Rules | length == 1 and .[0].Status == "Enabled" and .[0].ExpirationInDays == 7'
+  must "$1" "CopyBucket is a website, or has a policy of its own" \
+    '([.Resources | to_entries[] | select(.value.Type == "AWS::S3::BucketPolicy" and (.value.Properties.Bucket | tostring | contains("CopyBucket")))] | length == 0) and (.Resources.CopyBucket.Properties | has("WebsiteConfiguration") | not)'
+}
+# row 3: the box's role
+# shellcheck disable=SC2016 # jq programs, in single quotes
+box_role_guard() {
+  must "$1" "the box's role holds an action other than put and get under its own path, and list" \
+    '[.Resources.BoxRole.Properties.Policies[].PolicyDocument.Statement[] | .Action | if type == "array" then .[] else . end] | sort == ["s3:GetObject","s3:ListBucket","s3:PutObject"]'
+  must "$1" "the box's role reaches a resource other than CopyBucket, or put and get beyond its own box path" \
+    '[.Resources.BoxRole.Properties.Policies[].PolicyDocument.Statement[] | select(.Action != "s3:ListBucket") | .Resource] == [{"Fn::Sub":"${CopyBucket.Arn}/Box/*"}] and ([.Resources.BoxRole.Properties.Policies[].PolicyDocument.Statement[] | select(.Action == "s3:ListBucket") | .Resource] == [{"Fn::GetAtt":["CopyBucket","Arn"]}])'
+  must "$1" "the box's role has a statement that is not an Allow, or a managed policy" \
+    '([.Resources.BoxRole.Properties.Policies[].PolicyDocument.Statement[] | .Effect] | all(. == "Allow")) and (.Resources.BoxRole.Properties | has("ManagedPolicyArns") | not)'
+  must "$1" "the box's role lists beyond its own box path (the list's prefix condition is gone or wider)" \
+    '[.Resources.BoxRole.Properties.Policies[].PolicyDocument.Statement[] | select(.Action == "s3:ListBucket") | .Condition] == [{"StringLike":{"s3:prefix":["Box/*"]}}]'
+  must "$1" "the box's role is assumed by something other than EC2" \
+    '.Resources.BoxRole.Properties.AssumeRolePolicyDocument.Statement | length == 1 and .[0].Principal == {"Service":"ec2.amazonaws.com"}'
+  must "$1" "the box does not take BoxProfile, or BoxProfile does not hold BoxRole alone" \
+    '.Resources.Box.Properties.IamInstanceProfile == {"Ref":"BoxProfile"} and .Resources.BoxProfile.Properties.Roles == [{"Ref":"BoxRole"}]'
+}
+# The hazard: an update that changes a create-only property of the box replaces it, and the records stay on the old one.
+# The box gains IamInstanceProfile (in place) and nothing else: its property names are pinned, no inline Volumes, and the
+# first-boot script is pinned by its hash (UserData is create-only in effect). A deliberate change here moves the pin.
+box_in_place_guard() {
+  must "$1" "the box's properties are not the pinned set (a new property may replace the box)" \
+    '.Resources.Box.Properties | keys == ["BlockDeviceMappings","CreditSpecification","IamInstanceProfile","ImageId","InstanceType","MetadataOptions","NetworkInterfaces","Tags","UserData"]'
+  [ "$(jq -j '.Resources.Box.Properties.UserData["Fn::Base64"]' "$1" | shasum -a 256 | cut -d' ' -f1)" = 9c594c9c06ed30a3c6204546fc8195e13eb9d72ab207b52bf30ca595e53f50fc ] ||
+    die "the box's first-boot script changed: UserData replaces the box (mount the records disk in the release, not here)"
+}
+passes "the copy's bucket blocks public access, is encrypted, is kept, and expires copies after seven days (row 2)" copy_bucket_guard "$WORK/env.json"
+refuses "  a bucket that allows public policy is refused" "block all public access" \
+  copy_bucket_guard "$(mut '.Resources.CopyBucket.Properties.PublicAccessBlockConfiguration.BlockPublicPolicy = false')"
+refuses "  a bucket with no encryption is refused" "not encrypted" copy_bucket_guard "$(mut 'del(.Resources.CopyBucket.Properties.BucketEncryption)')"
+refuses "  a bucket deleted with its stack is refused" "not kept" copy_bucket_guard "$(mut 'del(.Resources.CopyBucket.DeletionPolicy)')"
+refuses "  a bucket deleted on a replacement is refused" "not kept" copy_bucket_guard "$(mut 'del(.Resources.CopyBucket.UpdateReplacePolicy)')"
+refuses "  a bucket that expires copies after a day is refused" "seven days" \
+  copy_bucket_guard "$(mut '.Resources.CopyBucket.Properties.LifecycleConfiguration.Rules[0].ExpirationInDays = 1')"
+passes "the box's role may put, get and list its own path in its own bucket, and holds no delete (row 3)" box_role_guard "$WORK/env.json"
+refuses "  a role that may delete is refused" "an action other than" \
+  box_role_guard "$(mut '.Resources.BoxRole.Properties.Policies[0].PolicyDocument.Statement[0].Action += ["s3:DeleteObject"]')"
+refuses "  a role over every bucket is refused" "a resource other than CopyBucket" \
+  box_role_guard "$(mut '.Resources.BoxRole.Properties.Policies[0].PolicyDocument.Statement[0].Resource = "*"')"
+# shellcheck disable=SC2016 # jq's program, in single quotes
+refuses "  a role over the whole bucket, not its box path, is refused" "a resource other than CopyBucket" \
+  box_role_guard "$(mut '.Resources.BoxRole.Properties.Policies[0].PolicyDocument.Statement[0].Resource = {"Fn::Sub":"${CopyBucket.Arn}/*"}')"
+refuses "  a role that lists the whole bucket, its prefix condition gone, is refused" "lists beyond its own box path" \
+  box_role_guard "$(mut 'del(.Resources.BoxRole.Properties.Policies[0].PolicyDocument.Statement[1].Condition)')"
+refuses "  a role with a managed policy is refused" "managed policy" \
+  box_role_guard "$(mut '.Resources.BoxRole.Properties.ManagedPolicyArns = ["arn:aws:iam::aws:policy/AdministratorAccess"]')"
+refuses "  a box with no profile is refused" "does not take BoxProfile" box_role_guard "$(mut 'del(.Resources.Box.Properties.IamInstanceProfile)')"
+passes "the box gains its profile and keeps every create-only property: its names and first-boot script are pinned" box_in_place_guard "$WORK/env.json"
+refuses "  a property added to the box is refused" "not the pinned set" \
+  box_in_place_guard "$(mut '.Resources.Box.Properties.Volumes = [{"Device":"/dev/sdf","VolumeId":"vol-1"}]')"
+refuses "  a changed first-boot script is refused" "first-boot script changed" \
+  box_in_place_guard "$(mut '.Resources.Box.Properties.UserData["Fn::Base64"] += "echo mount\n"')"
+
+# copy_update <change set>: dies unless the update is the copy's five additions and a Modify of the box and of the
+# deploy role, both in place, and the guard names nothing
+copy_update() {
+  local seen
+  seen=$(jq -r '[.Changes[].ResourceChange | select(.Action == "Add") | .LogicalResourceId] | sort | join(" ")' "$1")
+  [ "$seen" = "BoxProfile BoxRole CopyBucket RecordsAttachment RecordsVolume" ] || die "the change set adds '$seen'"
+  seen=$(jq -r '[.Changes[].ResourceChange | select(.Action != "Add") | "\(.Action) \(.LogicalResourceId) \(.Replacement // "none")"] | sort | join(",")' "$1")
+  [ "$seen" = "Modify Box False,Modify DeployRole False" ] || die "the change set's other changes are not a Modify of Box and DeployRole in place: $seen"
+  [ -z "$(jq -r --argjson take '[]' -f "$OPS_DIR/unsafe-changes.jq" "$1")" ] || die "the guard names a change in it"
+}
+passes "the update on ridge, as CloudFormation shows it, adds the copy's five and modifies Box in place; the guard passes" \
+  copy_update "$OPS_DIR/testdata/changeset-copy.json"
+refuses "  a box shown as replaced is not that update, and the guard names it" "not a Modify of Box and DeployRole in place" \
+  copy_update "$(jq -c '(.Changes[] | select(.ResourceChange.LogicalResourceId == "Box") | .ResourceChange.Replacement) = "True"' "$OPS_DIR/testdata/changeset-copy.json" >"$WORK/cs-copy-replaced.json"; echo "$WORK/cs-copy-replaced.json")"
+check "  and stack.sh's guard refuses that box, naming it" "Box (AWS::EC2::Instance): Modify, replacement True" \
+  "$(jq -c '(.Changes[] | select(.ResourceChange.LogicalResourceId == "Box") | .ResourceChange.Replacement) = "True"' "$OPS_DIR/testdata/changeset-copy.json" >"$WORK/cs-copy-replaced2.json"; jq -r --argjson take '[]' -f "$OPS_DIR/unsafe-changes.jq" "$WORK/cs-copy-replaced2.json")"
+refuses "  a box shown as Conditional is not that update either" "not a Modify of Box" \
+  copy_update "$(jq -c '(.Changes[] | select(.ResourceChange.LogicalResourceId == "Box") | .ResourceChange.Replacement) = "Conditional"' "$OPS_DIR/testdata/changeset-copy.json" >"$WORK/cs-copy-cond.json"; echo "$WORK/cs-copy-cond.json")"
+
+# activity_update <change set>: dies unless the update is the log's one rule on the box added and the BFF's group
+# modified in place (its second egress rule), nothing else, and the guard names nothing. It checks the author's
+# expected change set, a hand-written file made to match the expectation, and not the change set CloudFormation
+# makes: ops/stack.sh does not call it, since a real change set holds other pieces' changes too. The only guard on
+# the owner's run is unsafe-changes.jq; the lines the owner's --plan must print are in the plan's step 2.
+activity_update() {
+  local seen
+  seen=$(jq -r '[.Changes[].ResourceChange | select(.Action == "Add") | .LogicalResourceId] | sort | join(" ")' "$1")
+  [ "$seen" = "BoxFromBffActivity" ] || die "the change set adds '$seen', not the log's one rule BoxFromBffActivity"
+  seen=$(jq -r '[.Changes[].ResourceChange | select(.Action != "Add") | "\(.Action) \(.LogicalResourceId) \(.Replacement // "none")"] | sort | join(",")' "$1")
+  [ "$seen" = "Modify BffGroup False" ] || die "the change set's other changes are not a Modify of BffGroup in place: $seen"
+  [ -z "$(jq -r --argjson take '[]' -f "$OPS_DIR/unsafe-changes.jq" "$1")" ] || die "the guard names a change in it"
+}
+passes "the update for the log's port, as its author expects CloudFormation to show it, adds the rule and modifies BffGroup in place; the guard passes" \
+  activity_update "$OPS_DIR/testdata/changeset-activity.json"
+refuses "  a BFF group shown as replaced is not that update, and the guard names it" "not a Modify of BffGroup in place" \
+  activity_update "$(jq -c '(.Changes[] | select(.ResourceChange.LogicalResourceId == "BffGroup") | .ResourceChange.Replacement) = "True"' "$OPS_DIR/testdata/changeset-activity.json" >"$WORK/cs-act-replaced.json"; echo "$WORK/cs-act-replaced.json")"
+check "  and stack.sh's guard refuses that group, naming it" "BffGroup (AWS::EC2::SecurityGroup): Modify, replacement True" \
+  "$(jq -c '(.Changes[] | select(.ResourceChange.LogicalResourceId == "BffGroup") | .ResourceChange.Replacement) = "True"' "$OPS_DIR/testdata/changeset-activity.json" >"$WORK/cs-act-replaced2.json"; jq -r --argjson take '[]' -f "$OPS_DIR/unsafe-changes.jq" "$WORK/cs-act-replaced2.json")"
+refuses "  a change set that also adds a second rule is refused" "not the log's one rule" \
+  activity_update "$(jq -c '.Changes += [{"Type":"Resource","ResourceChange":{"Action":"Add","LogicalResourceId":"BoxFromAny","ResourceType":"AWS::EC2::SecurityGroupIngress","Scope":[],"Details":[]}}]' "$OPS_DIR/testdata/changeset-activity.json" >"$WORK/cs-act-extra.json"; echo "$WORK/cs-act-extra.json")"
+refuses "  a change set that also modifies the box's group is refused" "not a Modify of BffGroup in place" \
+  activity_update "$(jq -c '.Changes += [{"Type":"Resource","ResourceChange":{"Action":"Modify","LogicalResourceId":"BoxGroup","ResourceType":"AWS::EC2::SecurityGroup","Replacement":"False","Scope":["Properties"],"Details":[]}}]' "$OPS_DIR/testdata/changeset-activity.json" >"$WORK/cs-act-box.json"; echo "$WORK/cs-act-box.json")"
+
+echo "== the box's side of the copy: Litestream's pin, its configuration, the unit, the mount and the move (rows 7 to 12 of docs/plans/2026-11-11-continuous-copy.md)"
+# need <file> <ERE> <what is missing>: dies unless a line of the file matches
+CI_YML=$REPO_DIR/.github/workflows/ci.yml
+# mutated <name> <sed expression> <file> → the path of a copy of the file with the expression applied
+mutated() {
+  sed "$2" "$3" >"$WORK/$1"
+  echo "$WORK/$1"
+}
+need() { grep -qE -- "$2" "$1" || die "$3"; }
+# audit_unit_guard <unit>: the log's unit runs as a user of its own, its directory 0700 under umask 0077, its two ports set once
+# and apart, its key read from a root-only file and written nowhere in the unit
+audit_unit_guard() {
+  need "$1" '^DynamicUser=yes$' "the log's unit does not run as a user of its own"
+  need "$1" '^StateDirectoryMode=0700$' "the log's state directory is not 0700"
+  need "$1" '^UMask=0077$' "the log's files are not made at umask 0077"
+  need "$1" '^EnvironmentFile=/etc/audit-backbone/keys[.]env$' "the log's key is not read from /etc/audit-backbone/keys.env"
+  [ "$(grep -c '^Environment=PORT=[0-9]*$' "$1" || true)" = 1 ] || die "the log's unit does not set PORT once"
+  [ "$(grep -c '^Environment=OPEN_PORT=[0-9]*$' "$1" || true)" = 1 ] || die "the log's unit does not set OPEN_PORT once"
+  [ "$(unit_port "$1")" != "$(sed -n 's/^Environment=OPEN_PORT=//p' "$1")" ] || die "the log's unit sets one port for writing and reading"
+  ! grep -q 'ACTIVITY_WRITE_KEY\|^User=root' "$1" || die "the log's unit holds its key or runs as root"
+}
+passes "the log's unit runs as a user of its own, 0700 under umask 0077, with its ports set once and its key from a root-only file (row 3)" \
+  audit_unit_guard "$OPS_DIR/audit-backbone.service"
+refuses "  a unit that is not a user of its own is refused" "does not run as a user of its own" \
+  audit_unit_guard "$(mutated aud-nouser.service 's#^DynamicUser=yes#DynamicUser=no#' "$OPS_DIR/audit-backbone.service")"
+refuses "  a unit whose directory is not 0700 is refused" "state directory is not 0700" \
+  audit_unit_guard "$(mutated aud-mode.service 's#^StateDirectoryMode=0700#StateDirectoryMode=0755#' "$OPS_DIR/audit-backbone.service")"
+refuses "  a unit without the umask is refused" "umask 0077" \
+  audit_unit_guard "$(mutated aud-umask.service '/^UMask=0077/d' "$OPS_DIR/audit-backbone.service")"
+refuses "  a unit that reads its key from elsewhere is refused" "keys.env" \
+  audit_unit_guard "$(mutated aud-keyfile.service 's#/etc/audit-backbone/keys.env#/etc/audit-backbone/other.env#' "$OPS_DIR/audit-backbone.service")"
+refuses "  a unit that holds the key itself is refused" "holds its key or runs as root" \
+  audit_unit_guard "$(mutated aud-key.service 's#^ExecStart=.*#& ACTIVITY_WRITE_KEY=abc#' "$OPS_DIR/audit-backbone.service")"
+refuses "  a unit with one port for writing and reading is refused" "one port for writing and reading" \
+  audit_unit_guard "$(mutated aud-ports.service 's#^Environment=OPEN_PORT=3185#Environment=OPEN_PORT=3184#' "$OPS_DIR/audit-backbone.service")"
+# first_before <file> <ERE first> <ERE second> <what is wrong>: dies unless the first match comes before the second, both present
+first_before() {
+  FB_A=$2 FB_B=$3 awk '$0 ~ ENVIRON["FB_A"] && !x {x=NR} $0 ~ ENVIRON["FB_B"] && !y {y=NR} END{exit !(x && y && x < y)}' "$1" || die "$4"
+}
+# records_block <release.sh> → the script the release runs on the box to mount the records disk
+records_block() { sed -n "/<<'REMOTE' || RECORDS_RC/,/^REMOTE\$/p" "$1"; }
+# row 7: the version and the sum have one home (the pin); the job and the release both compare the archive's sum before
+# unpacking it, and nothing else holds the sum or the version
+# shellcheck disable=SC2016 # the scripts' source text is searched, not expanded
+pin_guard() { # <pin> <release.sh> <lib.sh> <ci.yml>
+  need "$1" '^LITESTREAM_VERSION=[0-9]+[.][0-9]+[.][0-9]+$' "the pin holds no version"
+  need "$1" '^LITESTREAM_ARM64_SHA256=[0-9a-f]{64}$' "the pin holds no SHA-256 for the arm64 archive"
+  local ver sum other
+  ver=$(sed -n 's/^LITESTREAM_VERSION=//p' "$1")
+  sum=$(sed -n 's/^LITESTREAM_ARM64_SHA256=//p' "$1")
+  other=$(grep -cF -e "$sum" -e "$ver" "$2" "$3" "$4" | tr '\n' ' ')
+  case $other in *:[1-9]*) die "the version or the sum is written outside the pin ($other)" ;; esac
+  local step=$WORK/ci-litestream-step.txt
+  sed -n '/name: Litestream, the pinned archive/,/^      # No stored key/p' "$4" >"$step"
+  [ -s "$step" ] || die "the deploy job has no Litestream step"
+  need "$step" 'sha256sum -c -$' "the deploy job does not check the Litestream archive's sum"
+  first_before "$step" 'curl -fsSL' 'sha256sum -c -$' "the job checks the sum before it fetches"
+  first_before "$4" 'name: Litestream, the pinned archive' 'run: bash ops/release.sh ridge' "the job releases before it fetches the archive"
+  need "$4" 'LITESTREAM_ARCHIVE: ' "the job does not hand the archive to the release"
+  first_before "$3" 'LITESTREAM_ARM64_SHA256" ]' 'tar -xzf' "the release unpacks the archive before comparing its sum"
+  need "$3" 'die "the Litestream archive is' "the release has no refusal for an archive that is not the pin's"
+}
+# unpack_with <pin dir> <archive>: litestream_binary on a pin and an archive of the test's own, 
+unpack_with() {
+  local WORK=$1/work
+  mkdir -p "$WORK"
+  LITESTREAM_PIN=$1/litestream.pin LITESTREAM_ARCHIVE=$2 litestream_binary "$1/out"
+}
+lpin=$WORK/lpin
+mkdir -p "$lpin"
+printf 'a binary' >"$lpin/litestream"
+tar -czf "$lpin/real.tar.gz" -C "$lpin" litestream
+printf 'another' >"$lpin/litestream"
+tar -czf "$lpin/other.tar.gz" -C "$lpin" litestream
+printf 'LITESTREAM_VERSION=0.0.1\nLITESTREAM_ARM64_SHA256=%s\n' "$(shasum -a 256 "$lpin/real.tar.gz" | cut -d' ' -f1)" >"$lpin/litestream.pin"
+printf 'LITESTREAM_VERSION=0.0.1\nLITESTREAM_ARM64_SHA256=FILL\n' >"$WORK/fill.pin"
+passes "the pin, the job and the release: one home for the version and the sum, each checking the archive before it is unpacked (row 7)" \
+  pin_guard "$OPS_DIR/litestream.pin" "$OPS_DIR/release.sh" "$OPS_DIR/lib.sh" "$CI_YML"
+refuses "  a sum written in the release too is refused" "outside the pin" \
+  pin_guard "$OPS_DIR/litestream.pin" "$(mutated release-sum.sh "s#^set -euo pipefail#LS_SUM=$(sed -n 's/^LITESTREAM_ARM64_SHA256=//p' "$OPS_DIR/litestream.pin")#" "$OPS_DIR/release.sh")" "$OPS_DIR/lib.sh" "$CI_YML"
+refuses "  a pin that is a FILL marker is refused" "holds no SHA-256" \
+  pin_guard "$WORK/fill.pin" "$OPS_DIR/release.sh" "$OPS_DIR/lib.sh" "$CI_YML"
+# shellcheck disable=SC2016 # sed programs, in single quotes
+refuses "  a deploy job that does not compare the archive's sum is refused" "does not check the Litestream archive's sum" \
+  pin_guard "$OPS_DIR/litestream.pin" "$OPS_DIR/release.sh" "$OPS_DIR/lib.sh" "$(mutated wf-nosum.yml '/LITESTREAM_ARM64_SHA256  \$archive/d' "$CI_YML")"
+passes "  the release unpacks an archive whose sum is the pin's" unpack_with "$lpin" "$lpin/real.tar.gz"
+refuses "  and refuses one whose sum is not, unpacking nothing" "the pin says" unpack_with "$lpin" "$lpin/other.tar.gz"
+fill_pin() { LITESTREAM_PIN=$WORK/fill.pin litestream_pin; }
+refuses "  a pin with a FILL marker stops the release before anything is fetched" "holds no SHA-256" fill_pin
+# row 8: the copy's configuration
+# shellcheck disable=SC2016 # the file's source text is searched, not expanded
+copy_config_guard() { # <litestream.yml> <release.sh>
+  need "$1" '^  enabled: false$' "the copy's own deleting is not off"
+  need "$1" '^  - path: /var/lib/c-storage/c-storage[.]db$' "the configuration does not name the records' file"
+  need "$1" '^      url: \$\{COPY_URL\}$' "the copy's address is not the box's path"
+  need "$1" '^      sync-interval: 1s$' "the copy does not sync every second"
+  need "$1" '^  interval: 24h$' "the copy does not take a full copy a day"
+  need "$2" "COPY_URL=s3://%s/%s[?]region=%s" "the release writes an address with no region (Litestream then asks us-east-1 where the bucket is, which the box cannot reach)"
+  need "$2" '"[$]COPY_BUCKET" "[$]COPY_PATH" "[$]CREDO_REGION"' "the release builds the address from something other than the bucket, COPY_PATH and the region"
+  ! grep -v '^ *#' "$2" | grep -qF 'Box/records' || die "the release writes the box's path in the bucket as a literal, not from COPY_PATH"
+}
+passes "the copy's configuration names the records' file, the box's path, a sync a second, a full copy a day and its own deleting off (row 8)" \
+  copy_config_guard "$OPS_DIR/litestream.yml" "$OPS_DIR/release.sh"
+refuses "  a configuration that deletes in the bucket is refused" "own deleting is not off" \
+  copy_config_guard "$(mutated ls-del.yml 's#^  enabled: false#  enabled: true#' "$OPS_DIR/litestream.yml")" "$OPS_DIR/release.sh"
+refuses "  an address with no region is refused" "writes an address with no region" \
+  copy_config_guard "$OPS_DIR/litestream.yml" "$(mutated release-noregion.sh 's#COPY_URL=s3://%s/%s?region=%s#COPY_URL=s3://%s/%s#' "$OPS_DIR/release.sh")"
+refuses "  and one whose path is written out in the release again" "as a literal" \
+  copy_config_guard "$OPS_DIR/litestream.yml" "$(mutated release-literal.sh 's#^RECORDS_VOLUME=#BOX_PATH=Box/records; RECORDS_VOLUME=#' "$OPS_DIR/release.sh")"
+# row 9: the unit
+# shellcheck disable=SC2016 # the file's source text is searched, not expanded
+unit_guard() { # <c-storage.service> <lib.sh>
+  need "$1" '^ExecStart=/opt/c-storage/litestream replicate .*-exec /opt/c-storage/c-storage$' "the unit does not start Litestream with c-storage as its child"
+  need "$1" '^RequiresMountsFor=/var/lib/private/c-storage$' "the unit does not wait on the records disk's mount"
+  need "$1" '^EnvironmentFile=/etc/c-storage/copy.env$' "the unit does not read the copy's address"
+  need "$2" '^RECORDS_MOUNT=/var/lib/private/c-storage$' "the scripts and the unit name different mounts"
+}
+passes "c-storage's unit starts Litestream with c-storage as its child, and waits on the records disk's mount (row 9)" \
+  unit_guard "$OPS_DIR/c-storage.service" "$OPS_DIR/lib.sh"
+refuses "  a unit that starts c-storage alone is refused" "c-storage as its child" \
+  unit_guard "$(mutated unit-plain.service 's#^ExecStart=.*#ExecStart=/opt/c-storage/c-storage#' "$OPS_DIR/c-storage.service")" "$OPS_DIR/lib.sh"
+refuses "  a unit that does not wait on the mount is refused" "wait on the records disk" \
+  unit_guard "$(mutated unit-nomount.service '/^RequiresMountsFor=/d' "$OPS_DIR/c-storage.service")" "$OPS_DIR/lib.sh"
+# row 10: the release stops before the restart when the disk is not mounted
+# shellcheck disable=SC2016 # the file's source text is searched, not expanded
+mount_refusal_guard() { # <release.sh>
+  need "$1" 'mountpoint -q \$RECORDS_MOUNT" \|\| die "the records disk is not mounted' "the release does not refuse a records disk that is not mounted"
+  first_before "$1" 'mountpoint -q \$RECORDS_MOUNT" \|\| die' 'systemctl restart c-storage' "the release restarts c-storage before it reads the mount"
+}
+passes "a release refuses to start c-storage when the records disk is not mounted (row 10)" mount_refusal_guard "$OPS_DIR/release.sh"
+# the records path sits under /var/lib/private, mode 0700 root: a box command that names it runs under sudo
+# (the fake box has no such folder, so this guards the text; the unprivileged check once read "not mounted" of a mount that was there)
+# shellcheck disable=SC2016 # the file's source text is searched, not expanded
+mount_root_guard() { # <release.sh> <lib.sh>
+  need "$1" 'box "sudo mountpoint -q \$RECORDS_MOUNT" \|\| die' "the release reads the records mount without root"
+  ! grep -hE '(^|[^a-z_])box [^|]*RECORDS_MOUNT' "$1" "$2" | grep -v 'sudo' | grep -q . || die "a box command names the records path without sudo"
+}
+passes "a box command that names the records path runs as root (the path is 0700)" mount_root_guard "$OPS_DIR/release.sh" "$OPS_DIR/lib.sh"
+# shellcheck disable=SC2016 # sed programs, in single quotes
+refuses "  a release whose mount check drops sudo is refused" "without root" \
+  mount_root_guard "$(mutated release-nosudo.sh 's/box "sudo mountpoint/box "mountpoint/' "$OPS_DIR/release.sh")" "$OPS_DIR/lib.sh"
+# shellcheck disable=SC2016 # sed programs, in single quotes
+refuses "  a resources read that drops sudo is refused" "without sudo" \
+  mount_root_guard "$OPS_DIR/release.sh" "$(mutated lib-nosudo.sh 's/box sudo bash -s "\$RECORDS_MOUNT"/box bash -s "$RECORDS_MOUNT"/' "$OPS_DIR/lib.sh")"
+# shellcheck disable=SC2016 # sed programs, in single quotes
+refuses "  a release with no such refusal is refused" "does not refuse a records disk" \
+  mount_refusal_guard "$(mutated release-nomount.sh '/mountpoint -q \$RECORDS_MOUNT" || die/d' "$OPS_DIR/release.sh")"
+# row 11: a file on the system disk moves once, c-storage stopped, and the old one is kept
+# shellcheck disable=SC2016 # the file's source text is searched, not expanded
+move_guard() { # <release.sh>
+  local b=$WORK/records-block.sh
+  records_block "$1" >"$b"
+  [ -s "$b" ] || die "the release has no records disk step"
+  first_before "$b" 'systemctl stop c-storage' 'cp -p "\$old" ' "the file is copied before c-storage is stopped"
+  first_before "$b" 'cp -p "\$old" ' 'mv "\$old" "\$old[.]moved"' "the old file is set aside before it is copied"
+  first_before "$b" '\[ -e "\$tmp/c-storage.db" \]' 'cp -p "\$old" ' "the file is moved without asking whether the disk holds one already"
+  [ "$(grep -cE '(^|[ ;])(rm|shred|unlink) ' "$b")" = 0 ] || die "the records disk step deletes a file"
+}
+passes "a file on the system disk is moved once onto a blank records disk with c-storage stopped, and the old one is kept (row 11)" move_guard "$OPS_DIR/release.sh"
+# shellcheck disable=SC2016 # sed programs, in single quotes
+refuses "  a release that deletes the old file is refused" "deletes a file" \
+  move_guard "$(mutated release-rm.sh 's#mv "\$old" "\$old.moved"#rm -f "$old"; mv "$old" "$old.moved"#' "$OPS_DIR/release.sh")"
+# row 12: a records disk with no c-storage.db and a copy waiting is a restore, never a fresh start: blank, hand-formatted
+# or hand-mounted alike, refused before anything is formatted or started, naming the one scripted path
+# shellcheck disable=SC2016 # the file's source text is searched, not expanded
+blank_guard() { # <release.sh>
+  local b=$WORK/records-block.sh
+  records_block "$1" >"$b"
+  need "$b" 'list-objects-v2 --bucket "\$bucket" --prefix "\$cpath/"' "the release does not list the box's path in the bucket"
+  first_before "$b" '^  if copy_held; then refuse_held; fi' 'mkfs[.]xfs' "the disk is formatted before the bucket is read"
+  need "$b" '^  exit 4$' "a copy in the bucket does not end the step with exit 4"
+  [ "$(grep -c '^ *if \[ ! -e "\$mnt/c-storage.db" \] && copy_held; then refuse_held; fi' "$b")" = 2 ] ||
+    die "a disk with no c-storage.db, formatted or mounted by hand, is not refused when the bucket holds a copy (both the mounted case and the check after the mount)"
+  need "$1" '4\) die "the records disk holds no c-storage.db and the bucket holds a copy' "the release does not name the refusal"
+  need "$1" 'ops/restore.sh \$ENVNAME --onto-blank' "the release does not name the one scripted restore"
+}
+passes "a records disk with no c-storage.db whose box path in the bucket holds a copy refuses a fresh start, blank or mounted by hand, and names ops/restore.sh --onto-blank (row 12)" blank_guard "$OPS_DIR/release.sh"
+refuses "  a release that formats first is refused" "formatted before the bucket" \
+  blank_guard "$(awk '/^  if copy_held; then refuse_held; fi/ && !d {print "  mkfs.xfs -q \"$dev\""; d=1} {print}' "$OPS_DIR/release.sh" >"$WORK/release-mkfs.sh"; echo "$WORK/release-mkfs.sh")"
+# shellcheck disable=SC2016 # sed programs, in single quotes
+refuses "  a release whose refusal never stops it is refused" "does not end the step with exit 4" \
+  blank_guard "$(mutated release-nostop.sh 's#^  exit 4$#  exit 0#' "$OPS_DIR/release.sh")"
+# shellcheck disable=SC2016 # sed programs, in single quotes
+refuses "  a release that lets a hand-formatted disk through to c-storage is refused" "formatted or mounted by hand" \
+  blank_guard "$(mutated release-nohand.sh '/^mount "$mnt"$/,/records disk: mounted at/{/copy_held; then refuse_held/d;}' "$OPS_DIR/release.sh")"
+echo "== the release's second half: the activity log's binary, key and unit (cases 7 and 8 of docs/plans/2026-11-12-activity-log.md)"
+# The order is the safety: c-storage's half is installed, restarted and named by its /health before the log's half
+# starts, and a failure in the log's half dies through audit_die alone, so it names itself and c-storage stays as it is.
+# shellcheck disable=SC2016 # the script's source text is searched, not expanded
+audit_half_guard() { # <release.sh>
+  local fb=$1
+  first_before "$fb" '^keys_unchanged "[$]keys_before"' '^[^#]*audit-backbone' "the log's half starts before c-storage's is done"
+  first_before "$fb" 'wait_build "[$]sha" 30 box curl .*BOX_PORT/health' '^audit_die\(\)' "the log's half is defined before c-storage's /health names the commit"
+  first_before "$fb" 'restart c-storage.$' '^[^#]*audit-backbone' "the log's half starts before c-storage's restart"
+  ! awk '/^keys_unchanged "[$]keys_before"/ {on = 1; next} on && !/^audit_die\(\)/ && /^[^#]*(^|[^_a-z])die / {bad = 1} END {exit !bad}' "$fb" || die "a bare die in the log's half (it must end through audit_die, which names the half)"
+  need "$fb" '^\[ "[$]got_audit_sum" = "[$]want_audit_sum" \] \|\| audit_die "the log.s binary arrived as' "a log binary whose checksum differs is not refused"
+  need "$fb" 'elif \[ -n "[$][{]RELEASE_BINARY:-[}]" \]; then$' "the job's missing RELEASE_AUDIT_BINARY is not a case of its own"
+  grep -A1 'elif \[ -n "[$][{]RELEASE_BINARY:-[}]" \]; then$' "$fb" | grep -q 'audit_die "the job names no RELEASE_AUDIT_BINARY' || die "a job that names no log binary is not refused by name"
+  local inst
+  inst=$(sed -n "/^box 'sudo chmod 0755 \/opt\/audit-backbone/,/audit_die \"the log could not be installed/p" "$fb")
+  if [ -z "$inst" ] || grep -q 'c-storage' <<<"$inst"; then die "the log's install is missing or touches c-storage"; fi
+  awk <<<"$inst" '/listen.env.new/ && !a {a = NR} /credo-audit-backbone.new \/opt/ && !b {b = NR} /service.new/ && !c {c = NR} END {exit !(a && b && c && a < b && b < c)}' || die "the log's unit is not renamed last, after its address and binary"
+}
+passes "the log's half starts after c-storage's is installed and named by its /health, dies only through audit_die, refuses a differing checksum and a job with no log binary" \
+  audit_half_guard "$OPS_DIR/release.sh"
+refuses "  a log's half that starts before c-storage's restart is refused" "starts before c-storage's is done" \
+  audit_half_guard "$(mutated release-audit-early.sh 's#^step "the keys, made once"#audit-backbone() { :; }; &#' "$OPS_DIR/release.sh")"
+refuses "  a log's half that dies bare is refused" "a bare die in the log's half" \
+  audit_half_guard "$(mutated release-audit-die.sh 's#audit_die "the log is not active"#die "the log is not active"#' "$OPS_DIR/release.sh")"
+# shellcheck disable=SC2016 # sed programs, in single quotes
+refuses "  a release that no longer compares the log binary's checksum is refused" "checksum differs is not refused" \
+  audit_half_guard "$(mutated release-audit-sum.sh '/^\[ "\$got_audit_sum" = /d' "$OPS_DIR/release.sh")"
+refuses "  a job with no named log binary that goes on is refused" "names no log binary is not refused by name" \
+  audit_half_guard "$(mutated release-audit-job.sh 's#audit_die "the job names no RELEASE_AUDIT_BINARY#echo "the job names no RELEASE_AUDIT_BINARY#' "$OPS_DIR/release.sh")"
+refuses "  an install that renames the unit before the binary is refused" "not renamed last" \
+  audit_half_guard "$(mutated release-audit-order.sh 's#credo-audit-backbone.new /opt/audit-backbone/credo-audit-backbone \&\&#audit-backbone.service.new /etc/systemd/system/audit-backbone.service \&\& sudo mv -f /opt/audit-backbone/credo-audit-backbone.new /opt/audit-backbone/credo-audit-backbone \&\&#' "$OPS_DIR/release.sh")"
+# row 8: the key is made by the first release and never rewritten by a later one: the script the release runs on the box,
+# extracted and run twice on a folder of the test's own (chown and stat are the box's; the folder stands for /etc/audit-backbone)
+audit_key_script() { # <release.sh> <folder> → the script, pointed at the folder
+  sed -n "/<<'REMOTE' || audit_die \"the log's key/,/^REMOTE\$/p" "$1" | sed '1d;$d' | sed -e "s#/etc/audit-backbone#$2#g" -e '/chown root:root/d' -e '/^stat -c/d'
+}
+audit_key_run() { # <release.sh> <folder> → "<first line>|<mode>|<same after a second run>"
+  local rel=$1 dir=$2 first mode keep second
+  mkdir -p "$dir"
+  rm -f "$dir/keys.env"
+  audit_key_script "$rel" "$dir" >"$dir/script.sh"
+  first=$(bash "$dir/script.sh")
+  mode=$(find "$dir/keys.env" -perm 600 | wc -l | tr -d ' ')
+  keep=$(cat "$dir/keys.env")
+  second=$(bash "$dir/script.sh")
+  [ "$keep" = "$(cat "$dir/keys.env")" ] && keep=same || keep=rewritten
+  echo "$first|$mode|$second|$keep|$(grep -c '^ACTIVITY_WRITE_KEY=[0-9a-f]\{64\}$' "$dir/keys.env" | tr -d ' ')"
+}
+check "the log's key is made once, root-only, 64 hex characters, and a second release leaves it and says so" \
+  "activity log key: made|1|activity log key: present, left as it is|same|1" "$(audit_key_run "$OPS_DIR/release.sh" "$WORK/audit-key")"
+# shellcheck disable=SC2016 # sed programs, in single quotes
+check "  and a release that always writes it is seen: the second run rewrites" \
+  "activity log key: made|1|activity log key: made|rewritten|1" \
+  "$(audit_key_run "$(mutated release-audit-key.sh 's#^if \[ -e "\$f" \]; then$#if false; then#' "$OPS_DIR/release.sh")" "$WORK/audit-key2")"
+echo "== (the release's second half ends here)"
+echo "== the activity log's gate in CI, and the deploy waits on it (case 14 of docs/plans/2026-11-12-activity-log.md)"
+# audit_ci_guard <ci.yml>: a push or pull request that changes the service runs the pipeline, the audit job is the service's make check, the
+# deploy waits on it, builds the binary before the role is taken, and hands its name to the release (without which the release's second
+# half would end red after c-storage is released)
+# shellcheck disable=SC2016 # the workflow's literal text
+audit_ci_guard() {
+  [ "$(grep -cF -- '      - "services/audit-backbone/**"' "$1")" = 2 ] || die "the push and pull_request path lists do not both name services/audit-backbone/**"
+  local job deploy
+  job=$(awk '/^  audit:$/ {f = 1; next} f && /^  [a-z0-9-]+:$/ {exit} f' "$1")
+  if ! grep -qxF -- '        working-directory: services/audit-backbone' <<<"$job" || ! grep -qxF -- '        run: make check' <<<"$job"; then die "the audit job is not make check in services/audit-backbone"; fi
+  grep -qF -- 'go-version-file: services/audit-backbone/go.mod' <<<"$job" || die "the audit job does not set up Go from the service's own go.mod"
+  deploy=$(awk '/^  deploy:$/ {f = 1; next} f && /^  [a-z0-9-]+:$/ {exit} f' "$1")
+  grep -qE '^    needs: \[[^]]*\baudit\b[^]]*\]$' <<<"$deploy" || die "the deploy does not wait on the audit job"
+  first_before "$1" 'name: Build the activity log.s binary' 'uses: aws-actions/configure-aws-credentials' "the activity log's binary is not built before the role is taken"
+  awk '/name: Build the activity log.s binary/ {f = 1} f' "$1" | grep -qF -- 'BUILD_COMMIT: ${{ github.sha }}' || die "the activity log's binary is not stamped with the commit"
+  awk '/^      - name: Release$/ {f = 1; next} f && /^      - / {exit} f' "$1" | grep -qF -- 'RELEASE_AUDIT_BINARY: ${{ github.workspace }}/services/audit-backbone/dist/credo-audit-backbone' ||
+    die "the release step does not name RELEASE_AUDIT_BINARY, so the release's second half would end red"
+}
+passes "a push that changes the service runs the pipeline, its make check is a job, the deploy waits on it, builds its binary and names it to the release" audit_ci_guard "$CI_YML"
+refuses "  a path list that lacks the service is refused" "do not both name services/audit-backbone" \
+  audit_ci_guard "$(awk '/services\/audit-backbone\/\*\*/ && !d {d = 1; next} 1' "$CI_YML" >"$WORK/ci-nopath.yml"; echo "$WORK/ci-nopath.yml")"
+refuses "  an audit job that runs something other than make check is refused" "not make check in services/audit-backbone" \
+  audit_ci_guard "$(mutated ci-auditrun.yml '/^  audit:$/,/^  e2e:$/s#run: make check#run: true#' "$CI_YML")"
+refuses "  a deploy that does not wait on the audit job is refused" "does not wait on the audit job" \
+  audit_ci_guard "$(mutated ci-needs.yml 's#needs: \[check, audit, e2e, ops, app\]#needs: [check, e2e, ops, app]#' "$CI_YML")"
+refuses "  a release step that names no log binary is refused" "does not name RELEASE_AUDIT_BINARY" \
+  audit_ci_guard "$(mutated ci-norelbin.yml '/RELEASE_AUDIT_BINARY:/d' "$CI_YML")"
+refuses "  a log binary build that is gone before the role is taken is refused" "not built before the role is taken" \
+  audit_ci_guard "$(mutated ci-lateb.yml "s#name: Build the activity log's binary#name: Build something else#" "$CI_YML")"
+
+# the restore reads the address from the same file the unit does (the region is in it), onto a new file, the live path, or a blank disk
+# shellcheck disable=SC2016 # the file's source text is searched, not expanded
+restore_address_guard() { # <lib.sh>
+  [ "$(grep -cE '^("[$]bin"|/opt/c-storage/litestream) restore .* "[$]COPY_URL"$' "$1")" = 2 ] || die "a restore does not read the address the release wrote"
+  [ "$(grep -cE '^(\. |envf=)/etc/c-storage/copy.env$' "$1")" = 2 ] || die "a restore does not read the unit's copy.env"
+}
+passes "  and the restore, onto a new file, the live path or a blank disk, restores from the address the release wrote (the unit's file)" restore_address_guard "$OPS_DIR/lib.sh"
+# shellcheck disable=SC2016 # sed programs, in single quotes
+refuses "  a restore from an address of its own is refused" "does not read the address" \
+  restore_address_guard "$(mutated lib-addr.sh '/litestream restore/s#"$COPY_URL"$#"s3://elsewhere/Box/records"#' "$OPS_DIR/lib.sh")"
+
+echo "== the check reads the copy (row 15) and the restore writes a new file and moves nothing live aside for good (row 16) (docs/plans/2026-11-11-continuous-copy.md)"
+# row 15: copy_problems on written input. Now is 10:10:00 on the 12th.
+cp_now=$(jq -n '"2026-11-12T10:10:00Z" | fromdateiso8601')
+cp_status() { printf '{"freeBytes": %s, "lastWriteAt": %s}' "$1" "$2"; } # <free bytes> <quoted time or null>
+cp_listing() { # <newest copy's time> <newest full copy's time>
+  # the S3 client's own layout, written out here and not read from the constant: <path>/<four hex digits of the level>/<name>
+  printf '[{"Key":"Box/records/0000/0000000000000001-0000000000000002.ltx","LastModified":"%s"},{"Key":"Box/records/0009/0000000000000001-0000000000000001.ltx","LastModified":"%s"}]' "$1" "$2"
+}
+# copy_eval <lib.sh> <status> <listing>: the faults that file's own copy_problems names (the constants stay this tree's)
+copy_eval() {
+  ( eval "$(sed -n '/^copy_problems() {/,/^}/p' "$1")"; copy_problems "$2" "$3" "$cp_now" )
+}
+cp_ok_status=$(cp_status 5000000000 '"2026-11-12T10:00:00.123456789Z"')
+cp_ok_list=$(cp_listing 2026-11-12T10:00:00+00:00 2026-11-12T00:00:00+00:00)
+check "row 15: the limits are five minutes, six days and 1 GiB" "300 518400 1024" "$COPY_LAG_S $COPY_FULL_MAX_S $FLOOR_RECORDS_MB"
+check "row 15: a copy as new as the last write, a full copy of today and a roomy disk are sound" "" "$(copy_eval "$OPS_DIR/lib.sh" "$cp_ok_status" "$cp_ok_list")"
+check "  a copy exactly five minutes behind the last write is still sound" "" \
+  "$(copy_eval "$OPS_DIR/lib.sh" "$cp_ok_status" "$(cp_listing 2026-11-12T09:55:00+00:00 2026-11-12T00:00:00+00:00)")"
+cp_lag=$(cp_listing 2026-11-12T09:50:00+00:00 2026-11-12T00:00:00+00:00)
+cp_old=$(cp_listing 2026-11-12T10:00:00+00:00 2026-11-05T00:00:00+00:00)
+cp_low=$(cp_status 1000000 '"2026-11-12T10:00:00Z"')
+check "  a copy over five minutes behind the last write is red, and only that" "the newest copy lags the last write by 600 s, over 300 s" "$(copy_eval "$OPS_DIR/lib.sh" "$cp_ok_status" "$cp_lag")"
+check "  a newest full copy over six days old is red, and only that" "the newest full copy is 7 days old, over 6 days" "$(copy_eval "$OPS_DIR/lib.sh" "$cp_ok_status" "$cp_old")"
+check "  a records disk below its floor is red, and only that" "the records disk has 0 MiB free, below the floor of 1024 MiB" "$(copy_eval "$OPS_DIR/lib.sh" "$cp_low" "$cp_ok_list")"
+check "  an empty bucket is red for no copy and no full copy; a file not yet written is not a lag" "the bucket holds no copy of the records|the bucket holds no full copy" \
+  "$(copy_eval "$OPS_DIR/lib.sh" "$(cp_status 5000000000 null)" null | paste -sd'|' -)"
+check "  a copy with no full copy is red, and a write time in S3's own form (+00:00) is read" "the bucket holds no full copy" \
+  "$(copy_eval "$OPS_DIR/lib.sh" "$cp_ok_status" "$(cp_listing 2026-11-12T10:00:00+00:00 2026-11-12T00:00:00+00:00 | jq -c --arg p "$COPY_FULL_PREFIX" 'map(select(.Key | startswith($p) | not))')")"
+check "  the full copies' prefix is the S3 client's <path>/0009/, declared once" "Box/records/0009/" "$COPY_FULL_PREFIX"
+check "  a bucket laid out as the file replica's ltx/9/ holds no full copy for the check (the layout is S3's, not a folder's)" "the bucket holds no full copy" \
+  "$(copy_eval "$OPS_DIR/lib.sh" "$cp_ok_status" "$(cp_listing 2026-11-12T10:00:00+00:00 2026-11-12T00:00:00+00:00 | sed 's#Box/records/0009/#Box/records/ltx/9/#; s#Box/records/0000/#Box/records/ltx/0/#')")"
+# the newest full copy is the largest key, not the latest LastModified: the older name is the one touched today
+cp_keyorder='[{"Key":"Box/records/0009/0000000000000001-0000000000000001.ltx","LastModified":"2026-11-12T00:00:00+00:00"},{"Key":"Box/records/0009/0000000000000001-0000000000000009.ltx","LastModified":"2026-11-05T00:00:00+00:00"},{"Key":"Box/records/0000/0000000000000009-0000000000000009.ltx","LastModified":"2026-11-12T10:00:00+00:00"}]'
+check "  the newest full copy is the one with the largest name, not the latest LastModified" "the newest full copy is 7 days old, over 6 days" \
+  "$(copy_eval "$OPS_DIR/lib.sh" "$cp_ok_status" "$cp_keyorder")"
+# row 16: the restore's box script and the script that calls it, read as text
+# shellcheck disable=SC2016 # the file's source text is searched, not expanded
+restore_guard() { # <lib.sh> <restore.sh>
+  local b=$WORK/restore-block.sh
+  sed -n '/^box_restore() {/,/^REMOTE$/p' "$1" >"$b"
+  [ -s "$b" ] || die "lib.sh has no box_restore"
+  need "$b" '^new=\$mount/restored-\$stamp[.]db$' "the restore does not name a new file by default"
+  need "$b" '^args=\(-o "\$new"\)$' "the restore does not write to the new file"
+  [ "$(grep -c -- '-o "\$db"' "$b")" = 0 ] || die "the restore writes to the live path"
+  first_before "$b" '^if \[ "\$live" = 1 \]; then$' 'systemctl stop c-storage' "c-storage is stopped outside the live branch"
+  first_before "$b" 'systemctl stop c-storage' 'mv "\$f" "\$f[.]aside-\$stamp"' "the live file is moved aside before c-storage is stopped"
+  first_before "$b" 'mv "\$f" "\$f[.]aside-\$stamp"' 'mv "\$new" "\$db"' "the restored file takes the live path before the live file is set aside"
+  [ "$(grep -cE '(^|[ ;])(rm|shred|unlink) ' "$b")" = 0 ] || die "the restore deletes a file"
+  need "$b" '^if \[ "\$free" -lt \$\(\(used \* 2\)\) \]; then$' "the restore does not look at the records disk's free space before it writes"
+  first_before "$b" '^if \[ "\$free" -lt ' '^/opt/c-storage/litestream restore' "the restore looks at the free space after it has written"
+  need "$2" '^ONTO_LIVE=0$' "the restore does not default to a new file"
+  need "$2" 'box_restore "\$AT" "\$ONTO_LIVE"' "the restore script does not pass the flag on"
+  need "$2" '"\$REAL" = 1 \] && \[ "\$ONTO_LIVE" = 1 \]' "the restore does not refuse the live path on an environment that may hold real data"
+}
+passes "the restore writes a new file by default, writes the live path only when named, and moves the live file aside, never deleting it (row 16)" \
+  restore_guard "$OPS_DIR/lib.sh" "$OPS_DIR/restore.sh"
+# shellcheck disable=SC2016 # sed programs, in single quotes
+refuses "  a restore that writes to the live path is refused" "does not write to the new file" \
+  restore_guard "$(mutated lib-live.sh 's#^args=(-o "\$new")$#args=(-o "$db")#' "$OPS_DIR/lib.sh")" "$OPS_DIR/restore.sh"
+# shellcheck disable=SC2016 # sed programs, in single quotes
+refuses "  a restore that deletes the live file instead of moving it aside is refused" "deletes a file" \
+  restore_guard "$(mutated lib-rm.sh 's#mv "\$f" "\$f.aside-\$stamp"#rm -f "$f"; mv "$f" "$f.aside-$stamp"#' "$OPS_DIR/lib.sh")" "$OPS_DIR/restore.sh"
+# shellcheck disable=SC2016 # sed programs, in single quotes
+refuses "  a restore that fills the live disk (no look at the free space first) is refused" "free space before it writes" \
+  restore_guard "$(mutated lib-nofree.sh 's#^if \[ "$free" -lt .*#if false; then#' "$OPS_DIR/lib.sh")" "$OPS_DIR/restore.sh"
+# shellcheck disable=SC2016 # sed programs, in single quotes
+refuses "  a restore script that puts the live path first is refused" "does not default to a new file" \
+  restore_guard "$OPS_DIR/lib.sh" "$(mutated restore-live.sh 's#^ONTO_LIVE=0$#ONTO_LIVE=1#' "$OPS_DIR/restore.sh")"
+# the box's script, read as text: it formats only a disk with no filesystem, mounts, then restores onto the records path, refusing a running c-storage or a disk that holds a file
+# shellcheck disable=SC2016 # the file's source text is searched, not expanded
+blank_restore_guard() { # <lib.sh>
+  local b=$WORK/blank-block.sh
+  sed -n '/^box_restore_blank() {/,/^REMOTE$/p' "$1" >"$b"
+  [ -s "$b" ] || die "lib.sh has no box_restore_blank"
+  need "$b" 'systemctl is-active --quiet c-storage' "the blank-disk restore does not refuse a running c-storage"
+  need "$b" '^\[ ! -e "\$mount/c-storage.db" \] \|\| \{ echo "the records disk already holds c-storage.db' "the blank-disk restore does not refuse a disk that holds a c-storage.db"
+  first_before "$b" 'mkfs[.]xfs' '^"\$bin" restore' "the disk is not formatted before the restore"
+  first_before "$b" '^ *mount "\$mount"$' '^"\$bin" restore' "the restore runs before the disk is mounted"
+  first_before "$b" 'systemctl is-active --quiet c-storage' 'mkfs[.]xfs' "a running c-storage is looked for after the disk is formatted"
+  need "$b" '^args=\(-o "\$mount/c-storage.db"\)$' "the blank-disk restore does not write onto the records path"
+  need "$b" '\[ -z "\$type" \] \|\| \[ "\$type" = xfs \]' "the blank-disk restore formats or mounts a filesystem that is not XFS"
+  need "$b" '^if \[ ! -e "\$envf" \]; then envf=/opt/c-storage/copy.env.new; fi$' "the blank-disk restore does not fall back to the release's copy.env.new on a box no release has finished on"
+  need "$b" '^if \[ ! -x "\$bin" \]; then bin=/opt/c-storage/litestream.new; chmod 0755 "\$bin"; fi$' "the blank-disk restore does not fall back to the release's litestream.new on a box no release has finished on"
+  [ "$(grep -cE '(^|[ ;])(rm|shred|unlink) ' "$b")" = 0 ] || die "the blank-disk restore deletes a file"
+}
+passes "the blank-disk restore looks for a running c-storage first, formats only a disk with no filesystem, mounts, and restores onto the records path, refusing a disk that holds a c-storage.db" \
+  blank_restore_guard "$OPS_DIR/lib.sh"
+# shellcheck disable=SC2016 # sed programs, in single quotes
+refuses "  a restore that needs the installed copy.env on a replacement box (only the .new files are there) is refused" "copy.env.new" \
+  blank_restore_guard "$(mutated lib-blank-new.sh '/^if \[ ! -e "$envf" \]; then envf=/d' "$OPS_DIR/lib.sh")"
+# shellcheck disable=SC2016 # sed programs, in single quotes
+refuses "  and one that needs the installed binary is refused" "litestream.new" \
+  blank_restore_guard "$(mutated lib-blank-bin.sh '/^if \[ ! -x "$bin" \]; then bin=/d' "$OPS_DIR/lib.sh")"
+# The fstab line, run on a copy of fstab: a disk whose UUID is not the one fstab holds for the mount (a new disk on
+# the same box) gets its own line in place of the old, other lines kept, and a repeat changes nothing
+fstab_probe() { # <script holding the line> → dies unless the line leaves exactly the new disk's line for the mount
+  local line f=$WORK/fstab-probe
+  line=$(grep -m1 'etc/fstab' "$1" | sed "s#/etc/fstab#$f#g")
+  printf 'UUID=oldold /var/lib/private/c-storage xfs defaults,nofail 0 2\nUUID=keep / xfs defaults 0 0\n' >"$f"
+  uuid=newnew mount=/var/lib/private/c-storage mnt=/var/lib/private/c-storage bash -c "$line" || die "the fstab line failed"
+  uuid=newnew mount=/var/lib/private/c-storage mnt=/var/lib/private/c-storage bash -c "$line" || die "the fstab line failed on a repeat"
+  if [ "$(grep -c 'c-storage' "$f")" != 1 ] || ! grep -q '^UUID=newnew /var/lib/private/c-storage ' "$f" || ! grep -q '^UUID=keep ' "$f"; then
+    die "a new disk is mounted by the old disk's fstab line: $(tr '\n' '|' <"$f")"
+  fi
+}
+fstab_both() { fstab_probe "$OPS_DIR/lib.sh" && fstab_probe "$OPS_DIR/release.sh"; }
+passes "a new disk on the same box replaces the old disk's fstab line, keeps the others, and a repeat adds none (records step and blank restore)" \
+  fstab_both
+# shellcheck disable=SC2016 # sed programs, in single quotes
+refuses "  a fstab line that keeps the old disk's UUID is refused" "old disk's fstab line" \
+  fstab_probe "$(mutated lib-fstab.sh 's#^  grep -q "^UUID=$uuid $mount " /etc/fstab .*#  grep -q " $mount " /etc/fstab || echo "UUID=$uuid $mount xfs defaults,nofail 0 2" >>/etc/fstab#' "$OPS_DIR/lib.sh")"
+# the free-space sum with c-storage stopped (no -wal beside the file), under the box script's own options
+used_probe() { # <lib.sh> → dies unless the sum is the file's size when there is no -wal
+  local d=$WORK/used-probe snippet
+  mkdir -p "$d"
+  head -c 4096 /dev/zero >"$d/c-storage.db"
+  rm -f "$d/c-storage.db-wal"
+  snippet=$(sed -n '/^box_restore() {/,/^REMOTE$/p' "$1" | awk '/^used=/ {f = 1} /^free=/ {f = 0} f')
+  [ -n "$snippet" ] || die "lib.sh has no free-space sum"
+  [ "$(bash -c "set -euo pipefail; db=$d/c-storage.db; $snippet; echo \$used")" = 4 ] || die "the free-space sum stops the restore when c-storage is stopped (no -wal beside the file)"
+}
+passes "the default restore's free-space sum does not stop the script when c-storage is stopped and there is no -wal" used_probe "$OPS_DIR/lib.sh"
+# shellcheck disable=SC2016 # sed programs, in single quotes
+refuses "  the one-line sum over both names (the first build) is refused" "no -wal beside" \
+  used_probe "$(awk '/^used=0$/ {print "used=$(du -sk \"$db\" \"$db-wal\" 2>/dev/null | awk '"'"'{s+=$1} END{print s+0}'"'"')"; skip = 3; next} skip > 0 {skip--; next} {print}' "$OPS_DIR/lib.sh" >"$WORK/lib-du.sh"; echo "$WORK/lib-du.sh")"
+# shellcheck disable=SC2016 # sed programs, in single quotes
+refuses "  a restore that does not look for a running c-storage is refused" "running c-storage" \
+  blank_restore_guard "$(mutated lib-blank-run.sh 's#systemctl is-active --quiet c-storage#false#' "$OPS_DIR/lib.sh")"
+# shellcheck disable=SC2016 # sed programs, in single quotes
+refuses "  a restore that formats any disk is refused" "not XFS" \
+  blank_restore_guard "$(mutated lib-blank-fs.sh 's#\[ -z "$type" \] || \[ "$type" = xfs \] || ##' "$OPS_DIR/lib.sh")"
+# shellcheck disable=SC2016 # sed programs, in single quotes
+refuses "  a restore that goes ahead over a c-storage.db on the disk is refused" "holds a c-storage.db" \
+  blank_restore_guard "$(mutated lib-blank-file.sh '/^\[ ! -e "$mount\/c-storage.db" \] || /d' "$OPS_DIR/lib.sh")"
+
 
 echo "== the code here is origin/main's (every path ci.yml's push trigger deploys on; release, check, drill and stack run only reviewed code); in the deploy job, the checked-out commit's"
 git_repo() { git -C "$WORK/repo" -c user.name=test -c user.email=test@example.com -c commit.gpgsign=false "$@"; }
@@ -788,7 +1564,7 @@ check "a key in the log: the run fails" 1 "$rc"
 check "  the log names it" "RED  a key is in this log" "$(tail -n 2 "$WORK"/logs/*.log | head -n 1 | cut -c1-25)"
 check "  and the keys file is removed all the same" gone "$(if [ -e "$KENV" ]; then echo there; else echo gone; fi)"
 
-echo "== the workflow's deploy job (a push to main only, never under act, one at a time, the account id masked; the app's gate and ship: rows 28 and 34)"
+echo "== the workflow's deploy job (a push to main or a press of ci on main only, never under act, one at a time, the account id masked; the app's gate and ship: rows 28 and 34)"
 WORKFLOW=$REPO_DIR/.github/workflows/ci.yml
 deploy_block() { # <workflow>: the lines of the job deploy, up to the next job
   awk '/^  deploy:$/ {f = 1; next} f && /^  [A-Za-z_-]+:/ {exit} f' "$1"
@@ -801,8 +1577,8 @@ deploy_guards() {
   block=$(deploy_block "$1")
   [ -n "$block" ] || die "no deploy job"
   need() { grep -qxF -- "$1" <<<"$block" || missing="${missing}[$1] "; }
-  need "    if: github.event_name == 'push' && github.ref == 'refs/heads/main'"
-  need "    needs: [check, e2e, ops, app]"
+  need "    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'"
+  need "    needs: [check, audit, e2e, ops, app]"
   need "    runs-on: ubuntu-24.04"
   need "    environment: ridge"
   need "      group: ridge"
@@ -829,6 +1605,8 @@ Check|after" ] || missing="${missing}[the steps end Release, then the ship and t
   rel=$(grep -nF 'run: bash ops/release.sh ridge' <<<"$block" | head -n 1 | cut -d: -f1)
   app=$(grep -nF 'run: bash ops/app.sh ridge' <<<"$block" | head -n 1 | cut -d: -f1)
   chk=$(grep -nF 'run: bash ops/check.sh ridge' <<<"$block" | head -n 1 | cut -d: -f1)
+  # Case 10: the deploy's check on ridge is the full one, which saves; only a by-hand run narrows it.
+  grep -qxF -- '        run: bash ops/check.sh ridge' <<<"$block" || missing="${missing}[the check step runs bash ops/check.sh ridge with no flag] "
   [ -n "$rel" ] && [ -n "$app" ] && [ -n "$chk" ] && [ "$rel" -lt "$app" ] && [ "$app" -lt "$chk" ] || missing="${missing}[release.sh, then app.sh, then check.sh] "
   # The builds (third-party code) run before the role is taken.
   role=$(grep -nF 'uses: aws-actions/configure-aws-credentials' <<<"$block" | head -n 1 | cut -d: -f1)
@@ -857,6 +1635,10 @@ check "the workflow caps vitest's workers, so parallel jobs (act's four on one M
 passes "the deploy job holds every condition" deploy_guards "$WORKFLOW"
 sed "s/ && github.ref == 'refs\/heads\/main'//" "$WORKFLOW" >"$WORK/wf-branch.yml"
 refuses "a deploy job that also runs on a branch is refused" "github.ref == 'refs/heads/main'" deploy_guards "$WORK/wf-branch.yml"
+sed "s/ || github.event_name == 'workflow_dispatch')/ || github.event_name == 'workflow_dispatch' || github.event_name == 'pull_request')/" "$WORKFLOW" >"$WORK/wf-pr.yml"
+refuses "a deploy job that admits a pull request is refused" "github.event_name == 'workflow_dispatch') &&" deploy_guards "$WORK/wf-pr.yml"
+sed "s/ || github.event_name == 'workflow_dispatch')/)/" "$WORKFLOW" >"$WORK/wf-nopress.yml"
+refuses "a deploy job that lets no press through is refused" "github.event_name == 'workflow_dispatch') &&" deploy_guards "$WORK/wf-nopress.yml"
 awk '$0 == "        if: ${{ !env.ACT }}" && !d {d = 1; next} 1' "$WORKFLOW" >"$WORK/wf-act.yml"
 refuses "a deploy step that would run under act is refused" "!env.ACT" deploy_guards "$WORK/wf-act.yml"
 sed 's/mask-aws-account-id: true/mask-aws-account-id: false/' "$WORKFLOW" >"$WORK/wf-mask.yml"
@@ -869,8 +1651,8 @@ awk '/^    environment: ridge$/ {print; print "    continue-on-error: true"; nex
 refuses "a deploy job that may fail and go on is refused" "continue-on-error" deploy_guards "$WORK/wf-continue-job.yml"
 awk '/^        run: make box$/ {print "        continue-on-error: true"} 1' "$WORKFLOW" >"$WORK/wf-continue-step.yml"
 refuses "a deploy step that may fail and go on is refused" "continue-on-error" deploy_guards "$WORK/wf-continue-step.yml"
-sed 's/needs: \[check, e2e, ops, app\]/needs: [check, e2e, ops]/' "$WORKFLOW" >"$WORK/wf-needs.yml"
-refuses "a deploy that does not wait for the four gates, the app's among them, is refused (row 34)" "needs: [check, e2e, ops, app]" deploy_guards "$WORK/wf-needs.yml"
+sed 's/needs: \[check, audit, e2e, ops, app\]/needs: [check, audit, e2e, ops]/' "$WORKFLOW" >"$WORK/wf-needs.yml"
+refuses "a deploy that does not wait for the five gates, the app's among them, is refused (row 34)" "needs: [check, audit, e2e, ops, app]" deploy_guards "$WORK/wf-needs.yml"
 sed 's/^      group: ridge$/      group: ridge-per-run/' "$WORKFLOW" >"$WORK/wf-group.yml"
 refuses "a deploy whose concurrency group is not the one ridge group is refused" "group: ridge" deploy_guards "$WORK/wf-group.yml"
 sed '/^    environment: ridge$/d' "$WORKFLOW" >"$WORK/wf-env.yml"
@@ -884,6 +1666,8 @@ refuses "  a ship and a check that go on after a superseded release are refused 
 # the ship's step moved before the release: swap the two run lines
 sed -e 's#run: bash ops/release.sh ridge#run: bash ops/TMP.sh ridge#' -e 's#run: bash ops/app.sh ridge#run: bash ops/release.sh ridge#' -e 's#run: bash ops/TMP.sh ridge#run: bash ops/app.sh ridge#' "$WORKFLOW" >"$WORK/wf-order.yml"
 refuses "  an app.sh that runs before the release is refused (row 28)" "release.sh, then app.sh, then check.sh" deploy_guards "$WORK/wf-order.yml"
+sed 's#^        run: bash ops/check.sh ridge$#        run: bash ops/check.sh ridge --reads-only#' "$WORKFLOW" >"$WORK/wf-readsonly.yml"
+refuses "  a deploy whose check passes --reads-only, so no save is proved on ridge, is refused (case 10)" "with no flag" deploy_guards "$WORK/wf-readsonly.yml"
 sed 's#^        id: release$#        id: released#' "$WORKFLOW" >"$WORK/wf-id.yml"
 refuses "  a release step the later steps cannot read is refused" "id: release" deploy_guards "$WORK/wf-id.yml"
 awk '/Build the BFF.s bundle and the UI/ {skip = 1} skip && /^      # The arm64 binary/ {skip = 0} !skip' "$WORKFLOW" >"$WORK/wf-nobuild.yml"
@@ -891,36 +1675,83 @@ refuses "  an app that is not built before the role is taken is refused" "the ap
 sed '/^          CREDO_BUILD: \${{ github.sha }}$/d' "$WORKFLOW" >"$WORK/wf-nostamp.yml"
 refuses "  a build step that does not stamp the commit is refused (row 39)" "CREDO_BUILD: github.sha in the env of the build step" deploy_guards "$WORK/wf-nostamp.yml"
 
-# app_guards <workflow>: row 34, the app's gate in CI, and row 24's half: the bundle under Node 24
-app_block() { awk '/^  app:$/ {f = 1; next} f && /^  [A-Za-z_-]+:/ {exit} f' "$1"; }
+# app_guards <workflow>: row 34, the app's gate in CI, and row 24's half: the bundle under Node 24. One job a package
+# (every package pnpm-workspace.yaml lists, so none is dropped), each running that package's own check under a
+# 40-minute cap, and the job `app`, which the deploy waits on, needing every one of them with no `if` of its own.
+job_block() { awk -v j="$2" '$0 == "  " j ":" {f = 1; next} f && /^  [A-Za-z_-]+:/ {exit} f' "$1"; }
 app_guards() {
-  local block missing=''
-  block=$(app_block "$1")
+  local pkgs p block missing='' want_needs='' n24 n26 chk have
+  pkgs=$(sed -n 's/^  - //p' "$REPO_DIR/pnpm-workspace.yaml")
+  [ -n "$pkgs" ] || die "no package could be read from pnpm-workspace.yaml"
+  for p in $pkgs; do
+    want_needs="${want_needs}${want_needs:+, }app-$p"
+    block=$(job_block "$1" "app-$p")
+    if [ -z "$block" ]; then missing="${missing}[no job app-$p] "; continue; fi
+    need() { grep -qxF -- "$1" <<<"$block" || missing="${missing}[app-$p: $1] "; }
+    need "        run: pnpm --filter @credo/$p --fail-if-no-match check"
+    need "    timeout-minutes: 40"
+    need "          node-version: 26"
+    need "    runs-on: ubuntu-24.04"
+    need "        run: pnpm install --frozen-lockfile"
+    grep -q '^    if:' <<<"$block" && missing="${missing}[app-$p: no if of its own] "
+    # A step-level if or shell could skip the gate step or change how its exit is read, and the job would still be green.
+    grep -qE '^        (if|shell):' <<<"$block" && missing="${missing}[app-$p: no step-level if or shell] "
+    # Go only where a test builds the real service (bff/tests/build.ts, reached by the BFF's route tests and the scripts' stack tests).
+    if [ "$p" = bff ] || [ "$p" = scripts ]; then
+      grep -qxF -- "          go-version-file: services/c-storage/go.mod" <<<"$block" || missing="${missing}[app-$p: Go, since its tests build c-storage] "
+    else
+      grep -q 'setup-go' <<<"$block" && missing="${missing}[app-$p: no Go, none of its tests builds a service] "
+    fi
+    grep -q 'continue-on-error' <<<"$block" && missing="${missing}[app-$p: no continue-on-error] "
+    if [ "$p" = bff ]; then
+      need "          node-version: 24"
+      # shellcheck disable=SC2016 # the workflow's literal text
+      grep -qF 'BUNDLE_NODE=$(command -v node)' <<<"$block" || missing="${missing}[the runtime's Node named in BUNDLE_NODE] "
+      # Node 24 is named before Node 26 is set up, so the check runs under 26 and the bundle under 24.
+      n24=$(grep -n 'node-version: 24' <<<"$block" | head -n 1 | cut -d: -f1)
+      n26=$(grep -n 'node-version: 26' <<<"$block" | head -n 1 | cut -d: -f1)
+      chk=$(grep -n 'run: pnpm --filter @credo/bff --fail-if-no-match check' <<<"$block" | head -n 1 | cut -d: -f1)
+      [ -n "$n24" ] && [ -n "$n26" ] && [ -n "$chk" ] && [ "$n24" -lt "$n26" ] && [ "$n26" -lt "$chk" ] || missing="${missing}[Node 24, then Node 26, then the BFF's check] "
+    fi
+  done
+  have=$(grep -cE '^  app-[A-Za-z0-9_-]+:$' "$1" || true)
+  [ "$have" = "$(wc -w <<<"$pkgs" | tr -d ' ')" ] || missing="${missing}[$have app-* jobs, one a package expected] "
+  block=$(job_block "$1" app)
   [ -n "$block" ] || die "no app job"
-  need() { grep -qxF -- "$1" <<<"$block" || missing="${missing}[$1] "; }
-  need "        run: pnpm check"
-  need "          node-version: 24"
-  need "          node-version: 26"
-  need "    runs-on: ubuntu-24.04"
-  need "        run: pnpm install --frozen-lockfile"
-  # shellcheck disable=SC2016 # the workflow's literal text
-  grep -qF 'BUNDLE_NODE=$(command -v node)' <<<"$block" || missing="${missing}[the runtime's Node named in BUNDLE_NODE] "
-  # Node 24 is named before Node 26 is set up, so pnpm check runs under 26 and the bundle under 24.
-  n24=$(grep -n 'node-version: 24' <<<"$block" | head -n 1 | cut -d: -f1)
-  n26=$(grep -n 'node-version: 26' <<<"$block" | head -n 1 | cut -d: -f1)
-  chk=$(grep -n 'run: pnpm check' <<<"$block" | head -n 1 | cut -d: -f1)
-  [ -n "$n24" ] && [ -n "$n26" ] && [ -n "$chk" ] && [ "$n24" -lt "$n26" ] && [ "$n26" -lt "$chk" ] || missing="${missing}[Node 24, then Node 26, then pnpm check] "
-  grep -q 'continue-on-error' <<<"$block" && missing="${missing}[no continue-on-error in the app job] "
-  [ -z "$missing" ] || die "the app job lacks: $missing"
+  grep -qxF -- "    needs: [$want_needs]" <<<"$block" || missing="${missing}[app: needs: [$want_needs]] "
+  grep -q '^    if:' <<<"$block" && missing="${missing}[app: no if of its own, so a failed or skipped need leaves it skipped] "
+  grep -q 'continue-on-error' <<<"$block" && missing="${missing}[app: no continue-on-error] "
+  [ -z "$missing" ] || die "the app jobs lack: $missing"
 }
-passes "the app job runs pnpm check, with the bundle under Node 24 (rows 34 and 24)" app_guards "$WORKFLOW"
-sed 's#^        run: pnpm check$#        run: pnpm lint#' "$WORKFLOW" >"$WORK/wf-nocheck.yml"
-refuses "  an app job that does not run pnpm check is refused" "run: pnpm check" app_guards "$WORK/wf-nocheck.yml"
+passes "the app gate is one job a package, each with its own check and a 40-minute cap, and the job app waits on all (rows 34 and 24)" app_guards "$WORKFLOW"
+sed 's#^        run: pnpm --filter @credo/scripts --fail-if-no-match check$#        run: pnpm --filter @credo/scripts lint#' "$WORKFLOW" >"$WORK/wf-nocheck.yml"
+refuses "  a package job that does not run its package's check is refused" "app-scripts: " app_guards "$WORK/wf-nocheck.yml"
 sed 's#^          node-version: 24$#          node-version: 26#' "$WORKFLOW" >"$WORK/wf-no24.yml"
-refuses "  an app job that never names Node 24 is refused" "node-version: 24" app_guards "$WORK/wf-no24.yml"
+refuses "  an app-bff job that never names Node 24 is refused" "node-version: 24" app_guards "$WORK/wf-no24.yml"
 # shellcheck disable=SC2016 # the workflow's literal text
 sed 's#BUNDLE_NODE=\$(command -v node)#BUNDLE=\$(command -v node)#' "$WORKFLOW" >"$WORK/wf-nobn.yml"
 refuses "  and one that does not hand it to the bundle's test" "BUNDLE_NODE" app_guards "$WORK/wf-nobn.yml"
+sed 's#^    needs: \[app-bff, app-scripts, app-shared, app-ui, app-visual, app-walk\]$#    needs: [app-bff, app-scripts, app-shared, app-ui, app-visual]#' "$WORKFLOW" >"$WORK/wf-appneeds.yml"
+refuses "  an app job that does not wait on every package job is refused" "app: needs: [app-bff" app_guards "$WORK/wf-appneeds.yml"
+awk '$0 == "  app:" {print; print "    if: always()"; next} 1' "$WORKFLOW" >"$WORK/wf-appalways.yml"
+refuses "  an app job with an if of its own (always() would let the deploy start over a red package) is refused" "app: no if of its own" app_guards "$WORK/wf-appalways.yml"
+awk '$0 == "  app-ui:" {skip = 1; next} skip && /^  [A-Za-z_-]+:/ {skip = 0} !skip' "$WORKFLOW" >"$WORK/wf-nopkg.yml"
+refuses "  a package with no job (a dropped package) is refused" "no job app-ui" app_guards "$WORK/wf-nopkg.yml"
+awk '$0 == "  app-visual:" {f = 1} f && $0 == "    timeout-minutes: 40" {print "    timeout-minutes: 90"; f = 0; next} 1' "$WORKFLOW" >"$WORK/wf-cap.yml"
+refuses "  a package job with another cap than 40 minutes is refused" "app-visual:     timeout-minutes: 40" app_guards "$WORK/wf-cap.yml"
+awk '$0 == "  app-walk:" {f = 1} f && $0 == "    runs-on: ubuntu-24.04" {print; print "    continue-on-error: true"; f = 0; next} 1' "$WORKFLOW" >"$WORK/wf-cont.yml"
+refuses "  a package job that may fail and go on is refused" "app-walk: no continue-on-error" app_guards "$WORK/wf-cont.yml"
+awk '$0 == "  app-ui:" {f = 1} f && /^      - name: Gate ui$/ {print; print "        if: always()"; f = 0; next} 1' "$WORKFLOW" >"$WORK/wf-stepif.yml"
+refuses "  a gate step with an if of its own is refused" "app-ui: no step-level if or shell" app_guards "$WORK/wf-stepif.yml"
+awk '$0 == "  app-shared:" {f = 1} f && /^      - name: Gate shared$/ {print; print "        shell: bash {0}"; f = 0; next} 1' "$WORKFLOW" >"$WORK/wf-shell.yml"
+refuses "  a gate step with a shell of its own is refused" "app-shared: no step-level if or shell" app_guards "$WORK/wf-shell.yml"
+awk '$0 == "  app-ui:" {f = 1} f && /^      - uses: actions\/setup-node/ && !d {print "      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0"; print "        with:"; print "          go-version-file: services/c-storage/go.mod"; d = 1} 1' "$WORKFLOW" >"$WORK/wf-ugo.yml"
+refuses "  a job that does not build a service but sets up Go is refused" "app-ui: no Go" app_guards "$WORK/wf-ugo.yml"
+awk '$0 == "  app-scripts:" {f = 1} f && /uses: actions\/setup-go/ {skip = 4} skip > 0 {skip--; next} 1' "$WORKFLOW" >"$WORK/wf-nogo.yml"
+refuses "  the scripts' job without Go is refused" "app-scripts: Go" app_guards "$WORK/wf-nogo.yml"
+sed 's# --fail-if-no-match check$# check#' "$WORKFLOW" >"$WORK/wf-nofail.yml"
+refuses "  a package job without --fail-if-no-match is refused" "--fail-if-no-match check" app_guards "$WORK/wf-nofail.yml"
+check "no DEBUG timing step is left in the workflow" 0 "$(grep -c 'DEBUG' "$WORKFLOW" || true)"
 
 echo "== the seed workflow (a manual run alone, never a schedule; main alone, environment ridge, its own group, one job, no permission but the OIDC token, never under act; row 24)"
 SEED_WORKFLOW=$REPO_DIR/.github/workflows/seed.yml
@@ -1061,8 +1892,15 @@ refuses "a seed that installs nothing before the role is refused" "the install, 
 
 echo "== the paths a push deploys on, read from ci.yml (seed.sh compares them; a line it cannot read stops it, nothing written)"
 CI_YML=$REPO_DIR/.github/workflows/ci.yml
-check "the real ci.yml's push trigger reads as its 16 paths, a trailing /** dropped" "16 services/c-storage walk .github/workflows/seed.yml" \
-  "$(push_paths "$CI_YML" | wc -l | tr -d ' ') $(push_paths "$CI_YML" | sed -n '1p;8p;16p' | tr '\n' ' ' | sed 's/ $//')"
+check "the real ci.yml's push trigger reads as its 17 paths, a trailing /** dropped" "17 services/c-storage walk .github/workflows/seed.yml" \
+  "$(push_paths "$CI_YML" | wc -l | tr -d ' ') $(push_paths "$CI_YML" | sed -n '1p;9p;17p' | tr '\n' ' ' | sed 's/ $//')"
+# The press: ci.yml holds one workflow_dispatch trigger, beside push and pull_request and outside
+# the push's paths.
+check "the real ci.yml holds a workflow_dispatch trigger, once, at the top level of on:" 1 \
+  "$(awk '/^on:$/ {o = 1; next} /^[a-z]/ {o = 0} o && $0 == "  workflow_dispatch:"' "$CI_YML" | wc -l | tr -d ' ')"
+sed '/^  workflow_dispatch:$/d' "$CI_YML" >"$WORK/ci-nopress.yml"
+check "a ci.yml without the trigger reads as none" 0 \
+  "$(awk '/^on:$/ {o = 1; next} /^[a-z]/ {o = 0} o && $0 == "  workflow_dispatch:"' "$WORK/ci-nopress.yml" | wc -l | tr -d ' ')"
 # push_variant <name> <the push line to replace: 'ui/**'> <what stands in its place>: ci.yml with that entry changed
 push_variant() {
   awk -v from="$2" -v to="$3" '/^  push:$/ {p = 1} /^  pull_request:$/ {p = 0} p && $0 == "      - \"" from "\"" && !d {d = 1; print to; next} 1' "$CI_YML" >"$WORK/ci-$1.yml"
@@ -1317,7 +2155,7 @@ check "the unit reads LISTEN_ADDR from /etc/c-storage/listen.env" 1 "$(grep -c '
 check "  and starts once the network is online" "1 1" "$(grep -c '^After=network-online.target$' "$unit" || true) $(grep -c '^Wants=network-online.target$' "$unit" || true)"
 check "  and sets no LISTEN_ADDR of its own, which would shadow the file" 0 "$(grep -c '^Environment=LISTEN_ADDR' "$unit" || true)"
 check "release.sh writes LISTEN_ADDR from BOX_LISTEN_ADDR, beside the unit, and installs it before the restart" "1 1 1" \
-  "$(grep -cF 'LISTEN_ADDR=%s' "$OPS_DIR/release.sh" || true) $(grep -c 'mv -f /opt/c-storage/listen.env.new /etc/c-storage/listen.env' "$OPS_DIR/release.sh" || true) $(awk '/listen.env.new \/etc/{a=NR} /systemctl restart/{b=NR} END{print (a>0 && a<b)}' "$OPS_DIR/release.sh")"
+  "$(grep -cF "\"\$BOX_LISTEN_ADDR\" | box 'sudo tee /opt/c-storage/listen.env.new" "$OPS_DIR/release.sh" || true) $(grep -c 'mv -f /opt/c-storage/listen.env.new /etc/c-storage/listen.env' "$OPS_DIR/release.sh" || true) $(awk '/listen.env.new \/etc/ && !a{a=NR} /systemctl restart/ && !b{b=NR} END{print (a>0 && a<b)}' "$OPS_DIR/release.sh")"
 check "no script reads /health or forwards at 127.0.0.1 on the box" 0 \
   "$(cd "$OPS_DIR" && grep -hE '127[.]0[.]0[.]1:[$][{]?BOX_PORT' lib.sh check.sh drill.sh release.sh tunnel.sh | grep -c . || true)"
 
@@ -1493,24 +2331,44 @@ if [[ "$*" != *"lambda update-function-configuration"* ]] && [ -f "$S/envfile.pa
 fi
 arg_after() { local prev='' a; for a in "${args[@]}"; do if [ "$prev" = "$1" ]; then echo "$a"; return; fi; prev=$a; done; }
 case "$*" in
+  *"account get-region-opt-status"*) echo ENABLED ;;
+  *"describe-stacks --stack-name credo-network"*)
+    echo '{"Stacks":[{"StackName":"credo-network","StackStatus":"UPDATE_COMPLETE","Outputs":[{"OutputKey":"VpcId","OutputValue":"vpc-test"},{"OutputKey":"VpcCidr","OutputValue":"10.0.0.0/16"}]}]}' ;;
   *"cloudformation describe-stacks"*)
     layer4=''
     if [ -n "${FAKE_LAYER4:-}" ]; then
       layer4=',{"OutputKey":"BffName","OutputValue":"ridge-bff"},{"OutputKey":"BffGroupId","OutputValue":"sg-0bff"},{"OutputKey":"SubnetId","OutputValue":"subnet-test"},{"OutputKey":"UiBucketName","OutputValue":"ui-test-bucket"},{"OutputKey":"AppAddress","OutputValue":"'"$FAKE_APP"'"},{"OutputKey":"ApiAddress","OutputValue":"'"$FAKE_API"'"}'
+      [ -n "${FAKE_DISTID_NONE:-}" ] || layer4="$layer4"',{"OutputKey":"DistributionId","OutputValue":"E1TESTDIST"}'
     fi
-    echo '{"Stacks":[{"StackName":"ridge","StackStatus":"UPDATE_COMPLETE","Outputs":[{"OutputKey":"BoxId","OutputValue":"i-test"},{"OutputKey":"BoxAddress","OutputValue":"10.20.30.40"},{"OutputKey":"Zone","OutputValue":"ap-southeast-5a"}'"$layer4"']}]}' ;;
-  *"send-ssh-public-key"*) echo True ;;
+    echo '{"Stacks":[{"StackName":"ridge","StackStatus":"UPDATE_COMPLETE","Parameters":[{"ParameterKey":"Repository","ParameterValue":"test-owner/test-repo"},{"ParameterKey":"SubjectPrefix","ParameterValue":"repo:test-owner/test-repo"},{"ParameterKey":"FrontDoorKey","ParameterValue":"****"}],"Outputs":[{"OutputKey":"BoxId","OutputValue":"i-test"},{"OutputKey":"BoxAddress","OutputValue":"10.20.30.40"},{"OutputKey":"Zone","OutputValue":"ap-southeast-5a"}'"$layer4"']}]}' ;;
+  # the key run's change set (ops/keys.sh front-door): the parameters are kept, executing it makes the distribution send the new key
+  *"create-change-set"*) all="$*"; p=${all##*--parameters file://}; cp "${p%% *}" "$S/params.json" ;;
+  *"wait change-set-create-complete"*) [ -n "${FAKE_CHANGESET:-}" ] || exit 255 ;;
+  *"describe-change-set"*)
+    if [ -n "${FAKE_CHANGESET:-}" ]; then cat "$FAKE_CHANGESET"; else echo "The submitted information didn't contain changes. Submit different information to create a change set."; fi ;;
+  *"execute-change-set"*)
+    jq -r '.[] | select(.ParameterKey == "FrontDoorKey") | .ParameterValue' "$S/params.json" >"$S/door.key"
+    echo execute >>"$S/events" ;;
+  *"delete-change-set"* | *"wait stack-update-complete"*) : ;;
+  *"send-ssh-public-key"*)
+    [ ! -e "$S/send-fails" ] || { echo "stand-in aws: send-ssh-public-key failed (the session ended)" >&2; exit 254; }
+    echo True ;;
   *"lambda update-function-code"*)
+    [ -z "${FAKE_CODE_FAIL:-}" ] || { echo "stand-in aws: update-function-code failed" >&2; exit 254; }
     cp "$(arg_after --zip-file | sed 's#^fileb://##')" "$S/code.zip"
     openssl dgst -sha256 -binary "$S/code.zip" | base64 >"$S/code.sha"
     echo 1 >"$S/inprogress"
     echo Successful ;;
   *"lambda update-function-configuration"*)
     envfile=$(arg_after --environment | sed 's#^file://##')
-    echo "$envfile" >"$S/envfile.path"
-    python3 -I -c 'import os,sys; print(oct(os.stat(sys.argv[1]).st_mode & 0o777)[2:])' "$envfile" >"$S/envfile.mode"
-    cp "$envfile" "$S/envfile.seen"
-    arg_after --description >"$S/description"
+    if [ -n "$envfile" ]; then
+      echo "$envfile" >"$S/envfile.path"
+      python3 -I -c 'import os,sys; print(oct(os.stat(sys.argv[1]).st_mode & 0o777)[2:])' "$envfile" >"$S/envfile.mode"
+      cp "$envfile" "$S/envfile.seen"
+      jq -c .Variables "$envfile" >>"$S/envfile.history"
+      echo "settings $(jq -r '.Variables.FRONT_DOOR_KEYS | split(",") | length' "$envfile")" >>"$S/events"
+    fi
+    if [[ "$*" == *" --description "* ]]; then arg_after --description >"$S/description"; fi
     arg_after --vpc-config >"$S/vpc"
     echo Successful ;;
   *"lambda get-function-configuration"*)
@@ -1520,6 +2378,14 @@ case "$*" in
       Description) if [ -n "${FAKE_RUNNING:-}" ]; then echo "$FAKE_RUNNING"; elif [ -f "$S/description" ]; then cat "$S/description"; else echo None; fi ;;
       *) echo "stand-in aws: unknown query: $*" >&2; exit 1 ;;
     esac ;;
+  *"cloudfront wait distribution-deployed"*) echo deployed >>"$S/events" ;;
+  *"cloudfront get-distribution-config"*)
+    # the API origin's header carries the door's key (FAKE_DOOR_NONE: it carries none)
+    if [ -n "${FAKE_DOOR_NONE:-}" ]; then
+      echo '{"ETag":"E","DistributionConfig":{"Origins":{"Items":[{"Id":"api","CustomHeaders":{"Quantity":0}}]}}}'
+    else
+      printf '{"ETag":"E","DistributionConfig":{"Origins":{"Items":[{"Id":"ui","CustomHeaders":{"Quantity":0}},{"Id":"api","CustomHeaders":{"Quantity":1,"Items":[{"HeaderName":"x-front-door-key","HeaderValue":"%s"}]}}]}}}\n' "$([ -f "$S/door.key" ] && cat "$S/door.key" || echo "$FAKE_DKEY")"
+    fi ;;
   *"s3 cp"*) : ;;
   *) echo "stand-in aws: unknown: $*" >&2; exit 1 ;;
 esac
@@ -1547,11 +2413,46 @@ for a in "${args[@]}"; do
   prev=$a
 done
 detach() { python3 -I -c 'import os,sys; os.setsid(); os.execv(sys.argv[1], sys.argv[1:])' "$@"; }
+# the real store, on the forwarded port, with the keys the box's file holds (the test's own until a key run writes one)
+start_store() {
+  local ik=$FAKE_IKEY ak=$FAKE_AKEY
+  if [ -f "$S/box/keys.env" ]; then
+    ik=$(sed -n 's/^INTERNAL_ACCESS_KEY=//p' "$S/box/keys.env")
+    ak=$(sed -n 's/^X_SUPER_ADMIN_KEY=//p' "$S/box/keys.env")
+  fi
+  mkdir -p "$S/db"
+  env -i PATH="$PATH" PORT="$1" DB_PATH="$S/db/c-storage.db" INTERNAL_ACCESS_KEY="$ik" X_SUPER_ADMIN_KEY="$ak" \
+    python3 -I -c 'import os,sys; os.setsid(); os.execv(sys.argv[1], sys.argv[1:])' "$FAKE_CS" </dev/null >>"$S/server.log" 2>&1 &
+  echo $! >"$S/master.pid"
+  for _ in $(seq 1 50); do curl -fsS -m 1 "http://127.0.0.1:$1/health" >/dev/null 2>&1 && return 0; sleep 0.1; done
+  return 1
+}
 alive() { [ -f "$S/master.pid" ] && kill -0 "$(cat "$S/master.pid")" 2>/dev/null; }
 case $op in
   check) alive && exit 0; echo "Control socket connect: No such file or directory" >&2; exit 255 ;;
   exit) if alive; then kill "$(cat "$S/master.pid")"; rm -f "$S/master.pid"; exit 0; fi; exit 255 ;;
+  forward) alive && exit 0; exit 255 ;;
 esac
+# A run that holds a stand-in box ($S/box.real, made by the company-restore case): the three scripts that one run
+# sends with `sudo bash -s -- <records folder> ...` run here, on scratch folders for /var/lib/private/c-storage,
+# /etc/c-storage, /opt/c-storage and /run, with shims for what macOS lacks. A dropped connection answers as ssh does.
+if [ -e "$S/box.real" ]; then
+  rest=()
+  seen=0
+  for a in "${args[@]}"; do if [ "$seen" = 1 ]; then rest+=("$a"); fi; case $a in ec2-user@*) seen=1 ;; esac; done
+  if [ "${rest[0]:-}" = sudo ] && [ "${rest[1]:-}" = bash ] && [ "${rest[3]:-}" = -- ]; then
+    alive || { echo "Control socket connect: No such file or directory" >&2; exit 255; }
+    box=$S/box
+    sub() { sed -e "s#/var/lib/private/c-storage#$box/records#g" -e "s#/etc/c-storage#$box/etc#g" -e "s#/opt/c-storage#$box/opt#g" -e "s#/run/#$box/run/#g"; }
+    sub >"$box/script.sh"
+    boxargs=()
+    for a in "${rest[@]:4}"; do boxargs+=("$(printf '%s' "$a" | sub)"); done
+    rc=0
+    PATH="$box/bin:$PATH" bash "$box/script.sh" "${boxargs[@]}" >"$box/script.out" || rc=$?
+    sed "s#$box/records#/var/lib/private/c-storage#g" "$box/script.out"
+    exit $rc
+  fi
+fi
 if [ -z "$fwd" ] && printf '%s\n' "${args[@]}" | grep -qx -- '-N'; then
   detach sleep 120 </dev/null >/dev/null 2>&1 &
   echo $! >"$S/master.pid"
@@ -1569,11 +2470,8 @@ if [ -n "$fwd" ]; then
     if [ "$strict" = 1 ]; then echo "Could not request local forwarding." >&2; exit 255; fi
     exit 0
   fi
-  mkdir -p "$S/db"
-  env -i PATH="$PATH" PORT="$lport" DB_PATH="$S/db/c-storage.db" INTERNAL_ACCESS_KEY="$FAKE_IKEY" X_SUPER_ADMIN_KEY="$FAKE_AKEY" \
-    python3 -I -c 'import os,sys; os.setsid(); os.execv(sys.argv[1], sys.argv[1:])' "$FAKE_CS" </dev/null >>"$S/server.log" 2>&1 &
-  echo $! >"$S/master.pid"
-  for _ in $(seq 1 50); do curl -fsS -m 1 "http://127.0.0.1:$lport/health" >/dev/null 2>&1 && exit 0; sleep 0.1; done
+  echo "$lport" >"$S/lport"
+  start_store "$lport" && exit 0
   echo "stand-in ssh: the server did not start" >&2
   exit 255
 fi
@@ -1581,9 +2479,22 @@ cmd=''
 seen=0
 for a in "${args[@]}"; do if [ "$seen" = 1 ]; then cmd="$cmd $a"; fi; case $a in ec2-user@*) seen=1 ;; esac; done
 case $cmd in
-  *"cat /etc/c-storage/keys.env"*) printf 'INTERNAL_ACCESS_KEY=%s\nX_SUPER_ADMIN_KEY=%s\n' "$FAKE_IKEY" "$FAKE_AKEY" ;;
-  *"cat /etc/c-storage/bff.env"*) printf 'SERVICE_CODE=bff\nSERVICE_ACCESS_KEY=%s\n' "$FAKE_SKEY" ;;
+  # a key run (ops/keys.sh): a file written on the box, a file moved, the store restarted with the box's keys file
+  *'cat >"$0.tmp"'*) path=${cmd##* }; mkdir -p "$S/box"; cat >"$S/box/${path##*/}"; echo "write ${path##*/}" >>"$S/events" ;;
+  *"mv -f /etc/c-storage/bff.env.new /etc/c-storage/bff.env"*) [ -z "${FAKE_MV_FAIL:-}" ] || { echo "stand-in ssh: the mv failed" >&2; exit 1; }; mv -f "$S/box/bff.env.new" "$S/box/bff.env"; echo "mv bff.env" >>"$S/events" ;;
+  *"rm -f /etc/c-storage/bff.env.new"*) rm -f "$S/box/bff.env.new"; echo "rm bff.env.new" >>"$S/events" ;;
+  *"systemctl restart c-storage"*)
+    echo restart >>"$S/events"
+    if alive; then kill "$(cat "$S/master.pid")"; fi
+    for _ in $(seq 1 50); do (exec 9<>"/dev/tcp/127.0.0.1/$(cat "$S/lport")") 2>/dev/null || break; sleep 0.1; done
+    start_store "$(cat "$S/lport")" ;;
+  *"cat /etc/c-storage/keys.env"*)
+    if [ -f "$S/box/keys.env" ]; then cat "$S/box/keys.env"; else printf 'INTERNAL_ACCESS_KEY=%s\nX_SUPER_ADMIN_KEY=%s\n' "$FAKE_IKEY" "$FAKE_AKEY"; fi ;;
+  *"cat /etc/c-storage/bff.env"*)
+    if [ -f "$S/box/bff.env" ]; then cat "$S/box/bff.env"; else printf 'SERVICE_CODE=bff\nSERVICE_ACCESS_KEY=%s\n' "$FAKE_SKEY"; fi ;;
+  *"cat /etc/audit-backbone/keys.env"*) if [ -n "${FAKE_NO_AUDIT_KEY:-}" ]; then exit 1; fi; printf 'ACTIVITY_WRITE_KEY=%s\n' "$FAKE_UKEY" ;;
   *"test -e /etc/c-storage/bff.env"*) [ -f "$S/bff.made" ] ;;
+  *"sudo bash -s /var/lib/private/c-storage"*) cat >/dev/null; echo "${FAKE_BOX:-2048 2048 8192} " ;;
   *"sudo bash -s"*) cat >/dev/null; touch "$S/bff.made"; echo "bff.env: made"; echo "bff.env: mode 600, owner root" ;;
   *"bash -s"*) cat >/dev/null; echo "${FAKE_BOX:-2048 2048 8192} " ;;
   *"curl -fsS -m 5 http://"*"/health"*) if [ -n "${FAKE_RUNNING:-}" ]; then printf '{"status":"OK","buildVersion":"%s"}' "$FAKE_RUNNING"; else exit 7; fi ;;
@@ -1591,7 +2502,8 @@ case $cmd in
 esac
 STANDIN
 chmod +x "$E2E/fakebin/aws" "$E2E/fakebin/bru" "$E2E/fakebin/node" "$E2E/fakebin/ssh"
-export FAKE_IKEY=4f1c9e0b7a2d4c6e8f103a5b7c9d1e2f FAKE_AKEY=9a8b7c6d5e4f30211203f4e5d6c7b8a9 FAKE_SKEY=5d6e7f8091a2b3c4d5e6f708192a3b4c
+export FAKE_DKEY=c0ffee11c0ffee22c0ffee33c0ffee44c0ffee55c0ffee66c0ffee77c0ffee88
+export FAKE_IKEY=4f1c9e0b7a2d4c6e8f103a5b7c9d1e2f FAKE_AKEY=9a8b7c6d5e4f30211203f4e5d6c7b8a9 FAKE_SKEY=5d6e7f8091a2b3c4d5e6f708192a3b4c FAKE_UKEY=0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9
 export RIDGE_SCRIPTS_DIR=$REPO_DIR/scripts
 export PATH="$E2E/fakebin:$PATH"
 # By hand, as the human runs it: in GitHub's job GITHUB_ACTIONS is set, and mask then writes
@@ -1790,47 +2702,86 @@ eg='["sg-ep"]'
 ssh_rule=$(tcp 22 "$none" sg-ep)
 app_rule=$(tcp "$BOX_PORT" "$none" sg-bff)
 rules() { jq -sc . <<<"$*"; }
+# the activity log's writing port (row 12 of docs/plans/2026-11-12-activity-log.md): the box admits it from the BFF's group too
+audit_rule=$(tcp "$AUDIT_PORT" "$none" sg-bff)
 check "before layer four the box admits ssh from the endpoint's group alone" yes "$(box_rules_verdict "$(rules "$ssh_rule")" "$eg" '' "$BOX_PORT")"
 check "with layer four it admits ssh from the endpoint's group and c-storage's port from the BFF's group" yes \
-  "$(box_rules_verdict "$(rules "$ssh_rule" "$app_rule")" "$eg" sg-bff "$BOX_PORT")"
-check "  in any order" yes "$(box_rules_verdict "$(rules "$app_rule" "$ssh_rule")" "$eg" sg-bff "$BOX_PORT")"
+  "$(box_rules_verdict "$(rules "$ssh_rule" "$app_rule" "$audit_rule")" "$eg" sg-bff "$BOX_PORT" "$AUDIT_PORT")"
+check "  in any order" yes "$(box_rules_verdict "$(rules "$app_rule" "$audit_rule" "$ssh_rule")" "$eg" sg-bff "$BOX_PORT" "$AUDIT_PORT")"
 check "c-storage's port open before layer four is refused" no "$(box_rules_verdict "$(rules "$ssh_rule" "$app_rule")" "$eg" '' "$BOX_PORT")"
-check "layer four without the BFF's rule is refused" no "$(box_rules_verdict "$(rules "$ssh_rule")" "$eg" sg-bff "$BOX_PORT")"
+check "layer four without the BFF's rule is refused" no "$(box_rules_verdict "$(rules "$ssh_rule" "$audit_rule")" "$eg" sg-bff "$BOX_PORT" "$AUDIT_PORT")"
 check "c-storage's port from an address range is refused" no \
-  "$(box_rules_verdict "$(rules "$ssh_rule" "$(tcp "$BOX_PORT" "$anywhere" sg-bff)")" "$eg" sg-bff "$BOX_PORT")"
+  "$(box_rules_verdict "$(rules "$ssh_rule" "$(tcp "$BOX_PORT" "$anywhere" sg-bff)" "$audit_rule")" "$eg" sg-bff "$BOX_PORT" "$AUDIT_PORT")"
 check "c-storage's port from another group is refused" no \
-  "$(box_rules_verdict "$(rules "$ssh_rule" "$(tcp "$BOX_PORT" "$none" sg-other)")" "$eg" sg-bff "$BOX_PORT")"
+  "$(box_rules_verdict "$(rules "$ssh_rule" "$(tcp "$BOX_PORT" "$none" sg-other)" "$audit_rule")" "$eg" sg-bff "$BOX_PORT" "$AUDIT_PORT")"
 check "c-storage's port from two groups is refused" no \
-  "$(box_rules_verdict "$(rules "$ssh_rule" "$(tcp "$BOX_PORT" "$none" sg-bff sg-other)")" "$eg" sg-bff "$BOX_PORT")"
+  "$(box_rules_verdict "$(rules "$ssh_rule" "$(tcp "$BOX_PORT" "$none" sg-bff sg-other)" "$audit_rule")" "$eg" sg-bff "$BOX_PORT" "$AUDIT_PORT")"
 check "a third rule (another port) is refused" no \
-  "$(box_rules_verdict "$(rules "$ssh_rule" "$app_rule" "$(tcp 8080 "$none" sg-bff)")" "$eg" sg-bff "$BOX_PORT")"
+  "$(box_rules_verdict "$(rules "$ssh_rule" "$app_rule" "$audit_rule" "$(tcp 8080 "$none" sg-bff)")" "$eg" sg-bff "$BOX_PORT" "$AUDIT_PORT")"
 check "ssh from another group than the endpoint's is refused" no \
-  "$(box_rules_verdict "$(rules "$(tcp 22 "$none" sg-other)" "$app_rule")" "$eg" sg-bff "$BOX_PORT")"
+  "$(box_rules_verdict "$(rules "$(tcp 22 "$none" sg-other)" "$app_rule" "$audit_rule")" "$eg" sg-bff "$BOX_PORT" "$AUDIT_PORT")"
 check "ssh from anywhere is refused" no \
-  "$(box_rules_verdict "$(rules "$(tcp 22 "$anywhere" sg-ep)" "$app_rule")" "$eg" sg-bff "$BOX_PORT")"
-check "no ssh rule is refused" no "$(box_rules_verdict "$(rules "$app_rule")" "$eg" sg-bff "$BOX_PORT")"
+  "$(box_rules_verdict "$(rules "$(tcp 22 "$anywhere" sg-ep)" "$app_rule" "$audit_rule")" "$eg" sg-bff "$BOX_PORT" "$AUDIT_PORT")"
+check "no ssh rule is refused" no "$(box_rules_verdict "$(rules "$app_rule" "$audit_rule")" "$eg" sg-bff "$BOX_PORT" "$AUDIT_PORT")"
+check "with the log's port the box admits ssh, c-storage's port and the log's port from the BFF's group" yes \
+  "$(box_rules_verdict "$(rules "$ssh_rule" "$app_rule" "$audit_rule")" "$eg" sg-bff "$BOX_PORT" "$AUDIT_PORT")"
+check "  in any order" yes "$(box_rules_verdict "$(rules "$audit_rule" "$ssh_rule" "$app_rule")" "$eg" sg-bff "$BOX_PORT" "$AUDIT_PORT")"
+check "  a ridge without the log's rule reads red, the stack run having to come before the code that uses it (the step 6 pin)" no \
+  "$(box_rules_verdict "$(rules "$ssh_rule" "$app_rule")" "$eg" sg-bff "$BOX_PORT" "$AUDIT_PORT")"
+check "  the log's port from an address range is refused" no \
+  "$(box_rules_verdict "$(rules "$ssh_rule" "$app_rule" "$(tcp "$AUDIT_PORT" "$anywhere" sg-bff)")" "$eg" sg-bff "$BOX_PORT" "$AUDIT_PORT")"
+check "  the log's port from another group is refused" no \
+  "$(box_rules_verdict "$(rules "$ssh_rule" "$app_rule" "$(tcp "$AUDIT_PORT" "$none" sg-other)")" "$eg" sg-bff "$BOX_PORT" "$AUDIT_PORT")"
+check "  a fourth rule (another port) beside the log's is refused" no \
+  "$(box_rules_verdict "$(rules "$ssh_rule" "$app_rule" "$audit_rule" "$(tcp 8080 "$none" sg-bff)")" "$eg" sg-bff "$BOX_PORT" "$AUDIT_PORT")"
+check "  the log's rule without c-storage's is refused" no \
+  "$(box_rules_verdict "$(rules "$ssh_rule" "$audit_rule")" "$eg" sg-bff "$BOX_PORT" "$AUDIT_PORT")"
+check "  the log's port open before layer four is refused" no \
+  "$(box_rules_verdict "$(rules "$ssh_rule" "$audit_rule")" "$eg" '' "$BOX_PORT" "$AUDIT_PORT")"
+check "  the log's port when no log port is asked for is refused" no \
+  "$(box_rules_verdict "$(rules "$ssh_rule" "$app_rule" "$audit_rule")" "$eg" sg-bff "$BOX_PORT")"
 
 egress_rule=$(tcp "$BOX_PORT" "$none" sg-box)
-check "the BFF's group sends to c-storage's port on the box's group, and admits nothing" yes "$(bff_rules_verdict "$(rules "$egress_rule")" '[]' sg-box "$BOX_PORT")"
-check "  a second egress rule (all traffic) is refused" no \
-  "$(bff_rules_verdict "$(rules "$egress_rule" '{"IpProtocol":"-1","IpRanges":[{"CidrIp":"0.0.0.0/0"}],"Ipv6Ranges":[],"PrefixListIds":[],"UserIdGroupPairs":[]}')" '[]' sg-box "$BOX_PORT")"
-check "  egress to an address range is refused" no "$(bff_rules_verdict "$(rules "$(tcp "$BOX_PORT" "$anywhere" sg-box)")" '[]' sg-box "$BOX_PORT")"
-check "  egress to another group is refused" no "$(bff_rules_verdict "$(rules "$(tcp "$BOX_PORT" "$none" sg-other)")" '[]' sg-box "$BOX_PORT")"
-check "  an ingress rule is refused" no "$(bff_rules_verdict "$(rules "$egress_rule")" "$(rules "$(tcp 443 "$none" sg-bff)")" sg-box "$BOX_PORT")"
+audit_egress=$(tcp "$AUDIT_PORT" "$none" sg-box)
+check "the BFF's group sends to c-storage's port on the box's group, and admits nothing, with the log's port beside it" yes "$(bff_rules_verdict "$(rules "$egress_rule" "$audit_egress")" '[]' sg-box "$BOX_PORT" "$AUDIT_PORT")"
+check "  a third egress rule (all traffic) is refused" no \
+  "$(bff_rules_verdict "$(rules "$egress_rule" "$audit_egress" '{"IpProtocol":"-1","IpRanges":[{"CidrIp":"0.0.0.0/0"}],"Ipv6Ranges":[],"PrefixListIds":[],"UserIdGroupPairs":[]}')" '[]' sg-box "$BOX_PORT" "$AUDIT_PORT")"
+check "  egress to an address range is refused" no "$(bff_rules_verdict "$(rules "$(tcp "$BOX_PORT" "$anywhere" sg-box)" "$audit_egress")" '[]' sg-box "$BOX_PORT" "$AUDIT_PORT")"
+check "  egress to another group is refused" no "$(bff_rules_verdict "$(rules "$(tcp "$BOX_PORT" "$none" sg-other)" "$audit_egress")" '[]' sg-box "$BOX_PORT" "$AUDIT_PORT")"
+check "  an ingress rule is refused" no "$(bff_rules_verdict "$(rules "$egress_rule" "$audit_egress")" "$(rules "$(tcp 443 "$none" sg-bff)")" sg-box "$BOX_PORT" "$AUDIT_PORT")"
+check "the BFF's group sends to c-storage's port and the log's port on the box's group, and admits nothing" yes \
+  "$(bff_rules_verdict "$(rules "$egress_rule" "$audit_egress")" '[]' sg-box "$BOX_PORT" "$AUDIT_PORT")"
+check "  in any order" yes "$(bff_rules_verdict "$(rules "$audit_egress" "$egress_rule")" '[]' sg-box "$BOX_PORT" "$AUDIT_PORT")"
+check "  a group with c-storage's rule alone reads red, the stack run having to come before the code that uses it (the step 6 pin)" no \
+  "$(bff_rules_verdict "$(rules "$egress_rule")" '[]' sg-box "$BOX_PORT" "$AUDIT_PORT")"
+check "  the log's egress to an address range is refused" no \
+  "$(bff_rules_verdict "$(rules "$egress_rule" "$(tcp "$AUDIT_PORT" "$anywhere" sg-box)")" '[]' sg-box "$BOX_PORT" "$AUDIT_PORT")"
+check "  the log's egress to another group is refused" no \
+  "$(bff_rules_verdict "$(rules "$egress_rule" "$(tcp "$AUDIT_PORT" "$none" sg-other)")" '[]' sg-box "$BOX_PORT" "$AUDIT_PORT")"
+check "  a third egress rule beside the two is refused" no \
+  "$(bff_rules_verdict "$(rules "$egress_rule" "$audit_egress" "$(tcp 8080 "$none" sg-box)")" '[]' sg-box "$BOX_PORT" "$AUDIT_PORT")"
+check "  the log's egress alone is refused" no "$(bff_rules_verdict "$(rules "$audit_egress")" '[]' sg-box "$BOX_PORT" "$AUDIT_PORT")"
+check "  two rules when no log port is asked for are refused" no \
+  "$(bff_rules_verdict "$(rules "$egress_rule" "$audit_egress")" '[]' sg-box "$BOX_PORT")"
+check "  an ingress rule beside the two is refused" no \
+  "$(bff_rules_verdict "$(rules "$egress_rule" "$audit_egress")" "$(rules "$(tcp 443 "$none" sg-bff)")" sg-box "$BOX_PORT" "$AUDIT_PORT")"
 
-fn='{"VpcConfig":{"SubnetIds":["subnet-test"],"SecurityGroupIds":["sg-bff"]},"Description":"abc","Environment":{"Variables":{"C_STORAGE_URL":"u","INTERNAL_ACCESS_KEY":"k","SERVICE_CODE":"c","SERVICE_ACCESS_KEY":"a","APP_ORIGIN":"https://app.example.test"}}}'
+# The function as BFF_FN_QUERY reads it: the names of its variables, and the two non-secret values; never a key's value.
+fn='{"VpcConfig":{"SubnetIds":["subnet-test"],"SecurityGroupIds":["sg-bff"]},"Description":"abc","Names":["C_STORAGE_URL","INTERNAL_ACCESS_KEY","SERVICE_CODE","SERVICE_ACCESS_KEY","APP_ORIGIN","FRONT_DOOR_KEYS","AUDIT_URL","AUDIT_KEY"],"AppOrigin":"https://app.example.test","Url":"u"}'
+check "the function is read by names and two non-secret values, never its variables whole" 0 "$(printf '%s' "$BFF_FN_QUERY" | grep -c 'INTERNAL_ACCESS_KEY\|SERVICE_ACCESS_KEY\|Environment.Variables}' || true)"
+check "  and the query asks for the names, the origin and the storage address" 3 "$(printf '%s' "$BFF_FN_QUERY" | grep -o 'keys(Environment.Variables\|Variables.APP_ORIGIN\|Variables.C_STORAGE_URL' | wc -l | tr -d ' ')"
 check "the function sits in ridge's subnet under the BFF's group alone" yes "$(function_network_verdict "$fn" subnet-test sg-bff)"
 check "  another subnet is refused" no "$(function_network_verdict "$fn" subnet-other sg-bff)"
 check "  a second group is refused" no "$(function_network_verdict "$(jq -c '.VpcConfig.SecurityGroupIds += ["sg-box"]' <<<"$fn")" subnet-test sg-bff)"
 check "  a function out of the VPC is refused" no "$(function_network_verdict "$(jq -c '.VpcConfig = {SubnetIds: [], SecurityGroupIds: []}' <<<"$fn")" subnet-test sg-bff)"
-check "the function holds the five variables" "$BFF_ENV_NAMES" "$(function_env_names "$fn")"
-check "  and the super-admin key among them is seen" "APP_ORIGIN,C_STORAGE_URL,INTERNAL_ACCESS_KEY,SERVICE_ACCESS_KEY,SERVICE_CODE,X_SUPER_ADMIN_KEY" \
-  "$(function_env_names "$(jq -c '.Environment.Variables.X_SUPER_ADMIN_KEY = "z"' <<<"$fn")")"
+check "the function holds the eight variables" "$BFF_ENV_NAMES" "$(function_env_names "$fn")"
+check "  and the super-admin key among them is seen" "APP_ORIGIN,AUDIT_KEY,AUDIT_URL,C_STORAGE_URL,FRONT_DOOR_KEYS,INTERNAL_ACCESS_KEY,SERVICE_ACCESS_KEY,SERVICE_CODE,X_SUPER_ADMIN_KEY" \
+  "$(function_env_names "$(jq -c '.Names += ["X_SUPER_ADMIN_KEY"]' <<<"$fn")")"
 check "  a function with no environment is seen" "" "$(function_env_names '{}')"
 check "the function's APP_ORIGIN is the app's address, with or without a trailing slash on the address" "yes yes" \
   "$(function_origin_verdict "$fn" https://app.example.test) $(function_origin_verdict "$fn" https://app.example.test/)"
 check "  another address, an origin with a path, and no origin at all are refused" "no no no no" \
-  "$(function_origin_verdict "$fn" https://other.example.test) $(function_origin_verdict "$fn" https://app.example.test/x) $(function_origin_verdict "$(jq -c 'del(.Environment.Variables.APP_ORIGIN)' <<<"$fn")" https://app.example.test) $(function_origin_verdict "$fn" '')"
+  "$(function_origin_verdict "$fn" https://other.example.test) $(function_origin_verdict "$fn" https://app.example.test/x) $(function_origin_verdict "$(jq -c 'del(.AppOrigin)' <<<"$fn")" https://app.example.test) $(function_origin_verdict "$fn" '')"
 
 pab='{"PublicAccessBlockConfiguration":{"BlockPublicAcls":true,"IgnorePublicAcls":true,"BlockPublicPolicy":true,"RestrictPublicBuckets":true}}'
 statement='{"Effect":"Allow","Principal":{"Service":"cloudfront.amazonaws.com"},"Action":"s3:GetObject","Resource":"arn:aws:s3:::b/*","Condition":{"StringEquals":{"AWS:SourceArn":"arn:aws:cloudfront::123:distribution/E1ABC"}}}'
@@ -1860,9 +2811,10 @@ signed_out = [False]
 PAGE = b'<!doctype html><html><body><div id="root"></div></body></html>'
 class H(BaseHTTPRequestHandler):
     def log_message(self, *a): pass
-    def reply(self, status, body=b'', ctype='application/json', cached=False):
+    def reply(self, status, body=b'', ctype='application/json', cached=False, extra=None):
         self.send_response(status)
         self.send_header('content-type', ctype)
+        for k, v in (extra or {}).items(): self.send_header(k, v)
         self.send_header('content-length', str(len(body)))
         self.send_header('x-cache', 'Hit from cloudfront' if cached else 'Miss from cloudfront')
         self.end_headers()
@@ -1871,9 +2823,13 @@ class H(BaseHTTPRequestHandler):
         n = int(self.headers.get('content-length') or 0)
         return json.loads(self.rfile.read(n) or b'{}')
     def known(self):
-        return self.headers.get('x-client-code') == CODE
+        code = self.headers.get('x-client-code') or ''
+        # FAKE_EDGE_ANYCODE: the whole check's client, whose code carries the date, is known (the open reads' check-no-such-client is not)
+        return code == CODE or (os.environ.get('FAKE_EDGE_ANYCODE') != None and code.startswith('check-2'))
     def do_GET(self):
         path = self.path.split('?')[0]
+        if path == '/index.html' and os.environ.get('FAKE_EDGE_COMMIT'):
+            return self.reply(200, PAGE, 'text/html', extra={'x-amz-meta-commit': os.environ['FAKE_EDGE_COMMIT']})
         if path == '/login': return self.reply(200, PAGE, 'text/html')
         if path == '/health':
             if MODE == 'health-leak': return self.reply(200, b'{"status":"OK","buildVersion":"abc"}')
@@ -1887,7 +2843,7 @@ class H(BaseHTTPRequestHandler):
             if code is None: return self.reply(400, b'{}')
             if not self.known():
                 return self.reply(200, PAGE, 'text/html') if MODE == 'unknown-is-page' else self.reply(404, b'{}')
-            return self.reply(200, json.dumps({'config': {'name': NAME}, 'version': 'v'}).encode(), cached=(MODE == 'cached'))
+            return self.reply(200, json.dumps({'config': {'name': ('Check ' + code) if os.environ.get('FAKE_EDGE_ANYCODE') else NAME}, 'version': 'v'}).encode(), cached=(MODE == 'cached'))
         if path == '/api/auth/me':
             ok = self.known() and self.headers.get('x-auth-id') == HANDLE and (not signed_out[0] or MODE == 'no-sign-out')
             return self.reply(200, b'{"user":{"name":"root","root":true}}') if ok else self.reply(401, b'{}')
@@ -1899,6 +2855,14 @@ class H(BaseHTTPRequestHandler):
             if self.known() and b.get('name') == 'root' and b.get('password') == PASS:
                 return self.reply(200, json.dumps({'authId': HANDLE, 'expiresAt': 1, 'user': {'name': 'root', 'root': True}}).encode())
             return self.reply(401, b'{}')
+        if path == '/api/customers':
+            b = self.body()
+            # FAKE_EDGE_NOADD_FLAG: while the file exists the add fails (the customer is not made, so no record id)
+            if os.path.exists(os.environ.get('FAKE_EDGE_NOADD_FLAG', '/nonexistent')):
+                return self.reply(500, b'{}')
+            if self.known() and self.headers.get('x-auth-id') == HANDLE and b.get('code') == 'CHK-1':
+                return self.reply(200, json.dumps({'customer': {'id': 'rec-0001', 'code': 'CHK-1', 'name': b.get('name')}, 'version': '1'}).encode())
+            return self.reply(401, b'{}')
         if path == '/api/auth/sign-out':
             signed_out[0] = True
             return self.reply(204)
@@ -1907,6 +2871,9 @@ class H(BaseHTTPRequestHandler):
             rp = 'attacker.example' if MODE == 'rp-from-request' else '127.0.0.1'
             return self.reply(200, json.dumps({'options': {'rpId': rp, 'challenge': 'c'}, 'token': 't'}).encode())
         self.reply(404, b'{}')
+if os.environ.get('FAKE_EDGE_LIFE'):
+    import threading
+    threading.Timer(float(os.environ['FAKE_EDGE_LIFE']), lambda: os._exit(0)).start()
 HTTPServer(('127.0.0.1', int(sys.argv[1])), H).serve_forever()
 PY
 export FAKE_EDGE_PASS=pa55word-test FAKE_EDGE_NAME="Check check-t" FAKE_EDGE_CODE=check-t
@@ -1977,6 +2944,306 @@ check "the UI is built with the commit" "--filter @credo/ui build | 0123456789ab
   "$(grep 'ui build' "$STAMP_LOG")"
 check "the install is not stamped, and runs from the lockfile" "install --frozen-lockfile | unset" "$(grep install "$STAMP_LOG")"
 
+echo "== ops/check.sh only reads on an environment that may hold real data, and with --reads-only on ridge (cases 7 to 9), run whole on stand-ins"
+# On top of the stand-ins above: the aws that answers layer four's reads and the box's group, the ssh that
+# answers the box's facts, the bru and node that log what they were asked, and the stand-in edge, which
+# carries the commit index.html's metadata names. Each run's state folder holds the calls.
+CHK=$E2E/chk
+mkdir -p "$CHK/bin"
+chk_port=$(free_port)
+chk_sha=$e2e_sha
+# the API's own address, which refuses a call without the front door's key (door_reads asks it)
+chk_api_port=$(free_port)
+export FAKE_APP=http://127.0.0.1:$chk_port FAKE_API=http://127.0.0.1:$chk_api_port FAKE_LAYER4=1
+export FAKE_AUDIT_SHA=$chk_sha
+rules "$ssh_rule" "$(tcp "$BOX_PORT" "$none" sg-0bff)" "$(tcp "$AUDIT_PORT" "$none" sg-0bff)" >"$CHK/box-rules.json"
+jq -n --argjson e "$(rules "$(tcp "$BOX_PORT" "$none" sg-0box)" "$(tcp "$AUDIT_PORT" "$none" sg-0box)")" '{SecurityGroups: [{IpPermissionsEgress: $e, IpPermissions: []}]}' >"$CHK/bff-sg.json"
+jq -c --arg sha "$chk_sha" --arg app "$FAKE_APP" --arg url "http://10.20.30.40:$BOX_PORT" \
+  '.VpcConfig = {SubnetIds: ["subnet-test"], SecurityGroupIds: ["sg-0bff"]} | .Description = $sha | .AppOrigin = $app | .Url = $url' <<<"$fn" >"$CHK/fn.json"
+echo "$pab" >"$CHK/pab.json"
+# the copy: a status and a bucket listing that are sound by the stand-ins' clock (a run that wants them red rewrites them)
+chk_stamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+printf '{"freeBytes": 5000000000, "lastWriteAt": "%s"}' "$chk_stamp" >"$CHK/status.json"
+cp_listing "${chk_stamp%Z}+00:00" "${chk_stamp%Z}+00:00" >"$CHK/listing.json"
+policy_of "[$statement]" >"$CHK/policy.json"
+# aws: layer four's reads and the box's group on files; the stack gains the two outputs the base lacks; the rest is the base stand-in's
+cat >"$CHK/bin/aws" <<'STANDIN'
+#!/bin/bash
+C=${CHK_DIR:?}
+case "$*" in
+  *"cloudformation describe-stacks"*) "$CHK_BASE/aws" "$@" | jq -c '.Stacks[0].Outputs += [{OutputKey: "BoxGroupId", OutputValue: "sg-0box"}, {OutputKey: "VpcId", OutputValue: "vpc-test"}, {OutputKey: "CopyBucketName", OutputValue: "credo-test-copy"}, {OutputKey: "RecordsVolumeId", OutputValue: "vol-0rec"}]' ;;
+  *"ec2 describe-instances"*) echo "aws $*" >>"$FAKE_STATE/aws.calls"; echo None ;;
+  *"describe-internet-gateways"*) echo "aws $*" >>"$FAKE_STATE/aws.calls"; echo 0 ;;
+  *"describe-instance-connect-endpoints"*) echo "aws $*" >>"$FAKE_STATE/aws.calls"; echo '["sg-ep"]' ;;
+  *"describe-security-groups --group-ids sg-0bff"*) echo "aws $*" >>"$FAKE_STATE/aws.calls"; cat "$C/bff-sg.json" ;;
+  *"describe-security-groups"*) echo "aws $*" >>"$FAKE_STATE/aws.calls"; cat "$C/box-rules.json" ;;
+  *"lambda get-function-configuration"*"--query {VpcConfig: VpcConfig,"*) echo "aws $*" >>"$FAKE_STATE/aws.calls"; cat "$C/fn.json" ;;
+  # the whole configuration holds the BFF's two keys: a read without the check's --query is refused here
+  *"lambda get-function-configuration"*"--output json"*) echo "stand-in aws: the function's whole configuration is never read: $*" >&2; exit 1 ;;
+  *"s3api get-public-access-block"*) echo "aws $*" >>"$FAKE_STATE/aws.calls"; cat "$C/pab.json" ;;
+  *"s3api get-bucket-policy"*) echo "aws $*" >>"$FAKE_STATE/aws.calls"; cat "$C/policy.json" ;;
+  *"s3api list-objects-v2"*) echo "aws $*" >>"$FAKE_STATE/aws.calls"; cat "$C/listing.json" ;;
+  *) exec "$CHK_BASE/aws" "$@" ;;
+esac
+STANDIN
+# ssh: the box's facts (the heredoc script the check sends), the rest is the base stand-in's
+cat >"$CHK/bin/ssh" <<'STANDIN'
+#!/bin/bash
+case "$*" in
+  *"sudo bash -s -- status "*)
+    echo "$*" >>"${FAKE_STATE:?}/ssh.calls"
+    cat >/dev/null
+    cat "${CHK_DIR:?}/status.json" ;;
+  *"sudo bash -s -- blank /var/lib/private/c-storage "*)
+    echo "$*" >>"${FAKE_STATE:?}/ssh.calls"
+    echo "$*" >>"$FAKE_STATE/blank.calls"
+    cat >/dev/null
+    printf 'records disk: formatted\nrestored=/var/lib/private/c-storage/c-storage.db\n' ;;
+  *"sudo bash -s -- /var/lib/private/c-storage "*)
+    echo "$*" >>"${FAKE_STATE:?}/ssh.calls"
+    echo "$*" >>"$FAKE_STATE/restore.calls"
+    cat >/dev/null
+    all="$*"
+    words=${all##*-- }
+    set -- $words
+    if [ "$3" = 1 ]; then printf 'answering=yes\naside=%s\n' "$4"; else printf 'restored=/var/lib/private/c-storage/restored-%s.db\n' "$4"; fi ;;
+  *"sudo bash -s -- audit "*)
+    echo "$*" >>"${FAKE_STATE:?}/ssh.calls"
+    cat >/dev/null
+    all="$*"
+    words=${all##*-- }
+    set -- $words
+    # the log's own facts (the check passes: audit, the box's address, the writing port, the reading port); FAKE_AUDIT_BREAK
+    # names the one fact to break, FAKE_OOM is the box's kernel log count read by the c-storage call
+    facts=$(printf 'unit=active\nlisten_w=%s:%s \nlisten_r=127.0.0.1:%s \nkeys=600 root\ndir=700\nfiles=600 \nhealth={"buildVersion":"%s"}\nmem_c-storage=%s\nmem_audit-backbone=%s\n' "$2" "$3" "$4" "${FAKE_AUDIT_SHA:-}" "${FAKE_MEM_C:-41943040}" "${FAKE_MEM_A:-20971520}")
+    if [ -n "${FAKE_AUDIT_BREAK:-}" ]; then facts=$(sed "s/^${FAKE_AUDIT_BREAK}=.*/${FAKE_AUDIT_BREAK}=broken/" <<<"$facts"); fi
+    printf '%s\n' "$facts" ;;
+  *"sudo bash -s -- entry "*)
+    echo "$*" >>"${FAKE_STATE:?}/ssh.calls"
+    echo "$*" >>"$FAKE_STATE/entry.calls"
+    cat >/dev/null
+    # as the box does: no token minted, nothing more is read, so it prints minted=no alone
+    if [ "${FAKE_ENTRY_MINTED:-yes}" = no ]; then echo 'minted=no'; else printf 'minted=yes\ncreated=%s\nleak=%s\n' "${FAKE_ENTRY_CREATED:-1}" "${FAKE_ENTRY_LEAK:-0}"; fi ;;
+  *"sudo bash -s -- "*)
+    echo "$*" >>"${FAKE_STATE:?}/ssh.calls"
+    cat >/dev/null
+    all="$*"
+    port=${all##* } # the check passes c-storage's port last
+    printf 'unit=active\nlisten=10.20.30.40:%s \nkeys=600 root\noom=%s\ndbdir=700\ndbfiles=600 \narch=aarch64\nmemory=2048 MiB available of 4096 MiB\nswap=0 of 0 MiB used\ndisk=8192 MiB free of 16384 MiB\n' "$port" "${FAKE_OOM:-0}" ;;
+  *) exec "$CHK_BASE/ssh" "$@" ;;
+esac
+STANDIN
+# bru logs its calls; node logs the product's own commands (the client's make, sweep and delete) and answers them
+cat >"$CHK/bin/bru" <<'STANDIN'
+#!/bin/sh
+echo "bru $*" >>"${FAKE_STATE:?}/bru.calls"
+if [ "${1:-}" = --version ]; then echo 4.2.0; fi
+STANDIN
+cat >"$CHK/bin/node" <<'STANDIN'
+#!/bin/sh
+if [ "${1:-}" = --import ] && [ "${3:-}" = src/ridge-main.ts ]; then
+  echo "$4" >>"${FAKE_STATE:?}/ridge.calls"
+  case $4 in
+    tenant) echo pa55word-test ;;
+    untenant) echo "client $5 removed" ;;
+    clear-checks) echo "swept 0 stranded clients" ;;
+    tenant-id) echo 0b9c1f5e-4c1d-4a53-9d0e-6f2a3b1c7d11 ;;
+  esac
+  exit 0
+fi
+exec "$CHK_BASE/node" "$@"
+STANDIN
+chmod +x "$CHK/bin/aws" "$CHK/bin/ssh" "$CHK/bin/bru" "$CHK/bin/node"
+FAKE_EDGE_NOADD_FLAG=$WORK/noadd.flag FAKE_EDGE_ANYCODE=1 FAKE_EDGE_COMMIT=$chk_sha FAKE_EDGE_LIFE=170 python3 -I "$WORK/edge.py" "$chk_port" >/dev/null 2>&1 &
+chk_edge=$!
+cat >"$WORK/api.py" <<'PY'
+import sys
+from http.server import BaseHTTPRequestHandler, HTTPServer
+STATUS = int(sys.argv[2])
+class H(BaseHTTPRequestHandler):
+    def log_message(self, *a): pass
+    def do_GET(self):
+        self.send_response(STATUS)
+        self.send_header('content-length', '0')
+        self.end_headers()
+HTTPServer(('127.0.0.1', int(sys.argv[1])), H).serve_forever()
+PY
+python3 -I "$WORK/api.py" "$chk_api_port" 403 >/dev/null 2>&1 &
+chk_api=$!
+for _ in $(seq 1 50); do if port_taken "$chk_api_port"; then break; fi; sleep 0.1; done
+for _ in $(seq 1 50); do if port_taken "$chk_port"; then break; fi; sleep 0.1; done
+chk_run() { # <name> <script args...>: one run on the check's stand-ins, with the state folder named chk-<name>
+  local name=$1
+  shift
+  e2e_fresh "chk-$name"
+  CHK_DIR=$CHK CHK_BASE=$E2E/fakebin PATH="$CHK/bin:$PATH" e2e_run "$@"
+}
+chk_has() { grep -c -- "$1" "$2" 2>/dev/null || true; }
+six_reads() { # the log of a run → how many of the six reads that need no client are green in it
+  grep -cE "^ok   (/health is the app's page|a code we do not know is the BFF's 404|a missing code is a 400|the operator's door without a session|the sign-in options' relying party|/api/health is the BFF's 404)" "$1" || true
+}
+bruno_files() { find "$E2E/repo/services/c-storage/bruno/environments" -name '*.yml' | wc -l | tr -d ' '; }
+NOCLIENT="the root signs in through the edge"
+
+chk_run real check.sh taiga
+check "case 7: the check on an environment not listed ends green, saying it is safe there" "0 1 1" \
+  "$RC $(chk_has '^== green' "$S/out") $(chk_has '^ok   taiga may hold real data; this script is safe there: it only reads' "$S/out")"
+check "  no key is read off the box (the ssh calls hold neither keys file)" "0 0" \
+  "$(chk_has 'c-storage/keys.env' "$S/ssh.calls") $(chk_has 'c-storage/bff.env' "$S/ssh.calls")"
+check "  no collection runs and Bruno is not asked for its version" "gone" "$(file_state "$S/bru.calls")"
+check "  no Bruno file is written, and the run says the collection is skipped" "0 1" "$(bruno_files) $(chk_has '^skipped: reads only, so no key is read off the box' "$S/out")"
+check "  and the log holds neither key" 0 "$(keys_seen)"
+check "case 8: the check on an environment not listed makes no client and sweeps none" "gone 0" "$(file_state "$S/ridge.calls") $(chk_has "$NOCLIENT" "$S/out")"
+check "  and still runs the six reads that need no client, each green" 6 "$(six_reads "$S/out")"
+check "  and layer four's reads and the commit agreement are made" "1 1" \
+  "$(chk_has '^ok   /health, the function.s description and index.html.s metadata name one commit: yes' "$S/out") $(chk_has '^ok   the UI.s bucket blocks all public access' "$S/out")"
+
+chk_run flag check.sh ridge --reads-only
+check "case 9: --reads-only on ridge gives the same run: green, no key, no collection, no client" "0 1 0 gone gone 6" \
+  "$RC $(chk_has '^== green' "$S/out") $(chk_has 'c-storage/keys.env' "$S/ssh.calls") $(file_state "$S/bru.calls") $(file_state "$S/ridge.calls") $(six_reads "$S/out")"
+check "  and prints no 'safe there' line, which ridge never had" 0 "$(chk_has 'may hold real data' "$S/out")"
+
+chk_run full check.sh ridge
+check "  without the flag ridge's check is today's: the keys are read, the collection runs, a client is made, swept and deleted" "1 1 1 clear-checks,tenant,tenant-id,untenant" \
+  "$(chk_has 'c-storage/keys.env' "$S/ssh.calls") $(chk_has '^bru run' "$S/bru.calls") $(chk_has '^ok   bru run exits: 0' "$S/out") $(paste -sd, "$S/ridge.calls")"
+check "  and prints nothing about real data" 0 "$(chk_has 'may hold real data' "$S/out")"
+# the activity log in the whole check (cases 11, 13 and 16 of docs/plans/2026-11-12-activity-log.md)
+check "case 13: the check adds a customer through the edge, makes the client's id known to the box and reads the record's entry there, green" "1 1 1 0" \
+  "$(chk_has '^ok   .*adds one customer through the edge' "$S/out") $(chk_has '^ok   the customer the root added is in the activity log on the box, read by its record, with no key in it' "$S/out") $(chk_has '-- entry 10.20.30.40 3184 3185 0b9c1f5e-4c1d-4a53-9d0e-6f2a3b1c7d11 rec-0001$' "$S/ssh.calls") $(chk_has '^RED' "$S/out")"
+check "  and the key goes to curl on a pipe as a config, never on a command line or back off the box" "1 0 0" \
+  "$(grep -c "printf 'header = \"x-internal-access-key: %s" "$OPS_DIR/check.sh" || true) $(grep -cE 'curl .*(-H|--header) .?.?x-internal-access-key' "$OPS_DIR/check.sh" || true) $(grep -cE 'echo "[^"]*[$][{]?key' "$OPS_DIR/check.sh" || true)"
+check "case 11: the log's unit, listeners, key file, folder, files and /health read sound on the box, green" "1 0" \
+  "$(chk_has '^ok   the activity log is sound on the box' "$S/out") $(chk_has '^RED  the activity log' "$S/out")"
+check "case 16: the check prints each program's memory beside the box's free memory" 1 \
+  "$(chk_has '^programs: c-storage 40 MiB; audit-backbone 20 MiB; box free 2048 MiB available of 4096 MiB$' "$S/out")"
+for broken in minted created leak; do
+  case $broken in
+    minted) export FAKE_ENTRY_MINTED=no  wantmsg='could not mint a read token' ;;
+    created) export FAKE_ENTRY_CREATED=0 wantmsg="holds '0' customer.create entries" ;;
+    leak) export FAKE_ENTRY_LEAK=1  wantmsg='holds the write key' ;;
+  esac
+  chk_run "entry-$broken" check.sh ridge
+  unset FAKE_ENTRY_MINTED FAKE_ENTRY_CREATED FAKE_ENTRY_LEAK
+  check "case 13: with $broken broken the check is red, naming it, and the log ends on == red" "1 1 1" \
+    "$([ "$RC" != 0 ] && echo 1 || echo 0) $(chk_has "^RED  .*$wantmsg" "$S/out") $(chk_has '^== red' "$S/out")"
+  if [ "$broken" = minted ]; then
+    check "  and with no token minted it claims no count of entries and no leaked key, nothing having been read (the review's Low 2)" 0 \
+      "$(chk_has '^RED  .*\(customer.create entries\|holds the write key\)' "$S/out")"
+  fi
+done
+# the review's Low 3: the customer's add fails, so there is no record id and the box is never asked to read an entry
+touch "$WORK/noadd.flag"
+chk_run noadd check.sh ridge
+rm -f "$WORK/noadd.flag"
+check "  with the customer's add failing the check reds on the empty record, never asks the box to read it, and ends on == red" "1 1 1 gone 1" \
+  "$([ "$RC" != 0 ] && echo 1 || echo 0) $(chk_has "^RED  the customer the root added has no record id" "$S/out") $(chk_has '^== red' "$S/out") $(file_state "$S/entry.calls") $(chk_has '^RED  .*adds one customer through the edge' "$S/out")"
+FAKE_OOM=2 chk_run oom check.sh ridge --reads-only
+check "case 16: an out-of-memory kill since boot keeps the check red, with the memory line still printed" "1 1 1" \
+  "$([ "$RC" != 0 ] && echo 1 || echo 0) $(chk_has "^RED  OOM kills since boot: wanted '0', got '2'" "$S/out") $(chk_has '^programs: ' "$S/out")"
+for broken in unit listen_w listen_r keys dir files health; do
+  FAKE_AUDIT_BREAK=$broken chk_run "log-$broken" check.sh ridge --reads-only
+  case $broken in
+    unit) wantmsg="unit is 'broken', not active" ;;
+    listen_w) wantmsg="writing listener is not the box's private address alone" ;;
+    listen_r) wantmsg="reading listener is not loopback alone" ;;
+    keys) wantmsg="key file is 'broken', not '600 root'" ;;
+    dir) wantmsg="data folder is mode 'broken', not 700" ;;
+    files) wantmsg="database files are mode 'broken'" ;;
+    health) wantmsg="/health names 'nothing'" ;;
+  esac
+  check "case 11: with the log's $broken broken the check is red, naming it" "1 1 1" \
+    "$([ "$RC" != 0 ] && echo 1 || echo 0) $(chk_has "^RED  the activity log's $wantmsg" "$S/out") $(chk_has '^== red' "$S/out")"
+done
+sound_facts=$(printf 'unit=active\nlisten_w=10.20.30.40:%s \nlisten_r=127.0.0.1:%s \nkeys=600 root\ndir=700\nfiles=600 \nhealth={"buildVersion":"abc"}\nmem_c-storage=41943040\nmem_audit-backbone=[not set]\n' "$AUDIT_PORT" "$AUDIT_OPEN_PORT")
+check "case 11: sound facts on written input give no problem, and /health naming another commit gives one" "[] 1" \
+  "[$(audit_problems "$sound_facts" 10.20.30.40 "$AUDIT_PORT" "$AUDIT_OPEN_PORT" abc)] $(audit_problems "$sound_facts" 10.20.30.40 "$AUDIT_PORT" "$AUDIT_OPEN_PORT" def | grep -c 'names .abc., not def' || true)"
+check "case 16: a figure the box did not give is said as not read, never as zero" "c-storage 40 MiB; audit-backbone not read" "$(audit_memory_line "$sound_facts")"
+REAL=1 chk_run strayreal check.sh ridge
+check "  a stray REAL=1 in the environment cannot narrow ridge's check: the keys are read, a client is made and deleted" "1 1 clear-checks,tenant,tenant-id,untenant" \
+  "$(chk_has 'c-storage/keys.env' "$S/ssh.calls") $(chk_has '^bru run' "$S/bru.calls") $(paste -sd, "$S/ridge.calls")"
+rc=0
+out=$(bash "$OPS_DIR/check.sh" ridge --nope 2>&1) || rc=$?
+check "  a flag it does not know is its usage, exit 2" "2 usage: ops/check.sh <env> [--reads-only]" "$rc $out"
+# the copy (row 15) in the whole check: read on the box without a key off it, and each fault a red
+check "  the check reads the copy: the status on the box and the bucket's listing, green on a sound copy" "1 1 1" \
+  "$(chk_has '^ok   the copy holds the last write within 300s' "$S/out") $(chk_has 'list-objects-v2 --bucket credo-test-copy --prefix Box/records/ --query' "$S/aws.calls") $(chk_has 'bash -s -- status ' "$S/ssh.calls")"
+# after a restart c-storage knows no write time: the check must not call the copy current, and says the lag was not read
+printf '{"freeBytes": 5000000000, "lastWriteAt": null}' >"$CHK/status.json"
+chk_run copynull check.sh ridge --reads-only
+check "row 15: with no write time known (after any restart) the check does not say the copy holds the last write, and says the lag was not read" "0 1 0 1" \
+  "$RC $(chk_has '^ok   .*the lag was NOT read' "$S/out") $(chk_has 'copy holds the last write within' "$S/out") $(chk_has '^== green' "$S/out")"
+check "  copy_lag_read says no on a null write time and yes on one" "no yes" \
+  "$(copy_lag_read '{"freeBytes": 1, "lastWriteAt": null}') $(copy_lag_read '{"freeBytes": 1, "lastWriteAt": "2026-11-12T10:00:00Z"}')"
+printf '{"freeBytes": 1000, "lastWriteAt": "%s"}' "$chk_stamp" >"$CHK/status.json"
+cp_listing 2026-01-01T00:00:00+00:00 2026-01-01T00:00:00+00:00 >"$CHK/listing.json"
+chk_run copyred check.sh ridge --reads-only
+check "row 15: the whole check is red on a disk below its floor, a lagging copy and an old full copy, naming each" "1 1 1 1 1" \
+  "$([ "$RC" != 0 ] && echo 1 || echo 0) $(chk_has '^RED  the records disk has 0 MiB free' "$S/out") $(chk_has '^RED  the newest copy lags the last write' "$S/out") $(chk_has '^RED  the newest full copy is' "$S/out") $(chk_has '^== red' "$S/out")"
+printf '{"freeBytes": 5000000000, "lastWriteAt": "%s"}' "$chk_stamp" >"$CHK/status.json"
+cp_listing "${chk_stamp%Z}+00:00" "${chk_stamp%Z}+00:00" >"$CHK/listing.json"
+
+# the restore, whole: a new file by default, the live path only when named, never on an environment that may hold real data
+restore_calls() { sed -n 's/.*bash -s -- \/var\/lib\/private\/c-storage //p' "$S/restore.calls" 2>/dev/null | head -n 1; }
+chk_run rdef restore.sh ridge
+check "row 16: the restore on ridge writes a new file and passes the box 'no moment, not onto the live file'" "0 1 1" \
+  "$RC $(chk_has '^restored=/var/lib/private/c-storage/restored-' "$S/out") $(restore_calls | grep -c '^- 0 [0-9]\{8\}T[0-9]\{6\}Z ' || true)"
+check "  and says the live file is untouched" 1 "$(chk_has '^the live file is untouched' "$S/out")"
+chk_run rat restore.sh ridge --at 2026-11-12T10:00:00Z
+check "  a moment is passed on whole" "0 1" "$RC $(restore_calls | grep -c '^2026-11-12T10:00:00Z 0 ' || true)"
+chk_run rlive restore.sh ridge --onto-live
+check "  --onto-live on ridge is passed to the box, and /health is read after the swap" "0 1 1" \
+  "$RC $(restore_calls | grep -c '^- 1 ' || true) $(chk_has '^ok   c-storage answers /health after the swap' "$S/out")"
+chk_run rtaiga restore.sh taiga
+check "  on an environment that may hold real data the default runs, saying why" "0 1 1" \
+  "$RC $(chk_has '^ok   taiga may hold real data; this script is safe there: by default it writes a new file' "$S/out") $(restore_calls | grep -c '^- 0 ' || true)"
+chk_run rtaigalive restore.sh taiga --onto-live
+check "  --onto-live there is refused, before any aws or box call" "1 1 gone gone" \
+  "$RC $(grep -c '^error: --onto-live is refused on taiga' "$S/out" || true) $(file_state "$S/aws.calls") $(file_state "$S/ssh.calls")"
+# the blank-disk restore (the one scripted path): the box gets the mount, the moment and the disk's id, c-storage is not started
+chk_run rblank restore.sh ridge --onto-blank
+check "the blank-disk restore on ridge calls the box once with the records disk's id and no moment, and says c-storage is not started" "0 1 1 1" \
+  "$RC $(sed -n 's/.*bash -s -- blank \/var\/lib\/private\/c-storage //p' "$S/blank.calls" 2>/dev/null | grep -c '^- vol-0rec$' || true) $(chk_has '^ok   the restored file stands on the records disk: yes' "$S/out") $(chk_has '^c-storage is not started: release again' "$S/out")"
+chk_run rblankat restore.sh taiga --onto-blank --at 2026-11-12T10:00:00Z
+check "  it runs on an environment that may hold real data (nothing live exists on a blank disk), with the moment passed on whole" "0 1" \
+  "$RC $(sed -n 's/.*bash -s -- blank \/var\/lib\/private\/c-storage //p' "$S/blank.calls" 2>/dev/null | grep -c '^2026-11-12T10:00:00Z vol-0rec$' || true)"
+rc=0
+out=$(bash "$OPS_DIR/restore.sh" ridge --onto-blank --onto-live 2>&1) || rc=$?
+check "  and --onto-blank with --onto-live together is its usage, exit 2, before any call" "2 usage: ops/restore.sh <env> [--at <time>] [--onto-live | --onto-blank]" "$rc $out"
+rc=0
+out=$(bash "$OPS_DIR/restore.sh" ridge --at nonsense 2>&1) || rc=$?
+check "  a time that is not an RFC 3339 time is the usage, exit 2" "2 usage: ops/restore.sh <env> [--at <time>] [--onto-live | --onto-blank]" "$rc $out"
+# ---- the front door, as the check reads it (docs/plans/2026-11-11-front-door-keys.md, step 3, case 12)
+echo "== ops/check.sh reads the front door: the API's own address refuses, the app answers a wrong key of the caller's own"
+chk_run door check.sh ridge --reads-only
+check "case 12: the check reads the API's own address refusing a call, and the app answering one sent with a wrong key" "0 1 1" \
+  "$RC $(chk_has "^ok   the API's own address refuses a call that did not come through the front door: 403" "$S/out") $(chk_has "^ok   the app's address answers a call sent with a wrong door key of its own: 404" "$S/out")"
+check "  and the function's variables now name FRONT_DOOR_KEYS among the eight" 1 \
+  "$(chk_has "^ok   the function's variables (names only; never the super-admin key): APP_ORIGIN,AUDIT_KEY,AUDIT_URL,C_STORAGE_URL,FRONT_DOOR_KEYS," "$S/out")"
+door_case() { # <the API's status> <the edge's mode> → the reds door_reads finds, with those two stand-ins
+  local aport eport out apid epid
+  aport=$(free_port)
+  eport=$(free_port)
+  python3 -I "$WORK/api.py" "$aport" "$1" >/dev/null 2>&1 &
+  apid=$!
+  FAKE_EDGE_MODE=$2 python3 -I "$WORK/edge.py" "$eport" >/dev/null 2>&1 &
+  epid=$!
+  for _ in $(seq 1 50); do if port_taken "$aport" && port_taken "$eport"; then break; fi; sleep 0.1; done
+  out=$( (REDS=''; door_reads "http://127.0.0.1:$eport" "http://127.0.0.1:$aport" >/dev/null; printf '%s' "$REDS") 2>&1 )
+  kill "$apid" "$epid" 2>/dev/null || true
+  echo "$out"
+}
+check "the door reads are green when the API refuses and the app answers the BFF's 404" "" "$(door_case 403 '')"
+refuses_door() { # <name> <the API's status> <the edge's mode> <text the red names>
+  local got
+  got=$(door_case "$2" "$3")
+  if grep -qF -- "$4" <<<"$got"; then echo "  ok   $1"; else echo "  FAIL $1: wanted a red naming '$4', got '$got'"; fail=1; fi
+}
+refuses_door "  an API that answers a call without the key is red" 200 '' "the API's own address refuses a call that did not come through the front door"
+refuses_door "  an app that does not answer a call with a wrong key as the BFF does is red" 403 unknown-is-page "the app's address answers a call sent with a wrong door key"
+kill "$chk_api" 2>/dev/null || true
+kill "$chk_edge" 2>/dev/null || true
+unset FAKE_LAYER4 FAKE_APP FAKE_API
+
 echo "== ops/app.sh run whole, on stand-ins for aws and ssh (rows 27, 28, 30, 31)"
 FAKE_APP_PORT=$(free_port)
 export FAKE_APP=http://localhost:$FAKE_APP_PORT FAKE_API=http://api-test-host.invalid:9
@@ -2005,16 +3272,25 @@ e2e_fresh app-job
 GITHUB_ACTIONS=true e2e_run app.sh ridge
 check "app.sh ships the BFF and the UI: exit 0, and the commit shipped" "0 1" "$RC $(grep -c "^shipped $app_sha\$" "$S/out" || true)"
 check "  the service is made sure of through the tunnel with the product's own function" 1 "$(grep -c '^service registered$' "$S/out" || true)"
-check "  the settings go first, then the code, then the UI's files with index.html last" yes \
-  "$([ "$(line_of 'lambda update-function-configuration')" -lt "$(line_of 'lambda update-function-code')" ] &&
-    [ "$(line_of 'lambda update-function-code')" -lt "$(line_of 's3 cp .*--exclude index.html')" ] &&
+check "  the environment goes first, then the code, then the description, then the UI's files with index.html last" yes \
+  "$([ "$(line_of 'lambda update-function-configuration .*--environment')" -lt "$(line_of 'lambda update-function-code')" ] &&
+    [ "$(line_of 'lambda update-function-code')" -lt "$(line_of 'lambda update-function-configuration .*--description')" ] &&
+    [ "$(line_of 'lambda update-function-configuration .*--description')" -lt "$(line_of 's3 cp .*--exclude index.html')" ] &&
     [ "$(line_of 's3 cp .*--exclude index.html')" -lt "$(line_of 's3 cp .*index.html --cache-control no-cache')" ] && echo yes || echo no)"
 check "  the zip holds the bundle as index.js, and its checksum was compared" "$(cksum <"$E2E/index.js")" "$(unzip -p "$S/code.zip" index.js | cksum)"
 check "  the settings carry the commit as the description, and ridge's subnet and the BFF's group" "$app_sha subnet-test sg-0bff" \
   "$(cat "$S/description") $(sed -n 's/^SubnetIds=\([^,]*\),SecurityGroupIds=\(.*\)$/\1 \2/p' "$S/vpc")"
+check "  case 1: the first settings call carries the environment and the VPC settings, no description, and goes before the code" "1 1 0 yes" \
+  "$(grep -m1 'lambda update-function-configuration' "$S/aws.calls" | grep -c -- '--environment file://' || true) $(grep -m1 'lambda update-function-configuration' "$S/aws.calls" | grep -c -- '--vpc-config SubnetIds=subnet-test,SecurityGroupIds=sg-0bff' || true) $(grep -m1 'lambda update-function-configuration' "$S/aws.calls" | grep -c -- '--description' || true) \
+$([ "$(line_of 'lambda update-function-configuration')" -lt "$(line_of 'lambda update-function-code')" ] && echo yes || echo no)"
+check "  case 2: the description, the commit, goes in one later call, after the code's checksum was read and before the UI's files, with ridge's subnet and the BFF's group" "1 yes subnet-test sg-0bff" \
+  "$(grep -c "lambda update-function-configuration.*--description $app_sha .*--vpc-config SubnetIds=subnet-test,SecurityGroupIds=sg-0bff" "$S/aws.calls" || true) \
+$([ "$(line_of 'get-function-configuration .*CodeSha256')" -lt "$(line_of 'lambda update-function-configuration .*--description')" ] &&
+    [ "$(line_of 'lambda update-function-configuration .*--description')" -lt "$(line_of 's3 cp')" ] && echo yes || echo no) \
+$(sed -n 's/^SubnetIds=\([^,]*\),SecurityGroupIds=\(.*\)$/\1 \2/p' "$S/vpc")"
 check "  the environment file was 0600 when aws read it, and is gone" "600 gone" "$(cat "$S/envfile.mode") $(file_state "$(cat "$S/envfile.path")")"
 check "  and it was gone by the next aws call, not left until the run's end" gone "$(file_state "$S/envfile.kept")"
-check "  it names the five variables, and the super-admin key is not among them" "APP_ORIGIN,C_STORAGE_URL,INTERNAL_ACCESS_KEY,SERVICE_ACCESS_KEY,SERVICE_CODE 0" \
+check "  it names the eight variables, and the super-admin key is not among them" "APP_ORIGIN,AUDIT_KEY,AUDIT_URL,C_STORAGE_URL,FRONT_DOOR_KEYS,INTERNAL_ACCESS_KEY,SERVICE_ACCESS_KEY,SERVICE_CODE 0" \
   "$(jq -r '.Variables | keys | join(",")' "$S/envfile.seen") $(grep -c "$FAKE_AKEY" "$S/envfile.seen" || true)"
 check "  and holds the app's address as the origin its passkeys are bound to" "$FAKE_APP" "$(jq -r .Variables.APP_ORIGIN "$S/envfile.seen")"
 check "  and holds the box's private address for c-storage" "http://10.20.30.40:$BOX_PORT" "$(jq -r .Variables.C_STORAGE_URL "$S/envfile.seen")"
@@ -2029,11 +3305,36 @@ check "  the box's private address is masked, and prints nowhere" "1 0" \
 check "  and check.sh never lets expect print it as the wanted value" 0 \
   "$(grep -cE 'expect +"[^"]*" +"(http://)?[$]BOX_LISTEN_ADDR' "$OPS_DIR/check.sh" || true)"
 check "  and the log says no key is in it" 1 "$(grep -c '^ok   no key in this log' "$OPS_LOG_DIR"/*.log || true)"
+# the activity log's address and key (case 10 of docs/plans/2026-11-12-activity-log.md): from the box's own file, masked first, never in a log
+check "  the function's settings carry the log's address, the box's private address on the log's port, and the key the box holds" "http://10.20.30.40:$AUDIT_PORT $FAKE_UKEY" \
+  "$(jq -r .Variables.AUDIT_URL "$S/envfile.seen") $(jq -r .Variables.AUDIT_KEY "$S/envfile.seen")"
+check "  the log's key is masked first, and is in no log and nowhere on the terminal but the mask line" "1 0 0" \
+  "$(grep -cE "^::add-mask::$FAKE_UKEY\$" "$S/out" || true) $(cat "$OPS_LOG_DIR"/*.log | grep -cF "$FAKE_UKEY" || true) $(grep -v '^::add-mask::' "$S/out" | grep -cF "$FAKE_UKEY" || true)"
 
 # a second run: the service is present; the first run's bff.env is left as it is
 GITHUB_ACTIONS='' e2e_run app.sh ridge
 check "a second app.sh finds the service present, and the box's file left as it is" "0 1 1" \
   "$RC $(grep -c '^service present$' "$S/out" || true) $(grep -c '^shipped ' "$S/out" || true)"
+
+# ---- the deploy copies the door's key (docs/plans/2026-11-11-front-door-keys.md, step 3, case 11)
+echo "== ops/app.sh sets the function's FRONT_DOOR_KEYS from the distribution's header"
+e2e_fresh app-door
+GITHUB_ACTIONS=true e2e_run app.sh ridge
+check "case 11: app.sh sets the function's key from the distribution's, read once before the function is changed" "0 1 yes" \
+  "$RC $(grep -c 'cloudfront get-distribution-config --id E1TESTDIST' "$S/aws.calls" || true) \
+$([ "$(line_of 'cloudfront get-distribution-config')" -lt "$(line_of 'lambda update-function-configuration')" ] && echo yes || echo no)"
+check "  the function's environment holds that key as FRONT_DOOR_KEYS, and the key is in no other variable" "$FAKE_DKEY 1" \
+  "$(jq -r .Variables.FRONT_DOOR_KEYS "$S/envfile.seen") $(grep -c "$FAKE_DKEY" "$S/envfile.seen" || true)"
+check "  the key is masked first, and is in no log, no aws or ssh call, and not on the terminal but in GitHub's mask line" "1 0 0 0 0" \
+  "$(grep -cF "::add-mask::$FAKE_DKEY" "$S/out" || true) $(cat "$OPS_LOG_DIR"/*.log | grep -cF "$FAKE_DKEY" || true) $(grep -cF "$FAKE_DKEY" "$S/aws.calls" || true) $(grep -cF "$FAKE_DKEY" "$S/ssh.calls" || true) $(grep -vE '^::add-mask::' "$S/out" | grep -cF "$FAKE_DKEY" || true)"
+e2e_fresh app-door-none
+FAKE_DOOR_NONE=1 e2e_run app.sh ridge
+check "  a distribution whose API origin carries no key stops the deploy by name, before the function is changed" "1 1 0 0" \
+  "$RC $(grep -c "carries no x-front-door-key of 64 hex characters" "$S/out" || true) $(grep -c 'lambda update-function' "$S/aws.calls" || true) $(grep -c 's3 cp' "$S/aws.calls" || true)"
+e2e_fresh app-door-noid
+FAKE_DISTID_NONE=1 e2e_run app.sh ridge
+check "  a stack that names no distribution stops the deploy by name, and the aws call for it is never made" "1 1 0" \
+  "$RC $(grep -c "names no distribution" "$S/out" || true) $(grep -c 'cloudfront get-distribution-config' "$S/aws.calls" || true)"
 
 # the function runs other code than was sent
 e2e_fresh app-sha
@@ -2041,6 +3342,14 @@ FAKE_BAD_SHA=1 e2e_run app.sh ridge
 check "a function whose CodeSha256 is not the upload's stops the deploy before the UI's files" "1 1" \
   "$RC $(grep -c 'the function runs code of checksum' "$S/out" || true)"
 check "  and no UI file is sent" 0 "$(grep -c 's3 cp' "$S/aws.calls" || true)"
+check "  case 4: and the description is left as it was: no call names one" "gone 0" \
+  "$(file_state "$S/description") $(grep -c 'lambda update-function-configuration.*--description' "$S/aws.calls" || true)"
+
+# the code write fails: the description is never written (the production plan's case 3)
+e2e_fresh app-codefail
+FAKE_CODE_FAIL=1 e2e_run app.sh ridge
+check "case 3: a code write that fails stops the run there, leaves the description as it was and sends no UI file" "failed 1 gone 0 0" \
+  "$([ "$RC" != 0 ] && echo failed || echo "exit $RC") $(grep -c 'stand-in aws: update-function-code failed' "$S/out" || true) $(file_state "$S/description") $(grep -c 'lambda update-function-configuration.*--description' "$S/aws.calls" || true) $(grep -c 's3 cp' "$S/aws.calls" || true)"
 
 # a bundle or a UI built without the commit is refused before anything is sent (row 39)
 e2e_fresh app-unstamped-bundle
@@ -2062,6 +3371,12 @@ desc_newer=$(git_e2e commit-tree "HEAD^{tree}" -p HEAD -m newer)
 FAKE_RUNNING=$desc_newer e2e_run app.sh ridge
 check "a function that runs a newer commit is left as it is: exit 0, nothing sent" "0 1 gone" \
   "$RC $(grep -c "^nothing sent: $app_sha is behind what ridge runs" "$S/out" || true) $(file_state "$S/code.zip")"
+
+echo "== ops/app.sh on a box that holds no key for the activity log (case 10 of docs/plans/2026-11-12-activity-log.md)"
+e2e_fresh app-no-audit-key
+FAKE_NO_AUDIT_KEY=1 e2e_run app.sh ridge
+check "a box with no /etc/audit-backbone/keys.env is refused by name, before the function or the UI is touched" "1 1 0 gone" \
+  "$RC $(grep -c 'the box holds no /etc/audit-backbone/keys.env: ops/release.sh ridge ships the activity log' "$S/out" || true) $(grep -c 'lambda update-function' "$S/aws.calls" || true) $(file_state "$S/code.zip")"
 
 echo "== ops/release.sh ends the deploy job's later steps when superseded"
 e2e_fresh release-superseded
@@ -2356,6 +3671,201 @@ check "a password that reached the log makes the run red, naming it, and the exi
   "$RC $(rp_lines '^RED  the new password is in this log: redact it in this log, and run again with another password')"
 unset ROOT_PASSWORD_LOCAL_PORT
 
+echo "== ops/company-restore.sh (row 16: ridge's demo copies alone, every refusal before the box is touched; the second c-storage ends by itself and at the run's end; nothing live is written by the restore) (docs/plans/2026-11-11-store-pages-copy.md)"
+# The box's helpers and the script that calls them, read as text, as the restore's are.
+# shellcheck disable=SC2016 # the scripts' source text is searched, not expanded
+serve_guard() { # <lib.sh> <company-restore.sh>
+  local b=$WORK/serve-block.sh
+  sed -n '/^box_serve_restored() {/,/^REMOTE$/p' "$1" >"$b"
+  [ -s "$b" ] || die "lib.sh has no box_serve_restored"
+  need "$b" 'setsid timeout "\$secs" /opt/c-storage/c-storage' "the second c-storage is not started under a timeout of its own"
+  need "$b" '^case \$file in "\$mount"/restored-\*\.db\) ;; \*\) echo' "the second c-storage serves a file that is not a restored one"
+  need "$b" 'DB_PATH=\$file' "the second c-storage is not pointed at the restored file"
+  need "$b" 'LISTEN_ADDR=127\.0\.0\.1' "the second c-storage does not bind the loopback"
+  [ "$(grep -cE 'systemctl|c-storage\.db|/var/lib/c-storage' "$b")" = 0 ] || die "the second c-storage's start touches the live c-storage or its file"
+  need "$2" '^  if \[ -n "\$RESTORED_FILE" \] && ! box_stop_restored "\$RESTORED_FILE"; then$' "the run does not end the second c-storage and remove the restored file whatever its end"
+  need "$2" '^cleanup_extra\(\) \{$' "the run has no cleanup at its end"
+}
+passes "the second c-storage starts under its own timeout, on a restored file, on the loopback, touching nothing live; the run ends it at its end (row 16)" \
+  serve_guard "$OPS_DIR/lib.sh" "$OPS_DIR/company-restore.sh"
+# shellcheck disable=SC2016 # the scripts' source text is searched, not expanded
+refuses "  a second c-storage without a timeout of its own is refused" "under a timeout of its own" \
+  serve_guard "$(mutated lib-notimeout.sh 's#setsid timeout "$secs" /opt#setsid /opt#' "$OPS_DIR/lib.sh")" "$OPS_DIR/company-restore.sh"
+# shellcheck disable=SC2016 # the scripts' source text is searched, not expanded
+refuses "  a second c-storage on a file that is not a restored one is refused" "not a restored one" \
+  serve_guard "$(mutated lib-anyfile.sh 's#^case $file in "$mount"/restored-\*\.db) ;; \*) echo.*#true#' "$OPS_DIR/lib.sh")" "$OPS_DIR/company-restore.sh"
+# shellcheck disable=SC2016 # the scripts' source text is searched, not expanded
+refuses "  a second c-storage on the live file is refused" "pointed at the restored file" \
+  serve_guard "$(mutated lib-livedb.sh '/^box_serve_restored/,/^REMOTE$/s#DB_PATH=$file#DB_PATH=$mount/c-storage.db#' "$OPS_DIR/lib.sh")" "$OPS_DIR/company-restore.sh"
+# shellcheck disable=SC2016 # the scripts' source text is searched, not expanded
+refuses "  a run that does not end the second c-storage at its end is refused" "whatever its end" \
+  serve_guard "$OPS_DIR/lib.sh" "$(mutated cr-nocleanup.sh 's#! box_stop_restored "$RESTORED_FILE"#! true#' "$OPS_DIR/company-restore.sh")"
+# shellcheck disable=SC2016 # the scripts' source text is searched, not expanded
+restore_call_guard() { # <company-restore.sh>
+  need "$1" '^got=\$\(box_restore - 0 "c\$stamp"\)' "the run restores anything but the newest copy to a new file"
+  first_before "$1" '^refuse_real ' '^box_open ' "the box is opened before the environment is refused"
+  first_before "$1" '^checked=\$\(ridge_cli copy-company --check' '^box_open ' "the box is opened before the code is checked"
+  first_before "$1" '^box_restore|^got=\$\(box_restore' '^WRITTEN=1$' "a record is written before the restore"
+}
+passes "the run restores the newest copy to a new file, and refuses the environment and the code before it opens the box (row 16)" \
+  restore_call_guard "$OPS_DIR/company-restore.sh"
+# shellcheck disable=SC2016 # the scripts' source text is searched, not expanded
+refuses "  a run that restores onto the live file is refused" "anything but the newest copy to a new file" \
+  restore_call_guard "$(mutated cr-live.sh 's#box_restore - 0 "c$stamp"#box_restore - 1 "c$stamp"#' "$OPS_DIR/company-restore.sh")"
+# shellcheck disable=SC2016 # the scripts' source text is searched, not expanded
+refuses "  a run that opens the box before refusing the environment is refused" "box is opened before the environment" \
+  restore_call_guard "$(mutated cr-order.sh '/^refuse_real /d' "$OPS_DIR/company-restore.sh")"
+
+cr_calls() { { cat "$S/aws.calls" "$S/ssh.calls" 2>/dev/null || true; } | wc -l | tr -d ' '; }
+cr_lines() { grep -c -- "$1" "$OPS_LOG_DIR"/*.log || true; }
+crun() { # <args...>: company-restore.sh whole in the clone, its transcript in the run's out file
+  e2e_run company-restore.sh "$@"
+}
+cr_refused() { # <name> <text the refusal names>: RC 2, the line, and no aws or ssh call made since cr_before
+  check "$1" "2 1 0 1" "$RC $(cr_lines "^== refused: .*$2") $(($(cr_calls) - cr_before)) $(cr_lines '^== exit 2$')"
+}
+e2e_fresh crestore
+cr_before=$(cr_calls)
+export OPS_LOG_DIR=$E2E/logs-cr-other-env
+crun other "$c1"
+cr_refused "another environment than ridge is refused before any aws call, naming why" "company-restore.sh holds ridge's demo copies alone"
+export OPS_LOG_DIR=$E2E/logs-cr-foreign
+crun ridge some-real-client
+cr_refused "a code outside the six demo copies is refused before the box is opened" "some-real-client is refused"
+check "  and the log names it" 1 "$(cr_lines 'some-real-client is not one of the demo copies')"
+export OPS_LOG_DIR=$E2E/logs-cr-ops
+printf '# touched\n' >>"$E2E/repo/ops/README.md"
+crun ridge "$c1"
+git -C "$E2E/repo" checkout -q -- ops/README.md
+cr_refused "an ops/ that is not origin/main's is refused before the box is opened" "differs from origin/main's"
+rc=0
+out=$(bash "$E2E/repo/ops/company-restore.sh" ridge 2>&1) || rc=$?
+check "a missing code prints the usage and exits 2" "2 usage: ops/company-restore.sh ridge <code>" "$rc $out"
+check "no refusal above touched the box" 0 "$(($(cr_calls) - cr_before))"
+
+echo "== ops/company-restore.sh run whole, on a stand-in box (row 16: the happy path offline, and what the cleanup says when the run is stopped)"
+# The stand-in ssh runs the three scripts the run sends with `sudo bash -s -- <records folder> ...` here, on scratch
+# folders for the box's paths: litestream restore is a sqlite3 backup of the live stand-in's file, setsid and timeout
+# (which macOS lacks) are shims, and the second c-storage is the real binary on the local forward's own port (the
+# forward is a no-op: COMPANY_RESTORE_BOX_PORT is that port). Two demo copies are made on the live stand-in first.
+e2e_fresh crestore-run
+export OPS_LOG_DIR=$E2E/logs-crr-app
+GITHUB_ACTIONS='' e2e_run app.sh ridge
+check "the BFF's service exists on the stand-in box, for the two copies to be made with it" 0 "$RC"
+crr_pw=$(rp_make_copy "$c1")
+crr_pw=$crr_pw$(rp_make_copy "$c2")
+check "two demo copies exist on the live stand-in" 32 "${#crr_pw}"
+BOX=$S/box
+mkdir -p "$BOX/records" "$BOX/etc" "$BOX/opt" "$BOX/run" "$BOX/bin"
+ln -s "$S/db/c-storage.db" "$BOX/records/c-storage.db"
+ln -s "$FAKE_CS" "$BOX/opt/c-storage"
+echo 'COPY_URL=s3://stand-in/copy' >"$BOX/etc/copy.env"
+printf 'INTERNAL_ACCESS_KEY=%s\nX_SUPER_ADMIN_KEY=%s\n' "$FAKE_IKEY" "$FAKE_AKEY" >"$BOX/etc/keys.env"
+# shellcheck disable=SC2016 # the stand-ins' literal text
+printf '#!/bin/bash\nout=\nwhile [ $# -gt 0 ]; do case $1 in -o) out=$2; shift 2 ;; -timestamp) shift 2 ;; *) shift ;; esac; done\nexec sqlite3 "%s/db/c-storage.db" ".backup $out"\n' "$S" >"$BOX/opt/litestream"
+printf '#!/bin/sh\nexit 0\n' >"$BOX/bin/mountpoint"
+printf '#!/bin/sh\nexit 0\n' >"$BOX/bin/chown"
+printf '#!/bin/sh\nexec "$@"\n' >"$BOX/bin/setsid"
+# shellcheck disable=SC2016 # the stand-ins' literal text
+printf '#!/bin/bash\nsecs=$1\nshift\n"$@" &\npid=$!\ntrap '"'"'kill $pid 2>/dev/null; exit 143'"'"' TERM INT\n( for _ in $(seq 1 "$secs"); do sleep 1; kill -0 $pid 2>/dev/null || exit 0; done; kill $pid 2>/dev/null ) &\nwait $pid\n' >"$BOX/bin/timeout"
+chmod +x "$BOX/opt/litestream" "$BOX/bin/mountpoint" "$BOX/bin/chown" "$BOX/bin/setsid" "$BOX/bin/timeout"
+touch "$S/box.real"
+# A node that waits before the copy (not before its check), so that a signal can meet the copy.
+mkdir -p "$E2E/slowbin"
+# shellcheck disable=SC2016 # the stand-in's literal text
+printf '#!/bin/sh\ncase "$*" in *--check*) ;; *copy-company*) sleep 20 ;; esac\nexec "%s" "$@"\n' "$REAL_NODE" >"$E2E/slowbin/node"
+chmod +x "$E2E/slowbin/node"
+crl=$(free_port)
+crr=$(free_port)
+export COMPANY_RESTORE_LIVE_PORT=$crl COMPANY_RESTORE_RESTORED_PORT=$crr COMPANY_RESTORE_BOX_PORT=$crr
+cr_has() { # <code> → yes or no: whether that copy holds the drill's record, read on this state's database once the run is over
+  local port pid out
+  port=$(free_port)
+  env -i PATH="$PATH" PORT="$port" DB_PATH="$S/db/c-storage.db" INTERNAL_ACCESS_KEY="$FAKE_IKEY" X_SUPER_ADMIN_KEY="$FAKE_AKEY" \
+    "$FAKE_CS" >>"$S/server.log" 2>&1 &
+  pid=$!
+  for _ in $(seq 1 50); do curl -fsS -m 1 "http://127.0.0.1:$port/health" >/dev/null 2>&1 && break; sleep 0.1; done
+  out=$(INTERNAL_ACCESS_KEY=$FAKE_IKEY SERVICE_CODE=bff SERVICE_ACCESS_KEY=$FAKE_SKEY C_STORAGE_URL=http://127.0.0.1:$port ridge_cli drill-record has "$1" 2>&1) || true
+  kill "$pid" 2>/dev/null || true
+  wait "$pid" 2>/dev/null || true
+  echo "$out"
+}
+cr_log() { cat "$OPS_LOG_DIR"/*.log; }
+cr_n() { cr_log | grep -c "$@" || true; }
+cr_second() { if curl -fsS -m 2 -o /dev/null "http://127.0.0.1:$crr/health" 2>/dev/null; then echo there; else echo gone; fi; }
+cr_left() { { find "$BOX/records" -name 'restored-*' 2>/dev/null || true; } | wc -l | tr -d ' '; }
+
+# the run whole, the code typed in capitals as a person may (the copy takes it as the checks do)
+export OPS_LOG_DIR=$E2E/logs-crr-happy
+crr_upper=$(printf '%s' "$c1" | tr '[:lower:]' '[:upper:]')
+e2e_launch company-restore.sh ridge "$crr_upper"
+e2e_reap 170
+check "the whole run on a stand-in box ends 0, and the log ends on its exit" "0 == exit 0" "$RC $(tail -n 1 "$OPS_LOG_DIR"/*.log)"
+check "  eight steps, each with the time" 8 "$(cr_n -E '^\[[1-8]/8\] .* \([0-9]+m[0-9]{2}s\)$')"
+check "  the compare before shows the drill's record differing, and after shows none" "1 1" \
+  "$(cr_n "^$c1 before: the source holds [0-9]* records, 1 differ on the target$") $(cr_n "^$c1 after: the source holds [0-9]* records, 0 differ on the target$")"
+check "  the verdict is green: the named copy's record gone, the neighbour's kept and then removed" "1 1 1 1" \
+  "$(cr_n "^ok   the named copy's drill record is gone: no$") $(cr_n "^ok   the neighbour's drill record is kept: yes$") $(cr_n "^ok   the neighbour's drill record is removed: no$") $(cr_n '^== green$')"
+check "  the restored file, the pid file and the second c-storage are all gone" "0 gone gone" "$(cr_left) $(file_state "$BOX/run/c-storage-restored.pid") $(cr_second)"
+check "  no WARN line, and the live file was not moved or replaced" "0 there" "$(cr_n '^WARN') $(file_state "$S/db/c-storage.db")"
+check "  the log says how long the walks may take and until what clock time" 1 \
+  "$(cr_n -E "^the copy's three whole-company walks over the tunnel may take up to 15 minutes .*, until [0-9]{2}:[0-9]{2};")"
+check "  neither copy holds a drill record after it" "no no" "$(cr_has "$c1") $(cr_has "$c2")"
+
+# Ctrl-C during the copy, the connection alive: the cleanup takes everything out and says nothing is left
+export OPS_LOG_DIR=$E2E/logs-crr-int
+PATH="$E2E/slowbin:$PATH" e2e_launch company-restore.sh ridge "$c1"
+e2e_wait "a line follows every 30 seconds" 90 || true
+kill -s INT -- "-$LPID"
+e2e_reap 60
+check "INT during the copy: the run exits 130, the log ends on it, and the box is clean" "130 == exit 130 0 gone gone" \
+  "$RC $(tail -n 1 "$OPS_LOG_DIR"/*.log) $(cr_left) $(file_state "$BOX/run/c-storage-restored.pid") $(cr_second)"
+check "  both copies are free of the drill's record, with no WARN line" "no no 0" "$(cr_has "$c1") $(cr_has "$c2") $(cr_n '^WARN')"
+
+# the connection gone when the cleanup runs (the endpoint's hour, a drop): the cleanup says what it could not remove
+export OPS_LOG_DIR=$E2E/logs-crr-drop
+PATH="$E2E/slowbin:$PATH" e2e_launch company-restore.sh ridge "$c1"
+e2e_wait "a line follows every 30 seconds" 90 || true
+kill "$(cat "$S/master.pid")"
+rm -f "$S/master.pid"
+kill -s INT -- "-$LPID"
+e2e_reap 60
+check "a dropped connection and INT: the run exits 130 and names what was left" "130 1 1" \
+  "$RC $(cr_n -E "^WARN the restored file /var/lib/private/c-storage/restored-c[0-9]{8}T[0-9]{6}Z[.]db .* by itself by [0-9]{2}:[0-9]{2}\\)") $(cr_n "^WARN a drill record may be left in: $c1 $c2 ")"
+check "  and the restored file is indeed still on the box, as the line says" 1 "$(cr_left)"
+if [ -s "$BOX/run/c-storage-restored.pid" ]; then kill "$(cat "$BOX/run/c-storage-restored.pid")" 2>/dev/null || true; fi
+for _ in $(seq 1 50); do if [ "$(cr_second)" = gone ]; then break; fi; sleep 0.2; done
+rm -f "$BOX"/records/restored-* "$BOX/run/c-storage-restored.pid"
+unset COMPANY_RESTORE_LIVE_PORT COMPANY_RESTORE_RESTORED_PORT COMPANY_RESTORE_BOX_PORT
+
+# the box's guard against a name that climbs out of the records folder (a case pattern's * also matches a /)
+# shellcheck disable=SC2016 # the scripts' source text is searched, not expanded
+climb_probe() { # <lib.sh>: the stop must keep the live file, the serve must refuse; the plain restored name is still removed
+  local d=$WORK/climb out rc=0
+  rm -rf "$d"
+  mkdir -p "$d/mnt/restored-x" "$d/run"
+  echo live >"$d/mnt/c-storage.db"
+  echo plain >"$d/mnt/restored-a.db"
+  sed -n '/^box_stop_restored() {/,/^REMOTE$/p' "$1" | sed -e '1,2d;$d' -e "s#/run/#$d/run/#g" >"$d/stop.sh"
+  sed -n '/^box_serve_restored() {/,/^REMOTE$/p' "$1" | sed -e '1,2d;$d' -e "s#/run/#$d/run/#g" -e "s#/etc/c-storage#$d/etc#g" >"$d/serve.sh"
+  [ -s "$d/stop.sh" ] && [ -s "$d/serve.sh" ] || die "lib.sh has no stop or serve helper"
+  bash "$d/stop.sh" "$d/mnt" "$d/mnt/restored-x/../c-storage.db"
+  [ -e "$d/mnt/c-storage.db" ] || die "the stop removed the live file through a climbing name"
+  bash "$d/stop.sh" "$d/mnt" "$d/mnt/restored-a.db"
+  [ ! -e "$d/mnt/restored-a.db" ] || die "the stop no longer removes a restored file"
+  out=$(bash "$d/serve.sh" "$d/mnt" "$d/mnt/restored-x/../c-storage.db" 1 1 2>&1) || rc=$?
+  if [ "$rc" != 1 ] || ! grep -qF 'not a restored file' <<<"$out"; then die "the serve took a climbing name: $out"; fi
+}
+passes "a name that climbs out of the records folder is neither removed nor served (the review's finding 3)" climb_probe "$OPS_DIR/lib.sh"
+# shellcheck disable=SC2016 # the scripts' source text is searched, not expanded
+refuses "  the stop that lets a climbing name through is refused" "removed the live file" \
+  climb_probe "$(mutated lib-climb-stop.sh 's#in \*/\*) ;; \*) rm -f#in NONE) ;; *) rm -f#' "$OPS_DIR/lib.sh")"
+# shellcheck disable=SC2016 # the scripts' source text is searched, not expanded
+refuses "  the serve that lets a climbing name through is refused" "took a climbing name" \
+  climb_probe "$(mutated lib-climb-serve.sh '/^box_serve_restored/,/^REMOTE$/{/^case ${file#/d;}' "$OPS_DIR/lib.sh")"
+# shellcheck disable=SC2016 # the scripts' source text is searched, not expanded
+first_before "$OPS_DIR/company-restore.sh" '^RESTORED_FILE=\$RECORDS_MOUNT/restored-c\$stamp[.]db$' '^got=\$\(box_restore' "the restored file's name is not known before the restore writes it"
+
 echo "== ops/seed.sh run whole (rows 7 and 23: nothing is written unless /health names its own commit and the box is above its floor; no client and no password is made; no key, address or password in the log)"
 build "$WORK/server-newer" "$desc_newer"
 # seed_copy: makes the first mapped copy as the operator's page would, through a c-storage on this
@@ -2419,8 +3929,8 @@ check "  and one below the memory floor" "1 1" "$RC $(seed_lines "^error: memory
 export OPS_LOG_DIR=$E2E/logs-seed-first
 e2e_launch seed.sh ridge
 e2e_reap 120
-check "ridge on the seed's own commit: the copy is filled and 2 of its 7 days applied, the 5 left said plainly, exit 0 (nothing before had written it)" "0 1 1 1" \
-  "$RC $(seed_lines '^seed: 6 copies mapped, 0 up to date, 5 not on this service, 2 days applied$') $(seed_lines '^seed: STILL BEHIND, 1 copies have days left .* 5); ') $(seed_lines "^seeded $e2e_sha\$")"
+check "ridge on the seed's own commit: the copy is filled and 2 of its 21 days applied, the 19 left said plainly, exit 0 (nothing before had written it)" "0 1 1 1" \
+  "$RC $(seed_lines '^seed: 6 copies mapped, 0 up to date, 5 not on this service, 2 days applied$') $(seed_lines '^seed: STILL BEHIND, 1 copies have days left .* 19); ') $(seed_lines "^seeded $e2e_sha\$")"
 check "  it made no client: the five copies nobody made are named, and left" 5 "$(seed_lines 'not on this service, left$')"
 check "  the log holds no key, no address and not the copy's root password" "0 0 0" \
   "$(seed_log | grep -cE "$FAKE_IKEY|$FAKE_AKEY|$FAKE_SKEY" || true) $(seed_log | grep -cF 10.20.30.40 || true) $(cat "$S/out" "$OPS_LOG_DIR"/*.log | grep -cF -e "$root_password" || true)"
@@ -2477,6 +3987,179 @@ FAKE_SKEY=00000000000000000000000000000000 e2e_run seed.sh ridge
 check "a seed that stops (the BFF's key refused) ends red, naming that it stopped, and never says seeded" "1 1 0" \
   "$RC $(seed_lines '^error: the seed stopped') $(seed_lines '^seeded')"
 unset SEED_LOCAL_PORT
+
+echo "== ops/demo-remake.sh run whole (rows 12 to 14: ridge's demo copies alone, a terminal, never a job; nothing deleted without the typed words; the wait named and kept alive on one tunnel; a dropped run gone on with by --go-on; case 5: a store on this Mac that does not start is a refusal)"
+# The node half is a stand-in under RIDGE_SCRIPTS_DIR: it answers remake, remake --check and remake --go-on with a
+# line, records the store's folder it was handed, holds the remake FAKE_REMAKE_MS and, with FAKE_DROP, ends the
+# tunnel's master and hangs (FAKE_STORE_FAILS: this Mac's store does not start, exit 2; FAKE_COPY_FAILS: a copy stops
+# after its delete, exit 1). The real mapping and the real tsx are used, so no fill runs here (the node half's own
+# tests hold it, scripts/src/ridge-remake-local.test.ts).
+HALF=$WORK/half
+mkdir -p "$HALF/src/demo"
+cp "$REPO_DIR/scripts/src/demo/mapping.ts" "$HALF/src/demo/mapping.ts"
+ln -s "$REPO_DIR/scripts/node_modules" "$HALF/node_modules"
+cat >"$HALF/src/ridge-main.ts" <<'HALFTS'
+import { appendFileSync, readFileSync } from 'node:fs';
+
+const state = process.env.FAKE_STATE!;
+const [command, ...rest] = process.argv.slice(2);
+appendFileSync(`${state}/half.calls`, `${command} ${rest.join(' ')}\n`);
+const sleep = (ms: number) => new Promise((done) => setTimeout(done, ms));
+async function main() {
+  if (command !== 'remake') {
+    console.error(`stand-in half: unknown ${command}`);
+    process.exit(1);
+  }
+  if (rest[0] === '--check') {
+    readFileSync(0, 'utf8');
+    console.log('checked: stand-in');
+    return;
+  }
+  if (rest[0] !== '--go-on') readFileSync(0, 'utf8');
+  appendFileSync(`${state}/store.dirs`, `${process.env.REMAKE_STORE_DIR}\n`);
+  if (process.env.FAKE_STORE_FAILS) {
+    console.error("error: nothing was deleted on the target, this Mac's store stopped first: stand-in");
+    process.exit(2);
+  }
+  console.log(`stand-in: remake ${rest[0] ?? 'whole'} begins`);
+  await sleep(Number(process.env.FAKE_REMAKE_MS ?? 0));
+  if (process.env.FAKE_DROP_EARLY && rest[0] !== '--go-on') {
+    process.kill(Number(readFileSync(`${state}/master.pid`, 'utf8')));
+    await sleep(30000);
+  }
+  if (rest[0] !== '--go-on') console.log("remake: this Mac's store built and the 6 copies filled on it, 0.1 minutes");
+  if (process.env.FAKE_HANG) await sleep(60000);
+  if (process.env.FAKE_DROP && rest[0] !== '--go-on') {
+    process.kill(Number(readFileSync(`${state}/master.pid`, 'utf8')));
+    await sleep(30000);
+  }
+  if (process.env.FAKE_COPY_FAILS) {
+    console.error('error: stand-in-1: the target differs after the copy');
+    process.exit(1);
+  }
+  console.log('remake: 6 copies deleted, filled on this Mac and copied whole, 0.1 minutes in all');
+}
+void main();
+HALFTS
+drport=$(free_port)
+DRPW1='Invented-One1!'
+DRPW2='Invented-Two2@'
+DRPW3='Invented-Three3#'
+DRTYPED="$DRPW1"$'\n'"$DRPW1"$'\n'"$DRPW2"$'\n'"$DRPW2"$'\n'"$DRPW3"$'\n'"$DRPW3"
+dr_run() { # <typed text> <args…>: demo-remake.sh whole in the clone, typed to over a pipe (DR_TTY=0: no test switch); log folder DR_LOGS
+  export OPS_LOG_DIR=$E2E/logs-dr-${DR_LOGS:?}
+  printf '%s\n' "$1" >"$S/typed"
+  (cd "$E2E/repo" && exec env PATH="${DR_PATH:-$PATH}" RIDGE_SCRIPTS_DIR="$HALF" OPS_TEST_NO_TTY="${DR_TTY:-1}" DEMO_REMAKE_TICK="${DR_TICK:-1}" DEMO_REMAKE_LOCAL_PORT="$drport" \
+    bash ops/demo-remake.sh "${@:2}") >"$S/out" 2>&1 <"$S/typed" &
+  LPID=$!
+  e2e_reap 120
+}
+dr_lines() { grep -c -- "$1" "$OPS_LOG_DIR"/*.log || true; }
+dr_seen() { cat "$OPS_LOG_DIR"/*.log "$S/out" "$S/aws.calls" "$S/ssh.calls" "$S/half.calls" 2>/dev/null | grep -cF -e "$1" || true; }
+dr_deletes() { if [ -f "$S/half.calls" ]; then grep -c '^remake $' "$S/half.calls" || true; else echo 0; fi; }
+dr_refused() { # <name> <text the refusal names>: RC 2, the line, no aws or ssh call, no delete
+  check "$1" "2 1 gone gone 0" \
+    "$RC $(dr_lines "^== refused: .*$2") $(file_state "$S/aws.calls") $(file_state "$S/ssh.calls") $(dr_deletes)"
+}
+e2e_fresh dr-refuse
+DR_LOGS=other dr_run "$DRTYPED" other
+dr_refused "12: another environment than ridge is refused before any aws call, naming why" "demo-remake.sh holds ridge's demo copies alone"
+DR_LOGS=job GITHUB_ACTIONS=true dr_run "$DRTYPED" ridge
+dr_refused "  in GitHub's job it refuses before anything is asked" "never in a job"
+DR_LOGS=pipe DR_TTY=0 dr_run "$DRTYPED" ridge
+dr_refused "  without a terminal it refuses before anything is asked" "needs a terminal to type the passwords on"
+rc=0
+out=$(bash "$E2E/repo/ops/demo-remake.sh" ridge --nonsense 2>&1) || rc=$?
+check "  an unknown argument prints the usage and exits 2" "2 usage: ops/demo-remake.sh ridge [--go-on]" "$rc $out"
+DR_LOGS=differ dr_run "$DRPW1"$'\n'"$DRPW2" ridge
+dr_refused "  two typings that differ are refused before any call" "the two typings of p1 differ"
+check "  the log holds neither typing" "0 0" "$(dr_seen "$DRPW1") $(dr_seen "$DRPW2")"
+DR_LOGS=reply dr_run "$DRTYPED"$'\n'"yes please" ridge
+dr_refused "13: a reply other than \"remake ridge\" refuses before any call, nothing deleted" 'the reply was not "remake ridge"'
+check "  and the six copies were listed before it was asked" 6 "$(dr_lines '^   p[0-9] ')"
+check "  the passwords reached node on a pipe only, none in the log or a call" "0 0 0" "$(dr_seen "$DRPW1") $(dr_seen "$DRPW2") $(dr_seen "$DRPW3")"
+
+e2e_fresh dr-whole
+GITHUB_ACTIONS='' e2e_run app.sh ridge
+check "the BFF's service exists on the box, for the demo copies' run" 0 "$RC"
+sends_before=$(grep -c 'send-ssh-public-key' "$S/aws.calls" || true)
+exits_before=$(grep -c -e '-O exit' "$S/ssh.calls" || true)
+DR_LOGS=run1 FAKE_REMAKE_MS=3000 dr_run "$DRTYPED"$'\n'"remake ridge" ridge
+check "14: the run ends 0 and its log ends on its exit" "0 == exit 0" "$RC $(tail -n 1 "$OPS_LOG_DIR"/*.log)"
+check "  the notice names the 15 minutes and a clock time, before the remake begins" "1 yes" \
+  "$(dr_lines '^the remake may take up to about 15 minutes, until about [0-9][0-9]:[0-9][0-9]; a line every [0-9][0-9]* seconds shows it is alive$') $(awk '/^the remake may take/ {n = NR} /^stand-in: remake whole begins$/ {r = NR} END {print (n && r && n < r) ? "yes" : "no"}' "$OPS_LOG_DIR"/*.log)"
+check "  the remake ran once, after its check, and nothing else of the node half" "1 1 2" \
+  "$(grep -c '^remake $' "$S/half.calls") $(grep -c '^remake --check$' "$S/half.calls") $(wc -l <"$S/half.calls" | tr -d ' ')"
+check "  a line while the remake runs (3 s, a line a second)" "yes" "$([ "$(dr_lines '^   the remake runs, [0-9]*s, the tunnel is up')" -ge 3 ] && echo yes || echo no)"
+check "  on one tunnel: one open, one close" "1 1" \
+  "$(($(grep -c 'send-ssh-public-key' "$S/aws.calls") - sends_before)) $(($(grep -c -e '-O exit' "$S/ssh.calls") - exits_before))"
+# The credo root as git names it (through /private on this Mac), the folder that holds the clone's git directory.
+check "  the store on this Mac is the credo root's .demo-remake-store" \
+  "$(dirname "$(git -C "$E2E/repo" rev-parse --path-format=absolute --git-common-dir)")/.demo-remake-store" "$(cat "$S/store.dirs")"
+check "  the six copies and the 21 days said at the end" "1" "$(dr_lines '^the 6 demo copies on ridge are remade, each with its partner.s password, 21 days filled up to yesterday$')"
+check "  no password in the log, the terminal, a call of aws, ssh or the node half" "0 0 0" "$(dr_seen "$DRPW1") $(dr_seen "$DRPW2") $(dr_seen "$DRPW3")"
+# shellcheck disable=SC2016 # the script's source text is searched, not expanded
+check "  the default between lines is 30 seconds" 1 "$(grep -c '^TICK=\${DEMO_REMAKE_TICK:-30}$' "$OPS_DIR/demo-remake.sh" || true)"
+
+e2e_fresh dr-drop
+GITHUB_ACTIONS='' e2e_run app.sh ridge
+DR_LOGS=run2 FAKE_REMAKE_MS=1000 FAKE_DROP=1 dr_run "$DRTYPED"$'\n'"remake ridge" ridge
+if [ "$RC" != 1 ]; then echo "  (the run's last lines:)"; tail -n 8 "$S/out"; fi
+check "  a tunnel that drops during the remake ends the run red, naming --go-on, with the exit 1" "1 1 1" \
+  "$RC $(dr_lines '^error: the tunnel dropped') $(dr_lines 'ops/demo-remake.sh ridge --go-on')"
+check "  the remake's own lines reach the log as it runs, so it says where it stood" 1 "$(dr_lines '^stand-in: remake whole begins$')"
+DR_LOGS=run3 dr_run '' ridge --go-on
+check "  --go-on goes on: exit 0, the remake gone on with once, no new whole remake, no new question" "0 1 1 1 yes" \
+  "$RC $(grep -c '^remake --go-on$' "$S/half.calls") $(grep -c '^remake $' "$S/half.calls") $(grep -c '^remake --check$' "$S/half.calls") $(grep -q 'Password for' "$S/out" && echo no || echo yes)"
+check "  and --go-on needs no terminal and no typing" "yes" "$(grep -q 'refused' "$S/out" && echo no || echo yes)"
+check "  and is handed the store the stopped run filled" "2 1" "$(wc -l <"$S/store.dirs" | tr -d ' ') $(sort -u "$S/store.dirs" | wc -l | tr -d ' ')"
+
+# A tunnel that drops before the store on this Mac is filled: a refusal (nothing on ridge was deleted), never --go-on.
+e2e_fresh dr-drop-early
+GITHUB_ACTIONS='' e2e_run app.sh ridge
+DR_LOGS=run2b FAKE_REMAKE_MS=1000 FAKE_DROP_EARLY=1 dr_run "$DRTYPED"$'\n'"remake ridge" ridge
+check "  a tunnel that drops before the fill ends is a refusal (exit 2) saying nothing on ridge was deleted, never naming --go-on" "2 1 0" \
+  "$RC $(dr_lines '^== refused: the tunnel dropped.*nothing on ridge was deleted: run ops/demo-remake.sh ridge again whole$') $(dr_lines 'ridge --go-on')"
+# A Ctrl-C or TERM while the remake runs, after the fill: the exit is the signal's and the log names --go-on.
+e2e_fresh dr-signal
+GITHUB_ACTIONS='' e2e_run app.sh ridge
+export OPS_LOG_DIR=$E2E/logs-dr-sig
+printf '%s\n' "$DRTYPED"$'\n'"remake ridge" >"$S/typed"
+(cd "$E2E/repo" && exec env FAKE_HANG=1 PATH="$PATH" RIDGE_SCRIPTS_DIR="$HALF" OPS_TEST_NO_TTY=1 DEMO_REMAKE_TICK=1 DEMO_REMAKE_LOCAL_PORT="$drport" \
+  bash ops/demo-remake.sh ridge) >"$S/out" 2>&1 <"$S/typed" &
+LPID=$!
+for _ in $(seq 1 300); do if [ "$(dr_lines "^remake: this Mac's store built and the 6 copies filled on it")" = 1 ]; then break; fi; sleep 0.1; done
+kill -TERM "$LPID" 2>/dev/null || true
+e2e_reap 30
+check "  a TERM while the remake runs ends 143, naming --go-on in the log, with no closing line" "143 1 0" \
+  "$RC $(dr_lines '^the run was stopped while the remake ran: run ops/demo-remake.sh ridge --go-on to copy again what differs') $(dr_lines '^the 6 demo copies on ridge are remade')"
+
+# A store on this Mac that does not start: the node half's refusal, before any delete, is the run's.
+e2e_fresh dr-store
+GITHUB_ACTIONS='' e2e_run app.sh ridge
+DR_LOGS=run4 FAKE_STORE_FAILS=1 dr_run "$DRTYPED"$'\n'"remake ridge" ridge
+check "case 5: a store on this Mac that does not start refuses the run (exit 2) before any delete, naming why, with no closing line" "2 1 1 0" \
+  "$RC $(dr_lines '^== refused: the remake was refused before any delete (the line above): nothing was deleted$') $(dr_lines "this Mac's store stopped first") $(dr_lines '^the 6 demo copies on ridge are remade')"
+# A copy that stops after its delete: red, naming --go-on.
+e2e_fresh dr-copy
+GITHUB_ACTIONS='' e2e_run app.sh ridge
+DR_LOGS=run5 FAKE_COPY_FAILS=1 dr_run "$DRTYPED"$'\n'"remake ridge" ridge
+check "  a remake that stops after a delete ends red (exit 1), naming --go-on, with no closing line" "1 1 1 0" \
+  "$RC $(dr_lines '^error: the remake stopped') $(dr_lines 'ops/demo-remake.sh ridge --go-on to copy again what differs, or the same run again whole') $(dr_lines '^the 6 demo copies on ridge are remade')"
+# A password in a variable the caller exported under the name the script's locals use: bash 3.2 keeps the export flag
+# of a local, so a child started while the script holds the password would receive it. The grep stand-in records
+# the environment it is started with.
+e2e_fresh dr-env
+mkdir -p "$E2E/grepbin"
+REALGREP=$(PATH=$BASE_PATH command -v grep)
+# shellcheck disable=SC2016 # the stand-in's source text is written, not expanded
+printf '#!/bin/bash\necho "$*" >>"${FAKE_STATE:?}/grep.calls"\n/usr/bin/env | %s -e "^pw=" -e "^again=" >>"${FAKE_STATE:?}/grep.env" || true\nexec %s "$@"\n' "$REALGREP" "$REALGREP" >"$E2E/grepbin/grep"
+chmod +x "$E2E/grepbin/grep"
+export pw=exported-by-the-caller again=exported-by-the-caller
+DR_PATH="$E2E/grepbin:$PATH" DR_LOGS=env dr_run "$DRTYPED"$'\n'"yes please" ridge
+unset pw again
+check "  no password is in the environment of a process the script starts, the caller exporting pw and again (one search a password)" "0 3" \
+  "$(cat "$S/grep.env" 2>/dev/null | grep -vc '=exported-by-the-caller$' || true) $(grep -c -e '-f /dev/stdin' "$S/grep.calls" || true)"
 
 echo "== ops/stack.sh env, run whole on stand-ins for aws, gh and ssh (no value of an output in the log; --plan on an unchanged stack changes nothing)"
 # A clone whose origin is named as GitHub's are, so the script reads the repository from it; the stack
@@ -2536,7 +4219,7 @@ FAKE_CHANGESET=$OPS_DIR/testdata/changeset-conditional.json stack_run stack-cond
 check "a Conditional change refused: exit 1, REFUSED, and no change applied" "1 1 0" \
   "$RC $(grep -c '^REFUSED: this change set removes or replaces' "$S/out" || true) $(grep -c 'execute-change-set' "$S/aws.calls" || true)"
 check "  and its refusal line names the property that carried it" 1 \
-  "$(grep -c '^      Properties InstanceType requires-recreation=Conditionally evaluation=Dynamic$' "$S/out" || true)"
+  "$(grep -c '^      Properties InstanceType requires-recreation=Conditionally evaluation=Dynamic source=DirectModification cause=-$' "$S/out" || true)"
 FAKE_CHANGESET=$OPS_DIR/testdata/changeset-conditional.json stack_run stack-conditional-taken --plan --take Box
 check "  with Box taken the plan passes, exit 0, and the verdict names what was let through" "0 1 0" \
   "$RC $(grep -c 'nothing unsafe except what was taken: Box$' "$S/out" || true) $(grep -c 'no removal and no replacement' "$S/out" || true)"
@@ -2558,6 +4241,351 @@ check "--take '' is refused as usage (exit 2) and reaches no verdict line" "2 0"
 FAKE_CHANGESET=$OPS_DIR/testdata/changeset-conditional.json stack_run stack-take-blank-later --plan --take Box --take ''
 check "  and so is a blank one after a good one" "2 0" \
   "$RC $(grep -cE '^(ok  |REFUSED|no changes)' "$S/out" || true)"
+
+echo "== the front door's key (plan 2026-11-11-front-door-keys, step 1): the template carries it, the deploy role reads it, stack.sh makes, keeps and masks it"
+# row 8: the API's origin carries x-front-door-key from a NoEcho parameter with no default
+# shellcheck disable=SC2016 # jq programs, in single quotes
+front_door_guard() {
+  must "$1" "FrontDoorKey is not a NoEcho string parameter with no default" \
+    '.Parameters.FrontDoorKey | .Type == "String" and .NoEcho == true and (has("Default") | not)'
+  must "$1" "the API's origin does not carry x-front-door-key from FrontDoorKey, and nothing else" \
+    '.Resources.Distribution.Properties.DistributionConfig.Origins | map(select(.Id == "api")) | length == 1 and .[0].OriginCustomHeaders == [{"HeaderName":"x-front-door-key","HeaderValue":{"Ref":"FrontDoorKey"}}]'
+  must "$1" "the UI's origin carries a custom header" \
+    '.Resources.Distribution.Properties.DistributionConfig.Origins | map(select(.Id == "ui")) | length == 1 and (.[0] | has("OriginCustomHeaders") | not)'
+}
+# row 9: the deploy role reads its own distribution's configuration and writes nothing on CloudFront
+# shellcheck disable=SC2016 # jq programs, in single quotes
+distribution_read_guard() {
+  must "$1" "the deploy role does not read its own distribution's configuration, and only that" \
+    '[.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | select(.Action | tostring | contains("cloudfront:")) | {Action, Resource}] == [{"Action":"cloudfront:GetDistributionConfig","Resource":{"Fn::Sub":"arn:${AWS::Partition}:cloudfront::${AWS::AccountId}:distribution/${Distribution}"}}]'
+  must "$1" "a CloudFront action of the deploy role writes" \
+    '[.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | .Action | if type == "array" then .[] else . end | select(startswith("cloudfront:"))] | all(startswith("cloudfront:Get"))'
+}
+passes "the API's origin carries the door's key from a NoEcho parameter (row 8)" front_door_guard "$WORK/env.json"
+refuses "  a parameter that echoes is refused" "NoEcho string parameter" \
+  front_door_guard "$(mut '.Parameters.FrontDoorKey.NoEcho = false')"
+refuses "  a parameter with a default is refused" "no default" \
+  front_door_guard "$(mut '.Parameters.FrontDoorKey.Default = "0000000000000000000000000000000000000000000000000000000000000000"')"
+refuses "  an origin with no header is refused" "does not carry x-front-door-key" \
+  front_door_guard "$(mut 'del(.Resources.Distribution.Properties.DistributionConfig.Origins[1].OriginCustomHeaders)')"
+refuses "  a header with a literal value is refused" "does not carry x-front-door-key" \
+  front_door_guard "$(mut '.Resources.Distribution.Properties.DistributionConfig.Origins[1].OriginCustomHeaders[0].HeaderValue = "a-literal"')"
+refuses "  the header on the UI's origin is refused" "UI's origin carries" \
+  front_door_guard "$(mut '.Resources.Distribution.Properties.DistributionConfig.Origins[0].OriginCustomHeaders = [{"HeaderName":"x-front-door-key","HeaderValue":{"Ref":"FrontDoorKey"}}]')"
+passes "the deploy role reads its own distribution and writes nothing on CloudFront (row 9)" distribution_read_guard "$WORK/env.json"
+refuses "  a read of every distribution is refused" "read its own distribution" \
+  distribution_read_guard "$(mut '(.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | select(.Action == "cloudfront:GetDistributionConfig") | .Resource) = "*"')"
+refuses "  an update of the distribution is refused" "read its own distribution" \
+  distribution_read_guard "$(mut '(.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement[] | select(.Action == "cloudfront:GetDistributionConfig") | .Action) = ["cloudfront:GetDistributionConfig","cloudfront:UpdateDistribution"]')"
+refuses "  no read at all is refused" "read its own distribution" \
+  distribution_read_guard "$(mut '.Resources.DeployRole.Properties.Policies[0].PolicyDocument.Statement |= map(select(.Action != "cloudfront:GetDistributionConfig"))')"
+
+# row 10: stack.sh makes the key on a creation and once for a stack without one, keeps it otherwise,
+# takes it from a 0600 file for a key run, and never prints it. The wrapper stands in front of the
+# stand-in aws above: it keeps the parameters file a change set was made from, and describes the stack
+# without the parameter (the default), with it as NoEcho shows it (FDK_HASKEY), or not at all (FDK_NOSTACK,
+# a creation). Every key here is made up.
+mkdir -p "$E2E/fdkbin"
+cat >"$E2E/fdkbin/aws" <<'STANDIN'
+#!/bin/bash
+a="$*"
+case "$a" in
+  *create-change-set*) p=${a##*--parameters file://}; cp "${p%% *}" "${FAKE_STATE:?}/params.json" ;;
+esac
+case "$a" in
+  *"describe-stacks --stack-name credo-network"*)
+    echo "aws $a" >>"${FAKE_STATE:?}/aws.calls"
+    echo '{"Stacks":[{"StackName":"credo-network","StackStatus":"UPDATE_COMPLETE","Outputs":[{"OutputKey":"VpcId","OutputValue":"vpc-test"},{"OutputKey":"VpcCidr","OutputValue":"10.0.0.0/16"}]}]}' ;;
+  *"describe-stacks"*)
+    if [ -n "${FDK_NOSTACK:-}" ]; then
+      echo "aws $a" >>"${FAKE_STATE:?}/aws.calls"
+      echo "An error occurred (ValidationError) when calling the DescribeStacks operation: Stack with id ridge does not exist" >&2
+      exit 255
+    elif [ -n "${FDK_HASKEY:-}" ]; then
+      "${FDK_REAL:?}" "$@" | sed 's/"Parameters":\[/&{"ParameterKey":"FrontDoorKey","ParameterValue":"****"},/'
+    else
+      exec "${FDK_REAL:?}" "$@"
+    fi ;;
+  *describe-subnets*) echo "aws $a" >>"${FAKE_STATE:?}/aws.calls" ;;
+  *"ssm get-parameter"*) echo "aws $a" >>"${FAKE_STATE:?}/aws.calls"; echo ami-test ;;
+  *) exec "${FDK_REAL:?}" "$@" ;;
+esac
+STANDIN
+chmod +x "$E2E/fdkbin/aws"
+fdk_run() { # <state name> <args...>: stack.sh env ridge --plan in the clone, through the wrapper
+  e2e_fresh "$1"
+  shift
+  RC=0
+  (cd "$E2E/stackrepo" && PATH="$E2E/fdkbin:$E2E/stackbin:$PATH" FDK_REAL="$E2E/stackbin/aws" bash ops/stack.sh env ridge --plan "$@") >"$S/out" 2>&1 </dev/null || RC=$?
+}
+fdk_sent() { jq -r '.[] | select(.ParameterKey == "FrontDoorKey") | .ParameterValue // "(previous)"' "$S/params.json"; }
+fdk_seen() { # <key>: how many places a run wrote hold it: the terminal, the log, the aws calls, the parameters shown
+  cat "$S/out" "$S/aws.calls" "$OPS_LOG_DIR"/*.log | grep -cF -- "$1" || true
+}
+fdk_run fdk-old
+fdk_key=$(fdk_sent)
+check "a stack made before the parameter: a key of 64 hex characters is made once and sent" "0 1" \
+  "$RC $(grep -cE '^[0-9a-f]{64}$' <<<"$fdk_key" || true)"
+check "  it prints as (not printed), and no log, terminal line or aws call holds it" "1 0" \
+  "$(grep -c '^  FrontDoorKey=(not printed)$' "$S/out" || true) $(fdk_seen "$fdk_key")"
+check "  and the end-of-run search of the log ran with the key remembered" 1 "$(grep -c '^ok   no key in this log' "$OPS_LOG_DIR"/*.log || true)"
+FDK_NOSTACK=1 fdk_run fdk-create
+fdk_key=$(fdk_sent)
+check "a creation makes a key of its own and sends it" "0 1" "$RC $(grep -cE '^[0-9a-f]{64}$' <<<"$fdk_key" || true)"
+check "  and never prints it" "1 0" "$(grep -c '^  FrontDoorKey=(not printed)$' "$S/out" || true) $(fdk_seen "$fdk_key")"
+FDK_HASKEY=1 fdk_run fdk-kept
+check "a stack that holds the parameter keeps it: the previous value, none made" "0 (previous)" "$RC $(fdk_sent)"
+check "  and the terminal still says (not printed)" 1 "$(grep -c '^  FrontDoorKey=(not printed)$' "$S/out" || true)"
+fdk_made=$(printf 'ab%.0s' $(seq 1 32))
+printf '%s\n' "$fdk_made" >"$E2E/fdk.key"
+chmod 600 "$E2E/fdk.key"
+FDK_HASKEY=1 FRONT_DOOR_KEY_FILE=$E2E/fdk.key fdk_run fdk-file
+check "a key run takes the key from the 0600 file it names, replacing the stack's" "0 $fdk_made" "$RC $(fdk_sent)"
+check "  and never prints it" 0 "$(fdk_seen "$fdk_made")"
+chmod 644 "$E2E/fdk.key"
+FDK_HASKEY=1 FRONT_DOOR_KEY_FILE=$E2E/fdk.key fdk_run fdk-file-open
+check "a key file other than 0600 is refused before any change set, without its value" "1 1 0 0" \
+  "$RC $(grep -c 'must be 0600' "$S/out" || true) $(grep -c 'create-change-set' "$S/aws.calls" || true) $(fdk_seen "$fdk_made")"
+printf 'not-a-key\n' >"$E2E/fdk.key"
+chmod 600 "$E2E/fdk.key"
+FDK_HASKEY=1 FRONT_DOOR_KEY_FILE=$E2E/fdk.key fdk_run fdk-file-short
+check "a key file that holds no 64 hex characters is refused, without its content" "1 1 0 0" \
+  "$RC $(grep -c '64 hex characters' "$S/out" || true) $(grep -c 'create-change-set' "$S/aws.calls" || true) $(fdk_seen not-a-key)"
+
+# ---- the key script (docs/plans/2026-11-11-front-door-keys.md, step 5, cases 14 to 16)
+echo "== ops/keys.sh replaces each of the four keys in its order and reads the old one back refused (case 14); a key run changes the distribution alone (case 15); no key reaches its log (case 16)"
+# The door's two addresses are stand-ins that answer as the chain would: the API's own address answers (404, the
+# BFF's) a call carrying a key the function's latest settings hold and refuses (403) any other; the app's address
+# answers with the key the distribution sends, so it is refused when the function holds none of it.
+cat >"$WORK/door.py" <<'PY'
+import json, os, signal, sys
+from http.server import BaseHTTPRequestHandler, HTTPServer
+signal.alarm(1200)
+MODE, POINTER = sys.argv[2], sys.argv[3]
+def state():
+    return open(POINTER).read().strip()
+def function_keys():
+    try:
+        lines = open(state() + '/envfile.history').read().strip().split('\n')
+        return json.loads(lines[-1])['FRONT_DOOR_KEYS'].split(',')
+    except Exception:
+        return []
+def distribution_key():
+    try:
+        return open(state() + '/door.key').read().strip()
+    except Exception:
+        return os.environ['FAKE_DKEY']
+class H(BaseHTTPRequestHandler):
+    def log_message(self, *a): pass
+    def do_GET(self):
+        sent = distribution_key() if MODE == 'app' else (self.headers.get('x-front-door-key') or '')
+        self.send_response(404 if sent in function_keys() else 403)
+        self.send_header('content-length', '0')
+        self.end_headers()
+HTTPServer(('127.0.0.1', int(sys.argv[1])), H).serve_forever()
+PY
+kapi=$(free_port)
+kapp=$(free_port)
+python3 -I "$WORK/door.py" "$kapi" api "$WORK/door.state" >/dev/null 2>&1 &
+kapi_pid=$!
+python3 -I "$WORK/door.py" "$kapp" app "$WORK/door.state" >/dev/null 2>&1 &
+kapp_pid=$!
+for _ in $(seq 1 50); do if port_taken "$kapi" && port_taken "$kapp"; then break; fi; sleep 0.1; done
+export FAKE_LAYER4=1 FAKE_APP=http://127.0.0.1:$kapp FAKE_API=http://127.0.0.1:$kapi KEYS_LOCAL_PORT
+KEYS_LOCAL_PORT=$(free_port)
+mkdir -p "$E2E/keysbin"
+cp "$E2E/stackbin/gh" "$E2E/keysbin/gh"
+chmod +x "$E2E/keysbin/gh"
+jq -c '.Changes += [{"Type":"Resource","ResourceChange":{"Action":"Modify","LogicalResourceId":"DeployRole","ResourceType":"AWS::IAM::Role","Replacement":"False","Scope":["Properties"],"Details":[]}}]' \
+  "$OPS_DIR/testdata/changeset-door.json" >"$E2E/changeset-door-role.json"
+keys_run() { # <state name> <logs name> <args…>: keys.sh ridge <args> in the stack clone, on the state an earlier run of the name left
+  local st=$1 lg=$2
+  shift 2
+  S=$E2E/state-$st
+  mkdir -p "$S"
+  touch "$S/bff.made" # the BFF's service is on the box already (the deploy makes it)
+  export FAKE_STATE=$S OPS_LOG_DIR=$E2E/logs-$st-$lg FAKE_CS=$WORK/server-e2e
+  rm -rf "${OPS_LOG_DIR:?}"
+  : >"$S/events"
+  printf '%s\n' "$S" >"$WORK/door.state"
+  RC=0
+  (cd "$E2E/stackrepo" && PATH="$E2E/keysbin:$PATH" bash ops/keys.sh ridge "$@") >"$S/out" 2>&1 </dev/null || RC=$?
+}
+boxkey() { sed -n "s/^$1=//p" "$S/box/$2"; } # <name> <file on the box>
+function_var() { tail -n 1 "$S/envfile.history" | jq -r ".$1"; }
+events() { tr '\n' ',' <"$S/events" | sed 's/,$//'; }
+leaks() { cat "$OPS_LOG_DIR"/*.log "$S/out" | grep -cF -e "$1" -e "$2" || true; } # <old key> <new key>: lines of the log and the terminal that hold either
+is_new() { if [[ $2 =~ ^[0-9a-f]{64}$ ]] && [ "$1" != "$2" ]; then echo yes; else echo no; fi; } # <old> <new>
+
+# the BFF's service is made (and registered in the real store) by the deploy, as on ridge
+e2e_fresh keys-all
+e2e_run app.sh ridge
+check "the deploy that makes the BFF's service ends green (the keys run on its state)" 0 "$RC"
+printf '%s\n' "$S" >"$WORK/door.state"
+
+old_i=$FAKE_IKEY
+keys_run keys-all internal internal
+new_i=$(boxkey INTERNAL_ACCESS_KEY keys.env)
+check "case 14, internal: the run ends green, and says which key it replaced" "0 1 1" \
+  "$RC $(grep -c '^== green' "$S/out" || true) $(grep -c '^replaced the internal key$' "$S/out" || true)"
+check "  the new key is 64 hex characters and not the old; the super-admin key is as it was" "yes $FAKE_AKEY" "$(is_new "$old_i" "$new_i") $(boxkey X_SUPER_ADMIN_KEY keys.env)"
+check "  its order: the keys file on the box, the store restarted, then the function's copy" "write keys.env,restart,settings 1" "$(events)"
+check "  the function holds the new key and the door's key as it was" "$new_i $FAKE_DKEY" "$(function_var INTERNAL_ACCESS_KEY) $(function_var FRONT_DOOR_KEYS)"
+check "  and the log's address and key as they were: a settings call replaces the whole environment" "http://10.20.30.40:$AUDIT_PORT $FAKE_UKEY" "$(function_var AUDIT_URL) $(function_var AUDIT_KEY)"
+check "  the old key is read back refused (401) and the new accepted (200) by the real store" "1 1" \
+  "$(grep -c '^ok   the store refuses the old internal key: 401$' "$S/out" || true) $(grep -c '^ok     and accepts the new: 200$' "$S/out" || true)"
+check "  the seconds of refused calls and of the store's restart are printed" "1 1" \
+  "$(grep -cE '^calls were refused for about [0-9]+ seconds' "$S/out" || true) $(grep -cE '^the store was down for about [0-9]+ seconds' "$S/out" || true)"
+check "  and the app's address, through the door, answers a call afterwards (the back end holds the keys it needs)" 1 \
+  "$(grep -c "^ok     and the app's address, through the door, answers a call with no key of its own: 404$" "$S/out" || true)"
+check "case 16, internal: neither key is in the log or on the terminal, and the log says so" "0 1" "$(leaks "$old_i" "$new_i") $(grep -c '^ok   no key in this log' "$OPS_LOG_DIR"/*.log || true)"
+
+old_a=$FAKE_AKEY
+keys_run keys-all admin admin
+new_a=$(boxkey X_SUPER_ADMIN_KEY keys.env)
+check "case 14, admin: the run ends green, and says which key it replaced" "0 1 1" \
+  "$RC $(grep -c '^== green' "$S/out" || true) $(grep -c '^replaced the admin key$' "$S/out" || true)"
+check "  the new key is 64 hex characters and not the old; the internal key is as the last run left it" "yes $new_i" "$(is_new "$old_a" "$new_a") $(boxkey INTERNAL_ACCESS_KEY keys.env)"
+check "  its order: the keys file on the box, then the store restarted, and the function is not touched" "write keys.env,restart" "$(events)"
+check "  the old key is read back refused (401) and the new accepted (404 for a service that is not there, nothing written)" "1 1" \
+  "$(grep -c '^ok   the store refuses the old super-admin key: 401$' "$S/out" || true) $(grep -c '^ok     and accepts the new (a service that does not exist: 404, nothing written): 404$' "$S/out" || true)"
+check "  and the app's address, through the door, answers a call afterwards (the back end holds the keys it needs)" 1 \
+  "$(grep -c "^ok     and the app's address, through the door, answers a call with no key of its own: 404$" "$S/out" || true)"
+check "case 16, admin: neither key is in the log or on the terminal, and the log says so" "0 1" "$(leaks "$old_a" "$new_a") $(grep -c '^ok   no key in this log' "$OPS_LOG_DIR"/*.log || true)"
+
+old_s=$FAKE_SKEY
+keys_run keys-all service service
+new_s=$(boxkey SERVICE_ACCESS_KEY bff.env)
+check "case 14, service: the run ends green, and says which key it replaced" "0 1 1" \
+  "$RC $(grep -c '^== green' "$S/out" || true) $(grep -c '^replaced the service key$' "$S/out" || true)"
+check "  the new key is 64 hex characters and not the old; the service code is as it was; no file waits beside bff.env" "yes bff gone" \
+  "$(is_new "$old_s" "$new_s") $(boxkey SERVICE_CODE bff.env) $(file_state "$S/box/bff.env.new")"
+check "  its order: the new file beside the old, the store's rekey, the new file in place, then the function's copy" "write bff.env.new,mv bff.env,settings 1" "$(events)"
+check "  the function holds the new service key, and the internal key the last run left" "$new_s $new_i" "$(function_var SERVICE_ACCESS_KEY) $(function_var INTERNAL_ACCESS_KEY)"
+check "  the old key is read back refused (403) and the new accepted (404 for a record that is not there) by the real store" "1 1 1" \
+  "$(grep -c '^ok   the store refuses the old service key: 403$' "$S/out" || true) $(grep -c '^ok     and accepts the new (a record that does not exist: 404): 404$' "$S/out" || true) $(grep -c '^service rekeyed$' "$S/out" || true)"
+check "  and the app's address, through the door, answers a call afterwards (the back end holds the keys it needs)" 1 \
+  "$(grep -c "^ok     and the app's address, through the door, answers a call with no key of its own: 404$" "$S/out" || true)"
+check "  its closing lines say the sign-in waits restarted and the open operator challenges are void" 1 \
+  "$(grep -A 2 '^replaced the service key$' "$S/out" | grep -c '^it also restarted every sign-in wait .* every open operator challenge' || true)"
+check "case 16, service: neither key is in the log or on the terminal, and the log says so" "0 1" "$(leaks "$old_s" "$new_s") $(grep -c '^ok   no key in this log' "$OPS_LOG_DIR"/*.log || true)"
+
+old_d=$FAKE_DKEY
+FAKE_CHANGESET=$OPS_DIR/testdata/changeset-door.json keys_run keys-all door front-door
+new_d=$(cat "$S/door.key")
+check "case 14, front door: the run ends green (its own verdict and the stack run's), and says which key it replaced" "0 2 1" \
+  "$RC $(grep -c '^== green' "$S/out" || true) $(grep -c '^replaced the front-door key$' "$S/out" || true)"
+check "  the new key is 64 hex characters and not the old" yes "$(is_new "$old_d" "$new_d")"
+check "  its order: the function takes both keys, the change set is executed, the distribution's deploy is waited for, the function takes the new alone" "settings 2,execute,deployed,settings 1" "$(events)"
+check "  the both-keys settings held the old key and the new, and the last settings the new alone" "$old_d,$new_d $new_d" \
+  "$(tail -n 2 "$S/envfile.history" | head -n 1 | jq -r .FRONT_DOOR_KEYS) $(function_var FRONT_DOOR_KEYS)"
+check "  the change set was made with the new key from the key file (a parameter, not a new stack), in the compact form add_param writes" "$new_d yes" \
+  "$(jq -r '.[] | select(.ParameterKey == "FrontDoorKey") | .ParameterValue' "$S/params.json") $([ "$(cat "$S/params.json")" = "$(jq -c . "$S/params.json")" ] && echo yes || echo no)"
+check "  the old key is read back refused (403) at the API's own address, the new answered (404), and the app answers through the door" "1 1 1" \
+  "$(grep -c "^ok   the API's own address refuses the old door key: 403$" "$S/out" || true) $(grep -c '^ok     and answers a call with the new one (a client that does not exist: 404): 404$' "$S/out" || true) $(grep -c "^ok     and the app's address, through the door, answers a call with no key of its own: 404$" "$S/out" || true)"
+check "  the key run opened no box for the stack and wrote nothing to GitHub" "0" "$(grep -c 'secret set' "$S/gh.calls" || true)"
+check "case 16, front door: neither key is in the logs (this run's and the stack run's) or on the terminal, and each log says so" "0 2" "$(leaks "$old_d" "$new_d") $(cat "$OPS_LOG_DIR"/*.log | grep -c '^ok   no key in this log' || true)"
+
+# case 15: a key run's change set that touches anything but the distribution is refused before it runs
+e2e_fresh keys-refused
+e2e_run app.sh ridge # the BFF's service is registered, as on ridge, which the run's first reads need
+FAKE_CHANGESET=$E2E/changeset-door-role.json keys_run keys-refused door front-door
+check "case 15: a change set that also modifies the deploy role is refused before it is executed" "1 1 1 1" \
+  "$RC $(grep -c '^REFUSED: a key run changes the distribution alone' "$S/out" || true) $(grep -c '^  DeployRole (AWS::IAM::Role): Modify$' "$S/out" || true) $(grep -c "the stack's key run did not finish" "$S/out" || true)"
+check "  nothing was executed, the distribution sends the key it did, and the function took both keys and no more" "gone settings 2" \
+  "$(file_state "$S/door.key") $(events)"
+key15=$(printf 'cd%.0s' $(seq 1 32))
+printf '%s\n' "$key15" >"$E2E/kr.key"
+chmod 600 "$E2E/kr.key"
+FRONT_DOOR_KEY_FILE=$E2E/kr.key FAKE_CHANGESET=$E2E/changeset-door-role.json stack_run key-stack-refused
+check "  stack.sh itself, given a key file, refuses it before execute-change-set is called" "1 0 1" \
+  "$RC $(grep -c 'execute-change-set' "$S/aws.calls" || true) $(grep -c '^REFUSED: a key run changes the distribution alone' "$S/out" || true)"
+jq -c '.Changes[0].ResourceChange.Details += [{"Target":{"Attribute":"Properties","Name":"DistributionConfig","RequiresRecreation":"Never"},"Evaluation":"Static","ChangeSource":"DirectModification"}]' \
+  "$OPS_DIR/testdata/changeset-door.json" >"$E2E/changeset-door-extra.json"
+FRONT_DOOR_KEY_FILE=$E2E/kr.key FAKE_CHANGESET=$E2E/changeset-door-extra.json stack_run key-stack-extra
+check "  a change set that also changes the distribution for another cause than the key is refused before execute-change-set is called" "1 0 1 1" \
+  "$RC $(grep -c 'execute-change-set' "$S/aws.calls" || true) $(grep -c '^REFUSED: a key run changes the distribution alone' "$S/out" || true) $(grep -c '^  Distribution (AWS::CloudFront::Distribution): Modify$' "$S/out" || true)"
+check "  and its refusal prints every detail with its source and cause (the key's two, and the extra), no parameter value" "1 1 1 0" \
+  "$(grep -c '^      Properties DistributionConfig requires-recreation=Never evaluation=Dynamic source=DirectModification cause=-$' "$S/out" || true) $(grep -c '^      Properties DistributionConfig requires-recreation=Never evaluation=Static source=ParameterReference cause=FrontDoorKey$' "$S/out" || true) $(grep -c '^      Properties DistributionConfig requires-recreation=Never evaluation=Static source=DirectModification cause=-$' "$S/out" || true) $(grep -cF "$key15" "$S/out" || true)"
+# The documented shape (ops/testdata/changeset-door.json, built as the user guide's "Modifying an input parameter value" shows it,
+# docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/using-cfn-updating-stacks-changesets-samples.html: a Dynamic
+# DirectModification detail with no cause, and a Static ParameterReference one naming the parameter, over one Target) is
+# accepted above; a distribution change that shape does not explain is refused: another parameter, a Dynamic
+# detail whose Static partner names another Target, and a Modify with no detail at all.
+jq -c '.Changes[0].ResourceChange.Details[1].CausingEntity = "SubjectPrefix"' "$OPS_DIR/testdata/changeset-door.json" >"$E2E/changeset-door-param.json"
+jq -c '.Changes[0].ResourceChange.Details[1].Target.Name = "Origins"' "$OPS_DIR/testdata/changeset-door.json" >"$E2E/changeset-door-orphan.json"
+jq -c '.Changes[0].ResourceChange.Details = []' "$OPS_DIR/testdata/changeset-door.json" >"$E2E/changeset-door-empty.json"
+for variant in param orphan empty; do
+  FRONT_DOOR_KEY_FILE=$E2E/kr.key FAKE_CHANGESET=$E2E/changeset-door-$variant.json stack_run key-stack-$variant
+  check "  a distribution change the documented shape does not explain ($variant) is refused before execute-change-set" "1 0 1" \
+    "$RC $(grep -c 'execute-change-set' "$S/aws.calls" || true) $(grep -c '^REFUSED: a key run changes the distribution alone' "$S/out" || true)"
+done
+FAKE_CHANGESET=$E2E/changeset-door-role.json stack_run key-stack-plain --plan
+check "  and the same change set without a key file is not that run's to refuse" "0 0" \
+  "$RC $(grep -c 'REFUSED' "$S/out" || true)"
+FRONT_DOOR_KEY_FILE=$E2E/kr.key FAKE_CHANGESET=$OPS_DIR/testdata/changeset-door.json stack_run key-stack-door --plan
+check "  a change set of the distribution alone passes, and the key is not printed" "0 1 0" \
+  "$RC $(grep -c '^ok   the key run changes the distribution alone' "$S/out" || true) $(cat "$S/out" "$OPS_LOG_DIR"/*.log | grep -cF "$key15" || true)"
+
+# a service run whose last move fails stops saying what it left and what mends it (the state a stop leaves)
+e2e_fresh keys-stopped
+e2e_run app.sh ridge
+FAKE_MV_FAIL=1 keys_run keys-stopped stopped service
+check "a service run whose mv of bff.env fails stops red, and says the store holds the new key, the box the old, and the mending mv and app.sh" "1 1 1 1 1" \
+  "$RC $(grep -c '^STOPPED: the store holds the new service key while the box.s bff.env and the function hold the old' "$S/out" || true) $(grep -c 'sudo mv -f /etc/c-storage/bff.env.new /etc/c-storage/bff.env, then run ops/app.sh ridge' "$S/out" || true) $(grep -c '^STOPPED: ' "$OPS_LOG_DIR"/*.log || true) $(grep -c '^write bff.env.new$' "$S/events" || true)"
+# a store that refuses the service key the box holds is found before a second run changes anything
+e2e_fresh keys-half
+e2e_run app.sh ridge
+mkdir -p "$S/box"
+printf 'SERVICE_CODE=bff\nSERVICE_ACCESS_KEY=%s\n' "$(printf 'ef%.0s' $(seq 1 32))" >"$S/box/bff.env"
+keys_run keys-half half internal
+check "an internal run finds the store refusing the service key the box holds: nothing is changed, and it says what to do" "1 1 [] 0" \
+  "$RC $(grep -c 'the store refuses the service key the box.s bff.env holds: nothing was changed' "$S/out" || true) [$(events)] $(grep -c '^STOPPED: ' "$S/out" || true)"
+
+# a box without the log's key file (the release's log half stopped before it made the key) is found before a run changes anything
+e2e_fresh keys-noaudit
+e2e_run app.sh ridge
+FAKE_NO_AUDIT_KEY=1 keys_run keys-noaudit noaudit internal
+check "an internal run on a box without the log's key is refused before anything changes: nothing written, no restart, no settings, no STOPPED line" "1 1 [] 0" \
+  "$RC $(grep -c 'the box holds no /etc/audit-backbone/keys.env' "$S/out" || true) [$(events)] $(grep -c '^STOPPED: ' "$S/out" || true)"
+
+# the store does not know the BFF's service: the rekey is refused, and nothing is left or changed
+e2e_fresh keys-unregistered
+keys_run keys-unregistered unreg service
+check "the store holds no BFF service: the run stops, the waiting file is removed, no file is moved and the function is not touched" "1 1 rm bff.env.new" \
+  "$RC $(grep -c 'the store did not replace the BFF.s service key' "$S/out" || true) $(events | sed 's/^write bff.env.new,//')"
+check "  and no file was put over bff.env" gone "$(file_state "$S/box/bff.env")"
+
+# the refusals before any act
+e2e_fresh keys-usage
+rc=0
+out=$(bash "$OPS_DIR/keys.sh" 2>&1) || rc=$?
+check "keys.sh with no argument prints its usage and exits 2" "2 usage: ops/keys.sh <env> front-door|internal|admin|service" "$rc $out"
+rc=0
+out=$(bash "$OPS_DIR/keys.sh" ridge nonsense 2>&1) || rc=$?
+check "  and so does a key it does not know" "2 usage: ops/keys.sh <env> front-door|internal|admin|service" "$rc $out"
+e2e_fresh keys-job
+GITHUB_ACTIONS=true keys_run keys-job job internal
+check "keys.sh in a job is refused before any aws call or ssh" "1 1 gone gone" \
+  "$RC $(grep -c 'is run by a person at a terminal, never by a job' "$S/out" || true) $(file_state "$S/aws.calls") $(file_state "$S/ssh.calls")"
+
+kill "$kapi_pid" "$kapp_pid" 2>/dev/null || true
+unset KEYS_LOCAL_PORT
+
+# a text guard: no key-holding variable is an argument of jq (--arg), aws, curl, ssh, box or add_param in the three
+# scripts that hold keys (an external command's argument list is readable by any user's ps while it runs); an
+# assignment in front of a command (NAME=$KEY cmd) is the environment, not an argument
+key_arg_lines() { # <file>…: the lines that put a key-holding variable in a command's arguments
+  local f
+  for f in "$@"; do
+    sed -e 's/^[[:space:]]*#.*//' -e 's/[A-Za-z_][A-Za-z_]*=\$[{(]*[A-Za-z_]*[})]*//g' "$f" |
+      grep -nE '(--arg|--argjson|add_param|curl|aws|ssh|box|jq)[ ].*\$\{?(NEW|OLD|INTERNAL_KEY|ADMIN_KEY|SERVICE_ACCESS_KEY|FRONT_DOOR_KEY|key)\b' || true
+  done
+}
+# shellcheck disable=SC2016 # the control's literal text
+printf '%s\n' '  PARAMS=$(jq -c --arg v "$key" ". + [\$v]" <<<"$PARAMS")' 'KEY=$NEW aws x' >"$WORK/key-arg-control.sh"
+check "no key-holding variable is an argument of a command in keys.sh, stack.sh or app.sh" 0 "$(key_arg_lines "$OPS_DIR/keys.sh" "$OPS_DIR/stack.sh" "$OPS_DIR/app.sh" | wc -l | tr -d ' ')"
+check "  and the guard sees a key in jq's --arg, and not one in an assignment in front of a command (a planted control)" 1 "$(key_arg_lines "$WORK/key-arg-control.sh" | wc -l | tr -d ' ')"
 
 unset FAKE_LAYER4 APP_LOCAL_PORT APP_BUNDLE APP_UI_DIR
 
@@ -3029,6 +5057,424 @@ GLOG=$(find "$GW/logs-$GN" -name '*.log' | head -1)
 check "M3: once the full run's lock goes the gate runs and is green" 0 "$GRC"
 check "  having waited first" 1 "$(seenre '^waiting: a full run holds' "$GLOG")"
 check "  and having taken and freed its own lock" 1 "$(grep -c 'lock free at the end: yes' "$GLOG" || true)"
+
+# ---- the scripts' answer on an environment that may hold real data (docs/plans/2026-11-12-safe-scripts.md, cases 1 to 6)
+echo "== every script that reaches an environment says what it does on production (INVENTED_ENVS, refuse_real, real_ok)"
+# stance_of <script> → "ok", or what is wrong: exactly one call of refuse_real or real_ok, after log_start and before main_synced
+stance_of() {
+  awk '/^log_start /{ if (!l) l = NR } /^(refuse_real|real_ok) /{ c++; k = NR } /^main_synced( |$)/{ if (!m) m = NR }
+    END { if (c == 1 && l && m && l < k && k < m) print "ok"; else print "calls " c + 0 ", log_start " l + 0 ", call " k + 0 ", main_synced " m + 0 }' "$1"
+}
+stance_bad=''
+stance_n=0
+for f in "$OPS_DIR"/*.sh; do
+  grep -qE '^main_synced( |$)' "$f" || continue
+  stance_n=$((stance_n + 1))
+  r=$(stance_of "$f")
+  [ "$r" = ok ] || stance_bad="$stance_bad $(basename "$f") ($r)"
+done
+check "1: every ops script that calls main_synced calls exactly one of refuse_real and real_ok, after log_start and before main_synced" "" "$stance_bad"
+check "  and the glob finds scripts at all" 1 "$([ "$stance_n" -ge 10 ] && echo 1 || echo 0)"
+check "2: the list of invented environments has one home" 1 "$(cat "$OPS_DIR"/*.sh | grep -c '^INVENTED_ENVS=' || true)"
+check "  and it names ridge alone" 'INVENTED_ENVS="ridge"' "$(grep '^INVENTED_ENVS=' "$OPS_DIR/lib.sh")"
+# stance_sub <marker value> [VAR=value…] -- <function> <args…>: in a subshell with the tests' marker and switches as the case sets them
+stance_sub() {
+  local marker=$1
+  shift
+  local sw=()
+  while [ "$1" != -- ]; do sw+=("$1"); shift; done
+  shift
+  ( [ -n "$marker" ] || unset OPS_TESTS_RUNNING; unset RIDGE_SCRIPTS_DIR OPS_TEST_NO_TTY; for kv in ${sw[@]+"${sw[@]}"}; do export "${kv?}"; done; "$@" ) 2>&1
+}
+check "6: on an unlisted environment RIDGE_SCRIPTS_DIR is refused without the tests' marker" 1 "$(stance_sub '' RIDGE_SCRIPTS_DIR=/x -- real_ok crest why | grep -c 'RIDGE_SCRIPTS_DIR is set, and crest may hold real data' || true)"
+check "  and so is OPS_TEST_NO_TTY" 1 "$(stance_sub '' OPS_TEST_NO_TTY=1 -- real_ok crest why | grep -c 'OPS_TEST_NO_TTY is set, and crest may hold real data' || true)"
+check "  and with the marker set both pass" "ok   crest may hold real data; this script is safe there: why" "$(stance_sub 1 RIDGE_SCRIPTS_DIR=/x OPS_TEST_NO_TTY=1 -- real_ok crest why)"
+check "  and on ridge they are not looked at, and nothing is printed" "" "$(stance_sub '' RIDGE_SCRIPTS_DIR=/x OPS_TEST_NO_TTY=1 -- real_ok ridge why)"
+check "  refuse_real passes ridge and dies on another name, in the script's words" "|error: my words" "$(stance_sub 1 -- refuse_real ridge 'my words' || true)|$(stance_sub 1 -- refuse_real crest 'my words' || true)"
+# the whole runs, in the scratch clone the tunnel's section made: the clone's ops/ is this tree's
+e2e_fresh drill-other
+e2e_run drill.sh crest
+check "3: the drill on an unlisted environment refuses, naming why" "1 1" "$RC $(grep -c '^error: drill.sh holds the environments that keep invented data alone (ridge)' "$OPS_LOG_DIR"/*.log || true)"
+check "  before any aws or box call" "gone gone" "$(file_state "$S/aws.calls") $(file_state "$S/ssh.calls")"
+# shellcheck disable=SC2016 # the scripts' source text is searched, not expanded
+check "4: the tunnel, the seed and the root password keep their words, now through refuse_real (their whole runs are the cases above)" "1 1 1" \
+  "$(grep -c 'refuse_real "\$ENVNAME" "tunnel.sh holds ridge alone for now: another stack' "$OPS_DIR/tunnel.sh" || true) $(grep -c 'refuse_real "\$ENVNAME" "seed.sh seeds ridge alone: a client' "$OPS_DIR/seed.sh" || true) $(grep -c "refuse_real \"\\\$ENVNAME\" \"root-password.sh holds ridge's demo copies alone" "$OPS_DIR/root-password.sh" || true)"
+stack_other() { # <state name> <env> <args…>: stack.sh env <env> in the stack clone, its terminal output in the state's out file
+  e2e_fresh "$1"
+  local env=$2
+  shift 2
+  RC=0
+  (cd "$E2E/stackrepo" && PATH="$E2E/stackbin:$PATH" bash ops/stack.sh env "$env" "$@") >"$S/out" 2>&1 </dev/null || RC=$?
+}
+stack_other stack-crest crest --plan
+check "5: a script that works prints its reason on an unlisted environment" 1 "$(grep -c '^ok   crest may hold real data; this script is safe there: a change set is shown first' "$S/out" || true)"
+stack_other stack-ridge-stance ridge --plan
+check "  and nothing new on ridge" 0 "$(grep -c 'may hold real data' "$S/out" || true)"
+
+echo "== workflows_of names the workflows that reach an environment (the destroy and the remake switch those, never walks.yml)"
+check "15: workflows_of ridge names ci.yml and seed.yml" "ci.yml seed.yml" "$(workflows_of ridge | tr '\n' ' ' | sed 's/ $//')"
+check "  and an environment no workflow names gets nothing" "" "$(workflows_of nowhere)"
+wf_odd_shape() { # <file body>: workflows_of ridge over a folder holding that one workflow file, "<exit> <the error names the file and the line>"
+  local d=$WORK/wfodd rc=0 out
+  rm -rf "$d"
+  mkdir -p "$d/.github/workflows"
+  printf '%b' "$1" >"$d/.github/workflows/odd.yml"
+  out=$(REPO_DIR=$d workflows_of ridge 2>&1) || rc=$?
+  echo "$rc $(grep -c "^error: odd.yml has an environment: line that is not the plain form.*(line 3:" <<<"$out" || true)"
+}
+check "25: a workflow naming its environment as a mapping stops workflows_of, naming the file and the line" "1 1" \
+  "$(wf_odd_shape 'jobs:\n  d:\n    environment:\n      name: ridge\n')"
+check "  a quoted name stops it the same way" "1 1" "$(wf_odd_shape 'jobs:\n  d:\n    environment: "ridge"\n')"
+check "  a trailing comment stops it the same way" "1 1" "$(wf_odd_shape 'jobs:\n  d:\n    environment: ridge # the stage\n')"
+check "  and the plain line, with comment lines about environments around it, is read" "0 odd.yml" \
+  "$(d=$WORK/wfodd; rm -rf "$d"; mkdir -p "$d/.github/workflows"; printf 'jobs:\n  d:\n    # the environment: here is plain\n    environment: ridge\n' >"$d/.github/workflows/odd.yml"; rc=0; out=$(REPO_DIR=$d workflows_of ridge 2>&1) || rc=$?; echo "$rc $out")"
+
+echo "== no file the ci workflow runs on its Ubuntu runner uses BSD sed's in-place form (GNU sed reads the empty suffix as the script)"
+# ci.yml runs ops/*.sh, walk/*.sh and services/c-storage/scripts/*.sh (ShellCheck, the guards, the deploy) and make check
+# in services/c-storage, on GNU sed: `-i` there takes its suffix attached, so a separate empty one is the script.
+# The pattern is written so that this line does not match itself.
+BSD_SED=$(grep -nE "sed( +-[A-Za-z]+)* +-[A-Za-z]*i +(''|\"\")" "$REPO_DIR"/ops/*.sh "$REPO_DIR"/walk/*.sh "$REPO_DIR"/services/c-storage/scripts/*.sh "$REPO_DIR"/services/c-storage/Makefile "$REPO_DIR"/.github/workflows/*.yml || true)
+check "no sed -i with a separate empty suffix in a file the runner runs" "" "$BSD_SED"
+
+echo "== ops/destroy.sh and ops/remake.sh, run whole once on stand-ins for aws, gh, bru and the four children (rows 8 and 18)"
+# A clone whose origin is named as GitHub's are, holding this tree's ops/ and workflows, except that the
+# four scripts the remake calls are stand-ins: each logs as the real one does, records its call and
+# ends green, or red when FAKE_RED names it. The fixtures are parsed alone before any run.
+CYC=$E2E/cycle
+mkdir -p "$CYC/bin" "$CYC/fx" "$E2E/github.com/test-owner"
+git init -q --bare "$E2E/github.com/test-owner/cycle-repo.git"
+mkdir -p "$CYC/repo/.github"
+cp -R "$OPS_DIR" "$CYC/repo/ops"
+cp -R "$REPO_DIR/.github/workflows" "$CYC/repo/.github/workflows"
+for child in stack release app check; do
+  cat >"$CYC/repo/ops/$child.sh" <<'CHILD'
+#!/usr/bin/env bash
+set -euo pipefail
+. "$(dirname "$0")/lib.sh"
+name=$(basename "$0" .sh)
+env=$1
+[ "$name" != stack ] || env=$2
+log_start "$name" "$env"
+echo "$name.sh $*" >>"${FAKE_STATE:?}/children.calls"
+[ "${FAKE_RED:-}" != "$name" ] || die "stand-in $name goes red"
+echo "== green"
+CHILD
+done
+git -C "$CYC/repo" init -q
+git -C "$CYC/repo" remote add origin "$E2E/github.com/test-owner/cycle-repo.git"
+git -C "$CYC/repo" add -A
+git -C "$CYC/repo" -c user.name=test -c user.email=test@example.com -c commit.gpgsign=false commit -q -m main
+git -C "$CYC/repo" push -q origin HEAD:refs/heads/main
+# A second clone, with its own origin, whose lib.sh lists one more id a stack delete keeps, to show that an id
+# no step of destroy.sh deletes stops it (row 22).
+git init -q --bare "$E2E/github.com/test-owner/cycle-repo2.git"
+cp -R "$CYC/repo" "$CYC/repo2"
+rm -rf "$CYC/repo2/.git"
+sed -i.bak 's/^DESTROY_BY_HAND="Box CopyBucket RecordsVolume UiBucket"$/DESTROY_BY_HAND="Box UiBucket CopyBucket RecordsVolume Archive"/' "$CYC/repo2/ops/lib.sh"
+rm -f "$CYC/repo2/ops/lib.sh.bak"
+git -C "$CYC/repo2" init -q
+git -C "$CYC/repo2" remote add origin "$E2E/github.com/test-owner/cycle-repo2.git"
+git -C "$CYC/repo2" add -A
+git -C "$CYC/repo2" -c user.name=test -c user.email=test@example.com -c commit.gpgsign=false commit -q -m main
+git -C "$CYC/repo2" push -q origin HEAD:refs/heads/main
+FX=$CYC/fx
+ACCT=123456789012
+jq -nc '{StackSummaries: [{StackName: "ridge", StackStatus: "UPDATE_COMPLETE"}, {StackName: "credo-network", StackStatus: "UPDATE_COMPLETE"}, {StackName: "credo-github", StackStatus: "CREATE_COMPLETE"}]}' >"$FX/stacks.json"
+jq -nc '{Stacks: [{StackName: "ridge", StackStatus: "UPDATE_COMPLETE", EnableTerminationProtection: false, Parameters: [{ParameterKey: "Env", ParameterValue: "ridge"}, {ParameterKey: "Network", ParameterValue: "credo-network"}, {ParameterKey: "Repository", ParameterValue: "test-owner/cycle-repo"}], Outputs: [{OutputKey: "BoxId", OutputValue: "i-0box"}]}]}' >"$FX/desc.json"
+jq -nc --arg acct "$ACCT" '{StackResourceSummaries: [
+  {ResourceType: "AWS::EC2::Subnet", LogicalResourceId: "Subnet", PhysicalResourceId: "subnet-0aaa", ResourceStatus: "CREATE_COMPLETE"},
+  {ResourceType: "AWS::EC2::Instance", LogicalResourceId: "Box", PhysicalResourceId: "i-0box", ResourceStatus: "CREATE_COMPLETE"},
+  {ResourceType: "AWS::EC2::SecurityGroup", LogicalResourceId: "BoxGroup", PhysicalResourceId: "sg-0box", ResourceStatus: "CREATE_COMPLETE"},
+  {ResourceType: "AWS::EC2::SecurityGroup", LogicalResourceId: "BffGroup", PhysicalResourceId: "sg-0bff", ResourceStatus: "CREATE_COMPLETE"},
+  {ResourceType: "AWS::Logs::LogGroup", LogicalResourceId: "BffLogs", PhysicalResourceId: "/aws/lambda/credo-ridge-bff", ResourceStatus: "CREATE_COMPLETE"},
+  {ResourceType: "AWS::Logs::LogGroup", LogicalResourceId: "ApiLogs", PhysicalResourceId: "/aws/apigateway/credo-ridge", ResourceStatus: "CREATE_COMPLETE"},
+  {ResourceType: "AWS::S3::Bucket", LogicalResourceId: "UiBucket", PhysicalResourceId: "ridge-uibucket-abc", ResourceStatus: "CREATE_COMPLETE"},
+  {ResourceType: "AWS::IAM::Role", LogicalResourceId: "BffRole", PhysicalResourceId: "ridge-BffRole-1", ResourceStatus: "CREATE_COMPLETE"},
+  {ResourceType: "AWS::IAM::Role", LogicalResourceId: "DeployRole", PhysicalResourceId: "ridge-DeployRole-1", ResourceStatus: "CREATE_COMPLETE"},
+  {ResourceType: "AWS::Lambda::Function", LogicalResourceId: "Bff", PhysicalResourceId: ("arn:aws:lambda:ap-southeast-5:" + $acct + ":function:credo-ridge-bff"), ResourceStatus: "CREATE_COMPLETE"},
+  {ResourceType: "AWS::ApiGatewayV2::Api", LogicalResourceId: "Api", PhysicalResourceId: "api0", ResourceStatus: "CREATE_COMPLETE"},
+  {ResourceType: "AWS::CloudFront::OriginAccessControl", LogicalResourceId: "UiAccess", PhysicalResourceId: "oac0", ResourceStatus: "CREATE_COMPLETE"},
+  {ResourceType: "AWS::CloudFront::Function", LogicalResourceId: "UiRewrite", PhysicalResourceId: "credo-ridge-rewrite", ResourceStatus: "CREATE_COMPLETE"},
+  {ResourceType: "AWS::CloudFront::Distribution", LogicalResourceId: "Distribution", PhysicalResourceId: "E0DIST", ResourceStatus: "CREATE_COMPLETE"}]}' >"$FX/res.json"
+jq -nc '["AWS::EC2::Subnet", "AWS::EC2::Instance", "AWS::EC2::SecurityGroup", "AWS::Logs::LogGroup", "AWS::S3::Bucket", "AWS::IAM::Role", "AWS::Lambda::Function", "AWS::ApiGatewayV2::Api", "AWS::CloudFront::OriginAccessControl", "AWS::CloudFront::Function", "AWS::CloudFront::Distribution"]' >"$FX/types.json"
+jq -nc '{State: {Name: "running"}, InstanceType: "t4g.nano", SubnetId: "subnet-0aaa", Tags: [{Key: "Env", Value: "ridge"}, {Key: "Name", Value: "credo-ridge"}], BlockDeviceMappings: [{DeviceName: "/dev/xvda", Ebs: {VolumeId: "vol-0root", DeleteOnTermination: false}}]} | {Reservations: [{Instances: [.]}]}' >"$FX/box.json"
+jq -nc '[{id: "eni-1", d: "box interface", i: "i-0box"}, {id: "eni-2", d: "AWS Lambda VPC ENI-credo-ridge-bff", i: null}]' >"$FX/enis.json"
+jq -nc '{Volumes: [{VolumeId: "vol-0root", State: "available", Attachments: []}]}' >"$FX/vol.json"
+jq -nc '{Volumes: [{VolumeId: "vol-0rec", State: "in-use", Tags: [{Key: "Env", Value: "ridge"}, {Key: "Name", Value: "credo-ridge-records"}], Attachments: []}]}' >"$FX/recvol.json"
+jq -nc '{Volumes: [{VolumeId: "vol-0orph", Size: 8, VolumeType: "gp3", Encrypted: true, CreateTime: "2026-11-08T00:00:00Z"}]}' >"$FX/orphans.json"
+fx_bad=''
+for f in "$FX"/*.json; do jq -e . "$f" >/dev/null 2>&1 || fx_bad="$fx_bad $(basename "$f")"; done
+check "the stand-ins' fixtures all parse as JSON" "" "$fx_bad"
+cat >"$CYC/bin/aws" <<'STANDIN'
+#!/bin/bash
+echo "aws $*" >>"${FAKE_STATE:?}/aws.calls"
+FX=${FAKE_FX:?}
+gone() { echo "An error occurred (NotFound) when calling the operation: 404 not found" >&2; exit 254; }
+case "$*" in
+  *"sts get-caller-identity"*) echo 123456789012 ;;
+  *"describe-snapshots"*"volume-id,Values=vol-0rec"*"Snapshots[].SnapshotId"*) echo snap-0stack ;;
+  *"describe-snapshots"*"volume-id,Values=vol-0rec"*) echo 0 ;;
+  *"ec2 describe-volumes --volume-ids vol-0rec"*) if [ -e "$FAKE_STATE/stack.gone" ]; then echo "An error occurred (InvalidVolume.NotFound)" >&2; exit 254; fi; cat "$FX/recvol.json" ;;
+  *"s3api head-bucket"*"ridge-copybucket-xyz"*) [ ! -e "$FAKE_STATE/copy.gone" ] || gone ;;
+  *"s3api list-objects-v2"*"ridge-copybucket-xyz"*) if [ -e "$FAKE_STATE/copy.rm.done" ]; then echo 0; else echo 2; fi ;;
+  *"s3 rm"*"ridge-copybucket-xyz"*) touch "$FAKE_STATE/copy.rm.done"; printf 'delete: s3://ridge-copybucket-xyz/Box/records/%s\n' 1 2 ;;
+  *"s3api delete-bucket"*"ridge-copybucket-xyz"*) touch "$FAKE_STATE/copy.gone" ;;
+  *"cloudformation list-stacks"*) cat "$FX/stacks.json" ;;
+  *"cloudformation describe-stacks"*"--query"*) [ ! -e "$FAKE_STATE/stack.gone" ] || gone; echo UPDATE_COMPLETE ;;
+  *"cloudformation describe-stacks"*) [ ! -e "$FAKE_STATE/stack.gone" ] || { echo "An error occurred (ValidationError): Stack with id ridge does not exist" >&2; exit 254; }; cat "$FX/desc.json" ;;
+  *"list-stack-resources"*) cat "$FX/res.json" ;;
+  *"get-template-summary"*) cat "$FX/types.json" ;;
+  *"ec2 describe-instances"*"--filters"*) [ -e "$FAKE_STATE/box.gone" ] || echo i-0box ;;
+  *"describe-instances --instance-ids"*"Tags[?Key"*) printf 'ridge\tsubnet-0aaa\n' ;;
+  *"describe-instances --instance-ids"*"State.Name"*) if [ -e "$FAKE_STATE/box.gone" ]; then echo terminated; else echo running; fi ;;
+  *"describe-instances --instance-ids"*) cat "$FX/box.json" ;;
+  *"ec2 create-snapshot"*) echo snap-0keep ;;
+  *"wait snapshot-completed"*) : ;;
+  *"describe-snapshots --snapshot-ids"*) echo completed ;;
+  *"ec2 describe-volumes --filters"*) cat "$FX/orphans.json" ;;
+  *"describe-snapshots"*) echo 0 ;;
+  *"describe-network-interfaces"*) cat "$FX/enis.json" ;;
+  *"s3api head-bucket"*) [ ! -e "$FAKE_STATE/stack.gone" ] || gone ;;
+  *"get-bucket-tagging"*) echo '{"TagSet":[{"Key":"Env","Value":"ridge"}]}' ;;
+  *"get-bucket-versioning"*) echo None ;;
+  *"s3api list-objects-v2"*)
+    if [ -e "$FAKE_STATE/rm.done" ]; then
+      [ -z "${FAKE_LIST_FAIL:-}" ] || { echo "An error occurred (AccessDenied) when calling the ListObjectsV2 operation: denied for arn:aws:iam::123456789012:role/x" >&2; exit 255; }
+      echo 0
+    else echo 3; fi ;;
+  *"s3 rm"*) touch "$FAKE_STATE/rm.done"; printf 'delete: s3://ridge-uibucket-abc/f%s\n' 1 2; [ -n "${FAKE_RM_SHORT:-}" ] || echo 'delete: s3://ridge-uibucket-abc/f3' ;;
+  *"logs describe-log-groups"*"length(@)"*) if [ -e "$FAKE_STATE/stack.gone" ]; then echo 0; else echo 1; fi ;;
+  *"logs describe-log-groups"*"/aws/lambda/credo-ridge"*) echo /aws/lambda/credo-ridge-bff ;;
+  *"logs describe-log-groups"*) echo /aws/apigateway/credo-ridge ;;
+  *"ec2 terminate-instances"*) : ;;
+  *"wait instance-terminated"*) touch "$FAKE_STATE/box.gone" ;;
+  *"ec2 describe-volumes --volume-ids"*) if [ -e "$FAKE_STATE/vol.gone" ]; then echo "An error occurred (InvalidVolume.NotFound)" >&2; exit 254; fi; cat "$FX/vol.json" ;;
+  *"wait volume-available"*) : ;;
+  *"ec2 delete-volume"*) touch "$FAKE_STATE/vol.gone" ;;
+  *"cloudformation delete-stack"*)
+    [ -z "${FAKE_DELETE_DENIED:-}" ] || { echo "An error occurred (AccessDenied) when calling the DeleteStack operation: User: arn:aws:sts::123456789012:assumed-role/admin/me is not authorized to perform: cloudformation:DeleteStack" >&2; exit 254; } ;;
+  *"wait stack-delete-complete"*) touch "$FAKE_STATE/stack.gone" ;;
+  *"cloudfront get-distribution"* | *"lambda get-function"* | *"apigatewayv2 get-api"* | *"get-origin-access-control"* | *"cloudfront describe-function"* | *"iam get-role"* | *"describe-security-groups"* | *"describe-subnets"*) gone ;;
+  *) echo "stand-in aws: unknown: $*" >&2; exit 1 ;;
+esac
+STANDIN
+cat >"$CYC/bin/gh" <<'STANDIN'
+#!/bin/bash
+echo "gh $*" >>"${FAKE_STATE:?}/gh.calls"
+case "$*" in
+  "auth status"*) [ -z "${FAKE_GH_OUT:-}" ] || exit 1; exit 0 ;;
+  "workflow list"*)
+    for f in "$FAKE_STATE"/wf.*; do printf '%s %s\n' "${f##*/wf.}" "$(cat "$f")"; done |
+      jq -R -s -c 'split("\n") | map(select(length > 0) | split(" ")) | map({name: .[0], path: (".github/workflows/" + .[0]), state: .[1]})' ;;
+  "workflow disable "*) echo disabled_manually >"$FAKE_STATE/wf.$3" ;;
+  "workflow enable "*) [ "${FAKE_ENABLE_FAIL:-}" != "$3" ] || { echo "HTTP 502: Bad gateway" >&2; exit 1; }; echo active >"$FAKE_STATE/wf.$3" ;;
+  "run list"*) if [ -n "${FAKE_RUN:-}" ] && [[ "$*" == *in_progress* ]]; then echo '[{"databaseId":1,"workflowName":"ci","status":"in_progress","url":"https://example.test/run/1"}]'; elif [ -n "${FAKE_RUN_QUEUED:-}" ] && [[ "$*" == *queued* ]]; then echo '[{"databaseId":2,"workflowName":"seed","status":"queued","url":"https://example.test/run/2"}]'; elif [ -n "${FAKE_RUN_LATE:-}" ] && [[ "$*" == *in_progress* ]] && grep -q disabled_manually "$FAKE_STATE/wf.ci.yml"; then echo '[{"databaseId":3,"workflowName":"ci","status":"in_progress","url":"https://example.test/run/3"}]'; else echo '[]'; fi ;;
+  *) echo "stand-in gh: unknown: $*" >&2; exit 1 ;;
+esac
+STANDIN
+cat >"$CYC/bin/bru" <<'STANDIN'
+#!/bin/sh
+echo "${FAKE_BRU:-4.2.0}"
+STANDIN
+chmod +x "$CYC/bin/aws" "$CYC/bin/gh" "$CYC/bin/bru"
+cycle_run() { # <state name> <initial workflow state> <typed text> <script> <args…>: the script whole in the clone; terminal output in $S/out
+  local name=$1 wf=$2 typed=$3 f
+  shift 3
+  e2e_fresh "$name"
+  export FAKE_FX=$FX
+  for f in "$CYC"/repo/.github/workflows/*.yml; do echo "$wf" >"$S/wf.$(basename "$f")"; done
+  RC=0
+  (cd "$CYC/repo" && PATH="$CYC/bin:$PATH" RIDGE_SCRIPTS_DIR=/x OPS_TEST_NO_TTY=1 bash "ops/$1" "${@:2}") <<<"$typed" >"$S/out" 2>&1 || RC=$?
+}
+cycle_case() { # <state name> <initial workflow state> <typed text> <script> <args…>: as cycle_run, with CASE_FX (fixtures), CASE_SETUP (run in the state folder first), CASE_ENV (KEY=VALUE words) and CASE_NOTTY (set: no test switch)
+  local name=$1 wf=$2 typed=$3 f
+  shift 3
+  e2e_fresh "$name"
+  export FAKE_FX=${CASE_FX:-$FX}
+  for f in "$CYC"/repo/.github/workflows/*.yml; do echo "$wf" >"$S/wf.$(basename "$f")"; done
+  if [ -n "${CASE_SETUP:-}" ]; then (cd "$S" && eval "$CASE_SETUP"); fi
+  RC=0
+  (
+    cd "$CYC/${CASE_REPO:-repo}"
+    export PATH="$CYC/bin:$PATH" RIDGE_SCRIPTS_DIR=/x
+    unset OPS_TEST_NO_TTY
+    [ -n "${CASE_NOTTY:-}" ] || export OPS_TEST_NO_TTY=1
+    for kv in ${CASE_ENV:-}; do export "${kv?}"; done
+    bash "ops/$1" "${@:2}"
+  ) <<<"$typed" >"$S/out" 2>&1 || RC=$?
+}
+cycle_run destroy-whole active ridge destroy.sh ridge
+check "8: the destroy on a whole ridge: exit 0, its verdict, the log ending on its exit" "0 1 == exit 0" \
+  "$RC $(grep -c '^== verdict: ridge is destroyed, ci.yml and seed.yml are off$' "$OPS_LOG_DIR"/*.log || true) $(tail -n 1 "$OPS_LOG_DIR"/*.log)"
+check "  it deleted in the one-off's order: the box, its disk, the bucket's files, the stack" "wait instance-terminated,ec2 delete-volume,s3 rm,cloudformation delete-stack," \
+  "$(grep -oE -e 'wait instance-terminated|ec2 delete-volume|s3 rm|cloudformation delete-stack' "$S/aws.calls" | tr '\n' ',')"
+check "  ci.yml and seed.yml are off, walks.yml stays on, no workflow file is deleted" "disabled_manually disabled_manually active 3" \
+  "$(cat "$S/wf.ci.yml") $(cat "$S/wf.seed.yml") $(cat "$S/wf.walks.yml") $(find "$CYC/repo/.github/workflows" -type f | wc -l | tr -d ' ')"
+check "  the account id is in neither the log nor the terminal" 0 "$(cat "$OPS_LOG_DIR"/*.log "$S/out" | grep -cF "$ACCT" || true)"
+check "  the bucket's three deletes were counted against the three files" 1 "$(grep -c '^   AWS reported 3 delete(s); 3 file(s) were counted before$' "$OPS_LOG_DIR"/*.log || true)"
+echo "== the destroy's guards, each on its own case (rows 1 to 7 and 9 to 14)"
+destroy_calls() { cat "$S/aws.calls" "$S/gh.calls" 2>/dev/null | grep -cE 'terminate-instances|delete-volume|s3 rm|delete-stack|delete-log-group|workflow disable|create-snapshot' || true; }
+wf_states() { echo "$(cat "$S/wf.ci.yml") $(cat "$S/wf.seed.yml") $(cat "$S/wf.walks.yml")"; }
+# rows 4, 9 and 13 read the whole run above (the state folder and logs of destroy-whole are still the current ones)
+check "4: it disabled ci.yml and seed.yml, in that order, and nothing else" "gh workflow disable ci.yml,gh workflow disable seed.yml," \
+  "$(grep '^gh workflow disable' "$S/gh.calls" | sed 's/ --repo.*//' | tr '\n' ',')"
+check "  after the typed name, never before" "after" \
+  "$(awk '/^   typed: /{t=NR} /^   disabling /{if(!d)d=NR} END{print (t&&d&&t<d)?"after":"not after"}' "$OPS_LOG_DIR"/*.log)"
+check "  and it deleted no workflow file" 0 "$(grep -cE 'workflow delete|api .*DELETE|workflows/' "$S/gh.calls" || true)"
+check "9: the account id is in neither the log nor the terminal, and the listing's twelve digits were hidden" "0 0 yes" \
+  "$(grep -cF "$ACCT" "$OPS_LOG_DIR"/*.log || true) $(grep -cF "$ACCT" "$S/out" || true) $([ "$(grep -c '<12 digits>' "$OPS_LOG_DIR"/*.log || true)" -ge 1 ] && echo yes || echo no)"
+check "13: without the switch no snapshot is taken" 0 "$(grep -c 'create-snapshot' "$S/aws.calls" || true)"
+
+# walks is the one other environment a workflow names (walks.yml), so only the refusal itself, never the
+# missing workflow file, can stop it before the first call
+cycle_case destroy-walks active ridge destroy.sh walks
+check "1: an environment but ridge is refused, in the script's words" "1 1" "$RC $(grep -c '^error: destroy.sh destroys ridge alone' "$S/out" || true)"
+check "  before any aws or gh call" "gone gone" "$(file_state "$S/aws.calls") $(file_state "$S/gh.calls")"
+CASE_NOTTY=1 cycle_case destroy-notty active ridge destroy.sh ridge
+check "2: without a terminal it refuses, saying so" "1 1" "$RC $(grep -c '^error: no terminal on the input' "$S/out" || true)"
+check "  and made no aws or gh call" "gone gone" "$(file_state "$S/aws.calls") $(file_state "$S/gh.calls")"
+cycle_case destroy-wrong active nope destroy.sh ridge
+check "3: a typed word other than ridge ends it, saying nothing was changed" "1 1" "$RC $(grep -c "^== STOPPED: the typed name was not 'ridge'" "$S/out" || true)"
+check "  with no workflow disabled" "active active active" "$(wf_states)"
+check "  and nothing deleted" 0 "$(destroy_calls)"
+CASE_ENV=FAKE_RUN=1 cycle_case destroy-running active ridge destroy.sh ridge
+check "5: a run in progress stops it before the name is asked" "1 1 0" "$RC $(grep -c '^== STOPPED: a workflow run is still in progress or queued' "$S/out" || true) $(grep -c '^   > ' "$S/out" || true)"
+check "  with no workflow disabled and nothing deleted" "active active active 0" "$(wf_states) $(destroy_calls)"
+CASE_ENV=FAKE_RUN_QUEUED=1 cycle_case destroy-queued active ridge destroy.sh ridge
+check "  a queued run stops it the same way" "1 1 active active active 0" "$RC $(grep -c '^== STOPPED: a workflow run is still in progress or queued' "$S/out" || true) $(wf_states) $(destroy_calls)"
+FX6=$CYC/fx-strange
+cp -R "$FX" "$FX6"
+jq -c '.StackResourceSummaries += [{ResourceType: "AWS::SNS::Topic", LogicalResourceId: "Odd", PhysicalResourceId: "odd", ResourceStatus: "CREATE_COMPLETE"}]' "$FX/res.json" >"$FX6/res.json"
+CASE_FX=$FX6 cycle_case destroy-strange active ridge destroy.sh ridge
+check "6: a type origin/main's env.yml does not declare is refused, naming it" "1 1" "$RC $(grep -c '^== STOPPED: the stack holds resources of a type env.yml does not declare: AWS::SNS::Topic Odd' "$S/out" || true)"
+check "  with nothing destroyed and no workflow disabled" "0 active active active" "$(destroy_calls) $(wf_states)"
+FX7=$CYC/fx-env
+cp -R "$FX" "$FX7"
+jq -c '.Stacks[0].Parameters |= map(if .ParameterKey == "Env" then .ParameterValue = "crest" else . end)' "$FX/desc.json" >"$FX7/desc.json"
+CASE_FX=$FX7 cycle_case destroy-env active ridge destroy.sh ridge
+check "7: a stack whose Env parameter is not ridge is refused" "1 1" "$RC $(grep -c "^== STOPPED: stack ridge has parameter Env='crest', not 'ridge'" "$S/out" || true)"
+check "  with nothing destroyed and no workflow disabled" "0 active active active" "$(destroy_calls) $(wf_states)"
+CASE_ENV=FAKE_LIST_FAIL=1 cycle_case destroy-listfail active ridge destroy.sh ridge
+check "10: a failed read of the bucket after emptying stops before the stack delete" "1 0" "$RC $(grep -c 'cloudformation delete-stack' "$S/aws.calls" || true)"
+check "  and AWS's own words are in the log, the account id not" "1 0" "$(grep -c 'AccessDenied' "$OPS_LOG_DIR"/*.log || true) $(cat "$OPS_LOG_DIR"/*.log "$S/out" | grep -cF "$ACCT" || true)"
+CASE_ENV=FAKE_RM_SHORT=1 cycle_case destroy-short active ridge destroy.sh ridge
+check "11: two deletes against three files counted stops before the stack delete, saying so" "1 1 0" \
+  "$RC $(grep -c '^== STOPPED: bucket ridge-uibucket-abc: 2 delete(s) reported against 3 file(s) counted before' "$S/out" || true) $(grep -c 'cloudformation delete-stack' "$S/aws.calls" || true)"
+FX12=$CYC/fx-nostack
+cp -R "$FX" "$FX12"
+jq -nc '{StackSummaries: [{StackName: "credo-network", StackStatus: "UPDATE_COMPLETE"}, {StackName: "credo-github", StackStatus: "CREATE_COMPLETE"}]}' >"$FX12/stacks.json"
+CASE_FX=$FX12 CASE_SETUP='touch box.gone' cycle_case destroy-nostack active ridge destroy.sh ridge
+check "12: with no stack and no ridge box it ends 0 on its own verdict, the log ending on its exit" "0 1 == exit 0" \
+  "$RC $(grep -c "^== verdict: ridge's stack and box were already gone" "$OPS_LOG_DIR"/*.log || true) $(tail -n 1 "$OPS_LOG_DIR"/*.log)"
+check "  it lists the unattached disk, asks no name and changes no workflow" "1 0 active active active" \
+  "$(grep -c 'vol-0orph' "$S/out" || true) $(grep -c '^   > ' "$S/out" || true) $(wf_states)"
+check "  and deletes nothing" 0 "$(destroy_calls)"
+CASE_ENV=RIDGE_KEEP_DISK_SNAPSHOT=1 cycle_case destroy-keep active ridge destroy.sh ridge
+check "13: RIDGE_KEEP_DISK_SNAPSHOT=1 takes one snapshot, before the box goes, and the run ends 0" "0 create-snapshot,terminate-instances," \
+  "$RC $(grep -oE -e 'create-snapshot|terminate-instances' "$S/aws.calls" | tr '\n' ',')"
+CASE_ENV=RIDGE_KEEP_DISK_SNAPSHOT=2 cycle_case destroy-keep2 active ridge destroy.sh ridge
+check "  a value but 0 or 1 is refused before any call" "1 1 gone" "$RC $(grep -c '^error: RIDGE_KEEP_DISK_SNAPSHOT must be 0 or 1' "$S/out" || true) $(file_state "$S/aws.calls")"
+FX21=$CYC/fx-repo
+cp -R "$FX" "$FX21"
+jq -c '.Stacks[0].Parameters |= map(if .ParameterKey == "Repository" then .ParameterValue = "someone-else/other-repo" else . end)' "$FX/desc.json" >"$FX21/desc.json"
+CASE_FX=$FX21 cycle_case destroy-repo active ridge destroy.sh ridge
+check "21: a stack whose Repository parameter is another repository's is refused before the name is asked, saying nothing was destroyed" "1 1 0" \
+  "$RC $(grep -c "^== STOPPED: stack ridge has Repository parameter 'someone-else/other-repo', but this clone's origin is 'test-owner/cycle-repo'.* Nothing was destroyed\.$" "$S/out" || true) $(grep -c '^   > ' "$S/out" || true)"
+check "  with nothing destroyed and no workflow disabled" "0 active active active" "$(destroy_calls) $(wf_states)"
+FX21B=$CYC/fx-repo-empty
+cp -R "$FX" "$FX21B"
+jq -c '.Stacks[0].Parameters |= map(select(.ParameterKey != "Repository"))' "$FX/desc.json" >"$FX21B/desc.json"
+CASE_FX=$FX21B cycle_case destroy-repo-empty active ridge destroy.sh ridge
+check "  a stack with no Repository parameter is refused the same way" "1 1 0" "$RC $(grep -c "^== STOPPED: stack ridge has Repository parameter 'empty'" "$S/out" || true) $(destroy_calls)"
+FX22=$CYC/fx-repo2
+cp -R "$FX" "$FX22"
+jq -c '.Stacks[0].Parameters |= map(if .ParameterKey == "Repository" then .ParameterValue = "test-owner/cycle-repo2" else . end)' "$FX/desc.json" >"$FX22/desc.json"
+CASE_FX=$FX22 CASE_REPO=repo2 cycle_case destroy-byhand active ridge destroy.sh ridge
+check "22: an id the list names that no step deletes stops it before the name is asked, naming the id" "1 1 0 0" \
+  "$RC $(grep -c '^== STOPPED: DESTROY_BY_HAND (ops/lib.sh) lists Archive, and no step of this script deletes it\. Nothing was destroyed' "$S/out" || true) $(grep -c '^   > ' "$S/out" || true) $(destroy_calls)"
+CASE_ENV=FAKE_RUN_LATE=1 cycle_case destroy-late active ridge destroy.sh ridge
+check "23: a run that starts after the workflows go off stops it before any delete, and the stop says the two are off and how to turn them on" "1 1 disabled_manually disabled_manually active 0 1" \
+  "$RC $(grep -c '^== STOPPED: a workflow run is still in progress or queued' "$S/out" || true) $(wf_states) $(grep -cE 'terminate-instances|delete-volume|s3 rm|delete-stack' "$S/aws.calls" || true) $(grep -c '^-- This run stopped after the workflows (ci.yml and seed.yml) were switched off, and they are still off\..*ops/remake.sh ridge\.$' "$OPS_LOG_DIR"/*.log || true)"
+CASE_ENV=FAKE_DELETE_DENIED=1 cycle_case destroy-denied active ridge destroy.sh ridge
+check "  a command failing under set -e after the disable says so too, and AWS's words are kept" "nonzero 1 1" \
+  "$([ "$RC" != 0 ] && echo nonzero || echo "$RC") $(grep -c 'AccessDenied' "$OPS_LOG_DIR"/*.log || true) $(grep -c '^-- This run stopped after the workflows (ci.yml and seed.yml) were switched off' "$OPS_LOG_DIR"/*.log || true)"
+check "24: and the account id AWS quoted in that error is in neither the log nor the terminal" "0 0" \
+  "$(grep -cF "$ACCT" "$OPS_LOG_DIR"/*.log || true) $(grep -cF "$ACCT" "$S/out" || true)"
+check "  and a run that finished says nothing of the kind" 0 "$(cat "$E2E"/logs-destroy-whole/*.log | grep -c 'This run stopped after the workflows' || true)"
+# unlisted_keepers <template json> <the destroy's list>: every resource a stack delete keeps, and every bucket, that the list lacks
+unlisted_keepers() {
+  jq -r --arg list "$2" '.Resources | to_entries[]
+    | select((.value.DeletionPolicy // "" | IN("Retain", "RetainExceptOnCreate", "Snapshot")) or .value.Type == "AWS::S3::Bucket")
+    | .key | select(. as $k | ($list | split(" ") | index($k)) == null)' "$1" | tr '\n' ' ' | sed 's/ $//'
+}
+BY_HAND_LIST=$DESTROY_BY_HAND
+check "14: the template's keepers read as JSON are the box, the copy bucket, the records disk and the UI bucket (so the list below is read from something)" "Box CopyBucket RecordsVolume UiBucket" "$(unlisted_keepers "$WORK/env.json" "")"
+check "  every env.yml resource a stack delete keeps, and every bucket, is in the destroy's list" "" "$(unlisted_keepers "$WORK/env.json" "$BY_HAND_LIST")"
+jq '.Resources.ArchiveBucket = {Type: "AWS::S3::Bucket", DeletionPolicy: "Retain"} | .Resources.ArchiveVolume = {Type: "AWS::EC2::Volume", DeletionPolicy: "Snapshot"}' "$WORK/env.json" >"$WORK/env-more.json"
+check "  and a template with one more retained bucket and one more snapshotted volume added names both" "ArchiveBucket ArchiveVolume" "$(unlisted_keepers "$WORK/env-more.json" "$BY_HAND_LIST")"
+
+# a ridge that holds the copy: the stack also lists the copy bucket and the records disk, which the box has attached
+FXC=$CYC/fx-copy
+cp -R "$FX" "$FXC"
+jq -c '.StackResourceSummaries += [{ResourceType: "AWS::S3::Bucket", LogicalResourceId: "CopyBucket", PhysicalResourceId: "ridge-copybucket-xyz", ResourceStatus: "CREATE_COMPLETE"}, {ResourceType: "AWS::EC2::Volume", LogicalResourceId: "RecordsVolume", PhysicalResourceId: "vol-0rec", ResourceStatus: "CREATE_COMPLETE"}]' "$FX/res.json" >"$FXC/res.json"
+jq -c '. += ["AWS::EC2::Volume"]' "$FX/types.json" >"$FXC/types.json"
+jq -c '.Reservations[0].Instances[0].BlockDeviceMappings += [{DeviceName: "/dev/sdf", Ebs: {VolumeId: "vol-0rec", DeleteOnTermination: false}}]' "$FX/box.json" >"$FXC/box.json"
+CASE_FX=$FXC cycle_case destroy-copy active ridge destroy.sh ridge
+check "8b: the destroy on a ridge that holds the copy: exit 0, then the order: the box, the root disk, the UI bucket's files, the copy bucket's files and the bucket, the stack" "0 wait instance-terminated,ec2 delete-volume,s3 rm,s3 rm,s3api delete-bucket,cloudformation delete-stack," \
+  "$RC $(grep -oE -e 'wait instance-terminated|ec2 delete-volume|s3 rm|s3api delete-bucket|cloudformation delete-stack' "$S/aws.calls" | tr '\n' ',')"
+check "  the records disk is never deleted by hand: only the root disk is, and the stack delete's snapshot of it is read back" "1 0 1" \
+  "$(grep -c 'delete-volume --volume-id vol-0root' "$S/aws.calls" || true) $(grep -c 'delete-volume --volume-id vol-0rec' "$S/aws.calls" || true) $(grep -c '^   read back: the snapshot(s) of the records disk, kept until you delete them: snap-0stack$' "$S/out" || true)"
+check "  the copy bucket's two deletes were counted against its two files, and it is read back as gone (after its delete, and again at the last read)" "1 2" \
+  "$(grep -c '^   AWS reported 2 delete(s); 2 file(s) were counted before$' "$S/out" || true) $(grep -c '^   read back: bucket ridge-copybucket-xyz is gone$' "$S/out" || true)"
+check "  and the words no longer say the records are one file on the root disk with no copy" "0 0" \
+  "$(grep -c 'one SQLite file on the box.s root disk' "$S/out" || true) $(grep -c 'holds no backup and no copy job' "$S/out" || true)"
+FXD=$CYC/fx-disks
+cp -R "$FXC" "$FXD"
+jq -c '.Reservations[0].Instances[0].BlockDeviceMappings += [{DeviceName: "/dev/sdg", Ebs: {VolumeId: "vol-0stray", DeleteOnTermination: false}}]' "$FXC/box.json" >"$FXD/box.json"
+CASE_FX=$FXD cycle_case destroy-stray active ridge destroy.sh ridge
+check "  a box with a disk beyond its root and the records disk is refused before the name is asked, nothing destroyed" "1 1 0 0" \
+  "$RC $(grep -c '^== STOPPED: box i-0box has attached disks other than its root disk and the stack.s records disk (vol-0stray)' "$S/out" || true) $(grep -c '^   > ' "$S/out" || true) $(grep -cE 'terminate-instances|delete-volume|s3 rm|delete-bucket|delete-stack' "$S/aws.calls" || true)"
+FXE=$CYC/fx-copyname
+cp -R "$FXC" "$FXE"
+jq -c '(.StackResourceSummaries[] | select(.LogicalResourceId == "CopyBucket") | .PhysicalResourceId) = "someone-elses-bucket"' "$FXC/res.json" >"$FXE/res.json"
+CASE_FX=$FXE cycle_case destroy-copyname active ridge destroy.sh ridge
+check "  a copy bucket not named as ridge's stack names it is refused before the name is asked, nothing destroyed" "1 1 0 0" \
+  "$RC $(grep -c "^== STOPPED: the copy bucket is named 'someone-elses-bucket', not ridge-copybucket-<random>" "$S/out" || true) $(grep -c '^   > ' "$S/out" || true) $(grep -cE 'terminate-instances|delete-volume|s3 rm|delete-bucket|delete-stack' "$S/aws.calls" || true)"
+
+cycle_run remake-whole disabled_manually '' remake.sh ridge
+check "18: the remake on a stack that is down: exit 0, ending == green then == exit 0" "0 == green == exit 0" \
+  "$RC $(tail -n 2 "$OPS_LOG_DIR"/*-remake-ridge.log | tr '\n' ' ' | sed 's/ $//')"
+check "  it ran the stack, the release, the app and the check, in that order" "stack.sh env ridge,release.sh ridge,app.sh ridge,check.sh ridge," \
+  "$(tr '\n' ',' <"$S/children.calls")"
+check "  and turned the two workflows on, read back active, walks.yml untouched" "active active disabled_manually" \
+  "$(cat "$S/wf.ci.yml") $(cat "$S/wf.seed.yml") $(cat "$S/wf.walks.yml")"
+check "  its log holds its own lines only: four steps named with their logs, one == green, no child's line" "4 1 0" \
+  "$(grep -c '^-- step [1-4]/5: ops/.* ended with exit 0; its log: .*-ridge.log$' "$OPS_LOG_DIR"/*-remake-ridge.log || true) $(grep -c '^== green$' "$OPS_LOG_DIR"/*-remake-ridge.log || true) $(grep -c 'stand-in' "$OPS_LOG_DIR"/*-remake-ridge.log || true)"
+
+check "20: its closing says ridge holds no operator and no demo copy, and gives the operator's command as the next step" "1 1" \
+  "$(grep -c '^== ridge is remade from main and checked. It is empty: it holds no operator and no demo copy.$' "$OPS_LOG_DIR"/*-remake-ridge.log || true) $(grep -cE '^ +cd .* && bash .*/ops/operator.sh ridge$' "$OPS_LOG_DIR"/*-remake-ridge.log || true)"
+echo "== the remake's guards, each on its own case (rows 16, 17 and 19)"
+remake_calls() { cat "$S/aws.calls" "$S/gh.calls" "$S/children.calls" 2>/dev/null | grep -cE 'stack.sh|release.sh|app.sh|check.sh|workflow enable|cloudformation|get-caller' || true; }
+cycle_case remake-crest disabled_manually '' remake.sh crest
+check "16: an environment but ridge is refused, in the script's words" "1 1" "$RC $(grep -c '^error: remake.sh remakes ridge alone' "$S/out" || true)"
+check "  before any call, a child's or gh's or aws's" "0 gone gone" "$(remake_calls) $(file_state "$S/aws.calls") $(file_state "$S/gh.calls")"
+CASE_ENV=FAKE_GH_OUT=1 cycle_case remake-nogh disabled_manually '' remake.sh ridge
+check "17: gh not logged in is refused, saying so, before the first step" "1 1 0" "$RC $(grep -c '^error: gh is not logged in' "$S/out" || true) $(remake_calls)"
+CASE_ENV=FAKE_BRU=3.0.0 cycle_case remake-nobru disabled_manually '' remake.sh ridge
+check "  a Bruno CLI of another version is refused the same way" "1 1 0" "$RC $(grep -c '^error: needs Bruno CLI 4.2.0, found 3.0.0' "$S/out" || true) $(remake_calls)"
+CASE_ENV=RIDGE_SCRIPTS_DIR= cycle_case remake-nopnpm disabled_manually '' remake.sh ridge
+check "  pnpm install not done is refused the same way" "1 1 0" "$RC $(grep -c '^error: needs pnpm install done' "$S/out" || true) $(remake_calls)"
+CASE_ENV=FAKE_RED=release cycle_case remake-red disabled_manually '' remake.sh ridge
+check "19: a red at the release stops it there: the app and the check never ran" "1 stack.sh env ridge,release.sh ridge," "$RC $(tr '\n' ',' <"$S/children.calls")"
+check "  the workflows stay off and none was enabled" "disabled_manually disabled_manually disabled_manually 0" "$(wf_states) $(cat "$S/gh.calls" 2>/dev/null | grep -c 'workflow enable' || true)"
+check "  and the log's last two lines name the step, then the exit" "1 == exit 1" \
+  "$(tail -n 2 "$OPS_LOG_DIR"/*-remake-ridge.log | grep -c '^== stopped at step 2/5, ops/release.sh (exit 1)' || true) $(tail -n 1 "$OPS_LOG_DIR"/*-remake-ridge.log)"
+CASE_ENV=FAKE_ENABLE_FAIL=seed.yml cycle_case remake-enablefail disabled_manually '' remake.sh ridge
+check "26: a gh enable that fails on seed.yml after ci.yml ends it on the stop line naming step 5 and the workflows, with ci.yml on and seed.yml off" "1 1 active disabled_manually" \
+  "$RC $(tail -n 2 "$OPS_LOG_DIR"/*-remake-ridge.log | grep -c '^== stopped at step 5/5, the workflows: seed.yml: gh could not enable it' || true) $(cat "$S/wf.ci.yml") $(cat "$S/wf.seed.yml")"
+check "  and the log ends on its exit" "== exit 1" "$(tail -n 1 "$OPS_LOG_DIR"/*-remake-ridge.log)"
+check "27: the Bruno version is declared once, in lib.sh, and neither check.sh nor remake.sh sets its own" "1 0" \
+  "$(grep -c '^WANT_BRUNO=' "$OPS_DIR/lib.sh") $(cat "$OPS_DIR/check.sh" "$OPS_DIR/remake.sh" | grep -c '^[[:space:]]*WANT_BRUNO=' || true)"
 
 [ "$fail" = 0 ] || { echo "ops/test.sh: FAILURES"; exit 1; }
 echo "ops/test.sh: all checks passed"

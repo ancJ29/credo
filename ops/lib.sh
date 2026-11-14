@@ -17,6 +17,18 @@ BOX_USER=ec2-user
 FLOOR_DISK_MB=1024
 FLOOR_MEM_MB=96
 FLOOR_SWAP_MB=1024
+# The check reds below this much free on the records disk (MiB), and when the newest copy lags the last
+# write by more than COPY_LAG_S, or the newest full copy is older than COPY_FULL_MAX_S (six days: Litestream
+# makes no full copy on an idle file, so this is the only guard on one).
+FLOOR_RECORDS_MB=1024
+COPY_LAG_S=300
+COPY_FULL_MAX_S=518400
+# The box's path in the copy's bucket (the one home: the release builds COPY_URL, with the region, from it and
+# passes it to the box's records step, and the check lists it), and where Litestream's S3 client keeps full
+# copies under it: <path>/<level as four hex digits>/<min TXID>-<max TXID>.ltx, level 9 being the full copy
+# (the pinned release's s3/replica_client.go, lines 698 and 1571). The ltx/<level>/ layout is the file replica's, not S3's.
+COPY_PATH=Box/records
+COPY_FULL_PREFIX=$COPY_PATH/0009/
 
 LOG=''
 WORK=''
@@ -177,6 +189,54 @@ main_synced() {
   ops_match_main
 }
 
+# INVENTED_ENVS: the environments that hold invented data alone, space-separated, this list's one home.
+# Every other name may hold a real company's records and is treated as production
+# (docs/plans/2026-11-12-safe-scripts.md, "What production means to a script"). A production stack must
+# never be named like one of these.
+INVENTED_ENVS="ridge"
+# DESTROY_BY_HAND: the logical ids in env.yml that a stack delete keeps (a Retain or Snapshot policy) or
+# cannot empty (a bucket), this list's one home. ops/destroy.sh deletes each by hand, and stops before its
+# prompt on an id none of its steps deletes; ops/test.sh row 14 compares the list with env.yml.
+# shellcheck disable=SC2034 # read by destroy.sh and test.sh
+DESTROY_BY_HAND="Box CopyBucket RecordsVolume UiBucket"
+# WANT_BRUNO: the Bruno CLI version ops/check.sh runs and ops/remake.sh refuses to start without, one home.
+# shellcheck disable=SC2034 # read by check.sh and remake.sh
+WANT_BRUNO=4.2.0
+# REAL: 1 once real_ok has run on an unlisted environment. Set to 0 here, before any environment is read
+# by a script, so a stray REAL=1 in a shell or a workflow's env cannot narrow ridge's check.
+REAL=0
+
+# is_invented <env>: succeeds when the environment is listed in INVENTED_ENVS.
+is_invented() {
+  case " $INVENTED_ENVS " in
+    *" $1 "*) return 0 ;;
+  esac
+  return 1
+}
+
+# refuse_real <env> <why>: dies with <why> (the script's own words) unless the environment is listed as
+# invented. A script that must never act on a real company's records calls it after log_start, so the
+# refusal lands in the log, and before main_synced, so it comes before any AWS call.
+refuse_real() {
+  is_invented "$1" || die "$2"
+}
+
+# real_ok <env> <why>: for a script that is safe on an environment that may hold real data. On an unlisted
+# environment it prints one ok line saying why, sets REAL=1 for a script that branches on it, and refuses
+# the two switches the tests set in the environment (RIDGE_SCRIPTS_DIR, OPS_TEST_NO_TTY) unless the tests'
+# own marker OPS_TESTS_RUNNING is set beside them, so the code that runs there is the reviewed tree's.
+# On a listed environment it prints and refuses nothing. Called after log_start and before main_synced.
+real_ok() {
+  is_invented "$1" && return 0
+  if [ -z "${OPS_TESTS_RUNNING:-}" ]; then
+    [ -z "${RIDGE_SCRIPTS_DIR:-}" ] || die "RIDGE_SCRIPTS_DIR is set, and $1 may hold real data: that switch is the tests' alone, so the code run there is the reviewed tree's"
+    [ -z "${OPS_TEST_NO_TTY:-}" ] || die "OPS_TEST_NO_TTY is set, and $1 may hold real data: that switch is the tests' alone"
+  fi
+  # shellcheck disable=SC2034 # read by the script that sources this file
+  REAL=1
+  echo "ok   $1 may hold real data; this script is safe there: $2"
+}
+
 # ops_match_main: dies unless the tracked and untracked files git does not ignore, under every path
 #   ci.yml's push trigger deploys on, and the root .gitignore (one local line there would hide a new
 #   file under any of them), are as reviewed. Ignored files (node_modules, dist) are not compared.
@@ -243,7 +303,7 @@ stack_load() {
 
 # OUTPUTS_PRINTED: the outputs that carry no secret and are read in the human's log. Any other
 # output (a new one included) prints "(not printed)" until it is named here.
-OUTPUTS_PRINTED='["Env","Repository","BoxId","BoxGroupId","SubnetId","SubnetCidr","Zone","VpcId","VpcCidr","RoutesId","EndpointId","EndpointGroupId","ProviderArn","BffName","BffGroupId","UiBucketName","AppAddress"]'
+OUTPUTS_PRINTED='["Env","Repository","BoxId","BoxGroupId","SubnetId","SubnetCidr","Zone","VpcId","VpcCidr","RoutesId","EndpointId","EndpointGroupId","ProviderArn","BffName","BffGroupId","UiBucketName","AppAddress","Watch"]'
 
 # outputs_print: the stack's outputs from STACK_JSON, one line each. An output prints its value only
 # when it is named in OUTPUTS_PRINTED and holds no masked line (SECRETS); the secrets go to jq in its
@@ -402,6 +462,46 @@ add_subject_param() {
   fi
 }
 
+# slack_param_plan → how the two Slack IDs (CREDO_SLACK_WORKSPACE_ID, CREDO_SLACK_CHANNEL_ID, from the
+# environment) reach the stack: "set" when both are given (new values, "none" included), "previous" when
+# neither is and the stack holds them (kept), "default" when neither is and the stack holds none (the
+# template's "none"; also on a creation, whatever a stack left in REVIEW_IN_PROGRESS lists, since a
+# creation has no previous value to use). One without the other is refused: a lone channel ID makes no channel, silently.
+# So is "none" for one and a real ID for the other: the template's condition then makes no channel and
+# the run still exits 0. Turning the channel off is "none" for both, and on a stack that holds a channel
+# that is a removal: the run takes --take AlertsChannel --take AlertsChannelRole.
+slack_param_plan() {
+  local w="${CREDO_SLACK_WORKSPACE_ID:-}" c="${CREDO_SLACK_CHANNEL_ID:-}"
+  if [ -n "$w" ] && [ -n "$c" ]; then
+    if [ "$w" = none ] || [ "$c" = none ]; then
+      [ "$w" = "$c" ] || die "one of CREDO_SLACK_WORKSPACE_ID and CREDO_SLACK_CHANNEL_ID is none and the other is an ID: that makes no channel, silently (give two IDs, or none for both)"
+    fi
+    echo set
+  elif [ -n "$w" ] || [ -n "$c" ]; then
+    die "CREDO_SLACK_WORKSPACE_ID and CREDO_SLACK_CHANNEL_ID go together: one without the other makes no channel (give both, or neither to keep the stack's values; none for both turns the channel off, and on a stack that holds a channel that run takes --take AlertsChannel --take AlertsChannelRole)"
+  elif [ "${CS_TYPE:-}" != CREATE ] && [ -n "$(stack_param SlackWorkspaceId)" ]; then
+    echo previous
+  else
+    echo default
+  fi
+}
+
+# add_slack_params: appends the two Slack IDs to PARAMS as slack_param_plan says
+add_slack_params() {
+  local plan
+  plan=$(slack_param_plan) || exit 1
+  case "$plan" in
+    set)
+      add_param SlackWorkspaceId "$CREDO_SLACK_WORKSPACE_ID"
+      add_param SlackChannelId "$CREDO_SLACK_CHANNEL_ID"
+      ;;
+    previous)
+      add_param SlackWorkspaceId
+      add_param SlackChannelId
+      ;;
+  esac
+}
+
 # out <OutputKey> → its value in STACK_JSON, empty if none
 out() {
   jq -r --arg k "$1" '.Stacks[0].Outputs // [] | map(select(.OutputKey == $k))[0].OutputValue // empty' <<<"$STACK_JSON"
@@ -416,6 +516,12 @@ unit_port() {
 
 BOX_ID=''
 BOX_PORT=$(unit_port "$OPS_DIR/c-storage.service")
+# The activity log's writing port, from its unit, the one home: the template takes it as AuditPort
+# shellcheck disable=SC2034 # read by stack.sh, which sources this file
+AUDIT_PORT=$(unit_port "$OPS_DIR/audit-backbone.service")
+# and its reading port, on the box's loopback alone, which the check reads an entry through, on the box
+# shellcheck disable=SC2034 # read by check.sh
+AUDIT_OPEN_PORT=$(sed -n 's/^Environment=OPEN_PORT=//p' "$OPS_DIR/audit-backbone.service")
 # The address on the box that c-storage listens on, and that a forward and every read of /health
 # reach it at: the stack's BoxAddress, set by box_open and read by check.sh, tunnel.sh, release.sh
 # and drill.sh. release.sh writes it into /etc/c-storage/listen.env, which the unit reads.
@@ -468,6 +574,9 @@ box_close() {
   fi
 }
 
+# clock <epoch seconds> → HH:MM local time (GNU date, then BSD's)
+clock() { date -d "@$1" +%H:%M 2>/dev/null || date -r "$1" +%H:%M; }
+
 # tunnel_hold <seconds>: asks the open connection every <seconds> whether it is still up, and dies
 # naming the drop when it is not. The sleep runs apart from the log's pipe and is waited on, so a
 # signal ends the wait at once and on_exit runs.
@@ -479,20 +588,241 @@ tunnel_hold() {
   die "the tunnel dropped (the endpoint's hour, a reboot of the box, or the network): run it again"
 }
 
-# box_resources → MEM_MB (available), SWAP_MB (total) and DISK_MB (free on /), logged
+# The records disk's mount on the box: the path c-storage's state directory resolves to (a dynamic
+# user's /var/lib/c-storage is a link to it), where ops/c-storage.service waits for the mount.
+RECORDS_MOUNT=/var/lib/private/c-storage
+
+# box_resources → MEM_MB (available), SWAP_MB (total) and DISK_MB (free on /), and RECORDS_MB (free on
+# the records disk beside it, -1 when that disk is not mounted), logged
 MEM_MB=0
 SWAP_MB=0
 DISK_MB=0
+RECORDS_MB=-1
 box_resources() {
   local r
   r=$(
-    box bash -s <<'REMOTE'
+    box sudo bash -s "$RECORDS_MOUNT" <<'REMOTE'
 awk '/^MemAvailable:/{m=int($2/1024)} /^SwapTotal:/{s=int($2/1024)} END{printf "%d %d ", m, s}' /proc/meminfo
-df -Pm / | awk 'NR==2{print $4}'
+df -Pm / | awk 'NR==2{printf "%s ", $4}'
+if mountpoint -q "$1"; then df -Pm "$1" | awk 'NR==2{print $4}'; else echo -1; fi
 REMOTE
   )
-  read -r MEM_MB SWAP_MB DISK_MB <<<"$r"
-  echo "box: memory $MEM_MB MiB available, swap $SWAP_MB MiB, disk $DISK_MB MiB free"
+  read -r MEM_MB SWAP_MB DISK_MB RECORDS_MB <<<"$r"
+  RECORDS_MB=${RECORDS_MB:--1}
+  if [ "$RECORDS_MB" = -1 ]; then
+    echo "box: memory $MEM_MB MiB available, swap $SWAP_MB MiB, disk $DISK_MB MiB free, no records disk mounted"
+  else
+    echo "box: memory $MEM_MB MiB available, swap $SWAP_MB MiB, disk $DISK_MB MiB free, records disk $RECORDS_MB MiB free"
+  fi
+}
+
+# litestream_pin → LITESTREAM_VERSION and LITESTREAM_ARM64_SHA256, from the pin's one home (the tests point
+# LITESTREAM_PIN at a pin of their own)
+litestream_pin() {
+  # shellcheck source=litestream.pin
+  . "${LITESTREAM_PIN:-$OPS_DIR/litestream.pin}"
+  [[ "${LITESTREAM_VERSION:-}" =~ ^[0-9]+[.][0-9]+[.][0-9]+$ ]] || die "ops/litestream.pin names no version"
+  [[ "${LITESTREAM_ARM64_SHA256:-}" =~ ^[0-9a-f]{64}$ ]] || die "ops/litestream.pin holds no SHA-256 for the arm64 archive (a FILL marker is not a sum)"
+}
+
+# litestream_binary <out file> → Litestream's arm64 binary at <out file>, taken from the pinned archive
+# alone. LITESTREAM_ARCHIVE names an archive already fetched (the deploy job's); otherwise it is fetched
+# from the release. Either way its SHA-256 must be the pin's, or nothing is unpacked.
+litestream_binary() {
+  local archive=${LITESTREAM_ARCHIVE:-} got
+  litestream_pin
+  if [ -z "$archive" ]; then
+    archive=$WORK/litestream.tar.gz
+    curl -fsSL -o "$archive" "https://github.com/benbjohnson/litestream/releases/download/v$LITESTREAM_VERSION/litestream-$LITESTREAM_VERSION-linux-arm64.tar.gz" ||
+      die "Litestream $LITESTREAM_VERSION could not be fetched"
+  fi
+  [ -f "$archive" ] || die "LITESTREAM_ARCHIVE $archive does not exist"
+  got=$(shasum -a 256 "$archive" | cut -d' ' -f1)
+  [ "$got" = "$LITESTREAM_ARM64_SHA256" ] || die "the Litestream archive is $got, the pin says $LITESTREAM_ARM64_SHA256: nothing unpacked"
+  mkdir -p "$WORK/litestream"
+  tar -xzf "$archive" -C "$WORK/litestream" litestream
+  [ -f "$WORK/litestream/litestream" ] || die "the pinned archive holds no litestream binary"
+  cp "$WORK/litestream/litestream" "$1"
+}
+
+# copy_status → c-storage's GET /api/status, read on the box: the internal key goes from its file into curl's
+# config on stdin and never leaves the box. The first word tells the stand-ins apart.
+copy_status() {
+  box sudo bash -s -- status "$BOX_PORT" "$BOX_LISTEN_ADDR" <<'REMOTE'
+set -euo pipefail
+. /etc/c-storage/keys.env
+printf 'header = "X-Internal-Access-Key: %s"\n' "$INTERNAL_ACCESS_KEY" |
+  curl -fsS -m 5 -K - "http://$3:$2/api/status"
+REMOTE
+}
+
+# copy_problems <status json> <listing json: [{Key, LastModified}] or null> <now, epoch seconds> → one line for
+# each fault of the copy, nothing when it is sound: the records disk below its floor, no copy at all, the newest
+# copy behind the last write by over COPY_LAG_S, no full copy, the newest full copy older than COPY_FULL_MAX_S. The newest full copy is the one with the largest
+# key (the largest <min>-<max> name, which is TXID order, as Litestream's own restore picks); its age is that object's
+# LastModified, S3's time of the upload of that snapshot, which is when the full copy was made.
+copy_problems() {
+  jq -nr --argjson st "$1" --argjson ls "$2" --argjson now "$3" --argjson lag "$COPY_LAG_S" \
+    --argjson fullmax "$COPY_FULL_MAX_S" --argjson floor "$((FLOOR_RECORDS_MB * 1048576))" --arg full "$COPY_FULL_PREFIX" '
+    def epoch: sub("\\.[0-9]+"; "") | sub("\\+00:00$"; "Z") | fromdateiso8601;
+    ($ls // []) as $objs
+    | ($objs | map(.LastModified | epoch) | max) as $newest
+    | ($objs | map(select(.Key | startswith($full))) | sort_by(.Key) | last | if . == null then null else .LastModified | epoch end) as $fullest
+    | ($st.lastWriteAt | if . == null then null else epoch end) as $write
+    | (if $st.freeBytes < $floor then "the records disk has \($st.freeBytes / 1048576 | floor) MiB free, below the floor of \($floor / 1048576) MiB" else empty end),
+      (if $newest == null then "the bucket holds no copy of the records" else empty end),
+      (if $write != null and $newest != null and ($write - $newest) > $lag then "the newest copy lags the last write by \($write - $newest) s, over \($lag) s" else empty end),
+      (if $fullest == null then "the bucket holds no full copy" else empty end),
+      (if $fullest != null and ($now - $fullest) > $fullmax then "the newest full copy is \(($now - $fullest) / 86400 | floor) days old, over \($fullmax / 86400) days" else empty end)
+  '
+}
+
+# copy_lag_read <status json> → yes when the status holds a time of the last write (so copy_problems can read the
+# lag), no when it is null: c-storage keeps that time in memory only, so after any restart there is none until
+# the next save, and the lag test then has nothing to compare. The check says so rather than call the copy current.
+copy_lag_read() {
+  jq -nr --argjson st "$1" 'if $st.lastWriteAt == null then "no" else "yes" end'
+}
+
+# box_restore_blank <time or -> <records disk id> → the one path onto a records disk that holds no c-storage.db:
+# on the box, a disk with no filesystem is formatted, the disk is mounted at the records path, and the newest
+# copy (or the copy as of <time>) is restored onto c-storage.db there, before c-storage ever starts. It refuses
+# when c-storage is running, when the disk holds a filesystem other than XFS, and when it already holds a
+# c-storage.db. Prints restored=<the file>.
+box_restore_blank() {
+  box sudo bash -s -- blank "$RECORDS_MOUNT" "$1" "$2" <<'REMOTE'
+set -euo pipefail
+mount=$2 at=$3 vol=${4//-/}
+dev=/dev/disk/by-id/nvme-Amazon_Elastic_Block_Store_$vol
+[ -e "$dev" ] || { echo "the records disk $vol is not attached to this box" >&2; exit 3; }
+if systemctl is-active --quiet c-storage; then echo "c-storage is running: a blank-disk restore runs before it starts" >&2; exit 1; fi
+install -d -m 0700 /var/lib/private "$mount"
+if ! mountpoint -q "$mount"; then
+  type=$(blkid -o value -s TYPE "$dev" || true)
+  [ -z "$type" ] || [ "$type" = xfs ] || { echo "the records disk holds a $type filesystem, not the XFS this restore makes or mounts" >&2; exit 1; }
+  if [ -z "$type" ]; then mkfs.xfs -q "$dev"; echo "records disk: formatted"; fi
+  uuid=$(blkid -o value -s UUID "$dev")
+  grep -q "^UUID=$uuid $mount " /etc/fstab || { { grep -v " $mount " /etc/fstab || true; echo "UUID=$uuid $mount xfs defaults,nofail 0 2"; } >/etc/fstab.new && mv /etc/fstab.new /etc/fstab; }
+  systemctl daemon-reload
+  mount "$mount"
+fi
+mountpoint -q "$mount" || { echo "the records disk is not mounted at $mount" >&2; exit 1; }
+[ ! -e "$mount/c-storage.db" ] || { echo "the records disk already holds c-storage.db: this restore is for a disk without one" >&2; exit 1; }
+# On a replacement box no release has finished, so the address and the binary are still the release's .new files
+# (it sends them, then stops at the records step that refuses): fall back to them.
+envf=/etc/c-storage/copy.env
+bin=/opt/c-storage/litestream
+if [ ! -e "$envf" ]; then envf=/opt/c-storage/copy.env.new; fi
+if [ ! -x "$bin" ]; then bin=/opt/c-storage/litestream.new; chmod 0755 "$bin"; fi
+[ -e "$envf" ] && [ -x "$bin" ] || { echo "no copy address or Litestream on this box, installed or sent: run a release first (it stops at the records disk, after sending them)" >&2; exit 1; }
+set -a
+. "$envf"
+set +a
+args=(-o "$mount/c-storage.db")
+if [ "$at" != - ]; then args+=(-timestamp "$at"); fi
+"$bin" restore "${args[@]}" "$COPY_URL"
+[ -s "$mount/c-storage.db" ] || { echo "the restore wrote no file" >&2; exit 1; }
+chmod 600 "$mount/c-storage.db"
+echo "restored=$mount/c-storage.db"
+REMOTE
+}
+
+# box_restore <time or -> <1 to put it onto the live file, else 0> <stamp> → restores the records from the copy
+# on the box, with its role's credentials. By default to a new file beside the live one and nothing live touched;
+# onto the live file, c-storage is stopped, the live file and its companions are moved aside (never deleted) and
+# the restored one takes the live path. Prints restored=<the new file> or, onto the live file, aside=<stamp>.
+box_restore() {
+  box sudo bash -s -- "$RECORDS_MOUNT" "$1" "$2" "$3" "$BOX_LISTEN_ADDR" "$BOX_PORT" <<'REMOTE'
+set -euo pipefail
+mount=$1 at=$2 live=$3 stamp=$4 addr=$5 port=$6
+db=$mount/c-storage.db
+new=$mount/restored-$stamp.db
+mountpoint -q "$mount" || { echo "the records disk is not mounted at $mount" >&2; exit 1; }
+# The restore writes a second whole file onto the disk the live c-storage writes to: it must leave room, or the
+# live saves fail. Under twice the live file (and its companions) free, nothing is written.
+used=0
+for f in "$db" "$db-wal"; do
+  if [ -e "$f" ]; then used=$((used + $(du -sk "$f" | cut -f1))); fi
+done
+free=$(df -Pk "$mount" | awk 'NR==2{print $4}')
+if [ "$free" -lt $((used * 2)) ]; then
+  echo "the records disk has $((free / 1024)) MiB free, under twice the live file's $((used / 1024)) MiB: nothing was written" >&2
+  exit 1
+fi
+set -a
+. /etc/c-storage/copy.env
+set +a
+args=(-o "$new")
+if [ "$at" != - ]; then args+=(-timestamp "$at"); fi
+/opt/c-storage/litestream restore "${args[@]}" "$COPY_URL"
+[ -s "$new" ] || { echo "the restore wrote no file" >&2; exit 1; }
+chmod 600 "$new"
+if [ -e "$db" ]; then chown --reference="$db" "$new"; fi
+if [ "$live" = 1 ]; then
+  systemctl stop c-storage
+  for f in "$db" "$db-wal" "$db-shm" "$mount/.c-storage.db-litestream"; do
+    if [ -e "$f" ]; then mv "$f" "$f.aside-$stamp"; fi
+  done
+  mv "$new" "$db"
+  systemctl start c-storage
+  for _ in $(seq 1 30); do
+    if curl -fsS -m 2 -o /dev/null "http://$addr:$port/health"; then echo "answering=yes"; break; fi
+    sleep 1
+  done
+  echo "aside=$stamp"
+else
+  echo "restored=$new"
+fi
+REMOTE
+}
+
+# box_serve_restored <the restored file> <port> <seconds> → serves a restored file (box_restore's restored-*.db)
+# with a second c-storage on the box's loopback at <port>, with the keys the live one reads, and ends it by
+# itself after <seconds> (timeout, in its own arguments); box_stop_restored ends it sooner. The live c-storage,
+# its file and its port are not touched. Prints serving=<port>.
+box_serve_restored() {
+  box sudo bash -s -- "$RECORDS_MOUNT" "$1" "$2" "$3" <<'REMOTE'
+set -euo pipefail
+mount=$1 file=$2 port=$3 secs=$4
+case $file in "$mount"/restored-*.db) ;; *) echo "not a restored file: $file" >&2; exit 1 ;; esac
+# A case pattern's * also matches a /: the name after the folder holds none, or a name that climbs out of it passes.
+case ${file#"$mount"/} in */*) echo "not a restored file: $file" >&2; exit 1 ;; esac
+[ -s "$file" ] || { echo "no restored file: $file" >&2; exit 1; }
+if [ -e /run/c-storage-restored.pid ] && kill -0 "$(cat /run/c-storage-restored.pid)" 2>/dev/null; then
+  echo "a second c-storage is already serving a restored file" >&2
+  exit 1
+fi
+set -a
+. /etc/c-storage/keys.env
+set +a
+PORT=$port LISTEN_ADDR=127.0.0.1 DB_PATH=$file setsid timeout "$secs" /opt/c-storage/c-storage </dev/null >/dev/null 2>&1 &
+echo $! >/run/c-storage-restored.pid
+for _ in $(seq 1 30); do
+  if curl -fsS -m 2 -o /dev/null "http://127.0.0.1:$port/health"; then echo "serving=$port"; exit 0; fi
+  sleep 1
+done
+echo "the second c-storage did not answer" >&2
+exit 1
+REMOTE
+}
+
+# box_stop_restored <the restored file>: ends the second c-storage and removes the restored file it served
+# with its companions, whatever state they are in (a stop that finds nothing is quiet).
+box_stop_restored() {
+  box sudo bash -s -- "$RECORDS_MOUNT" "$1" <<'REMOTE'
+mount=$1 file=$2
+if [ -e /run/c-storage-restored.pid ]; then
+  kill "$(cat /run/c-storage-restored.pid)" 2>/dev/null || true
+  rm -f /run/c-storage-restored.pid
+fi
+# A case pattern's * also matches a /: a name that climbs out of the folder (restored-x/../ and then a live name) removes nothing.
+case $file in "$mount"/restored-*.db) case ${file#"$mount"/} in */*) ;; *) rm -f "$file" "$file-wal" "$file-shm" ;; esac ;; esac
+REMOTE
+}
+
+# box_forward <local port> <box loopback port>: a second forward over the open connection, to the box's loopback
+box_forward() {
+  ssh -S "$WORK/cm" -O forward -L "127.0.0.1:$1:127.0.0.1:$2" -o LogLevel=ERROR "$BOX_USER@$BOX_ID"
 }
 
 # floor_verdict: dies below the free disk, available memory or total swap the box needs to take a release
@@ -702,6 +1032,7 @@ SUBNET_ID=''
 UI_BUCKET=''
 APP_ADDRESS=''
 API_ADDRESS=''
+DISTRIBUTION_ID=''
 
 # app_load: the layer-four outputs of STACK_JSON, masked before anything can print them. Fails when
 # the stack does not hold layer four yet (the change set of the plan's step 15 is the human's), which
@@ -713,6 +1044,8 @@ app_load() {
   UI_BUCKET=$(out UiBucketName)
   APP_ADDRESS=$(out AppAddress)
   API_ADDRESS=$(out ApiAddress)
+  # shellcheck disable=SC2034 # app.sh reads it
+  DISTRIBUTION_ID=$(out DistributionId)
   [ -n "$BFF_NAME" ] || return 1
   # Both addresses are public in nothing but the human's local log, and in no committed file: the
   # whole address and its host are masked, as well as the bare host the tools print.
@@ -737,59 +1070,218 @@ bff_env_read() {
   mask "$SERVICE_ACCESS_KEY"
 }
 
+# front_door_key_read <the distribution's id>: FRONT_DOOR_KEY from the header the distribution's API origin adds
+# (x-front-door-key), masked before anything is printed. The key reaches this shell through a pipe, never a
+# command line or a temp file; a stack or a distribution without it is refused by name, never by value.
+FRONT_DOOR_KEY=''
+front_door_key_read() {
+  [ -n "${1:-}" ] || die "the stack names no distribution (its DistributionId output is missing): ops/stack.sh makes it"
+  FRONT_DOOR_KEY=$(aws cloudfront get-distribution-config --id "$1" --output json |
+    jq -r '[.DistributionConfig.Origins.Items[]? | select(.Id == "api") | .CustomHeaders.Items[]? | select(.HeaderName == "x-front-door-key") | .HeaderValue] | first // empty') ||
+    die "the distribution's configuration could not be read"
+  [[ $FRONT_DOOR_KEY =~ ^[0-9a-f]{64}$ ]] || {
+    FRONT_DOOR_KEY=''
+    die "the distribution's API origin carries no x-front-door-key of 64 hex characters: ops/stack.sh makes it"
+  }
+  mask "$FRONT_DOOR_KEY"
+}
+
+# audit_read: AUDIT_URL and AUDIT_KEY, the activity log's address and write key, from the box's own files: the release made
+# the key (once) and started the log. A box without the key file is refused by name, before anything is sent; the key is
+# masked the moment it is read and reaches the function's settings only through a 0600 file.
+AUDIT_URL=''
+AUDIT_KEY=''
+audit_read() {
+  local audit_kv
+  AUDIT_URL=http://$BOX_LISTEN_ADDR:$AUDIT_PORT
+  audit_kv=$(box sudo cat /etc/audit-backbone/keys.env) || die "the box holds no /etc/audit-backbone/keys.env: ops/release.sh $ENVNAME ships the activity log and makes its key; run it first"
+  AUDIT_KEY=$(sed -n 's/^ACTIVITY_WRITE_KEY=//p' <<<"$audit_kv")
+  [ -n "$AUDIT_KEY" ] || die "the box's /etc/audit-backbone/keys.env holds no ACTIVITY_WRITE_KEY: ops/release.sh $ENVNAME makes it"
+  mask "$AUDIT_KEY"
+}
+
+# bff_vpc → the function's VPC settings, sent with every settings call: the deploy role may change settings
+# only when it names the subnet and group. BFF_WAIT: the seconds each of the function's updates may take.
+BFF_WAIT=120
+bff_vpc() {
+  printf 'SubnetIds=%s,SecurityGroupIds=%s' "$SUBNET_ID" "$BFF_GROUP"
+}
+
+# bff_settings_set <the door's key or keys, comma-separated>: the function's environment, set from the keys
+# this run holds (INTERNAL_KEY, SERVICE_CODE, SERVICE_ACCESS_KEY, read from the box) and the one it is given.
+# The deploy and a key run write it alike. The environment goes in from a 0600 file, never a command line;
+# the file is deleted at once, then the update is waited for. APP_ORIGIN is the app's own address, which every
+# passkey is checked against: CloudFront's name, kept for good.
+bff_settings_set() {
+  # a settings call replaces the whole environment, so the log's address and key go in each time: the caller read them first
+  [ -n "$AUDIT_KEY" ] || die "bff_settings_set: audit_read first"
+  (
+    umask 077
+    INTERNAL_ACCESS_KEY=$INTERNAL_KEY SERVICE_CODE=$SERVICE_CODE SERVICE_ACCESS_KEY=$SERVICE_ACCESS_KEY C_STORAGE_URL=http://$BOX_LISTEN_ADDR:$BOX_PORT APP_ORIGIN=${APP_ADDRESS%/} FRONT_DOOR_KEYS=$1 AUDIT_URL=$AUDIT_URL AUDIT_KEY=$AUDIT_KEY \
+      jq -n '{Variables: {C_STORAGE_URL: env.C_STORAGE_URL, INTERNAL_ACCESS_KEY: env.INTERNAL_ACCESS_KEY, SERVICE_CODE: env.SERVICE_CODE, SERVICE_ACCESS_KEY: env.SERVICE_ACCESS_KEY, APP_ORIGIN: env.APP_ORIGIN, FRONT_DOOR_KEYS: env.FRONT_DOOR_KEYS, AUDIT_URL: env.AUDIT_URL, AUDIT_KEY: env.AUDIT_KEY}}' \
+      >"$WORK/bff-env.json"
+  )
+  aws lambda update-function-configuration --function-name "$BFF_NAME" \
+    --vpc-config "$(bff_vpc)" --environment "file://$WORK/bff-env.json" \
+    --query LastUpdateStatus --output text >/dev/null
+  rm -f "$WORK/bff-env.json"
+  lambda_wait "$BFF_NAME" "$BFF_WAIT"
+}
+
+# new_key → 64 hex characters from 32 random bytes of the kernel, as the release makes the store's keys
+new_key() { head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n'; }
+
+# box_secret_write <path on the box>: the standard input becomes the file, root's, 0600, by a temporary file
+# beside it that is renamed over it. The content travels on the pipe: no command line, here or there, holds it.
+box_secret_write() {
+  box "sudo sh -c 'umask 077 && cat >\"\$0.tmp\" && chown root:root \"\$0.tmp\" && chmod 0600 \"\$0.tmp\" && mv -f \"\$0.tmp\" \"\$0\"' $1"
+}
+
+# store_status <local port> <method> <path> <body or -> [<header line>...]: the status the store answers a call
+# through the open tunnel, 000 when it answers none. The header lines (they carry keys) go in a 0600 file for
+# curl to read, never on its command line; the body is no secret.
+store_status() {
+  local port=$1 method=$2 path=$3 body=$4 hdr h
+  shift 4
+  mkwork
+  hdr=$WORK/store.headers
+  (
+    umask 077
+    : >"$hdr"
+    for h in "$@"; do printf '%s\n' "$h" >>"$hdr"; done
+  )
+  if [ "$body" = - ]; then
+    curl -sS -m 10 -X "$method" -H "@$hdr" -o /dev/null -w '%{http_code}' "http://127.0.0.1:$port$path" 2>/dev/null || true
+  else
+    curl -sS -m 10 -X "$method" -H "@$hdr" -H 'content-type: application/json' -d "$body" -o /dev/null -w '%{http_code}' "http://127.0.0.1:$port$path" 2>/dev/null || true
+  fi
+  rm -f "$hdr"
+}
+
 # box_rules_verdict <the box group's IpPermissions> <the endpoint's group ids, JSON> <BffGroup's id, or
-# empty before layer four> <c-storage's port> → yes, or no. Ssh from a group of the endpoint, and with
-# layer four c-storage's port from BffGroup alone, each a single tcp port from one group: no address
-# range, list or other group, and no third rule.
+# empty before layer four> <c-storage's port> <the activity log's writing port> → yes, or no. Ssh from a
+# group of the endpoint, and with layer four c-storage's port and the activity log's writing port from
+# BffGroup, each a single tcp port from one group: no address range, list or other group, no other port
+# and no further rule. A ridge without the log's rule reads red: the stack run that adds it comes before
+# the code that uses it, and a ridge that never had it, or lost it, must not read green. The port is
+# required: without it nothing but ssh before layer four is accepted.
 box_rules_verdict() {
-  jq -r --argjson eg "$2" --arg bff "$3" --argjson port "$4" '
+  jq -r --argjson eg "$2" --arg bff "$3" --argjson port "$4" --argjson audit "${5:-null}" '
     if all(.[]; .IpProtocol == "tcp" and .FromPort == .ToPort and (.IpRanges | length) == 0
         and (.Ipv6Ranges | length) == 0 and (.PrefixListIds | length) == 0 and (.UserIdGroupPairs | length) == 1)
     then
       [.[] | {port: .FromPort, group: .UserIdGroupPairs[0].GroupId}] as $r
       | ($r | map(select(.port == 22))) as $ssh
-      | ($r | map(select(.port != 22))) as $app
-      | if ($ssh | length) == 1 and ($eg | index($ssh[0].group) != null)
-           and $app == (if $bff == "" then [] else [{port: $port, group: $bff}] end)
+      | ($r | map(select(.port != 22)) | sort_by(.port)) as $app
+      | (if $bff == "" then [[]]
+         elif $audit == null then []
+         else [[{port: $port, group: $bff}, {port: $audit, group: $bff}] | sort_by(.port)] end) as $ok
+      | if ($ssh | length) == 1 and ($eg | index($ssh[0].group) != null) and any($ok[]; . == $app)
         then "yes" else "no" end
     else "no" end' <<<"$1"
 }
 
-# bff_rules_verdict <BffGroup's IpPermissionsEgress> <its IpPermissions> <the box group's id> <port> →
-# yes, or no: it sends to c-storage's port on the box's group, one rule and nowhere else, and admits nothing
+# bff_rules_verdict <BffGroup's IpPermissionsEgress> <its IpPermissions> <the box group's id> <port> <the activity
+# log's writing port> → yes, or no: it sends to c-storage's port and to the activity log's port on the box's
+# group, each a single rule to the box's group alone, nothing else, and admits nothing. A group with the
+# store's rule alone reads red (see box_rules_verdict), and so does a call that names no log port.
 bff_rules_verdict() {
-  jq -r --argjson ingress "$2" --arg box "$3" --argjson port "$4" '
-    if $ingress == [] and length == 1 and .[0].IpProtocol == "tcp" and .[0].FromPort == $port and .[0].ToPort == $port
-       and (.[0].IpRanges | length) == 0 and (.[0].Ipv6Ranges | length) == 0 and (.[0].PrefixListIds | length) == 0
-       and (.[0].UserIdGroupPairs | length) == 1 and .[0].UserIdGroupPairs[0].GroupId == $box
-    then "yes" else "no" end' <<<"$1"
+  jq -r --argjson ingress "$2" --arg box "$3" --argjson port "$4" --argjson audit "${5:-null}" '
+    def one($p): .IpProtocol == "tcp" and .FromPort == $p and .ToPort == $p
+       and (.IpRanges | length) == 0 and (.Ipv6Ranges | length) == 0 and (.PrefixListIds | length) == 0
+       and (.UserIdGroupPairs | length) == 1 and .UserIdGroupPairs[0].GroupId == $box;
+    sort_by(.FromPort) as $r
+    | if $ingress == [] and $audit != null
+         and ($r | length) == 2 and ($r[0] | one([$port, $audit] | min)) and ($r[1] | one([$port, $audit] | max))
+      then "yes" else "no" end' <<<"$1"
 }
 
-# function_network_verdict <get-function-configuration> <subnet> <group> → yes, or no: in ridge's
+# audit_fact <facts> <name> → the value a line "name=value" of the box's facts holds
+audit_fact() { sed -n "s/^$2=//p" <<<"$1"; }
+
+# audit_problems <the log's facts, read on the box> <the box's private address> <the log's writing port> <its reading
+# port> <the commit /health must name> → one problem a line, none when the log is sound: the unit active, the writing
+# listener on the box's private address alone, the reading one on loopback alone, the key file 600 root, the data
+# folder 700 and its files 600, and /health naming the commit. No address is printed, and no key is on the box's lines.
+audit_problems() {
+  local f=$1 addr=$2 w=$3 r=$4 want=$5 got
+  [ "$(audit_fact "$f" unit)" = active ] || echo "the activity log's unit is '$(audit_fact "$f" unit)', not active"
+  [ "$(audit_fact "$f" listen_w)" = "$addr:$w " ] || echo "the activity log's writing listener is not the box's private address alone"
+  [ "$(audit_fact "$f" listen_r)" = "127.0.0.1:$r " ] || echo "the activity log's reading listener is not loopback alone"
+  [ "$(audit_fact "$f" keys)" = "600 root" ] || echo "the activity log's key file is '$(audit_fact "$f" keys)', not '600 root'"
+  [ "$(audit_fact "$f" dir)" = 700 ] || echo "the activity log's data folder is mode '$(audit_fact "$f" dir)', not 700"
+  [ "$(audit_fact "$f" files)" = "600 " ] || echo "the activity log's database files are mode '$(audit_fact "$f" files)', not '600 '"
+  got=$(build_of "$(audit_fact "$f" health)")
+  [ "$got" = "$want" ] || echo "the activity log's /health names '${got:-nothing}', not $want"
+}
+
+# audit_memory_line <facts> → each program's resident memory beside the box's, in MiB; a figure the box did not give
+# (systemd's accounting off) is said as not read, never as zero
+audit_memory_line() {
+  local one name v out=''
+  for name in c-storage audit-backbone; do
+    v=$(audit_fact "$1" "mem_$name")
+    case $v in
+      '' | *[!0-9]*) one="$name not read" ;;
+      *) one="$name $((v / 1048576)) MiB" ;;
+    esac
+    out="$out$one; "
+  done
+  printf '%s' "${out%; }"
+}
+
+# audit_entry_problems <the box's lines from its read of one record's entries> → one problem a line, none when the
+# record holds exactly one customer.create entry, read with a token minted on the box, and no entry holds the write key;
+# when no token was minted nothing was read, and that is the one problem named
+audit_entry_problems() {
+  local f=$1
+  # no token, no read: the box prints minted=no alone, and a count or a leak claimed from nothing would be false
+  if [ "$(audit_fact "$f" minted)" != yes ]; then
+    echo "the box could not mint a read token for the check's client"
+    return 0
+  fi
+  [ "$(audit_fact "$f" created)" = 1 ] || echo "the customer's record holds '$(audit_fact "$f" created)' customer.create entries in the activity log, not 1"
+  [ "$(audit_fact "$f" leak)" = 0 ] || echo "an entry read from the activity log holds the write key ('$(audit_fact "$f" leak)')"
+}
+
+# BFF_FN_QUERY: the only fields of the function's configuration the check reads, as --query. The
+# configuration's Environment.Variables hold the BFF's two access keys, so no read takes it whole: the
+# names come as a list and the two values the check compares are the non-secret ones (APP_ORIGIN,
+# C_STORAGE_URL). No key value reaches the shell, the here-strings below, or a temp file, on any environment.
+# shellcheck disable=SC2034,SC2016 # check.sh reads it; the backticks are JMESPath's literal, not a substitution
+BFF_FN_QUERY='{VpcConfig: VpcConfig, Description: Description, Names: keys(Environment.Variables || `{}`), AppOrigin: Environment.Variables.APP_ORIGIN, Url: Environment.Variables.C_STORAGE_URL}'
+
+# function_network_verdict <the function, read by BFF_FN_QUERY> <subnet> <group> → yes, or no: in ridge's
 # subnet, under the BFF's group alone
 function_network_verdict() {
   jq -r --arg s "$2" --arg g "$3" \
     'if .VpcConfig.SubnetIds == [$s] and .VpcConfig.SecurityGroupIds == [$g] then "yes" else "no" end' <<<"$1"
 }
 
-# BFF_ENV_NAMES: the five variables the function holds, sorted, and no other (never the super-admin key)
+# BFF_ENV_NAMES: the eight variables the function holds, sorted, and no other (never the super-admin key)
 # shellcheck disable=SC2034 # check.sh reads it
-BFF_ENV_NAMES=APP_ORIGIN,C_STORAGE_URL,INTERNAL_ACCESS_KEY,SERVICE_ACCESS_KEY,SERVICE_CODE
-# function_env_names <get-function-configuration> → the names of its variables, sorted and comma-joined;
-# values are never read here
+BFF_ENV_NAMES=APP_ORIGIN,AUDIT_KEY,AUDIT_URL,C_STORAGE_URL,FRONT_DOOR_KEYS,INTERNAL_ACCESS_KEY,SERVICE_ACCESS_KEY,SERVICE_CODE
+# function_env_names <the function, read by BFF_FN_QUERY> → the names of its variables, sorted and
+# comma-joined; no value is in what it reads
 function_env_names() {
-  jq -r '(.Environment.Variables // {}) | keys | join(",")' <<<"$1"
+  jq -r '(.Names // []) | sort | join(",")' <<<"$1"
 }
 
-# function_origin_verdict <get-function-configuration> <the app's address> → yes, or no: the function's
-# APP_ORIGIN is the app's address with no trailing slash, the name its passkeys are bound to
+# function_origin_verdict <the function, read by BFF_FN_QUERY> <the app's address> → yes, or no: the
+# function's APP_ORIGIN is the app's address with no trailing slash, the name its passkeys are bound to
 function_origin_verdict() {
-  jq -r --arg a "${2%/}" 'if (.Environment.Variables.APP_ORIGIN // "") == $a and $a != "" then "yes" else "no" end' <<<"$1"
+  jq -r --arg a "${2%/}" 'if (.AppOrigin // "") == $a and $a != "" then "yes" else "no" end' <<<"$1"
+}
+
+# function_url <the function, read by BFF_FN_QUERY> → its C_STORAGE_URL, empty when it holds none
+function_url() {
+  jq -r '.Url // empty' <<<"$1"
 }
 
 # bucket_verdict <get-public-access-block's body> <get-bucket-policy's body> → yes, or no: all four
 # blocks on, and one statement, an allow of s3:GetObject to CloudFront's service under a condition on
-# the distribution's source ARN (the id is not readable by the deploy role, which holds no CloudFront right)
+# the distribution's source ARN (the id is not readable by the deploy role, whose one CloudFront right reads the
+# distribution's configuration)
 bucket_verdict() {
   local policy
   policy=$(jq -r '.Policy // empty' <<<"$2" 2>/dev/null) || policy=''
@@ -852,18 +1344,39 @@ edge() {
   EDGE_HEADERS=$(tr -d '\r' <"$WORK/edge.headers" 2>/dev/null | tr '[:upper:]' '[:lower:]' || true)
 }
 
-# edge_reads <base address> <a client code> <its root's password> <the company's name>: ridge as a
-# partner reaches it, each a red when it fails. The password goes to the BFF on curl's stdin, never
-# on a command line. The unknown code, the missing code and the operator's door without a session are
-# answered by the BFF behind /api/*; a cache would answer them from CloudFront.
-edge_reads() {
+# edge_reads_open <base address>: the six reads through the app's address that need no client and write
+# nothing, each a red when it fails: /health is the app's page, an unknown code and a missing one, the
+# operator's door without a session, the sign-in options' relying party and /api/health. None writes: the
+# options' challenge is signed, not stored. The BFF answers the five behind /api/*; a cache would answer
+# them from CloudFront.
+edge_reads_open() {
+  EDGE_BASE=$1
+  edge GET /health
+  expect "/health is the app's page, never c-storage's body" "200 no" "$EDGE_STATUS $(grep -q buildVersion <<<"$EDGE_BODY" && echo yes || echo no)"
+  edge GET /api/config -H 'x-client-code: check-no-such-client'
+  expect "a code we do not know is the BFF's 404 (not the app's page)" 404 "$EDGE_STATUS"
+  edge GET /api/config
+  expect "a missing code is a 400" 400 "$EDGE_STATUS"
+  edge GET /api/operator/me
+  expect "the operator's door without a session is a 401" 401 "$EDGE_STATUS"
+  edge POST /api/operator/passkey/options
+  # yes or no, so the log never holds the app's host, which the deploy masks like a key
+  expect "the sign-in options' relying party is the app's host, never the request's" "200 yes" \
+    "$EDGE_STATUS $([ "$(jq -r '.options.rpId // empty' <<<"$EDGE_BODY" 2>/dev/null)" = "$(sed -E 's#^https?://##; s#[:/].*$##' <<<"$1")" ] && echo yes || echo no)"
+  edge GET /api/health
+  expect "/api/health is the BFF's 404 and carries no build" "404 no" "$EDGE_STATUS $(grep -q buildVersion <<<"$EDGE_BODY" && echo yes || echo no)"
+}
+
+# edge_reads_client <base address> <a client code> <its root's password> <the company's name>: the reads that
+# need a client of the check's own, which write (a sign-in is a session): the app's page at its link,
+# /api/config with no cache in front, the root signing in, being known, signing out and refused after. The
+# password goes to the BFF on curl's stdin, never on a command line.
+edge_reads_client() {
   local base=$1 code=$2 pass=$3 name=$4 device auth timed
   EDGE_BASE=$base
   device=check-$(random_hex)
   edge GET "/login?client-code=$code"
   expect "the app's page at the client's link" "200 yes" "$EDGE_STATUS $(grep -q '<div id="root">' <<<"$EDGE_BODY" && echo yes || echo no)"
-  edge GET /health
-  expect "/health is the app's page, never c-storage's body" "200 no" "$EDGE_STATUS $(grep -q buildVersion <<<"$EDGE_BODY" && echo yes || echo no)"
   edge GET /api/config -H "x-client-code: $code"
   expect "/api/config reaches the BFF, which reads c-storage for the client's name" "200 $name" "$EDGE_STATUS $(jq -r '.config.name // empty' <<<"$EDGE_BODY" 2>/dev/null)"
   expect "  with no cache in front of /api/*" "no" "$(grep -qE '^(age:|x-cache: hit)' <<<"$EDGE_HEADERS" && echo yes || echo no)"
@@ -877,20 +1390,56 @@ edge_reads() {
   mask "$auth"
   edge GET /api/auth/me -H "x-client-code: $code" -H "x-auth-id: $auth"
   expect "  and is known by its handle" "200 root" "$EDGE_STATUS $(jq -r '.user.name // empty' <<<"$EDGE_BODY" 2>/dev/null)"
+  # With EDGE_ADD_CUSTOMER set (check.sh, never the stand-in cases of the reads), the root adds one customer, a change
+  # the back end enters in the activity log; its id is EDGE_RECORD for the box's read of that entry.
+  EDGE_RECORD=''
+  if [ -n "${EDGE_ADD_CUSTOMER:-}" ]; then
+    edge POST /api/customers -H "x-client-code: $code" -H "x-auth-id: $auth" -H 'content-type: application/json' \
+      --data-binary '{"code":"CHK-1","name":"Check customer","extra":{}}'
+    EDGE_RECORD=$(jq -r '.customer.id // empty' <<<"$EDGE_BODY" 2>/dev/null || true)
+    expect "  adds one customer through the edge" "200 yes" "$EDGE_STATUS $([ -n "$EDGE_RECORD" ] && echo yes || echo no)"
+  fi
   edge POST /api/auth/sign-out -H "x-client-code: $code" -H "x-auth-id: $auth"
   expect "  signs out" 204 "$EDGE_STATUS"
   edge GET /api/auth/me -H "x-client-code: $code" -H "x-auth-id: $auth"
   expect "  and the handle is refused after" 401 "$EDGE_STATUS"
+}
+
+# edge_reads <base address> <a client code> <its root's password> <the company's name>: ridge as a
+# partner reaches it: the reads that need the check's client, then the six that need none.
+edge_reads() {
+  edge_reads_client "$@"
+  edge_reads_open "$1"
+}
+
+# door_reads <app address> <API address>: the front door's two sides, each a read that writes nothing: the API's
+# own address refuses a call that did not come through the door, and the app's address answers a call that
+# carries a door key of the caller's own (the door replaces it with its key), here the BFF's 404 for a code it
+# does not know. The wrong key is made for the call and is no key of ours.
+door_reads() {
+  EDGE_BASE=$2
   edge GET /api/config -H 'x-client-code: check-no-such-client'
-  expect "a code we do not know is the BFF's 404 (not the app's page)" 404 "$EDGE_STATUS"
-  edge GET /api/config
-  expect "a missing code is a 400" 400 "$EDGE_STATUS"
-  edge GET /api/operator/me
-  expect "the operator's door without a session is a 401" 401 "$EDGE_STATUS"
-  edge POST /api/operator/passkey/options
-  # yes or no, so the log never holds the app's host, which the deploy masks like a key
-  expect "the sign-in options' relying party is the app's host, never the request's" "200 yes" \
-    "$EDGE_STATUS $([ "$(jq -r '.options.rpId // empty' <<<"$EDGE_BODY" 2>/dev/null)" = "$(sed -E 's#^https?://##; s#[:/].*$##' <<<"$base")" ] && echo yes || echo no)"
-  edge GET /api/health
-  expect "/api/health is the BFF's 404 and carries no build" "404 no" "$EDGE_STATUS $(grep -q buildVersion <<<"$EDGE_BODY" && echo yes || echo no)"
+  expect "the API's own address refuses a call that did not come through the front door" 403 "$EDGE_STATUS"
+  EDGE_BASE=$1
+  edge GET /api/config -H 'x-client-code: check-no-such-client' -H "x-front-door-key: wrong-$(random_hex)"
+  expect "the app's address answers a call sent with a wrong door key of its own" 404 "$EDGE_STATUS"
+}
+
+# workflows_of <env>: the workflow files (basenames, sorted) in .github/workflows whose jobs name
+# `environment: <env>`, the only ones that reach that environment. Read from the files here.
+workflows_of() {
+  local dir=$REPO_DIR/.github/workflows f odd
+  [ -d "$dir" ] || return 0
+  # Fails closed, as push_paths does: only the plain line `environment: <name>` is read. GitHub also takes a
+  # mapping (`environment:` then `name:`), a quoted name and a trailing comment, and a workflow in one of
+  # those shapes would be missed and stay on through a destroy, so any other `environment:` line stops here.
+  for f in "$dir"/*.yml "$dir"/*.yaml; do
+    [ -f "$f" ] || continue
+    odd=$(grep -nE '^[[:space:]]*environment:' "$f" | grep -vE '^[0-9]+:[[:space:]]*environment:[[:space:]]+[A-Za-z0-9_-]+[[:space:]]*$' | head -n 1 || true)
+    [ -z "$odd" ] || die "$(basename "$f") has an environment: line that is not the plain form 'environment: <name>' (line $odd), so which environment the workflow reaches is not known and it might stay on through a destroy: nothing was changed"
+  done
+  for f in "$dir"/*.yml "$dir"/*.yaml; do
+    [ -f "$f" ] || continue
+    if grep -qE "^[[:space:]]*environment:[[:space:]]*$1[[:space:]]*\$" "$f"; then basename "$f"; fi
+  done | sort
 }

@@ -136,6 +136,32 @@ describe.each(LISTS)('The $name list is the company’s own, in code order, neve
     expect(await codesOf(t, list)).toEqual(['A-1', 'B-2']);
   });
 
+  it('lists a company of 2,500 whole, read in three pages, in code order', async () => {
+    const t = await staffTenant(cs);
+    const pages: (string | undefined)[] = [];
+    const read = await staffTenant(cs, {
+      wrap: (client): CStorageClient => ({
+        ...client,
+        async listRecords(prefix, after) {
+          pages.push(after);
+          return await client.listRecords(prefix, after);
+        },
+      }),
+    });
+    const codes = Array.from({ length: 2500 }, (_, i) => `KH-${String(i).padStart(4, '0')}`);
+    // Random ids, so the key order is not the code order the route must answer in.
+    for (let at = 0; at < codes.length; at += 50) {
+      await Promise.all(
+        codes.slice(at, at + 50).map((code) => hold(read, list, { code, name: code })),
+      );
+    }
+    await hold(t, list, { code: 'ZZ-OTHER' });
+
+    expect(await codesOf(read, list)).toEqual(codes);
+    expect(pages).toHaveLength(3);
+    expect(pages[0]).toBeUndefined();
+  }, 60_000);
+
   it('answers 500 when c-storage says there are more records, and when a record does not parse, naming the kind and never the key', async () => {
     let more = false;
     const t = await staffTenant(cs, {
@@ -1045,7 +1071,8 @@ describe.each(LISTS)(
             return await client.putRecord(key, data, ifTag);
           },
           async removeRecord(key, ifTag) {
-            if (live) asks.push(`remove ${key}`);
+            // a sign-in's clear of its wait is the sign-in's, not the list route's
+            if (live && !key.includes('.signin-wait.')) asks.push(`remove ${key}`);
             return await client.removeRecord(key, ifTag);
           },
         }),

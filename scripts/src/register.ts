@@ -1,4 +1,9 @@
-import { createCStorageClient, recordKeys, registerCStorageService } from '@credo/shared';
+import {
+  createCStorageClient,
+  recordKeys,
+  registerCStorageService,
+  rekeyCStorageService,
+} from '@credo/shared';
 
 type Connection = {
   baseUrl: string;
@@ -34,4 +39,19 @@ export async function ensureService(
     });
   }
   return 'present';
+}
+
+/**
+ * Replaces the service's key in c-storage with the super-admin key. The old key is refused from
+ * the answer on; a service the store does not hold is an error, never a registration, so a
+ * mistyped code makes nothing. Says it rekeyed, for the run's log; the key is never in a line.
+ */
+export async function rekeyService(
+  connection: Connection,
+  service: { code: string; accessKey: string },
+): Promise<'rekeyed'> {
+  if ((await rekeyCStorageService(connection, service)) === 'unknown') {
+    throw new Error(`service ${service.code} is not registered in c-storage; nothing was changed`);
+  }
+  return 'rekeyed';
 }

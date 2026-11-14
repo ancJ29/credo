@@ -28,17 +28,27 @@ function memoryCStorage(options: { registered?: boolean } = {}) {
   const tags = new Map<string, string>();
   let writes = 0;
   let registered = options.registered ?? false;
+  let held = KEYS.SERVICE_ACCESS_KEY;
   const call: typeof fetch = (input, init) => {
     const url = new URL(input instanceof Request ? input.url : input.toString());
     const headers = new Headers(init?.headers);
     const reply = (status: number, body: unknown = {}) =>
       Promise.resolve(new Response(status === 204 ? null : JSON.stringify(body), { status }));
+    if (url.pathname === '/api/services/rekey') {
+      const { code, accessKey } = JSON.parse(init?.body as string) as {
+        code: string;
+        accessKey: string;
+      };
+      if (!registered || code !== KEYS.SERVICE_CODE) return reply(404);
+      held = accessKey;
+      return reply(200);
+    }
     if (url.pathname === '/api/services/register') {
       if (registered) return reply(409);
       registered = true;
       return reply(201);
     }
-    if (headers.get('x-access-key') !== KEYS.SERVICE_ACCESS_KEY) return reply(403);
+    if (headers.get('x-access-key') !== held) return reply(403);
     const base = `/api/records/${KEYS.SERVICE_CODE}`;
     const precondition = (key: string) => {
       if (headers.get('if-none-match') === '*') return !records.has(key);
@@ -70,7 +80,7 @@ function memoryCStorage(options: { registered?: boolean } = {}) {
       ? reply(200, { record: { data: records.get(key), tag: tags.get(key) } })
       : reply(404);
   };
-  return { records, call };
+  return { records, call, held: () => held };
 }
 
 function run(
@@ -86,6 +96,23 @@ function run(
     err: (line) => lines.err.push(line),
     fetch: call,
     now,
+  };
+  return runRidge(argv, env, io).then((status) => ({ status, ...lines }));
+}
+
+function runWith(
+  argv: string[],
+  env: Record<string, string | undefined>,
+  call: typeof fetch,
+  input: string | undefined,
+) {
+  const lines = { out: [] as string[], shown: [] as string[], err: [] as string[] };
+  const io: RidgeIo = {
+    out: (line) => lines.out.push(line),
+    show: (line) => lines.shown.push(line),
+    err: (line) => lines.err.push(line),
+    fetch: call,
+    stdin: input === undefined ? undefined : () => Promise.resolve(input),
   };
   return runRidge(argv, env, io).then((status) => ({ status, ...lines }));
 }
@@ -107,6 +134,35 @@ describe('what the ops scripts ask of ridge', () => {
       status: 0,
       out: ['service present'],
     });
+  });
+
+  it('replaces the service’s key with the one on the standard input, and prints no key', async () => {
+    const { call, held } = memoryCStorage({ registered: true });
+    const env = { ...KEYS, X_SUPER_ADMIN_KEY: 'admin' };
+
+    const result = await runWith(['rekey'], env, call, 'brand-new-key-xyz\nignored\n');
+
+    expect(result).toMatchObject({ status: 0, out: ['service rekeyed'], err: [] });
+    expect(held()).toBe('brand-new-key-xyz');
+    expect(JSON.stringify(result)).not.toContain('brand-new-key-xyz');
+  });
+
+  it('refuses a rekey with no key on the input, without the admin key, or for a service c-storage lacks', async () => {
+    const env = { ...KEYS, X_SUPER_ADMIN_KEY: 'admin' };
+    const registered = memoryCStorage({ registered: true });
+
+    expect(await runWith(['rekey'], env, registered.call, '\n')).toMatchObject({ status: 2 });
+    expect(await runWith(['rekey'], env, registered.call, undefined)).toMatchObject({ status: 2 });
+    expect(await runWith(['rekey'], KEYS, registered.call, 'k\n')).toMatchObject({
+      status: 1,
+      err: ['error: invalid environment: X_SUPER_ADMIN_KEY'],
+    });
+    const none = memoryCStorage();
+    expect(await runWith(['rekey'], env, none.call, 'k\n')).toMatchObject({
+      status: 1,
+      err: ['error: service bff is not registered in c-storage; nothing was changed'],
+    });
+    expect(none.held()).toBe(KEYS.SERVICE_ACCESS_KEY);
   });
 
   it('will not register without the super-admin key, and names the variable', async () => {
@@ -302,6 +358,23 @@ describe('what the ops scripts ask of ridge', () => {
     expect(result).toMatchObject({ status: 0, out: [`client ${CHECK} deleted`] });
     expect(records.size).toBe(0);
     expect((await run(['tenant', CHECK, 'Again'], KEYS, call)).status).toBe(0);
+  });
+
+  it('tenant-id prints the id the code names, refuses a code with no client and a bad code', async () => {
+    const { records, call } = memoryCStorage();
+    await run(['tenant', 'check-acme', 'Check Co'], KEYS, call);
+
+    const result = await run(['tenant-id', 'check-acme'], KEYS, call);
+
+    expect(result).toMatchObject({
+      status: 0,
+      out: [storedClientSchema.parse(records.get(recordKeys.client('check-acme'))).id],
+    });
+    expect(await run(['tenant-id', 'check-none'], KEYS, call)).toMatchObject({
+      status: 1,
+      err: ['error: no client check-none here'],
+    });
+    expect((await run(['tenant-id', 'Bad Code'], KEYS, call)).status).toBe(1);
   });
 
   it('untenant on a check code with no client is a quiet success', async () => {

@@ -1,14 +1,15 @@
 # The gates run on every change to c-storage, the app (the BFF, the UI, their shared package and
 # scripts) or ops, on a branch or in a pull request. A red here is a defect to fix, never a run to
-# repeat. On a push to main, once the gates are green, the `deploy` job releases c-storage, ships
+# repeat. On a push to main, or a press of this workflow on main, once the gates are green, the `deploy` job releases c-storage, ships
 # the BFF and the UI, and checks ridge: it never moves ridge backwards (an older commit arriving
-# late ends green, "superseded"), and a deploy shown cancelled was replaced by a newer push to main.
+# late ends green, "superseded"), and a deploy shown cancelled was replaced by a newer push to main or a newer press.
 name: ci
 
 on:
   push:
     paths:
       - "services/c-storage/**"
+      - "services/audit-backbone/**"
       - "ops/**"
       - "bff/**"
       - "ui/**"
@@ -27,6 +28,7 @@ on:
   pull_request:
     paths:
       - "services/c-storage/**"
+      - "services/audit-backbone/**"
       - "ops/**"
       - "bff/**"
       - "ui/**"
@@ -42,13 +44,14 @@ on:
       - "knip.json"
       - ".github/workflows/ci.yml"
       - ".github/workflows/seed.yml"
+  workflow_dispatch:
 
 permissions:
   contents: read
 
 # Vitest starts a worker per core for each test file, ~2 s of startup each under load. With the
-# jobs running at once (act runs all four on one Mac), a test that takes 2 s alone passes its 5 s
-# limit. Two workers a package: GitHub's runner has four cores and runs one package at a time.
+# jobs running at once (act runs them all on one Mac), a test that takes 2 s alone passes its 5 s
+# limit. Two workers a package: GitHub's runner has four cores and each package job has a runner of its own.
 env:
   VITEST_MAX_WORKERS: 2
 
@@ -66,6 +69,23 @@ jobs:
           cache-dependency-path: services/c-storage/go.sum
       - name: make check
         working-directory: services/c-storage
+        run: make check
+
+  # The activity log's own gate, a copy of c-storage's above: format, vet, race tests at 100 % and the box's
+  # build. The deploy waits on it, and ships the binary this commit builds.
+  audit:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: services/audit-backbone/go.mod
+          cache-dependency-path: services/audit-backbone/go.sum
+      - name: make check
+        working-directory: services/audit-backbone
         run: make check
 
   # The assembled server on a real socket: scripts/e2e.sh starts the binary on a
@@ -108,15 +128,19 @@ jobs:
           retention-days: 14
           if-no-files-found: warn
 
-  # The app's own gate: pnpm check (typecheck, lint, format, every package's tests at 100 %, knip).
+  # The app's own gate, one job a package, so the longest job is the slowest package (the scripts tests, about
+  # 15 minutes on GitHub's runner) and not their sum (about 24 minutes, measured on 11-13): each job runs
+  # `pnpm --filter @credo/<package> check`, that package's typecheck and tests at 100 % and the repository-wide
+  # eslint, prettier and knip, all through ops/gate.sh. Each is capped at 40 minutes, about 1.5 times the longest whole
+  # run measured (25.5 minutes). The job `app` below waits on all six and is the name the deploy waits on.
+  # Go is set up in the BFF's job and the scripts' alone: the one `go build` the tests make is bff/tests/build.ts, reached
+  # by the BFF's route tests and the scripts' stack tests. `--fail-if-no-match` makes a package name that matches nothing a red, not a green no-op.
   # The BFF's tests build the real c-storage, hence Go. The Lambda bundle's test runs the bundle in
   # the Node named by BUNDLE_NODE, Node 24, the runtime's: a Node 26 API that Lambda lacks fails
-  # there alone (docs/plans/2026-10-28-ridge-app.md#hazards-no-gate-catches).
-  app:
+  # there alone (docs/plans/2026-10-28-ridge-app.md#hazards-no-gate-catches); only the BFF's job sets it.
+  app-bff:
     runs-on: ubuntu-24.04
-    # 25, not 15: the job's own green run measured over 12 minutes on 11-05, and tests have been
-    # added since. The cap was skipping deploys, not catching a hang.
-    timeout-minutes: 25
+    timeout-minutes: 40
     permissions:
       contents: read
     steps:
@@ -141,8 +165,117 @@ jobs:
         run: npm install -g --ignore-scripts pnpm@12.10.1
       - name: Install
         run: pnpm install --frozen-lockfile
-      - name: pnpm check
-        run: pnpm check
+      - name: Gate bff
+        run: pnpm --filter @credo/bff --fail-if-no-match check
+
+  app-scripts:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: services/c-storage/go.mod
+          cache-dependency-path: services/c-storage/go.sum
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+      - name: pnpm 12.10.1
+        run: npm install -g --ignore-scripts pnpm@12.10.1
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Gate scripts
+        run: pnpm --filter @credo/scripts --fail-if-no-match check
+
+  app-shared:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+      - name: pnpm 12.10.1
+        run: npm install -g --ignore-scripts pnpm@12.10.1
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Gate shared
+        run: pnpm --filter @credo/shared --fail-if-no-match check
+
+  app-ui:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+      - name: pnpm 12.10.1
+        run: npm install -g --ignore-scripts pnpm@12.10.1
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Gate ui
+        run: pnpm --filter @credo/ui --fail-if-no-match check
+
+  app-visual:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+      - name: pnpm 12.10.1
+        run: npm install -g --ignore-scripts pnpm@12.10.1
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Gate visual
+        run: pnpm --filter @credo/visual --fail-if-no-match check
+
+  app-walk:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 26
+      - name: pnpm 12.10.1
+        run: npm install -g --ignore-scripts pnpm@12.10.1
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      - name: Gate walk
+        run: pnpm --filter @credo/walk --fail-if-no-match check
+
+  # The app's gate as the deploy knows it: green only when all six package jobs are. No `if` here, on purpose: the
+  # default `success()` leaves this job skipped when a job it needs failed, was cancelled or was skipped, and the
+  # deploy, which needs this one and also has no status function in its `if`, is then skipped too.
+  app:
+    needs: [app-bff, app-scripts, app-shared, app-ui, app-visual, app-walk]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - run: echo "all six package gates are green"
 
   # The templates and scripts of ridge's stacks, linted, and ops/test.sh's guards, each seen red:
   # the change-set filter, the status choice, the floor, the proof of a Bruno run, the log's exit
@@ -205,16 +338,16 @@ jobs:
         timeout-minutes: 5
         run: bash ops/test.sh
 
-  # Ridge's release, the app's ship and the check, after the four jobs above are green. The human's push to main
-  # is the decision to deploy (docs/plans/2026-10-28-ridge.md#deploys-from-github-actions).
+  # Ridge's release, the app's ship and the check, after the five gates above (check, audit, e2e, ops and app) are green. The human's push to main, or
+  # the human's press of this workflow on main, is the decision to deploy (docs/plans/2026-10-28-ridge.md#deploys-from-github-actions for the push, docs/plans/2026-11-12-ridge-by-script.md for the press).
   # It stays off in a pull request and on a branch by the job's `if`, and off under act (which has
   # no AWS, and sets ACT) by the `if` on every step: a job's own `if` cannot read `env`, and
   # ops/test.sh fails when a step lacks it. Releases only: a template change stays the human's change set.
   # A superseded release (ridge runs a newer commit, whose own deploy shipped the app) ends the job green:
   # the steps after the release carry that condition as well.
   deploy:
-    needs: [check, e2e, ops, app]
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [check, audit, e2e, ops, app]
+    if: (github.event_name == 'push' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     environment: ridge
@@ -277,6 +410,26 @@ jobs:
         timeout-minutes: 5
         working-directory: services/c-storage
         run: make box
+      # The activity log's arm64 binary of this commit, stamped with its sha (the Makefile reads BUILD_COMMIT
+      # from the environment); the release sends it as RELEASE_AUDIT_BINARY.
+      - name: Build the activity log's binary
+        if: ${{ !env.ACT }}
+        timeout-minutes: 5
+        working-directory: services/audit-backbone
+        env:
+          BUILD_COMMIT: ${{ github.sha }}
+        run: make dist
+      # Litestream rides the release beside c-storage: the pinned arm64 archive (the box's), fetched from
+      # its release before the role is taken and refused unless its SHA-256 is ops/litestream.pin's, the
+      # one home of the version and the sum. ops/release.sh checks it again before it sends a byte.
+      - name: Litestream, the pinned archive
+        if: ${{ !env.ACT }}
+        timeout-minutes: 2
+        run: |
+          . ops/litestream.pin
+          archive="$RUNNER_TEMP/litestream.tar.gz"
+          curl -fsSL -o "$archive" "https://github.com/benbjohnson/litestream/releases/download/v$LITESTREAM_VERSION/litestream-$LITESTREAM_VERSION-linux-arm64.tar.gz"
+          echo "$LITESTREAM_ARM64_SHA256  $archive" | sha256sum -c -
       # No stored key: GitHub's token for environment ridge is exchanged for the role in the
       # environment's secret. The Region is ops/lib.sh's CREDO_REGION (ops/test.sh compares them).
       # AWS's error text carries the account id outside the secret role ARN, and this repository's
@@ -299,6 +452,8 @@ jobs:
         timeout-minutes: 8
         env:
           RELEASE_BINARY: ${{ github.workspace }}/services/c-storage/dist/c-storage
+          RELEASE_AUDIT_BINARY: ${{ github.workspace }}/services/audit-backbone/dist/credo-audit-backbone
+          LITESTREAM_ARCHIVE: ${{ runner.temp }}/litestream.tar.gz
         run: bash ops/release.sh ridge
       # The BFF's code and the UI's files, under the same commit; the keys come from the box's files,
       # masked first. It skips, saying so, until the stack holds layer four.

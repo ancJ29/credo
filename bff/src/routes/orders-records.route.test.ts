@@ -137,7 +137,6 @@ describe('Rows 15 and 16: the records sit under their day and id, and a list is 
       w.office.call.get(orderRoutes.list(DAY, DAY)),
       w.office.call.get(deliveryRoutes.list(DAY)),
       w.office.call.get(ROUTES.drivers),
-      w.office.call.send('POST', ROUTES.orders, w.body()),
     ]);
     more = false;
     const bad = randomUUID();
@@ -150,7 +149,7 @@ describe('Rows 15 and 16: the records sit under their day and id, and a list is 
       w.office.call.get(deliveryRoutes.one(DAY, bad)),
     ]);
 
-    expect(short.map((reply) => reply.statusCode)).toEqual([500, 500, 500, 500]);
+    expect(short.map((reply) => reply.statusCode)).toEqual([500, 500, 500]);
     expect(broken.map((reply) => reply.statusCode)).toEqual([500, 500, 500, 500]);
     expect([...short, ...broken].map((reply) => reply.body).join('')).not.toContain(bad);
   });

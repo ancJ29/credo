@@ -1,22 +1,23 @@
 # credo
-Stack: TypeScript on Node 26, one pnpm 12 workspace; c-storage in Go 1.26 · Gate: six commands, the whole list in [the gate](#the-gate) · Ship: c-storage and the app (the BFF and the UI, once the stack holds layer four) to ridge by GitHub Actions on a push to `main`; stacks in hand-written CloudFormation YAML, by the human's change sets, never CDK
+Stack: TypeScript on Node 26, one pnpm 12 workspace; c-storage in Go 1.26 · Gate: seven commands, the whole list in [the gate](#the-gate) · Ship: c-storage, the activity log and the app (the BFF and the UI, once the stack holds layer four) to ridge by GitHub Actions on a push to `main` or a press of `ci` on `main`; stacks in hand-written CloudFormation YAML, by the human's change sets, never CDK
 
 The new credo app: the same UI and a similar concept, rebuilt as UI → one BFF → c-storage.
 
 ## The gate
 
-Six commands cover this repository, and this is the whole list; which of them a step runs is
+Seven commands cover this repository, and this is the whole list; which of them a step runs is
 [QA](docs/conventions/qa.md#the-rules)'s rule 6. Each is run from the repository root unless its row
 says otherwise.
 
 | # | Command | What it covers | In CI |
 | --- | --- | --- | --- |
-| 1 | `pnpm check` | typecheck, eslint, prettier, every TypeScript package's tests at 100 %, knip, all through `ops/gate.sh` (`package.json`'s `scripts.check`) | `.github/workflows/ci.yml`'s step `name: pnpm check` |
-| 2 | `make check`, in `services/c-storage/` | gofmt, `go vet`, the race tests at 100 % through `services/c-storage/scripts/cover.sh`, and the box's arm64 cross-compile (`services/c-storage/Makefile`) | `ci.yml#L69` |
+| 1 | `pnpm check` | typecheck, eslint, prettier, every TypeScript package's tests at 100 %, knip, all through `ops/gate.sh` (`package.json`'s `scripts.check`) | `.github/workflows/ci.yml`'s `app` job, which waits on six package jobs, one a package (`app-bff` to `app-walk`, each running that package's check under a 40-minute cap) |
+| 2 | `make check`, in `services/c-storage/` | gofmt, `go vet`, the race tests at 100 % through `services/c-storage/scripts/cover.sh`, and the box's arm64 cross-compile (`services/c-storage/Makefile`) | `ci.yml`'s `check` job, step `name: make check` |
 | 3 | `shellcheck -x ops/*.sh walk/*.sh services/c-storage/scripts/*.sh` | every tracked `.sh`: `ops/`, `walk/run.sh` and `services/c-storage/scripts/` | `ci.yml`'s `ShellCheck 0.11.0` step, ShellCheck 0.11.0 |
-| 4 | `cfn-lint ops/network.yml ops/github.yml ops/env.yml` | the three CloudFormation templates | `ci.yml#L198-L203`, cfn-lint 1.46.0 |
-| 5 | `bash ops/test.sh` | the `ops` guards and the workflows' own shape; needs Ruby, Node and `pnpm install` | `ci.yml#L206` |
-| 6 | `bash scripts/e2e.sh`, in `services/c-storage/` | the assembled server on a real socket against the Bruno collection; needs the Bruno CLI | `ci.yml#L97` |
+| 4 | `cfn-lint ops/network.yml ops/github.yml ops/env.yml` | the three CloudFormation templates | `ci.yml`'s `ops` job, step `name: cfn-lint`, cfn-lint 1.46.0 |
+| 5 | `bash ops/test.sh` | the `ops` guards and the workflows' own shape; needs Ruby, Node and `pnpm install` | `ci.yml`'s `ops` job, step `name: The guards` |
+| 6 | `bash scripts/e2e.sh`, in `services/c-storage/` | the assembled server on a real socket against the Bruno collection; needs the Bruno CLI | `ci.yml`'s `e2e` job, step `run: bash scripts/e2e.sh` |
+| 7 | `make check`, in `services/audit-backbone/` | gofmt, `go vet`, the race tests at 100 % outside `cmd/server`, and the box's arm64 cross-compile (`services/audit-backbone/Makefile`) | `ci.yml`'s `audit` job, step `name: make check` |
 
 A piece's own check at a commit is its package's `pnpm --filter @credo/<pkg> check` plus row 1's
 citation test run alone, `pnpm --filter @credo/scripts exec vitest run src/citations.test.ts`, about
@@ -25,8 +26,8 @@ one second; for a change to `.md` files only that test is the whole check
 
 Rows 3 to 5 are what an `ops/` change needs, and `ops/README.md`'s "the ops job" runs them as the
 operator's recipe. **Two checkers run only in CI**: row 6, which no local command invokes, and the
-Lambda bundle's assertion under Node 24 — `bff/src/bundle.test.ts#L39` reads `BUNDLE_NODE`, which
-only the `app` job sets (`ci.yml#L130-L136`), so locally that one assertion is skipped while row 1
+Lambda bundle's assertion under Node 24 — `bff/src/bundle.test.ts`'s `bundleNode` reads `BUNDLE_NODE`, which
+only the `app-bff` job sets (`ci.yml`'s step `name: Name the runtime's Node`), so locally that one assertion is skipped while row 1
 otherwise runs whole.
 
 ## Non-obvious facts

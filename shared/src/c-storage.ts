@@ -80,8 +80,8 @@ const listReplySchema = z.object({
   more: z.boolean(),
 });
 
-/** What a list reads: the records under a prefix in key order, and whether c-storage holds more
- * than its bound of 1,000. A caller that cannot work from a part reads `more` as a failure. */
+/** What a list reads: a page of the records under a prefix in key order, and whether c-storage holds
+ * more past it. The next page is the same list `after` the last key read. */
 export type RecordList = { records: (StoredRecord & { key: string })[]; more: boolean };
 
 /** One service's records. Its keys belong to the instance, never to the process, so two clients
@@ -89,8 +89,9 @@ export type RecordList = { records: (StoredRecord & { key: string })[]; more: bo
 export type CStorageClient = {
   /** A record that is not there is null; the tag is the one to send back in `ifTag`. */
   getRecord(key: string): Promise<StoredRecord | null>;
-  /** The records whose key starts with `prefix`, a non-empty literal, in key order, at most 1,000. */
-  listRecords(prefix: string): Promise<RecordList>;
+  /** A page of the records whose key starts with `prefix`, a non-empty literal, in key order, at
+   * most 1,000 or about 4 MiB, and those past `after` when it is given. */
+  listRecords(prefix: string, after?: string): Promise<RecordList>;
   /** `ifTag` a string writes only over the record as that tag read it, null only where none
    * exists, undefined over whatever is there. A moved record is 'moved', not an error. */
   putRecord(key: string, data: unknown, ifTag?: string | null): Promise<'saved' | 'moved'>;
@@ -123,8 +124,9 @@ export function createCStorageClient(
       return parsed.data.record;
     },
 
-    async listRecords(prefix) {
-      const path = `${base}?prefix=${encodeURIComponent(prefix)}`;
+    async listRecords(prefix, after) {
+      const page = after ? `&after=${encodeURIComponent(after)}` : '';
+      const path = `${base}?prefix=${encodeURIComponent(prefix)}${page}`;
       const what = 'GET a record list';
       const response = await send(connection, path, { method: 'GET', headers: keyed }, what);
       if (response.status !== 200) throw refused(response, what);
@@ -197,5 +199,24 @@ export async function registerCStorageService(
   );
   if (response.status === 201) return 'registered';
   if (response.status === 409) return 'exists';
+  throw refused(response, what);
+}
+
+/** Replaces a registered service's key. It takes the super-admin key like the registration, and
+ * the new key as the service will hold it; the old key is refused from the answer on and the
+ * records stay. An unknown code is 'unknown' by its 404 status. */
+export async function rekeyCStorageService(
+  connection: Connection & { superAdminKey: string },
+  service: { code: string; accessKey: string },
+): Promise<'rekeyed' | 'unknown'> {
+  const what = 'POST /api/services/rekey';
+  const response = await send(
+    connection,
+    '/api/services/rekey',
+    { method: 'POST', headers: { 'x-super-admin-key': connection.superAdminKey }, body: service },
+    what,
+  );
+  if (response.status === 200) return 'rekeyed';
+  if (response.status === 404) return 'unknown';
   throw refused(response, what);
 }

@@ -70,11 +70,14 @@ case "$KIND" in
     TEMPLATE=env.yml
     CAPS=CAPABILITY_IAM
     STEPS=8
+    # A key run (ops/keys.sh front-door) ends at the outputs: it opens no box and writes nothing to GitHub.
+    [ -z "${FRONT_DOOR_KEY_FILE:-}" ] || STEPS=6
     ;;
 esac
 
 log_start stack "${ENVNAME:-$KIND}"
 mkwork
+real_ok "${ENVNAME:-$KIND}" "a change set is shown first, and a removal or replacement is refused unless named; the network and GitHub stacks sit under every environment"
 main_synced
 
 CS=''
@@ -92,6 +95,32 @@ cleanup_extra() {
       aws cloudformation wait stack-delete-complete --stack-name "$STACK" >/dev/null 2>&1 || true
     fi
   fi
+}
+
+# front_door_key_param: appends FrontDoorKey to PARAMS, the secret the distribution adds to every call
+# it passes to the API. Made here (32 random bytes, as the release makes the store's keys) on a creation
+# and once for a stack made before the parameter; kept on every other run; or, for a key run, taken from
+# the 0600 file FRONT_DOOR_KEY_FILE names. It is masked, so the end-of-run search reads the log for it, and
+# never printed: it reaches aws in a file in WORK (0700), not on a command line.
+front_door_key_param() {
+  local key f mode
+  f=${FRONT_DOOR_KEY_FILE:-}
+  if [ -n "$f" ]; then
+    [ -f "$f" ] || die "FRONT_DOOR_KEY_FILE names no file"
+    mode=$(stat -c %a "$f" 2>/dev/null || stat -f %Lp "$f")
+    [ "$mode" = 600 ] || die "the key file's mode is $mode: it must be 0600"
+    key=$(tr -d '\n' <"$f")
+    [[ "$key" =~ ^[0-9a-f]{64}$ ]] || die "the key file does not hold one key of 64 hex characters"
+  elif [ "$CS_TYPE" = CREATE ] || [ -z "$(stack_param FrontDoorKey)" ]; then
+    key=$(head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n')
+  else
+    add_param FrontDoorKey
+    return 0
+  fi
+  mask "$key"
+  # The key reaches jq on a pipe, never as an --arg (add_param's form), which is a command line any user's ps reads.
+  # PARAMS holds no key before this line: this is the last parameter in both branches of the caller.
+  PARAMS=$(printf '%s' "$key" | jq -Rsc --argjson p "$PARAMS" '$p + [{ParameterKey: "FrontDoorKey", ParameterValue: .}]')
 }
 
 # stack_events: what failed, from the stack's events
@@ -163,8 +192,11 @@ case "$KIND" in
     net=$(aws cloudformation describe-stacks --stack-name "$NETWORK_STACK" --output json 2>/dev/null) ||
       die "$NETWORK_STACK does not exist: ops/stack.sh network first"
     add_param Env "$ENVNAME"
-    # c-storage's port, from the unit that sets it: the template has no default, so a run without it fails
+    # c-storage's and the activity log's ports, each from the unit that sets it: the template has no default, so a run without either fails
     add_param BoxPort "$BOX_PORT"
+    add_param AuditPort "$AUDIT_PORT"
+    # The Slack alarm's two IDs, from the environment: both or neither, the stack's own kept on an update
+    add_slack_params
     if [ "$CS_TYPE" = CREATE ]; then
       repo=$(repository)
       add_param Repository "$repo"
@@ -180,6 +212,7 @@ case "$KIND" in
       echo "subnet: $cidr; image: $image"
       add_param SubnetCidr "$cidr"
       add_param ImageId "$image"
+      front_door_key_param
     else
       # The deploy role trusts this repository: a fork's clone must not move it.
       repo=$(repository)
@@ -192,18 +225,20 @@ case "$KIND" in
       add_subject_param "$prefix"
       add_param SubnetCidr
       add_param ImageId
+      front_door_key_param
     fi
     ;;
 esac
-echo "$PARAMS" | jq -r '.[] | "  \(.ParameterKey)=\(.ParameterValue // "(previous)")"'
+echo "$PARAMS" | jq -r '.[] | "  \(.ParameterKey)=\(if .ParameterKey == "FrontDoorKey" then "(not printed)" else (.ParameterValue // "(previous)") end)"'
 
 step "the change set"
 CS="ops-$(date -u +%Y%m%d-%H%M%S)"
 caps=()
 if [ -n "$CAPS" ]; then caps=(--capabilities "$CAPS"); fi
 CS_OPEN=1
+printf '%s\n' "$PARAMS" >"$WORK/params.json"
 aws cloudformation create-change-set --stack-name "$STACK" --change-set-name "$CS" --change-set-type "$CS_TYPE" \
-  --template-body "file://$WORK/template.yml" --parameters "$PARAMS" ${caps[@]+"${caps[@]}"} \
+  --template-body "file://$WORK/template.yml" --parameters "file://$WORK/params.json" ${caps[@]+"${caps[@]}"} \
   >/dev/null
 no_changes=0
 if ! aws cloudformation wait change-set-create-complete --stack-name "$STACK" --change-set-name "$CS" 2>/dev/null; then
@@ -223,7 +258,7 @@ else
   aws cloudformation describe-change-set --stack-name "$STACK" --change-set-name "$CS" --output json >"$WORK/changes.json"
   # Each change, then one line per detail naming the property that carried it: the change set is deleted
   # on the way out, so this print is the only record of a refusal's cause.
-  jq -r '.Changes[]?.ResourceChange | "  \(.Action) \(.LogicalResourceId) (\(.ResourceType)) replacement=\(.Replacement // "none")", (.Details[]? | "      \(.Target.Attribute // "-") \(.Target.Name // "-") requires-recreation=\(.Target.RequiresRecreation // "-") evaluation=\(.Evaluation // "-")")' "$WORK/changes.json"
+  jq -r '.Changes[]?.ResourceChange | "  \(.Action) \(.LogicalResourceId) (\(.ResourceType)) replacement=\(.Replacement // "none")", (.Details[]? | "      \(.Target.Attribute // "-") \(.Target.Name // "-") requires-recreation=\(.Target.RequiresRecreation // "-") evaluation=\(.Evaluation // "-") source=\(.ChangeSource // "-") cause=\(.CausingEntity // "-")")' "$WORK/changes.json"
 
   step "the guard: nothing removed or replaced"
   unsafe=$(jq -r --argjson take "$TAKE" -f "$OPS_DIR/unsafe-changes.jq" "$WORK/changes.json")
@@ -233,6 +268,19 @@ else
     echo "The change set is deleted and nothing changed. A change meant on purpose is named in its"
     echo "plan step, and taken with --take <LogicalId>."
     exit 1
+  fi
+  # A key run (FRONT_DOOR_KEY_FILE) changes the distribution's header and nothing else: a change set that
+  # touches another resource, does more to the distribution than modify it, or modifies it for any cause but the
+  # FrontDoorKey parameter (a detail the documented parameter change does not explain, ops/key-run-changes.jq) is refused before it runs.
+  if [ -n "${FRONT_DOOR_KEY_FILE:-}" ]; then
+    others=$(jq -r -f "$OPS_DIR/key-run-changes.jq" "$WORK/changes.json")
+    if [ -n "$others" ]; then
+      echo "REFUSED: a key run changes the distribution alone, and this change set also holds:"
+      while IFS= read -r line; do echo "  $line"; done <<<"$others"
+      echo "The change set is deleted and nothing changed. Run ops/stack.sh env $ENVNAME for those changes first."
+      exit 1
+    fi
+    ok "the key run changes the distribution alone"
   fi
   if [ "$TAKE" = '[]' ]; then
     ok "no removal and no replacement"
@@ -269,7 +317,7 @@ if [ "$KIND" = network ]; then
   echo "zone: $(out Zone)"
 fi
 
-if [ "$KIND" = env ]; then
+if [ "$KIND" = env ] && [ -z "${FRONT_DOOR_KEY_FILE:-}" ]; then
   step "the box over the tunnel"
   # The instance may still be starting its first boot; the key and the tunnel are tried again.
   opened=0

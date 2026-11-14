@@ -1,0 +1,42 @@
+{
+  "ChangeSetName": "ops-20261113-000000",
+  "StackName": "example",
+  "Status": "CREATE_COMPLETE",
+  "ExecutionStatus": "AVAILABLE",
+  "Changes": [
+    {
+      "Type": "Resource",
+      "ResourceChange": {
+        "Action": "Add",
+        "LogicalResourceId": "BoxFromBffActivity",
+        "ResourceType": "AWS::EC2::SecurityGroupIngress",
+        "Scope": [],
+        "Details": []
+      }
+    },
+    {
+      "Type": "Resource",
+      "ResourceChange": {
+        "Action": "Modify",
+        "LogicalResourceId": "BffGroup",
+        "PhysicalResourceId": "sg-0abc",
+        "ResourceType": "AWS::EC2::SecurityGroup",
+        "Replacement": "False",
+        "Scope": [
+          "Properties"
+        ],
+        "Details": [
+          {
+            "Target": {
+              "Attribute": "Properties",
+              "Name": "SecurityGroupEgress",
+              "RequiresRecreation": "Never"
+            },
+            "Evaluation": "Static",
+            "ChangeSource": "DirectModification"
+          }
+        ]
+      }
+    }
+  ]
+}
