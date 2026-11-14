@@ -23,19 +23,38 @@ set -euo pipefail
 # shellcheck source=lib.sh
 . "$(dirname "$0")/lib.sh"
 
-[ $# -eq 1 ] || { [ $# -eq 2 ] && [ "$2" = --reads-only ]; } || {
-  echo "usage: ops/check.sh <env> [--reads-only]" >&2
+usage() {
+  echo "usage: ops/check.sh <env> [--reads-only] [--box <name>]" >&2
   exit 2
 }
+[ $# -ge 1 ] || usage
 ENVNAME=$1
+shift
 READS_ONLY=0
-[ $# -eq 1 ] || READS_ONLY=1
+BOX_WANTED=home
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --reads-only) READS_ONLY=1 ;;
+    --box)
+      [ $# -ge 2 ] || usage
+      [ "$BOX_WANTED" = home ] || usage
+      BOX_WANTED=$2
+      shift
+      ;;
+    *) usage ;;
+  esac
+  shift
+done
+# --box <name> reads that box alone, as --reads-only reads: the box's own facts, /health, the copy and the log; with none, the
+# home box is read whole and then each box added, each its own run and log.
+if [ "$BOX_WANTED" != home ]; then READS_ONLY=1; fi
+BOX_NAME=$BOX_WANTED
 STEPS=8
 # Never the local stack's port (3181): a c-storage on this machine must not answer for the box.
 LOCAL_PORT=${CHECK_LOCAL_PORT:-3191}
 BRUNO_DIR=$REPO_DIR/services/c-storage/bruno
 
-log_start check "$ENVNAME"
+log_start check "$ENVNAME$([ "$BOX_WANTED" = home ] || echo "-$BOX_WANTED")"
 mkwork
 real_ok "$ENVNAME" "it only reads there: no key off the box, no collection, no client made"
 # The mode: a real environment is always read-only (real_ok set REAL); --reads-only gives ridge the same run.
@@ -75,12 +94,15 @@ refuse_taken_port "$LOCAL_PORT" "free it, or set CHECK_LOCAL_PORT"
 step "the AWS reads"
 stack_load "$ENVNAME"
 [ -n "$STACK_JSON" ] || die "stack $ENVNAME does not exist"
-box_id=$(out BoxId)
+if [ "$BOX_WANTED" != home ]; then require_box "$ENVNAME" "$BOX_WANTED"; fi
+box_id=$(box_out BoxId)
 group_id=$(out BoxGroupId)
 vpc_id=$(out VpcId)
 # Layer four's names, masked here before anything else can print them; empty before the stack holds it.
 LAYER4=1
 app_load || LAYER4=0
+# A box added is read for the box alone: the function, the bucket and the app's address are the stack's, read in the home box's run.
+if [ "$BOX_WANTED" != home ]; then LAYER4=0; fi
 public=$(aws ec2 describe-instances --instance-ids "$box_id" --query 'Reservations[0].Instances[0].PublicIpAddress' --output text)
 expect "the box's public address" None "$public"
 igw=$(aws ec2 describe-internet-gateways --filters "Name=attachment.vpc-id,Values=$vpc_id" --query 'length(InternetGateways)' --output text)
@@ -93,7 +115,7 @@ expect "the box's group admits ssh from the endpoint's group, and c-storage's po
   "$(box_rules_verdict "$rules" "$endpoint_groups" "$BFF_GROUP" "$BOX_PORT" "$AUDIT_PORT")"
 
 step "the tunnel, and the box's reads"
-box_open "$ENVNAME" "$LOCAL_PORT" || die "the box does not answer through the endpoint, or 127.0.0.1:$LOCAL_PORT could not be bound (taken since it was checked)"
+box_open "$ENVNAME" "$LOCAL_PORT" "$BOX_WANTED" || die "the box does not answer through the endpoint, or 127.0.0.1:$LOCAL_PORT could not be bound (taken since it was checked)"
 facts=$(box sudo bash -s -- "$BOX_PORT" <<'REMOTE'
 port=$1
 echo "unit=$(systemctl is-active c-storage 2>&1 || true)"
@@ -287,6 +309,15 @@ REMOTE
       while IFS= read -r fault; do red "$fault"; done <<<"$entry_found"
     fi
   fi
+fi
+
+# The boxes added, each its own run, in its own log, reading alone; a red one is this run's red.
+if [ "$BOX_WANTED" = home ]; then
+  while IFS= read -r other; do
+    [ -n "$other" ] || continue
+    echo "the box $other: its own run and log"
+    if ! CHECK_LOCAL_PORT=$((LOCAL_PORT + 5)) bash "$0" "$ENVNAME" --box "$other" >&3 2>&3; then red "the check of box $other is red: its own log says what"; fi
+  done <<<"$(stack_boxes)"
 fi
 
 verdict

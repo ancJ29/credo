@@ -1785,3 +1785,51 @@ The wrap in `bff/src/boxes.route.test.ts` covers `getRecord` and `listRecords` o
 ## 445. The pooled shape's row 18 ("no existing test changed to pass") is checked by a command that cannot see most test files — the machine; `[DEFERRED]` (the review of the pooled shape's first landing, 2026-11-14, Low)
 
 The row's check, `git diff --stat pre-merge -- '*.test.ts'`, misses `*.test.tsx`, `*.spec.ts` and the walks' base pictures, so a loosened ui test or a rewritten base passes it unseen; the first landing's screens 2, 4, 8, 9 and passkeys' 6 gained a mask, with their bases rewritten, outside it (disclosed in step 4's tick). *Fix, if taken:* the check's pathspec lists `*.test.ts`, `*.test.tsx`, `*.spec.ts` and the walks' `bases` folder, and the plan row says which of them it expects to move. *Trigger:* the next plan with a row of this kind.
+
+## 446. What CloudFormation's own transform does with an empty collection is read from no page of AWS's — the machine; `[DEFERRED]` (the pooled shape's step 6, 2026-11-14, Low)
+
+Two AWS pages disagree: the Parameters page says a `CommaDelimitedList` "should be one more than the total number of commas", so a blank is one empty name, while the SAM CLI page says a collection that resolves to an empty list is "silently skipped". Neither says what CloudFormation's own `AWS::LanguageExtensions` does. The template no longer depends on it: the default and the runbook's removal are the word `none` (never a blank), the loop's ids have a stem of their own (`More`), so no name, an empty one included, makes one equal to the home box's, and `HasMoreBoxes` keeps the loop out for the word `none`; `ops/test.sh` expands the loop for the word, for an empty name and for one name. What stays unread is only that `ops/stack.sh env ridge --plan` with the word `none` on a stack with no box added shows no loop resource; the sitting's first `--plan` can name it.
+
+## 447. A box added has no alarm, and the destroy's list of what a stack delete keeps names the home box's ids alone — the machine; `[DEFERRED]` (the pooled shape's step 6, 2026-11-14, Low)
+
+`ops/env.yml`'s `AlarmBox` watches `Box` alone, so a box added that fails its status check says nothing to Slack; and `DESTROY_BY_HAND` in `ops/lib.sh` (read by `ops/destroy.sh` and compared with the template by `ops/test.sh`) lists the home box's ids, while a stack delete also keeps each box added's instance and records disk (`MoreBoxb2`, `MoreRecordsVolumeb2`), which the destroy's own check of retained resources would not name. Ridge runs one box and returns to one after each rehearsal (the plan's acts), so neither bites yet; a client's stack with a box added needs both first.
+
+## 448. A key run drops `STORAGE_BOXES` from the function's settings — the machine; `[DEFERRED]` (the pooled shape's step 6, 2026-11-14, Low)
+
+`ops/keys.sh` sets the function's environment through `bff_settings_set` from the keys it holds, and a settings call replaces the whole environment; `STORAGE_BOXES` is written only by `ops/app.sh` (`other_boxes_read`), so after a key run on a stack that holds a box added, a company on that box answers 503 until `ops/app.sh` runs again. The runbook's "Adding a box" says so. A key run that reads the function's own `STORAGE_BOXES` first, or refuses on a stack with boxes added, closes it.
+
+## 449. Each box added's release downloads Litestream again in the human's terminal — the machine; `[DEFERRED]` (the review of the pooled shape's second landing, 2026-11-14, Low)
+
+`ops/release.sh`'s run for each box added is handed the c-storage and activity log binaries, the tree and the commit, but not `LITESTREAM_ARCHIVE`, so `litestream_binary` fetches the pinned archive once more for each box (`ops/lib.sh`), though the home box's run checked one into its own work folder. In the deploy job the variable is the job's own and the sub-run inherits it. Passing `LITESTREAM_ARCHIVE=${LITESTREAM_ARCHIVE:-$WORK/litestream.tar.gz}` to the sub-run closes it; ridge runs one box, so it does not bite yet.
+
+## 458. A local refresh of the shard table measures something other than CI's shards, and a partial refresh mixes units — the machine; `[DEFERRED]` when the table is next refreshed (the table of times review, 2026-11-14, Low B)
+
+`pnpm --filter @credo/scripts times` runs on this Mac without `--coverage` and outside the gate lock, a `-t` filter writes skipped tests' near-zero times as real, a run of some files overwrites only those over GitHub's times, and the first whole refresh rewrites about 41 lines, so two branches that both refresh conflict. Review section "The table of times at 5af37fc3", Low B; the effect on CI's balance needs a GitHub run to know. A partial refresh also drops the entries of other edited files, which then fall back to bytes until a whole refresh (`scripts/src/shard-times.ts#L76-L77`; review section "Reread at 0556d766", Low I).
+
+## 459. The shard balance case's name claims more than it holds — the machine; at the next change to `scripts/src/shard-sequencer.test.ts` (the table of times review, 2026-11-14, Low F)
+
+"Keeps the slowest shard near a third of the table time, so the table is worth keeping" measures the greedy's balance over the weights it is handed, so it stays green with the table emptied or stale; only the presence case goes red. Review section "The table of times at 5af37fc3", Low F.
+
+## 460. Nothing checks that the config wires `TableShardSequencer` or the reporter switch, and the vite file-extension warning is three lines — the machine; at the next change to `scripts/vitest.config.ts` (the table of times review, 2026-11-14, Low G)
+
+A config that dropped the sequencer would give vitest's hash split with every case green, and the "import without a file extension" notice of `configLoader: 'native'` names three imports now. Review section "The table of times at 5af37fc3", Low G, carried from the review of 600f0eff.
+
+## 461. The package's own sequencer cases print each miss six more times into the test output — the machine; `[DEFERRED]` at the next change to `scripts/src/shard-sequencer.test.ts` (the table of times review, 2026-11-14, Low H)
+
+The cases at `scripts/src/shard-sequencer.test.ts#L12`, `#L49` and `#L58` run the real sequencer, whose `say` writes each miss to the process output, so a gate shows the lines six more times beside the shard step's. Review section "Reread at 0556d766", Low H.
+
+## 462. No check pins `Box`'s `Env` tag, which the deploy role's key push now rests on — the machine; `[DEFERRED]` (the review of the pooled shape's second landing, 2026-11-14, Low)
+
+The key push is held to this environment's boxes by `ec2:ResourceTag/Env` (`ops/env.yml`, `PushKeyToOwnBox`); case 14 reads the role alone and case 12 compares the loop's instance with `Box`, so with `Env` taken off both, both are green. A lost tag fails closed (the push is denied at `box_open`, before anything is sent). Case 14's guard asserting that `Box` carries `{"Key":"Env","Value":{"Ref":"Env"}}` closes it, and case 12 then carries it to every box added.
+
+## 463. The box-list condition joins the names with nothing between them, so a list spelling `none` reads as no box — the machine; `[DEFERRED]` (the review of the pooled shape's second landing, 2026-11-14, Low)
+
+`HasMoreBoxes` in `ops/env.yml` is `!Join ['', !Ref MoreBoxes]` against `none`, so `--more-boxes no,ne` or `n,one` (both accepted by `boxes_list_refusal`) joins to `none` and an add silently makes nothing; and a blank set outside `stack.sh` (the console, the CLI by hand) is one empty name on AWS's Parameters page, so the condition is true and CloudFormation would make a box named nothing (`MoreBox`), which `stack_boxes` cannot see, so no script releases or reads it. Neither case reaches the home box. Joining with `','` (a name holds no comma), making the condition false for `''` as well, and keying case 12's `expand` on `$names == ["none"]` closes it.
+
+## 464. The box name `es` makes the loop's instance id `MoreBoxes`, the parameter's own name — the machine; `[DEFERRED]` (the review of the pooled shape's second landing, 2026-11-14, Low)
+
+`boxes_list_refusal` accepts `es`, and `MoreBox${Name}` (`ops/env.yml`) is then `MoreBoxes`; cfn-lint 1.59.0 answers `E3007 Resources and Parameters must not share name`, and AWS's Parameters page says a logical name must be unique within the template, so the change set is refused before anything runs. Refusing a name for which `MoreBox<name>` is an existing logical name, or `es` by name, closes it.
+
+## 465. Not run: AWS's conditions page does not list `Fn::Join` inside `Fn::Equals` — the machine; `[DEFERRED]` (the review of the pooled shape's second landing, 2026-11-14, Low)
+
+The page for conditions lists `Fn::FindInMap`, `Ref` and other condition functions as usable inside `Fn::Equals` and `Fn::Or`, and `Fn::Join` only for `Fn::If`; `HasMoreBoxes` (`ops/env.yml`) puts it inside `Fn::Equals`. cfn-lint 1.59.0 accepts the template and the idiom is common, but if CloudFormation refuses it, every change set made from this template fails at its creation, before anything runs. The sitting's first `--plan` on ridge is the run that settles it; the condition would then need another shape (item 463's fix may change it anyway).
