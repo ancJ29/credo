@@ -13,6 +13,7 @@ on:
       - "shared/**"
       - "visual/**"
       - "package.json"
+      - ".node-version"
       - "tsconfig.base.json"
       - "pnpm-workspace.yaml"
       - "pnpm-lock.yaml"
@@ -39,7 +40,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      # The versions the toolchain cache below is keyed on: .node-version, and Go's own, read from go.mod.
+      # The version the toolchain cache below is keyed on: .node-version.
       - name: The pinned versions
         id: pins
         run: |
@@ -133,20 +134,6 @@ jobs:
         env:
           PROJECT: ${{ secrets.CLOUDFLARE_PAGES_PROJECT }}
         run: bash ops/walks-refused.sh "https://$PROJECT.pages.dev/"
-      # The Node the build job uses (.node-version, in the sparse checkout's root files) and the npm cache of wrangler's
-      # packages, keyed on both versions; a miss, or an unreachable cache, installs as before.
-      - name: The pinned Node
-        id: pins
-        if: ${{ !env.ACT }}
-        run: echo "node=$(cat .node-version)" >> "$GITHUB_OUTPUT"
-      - name: Restore Node and the npm cache
-        if: ${{ !env.ACT }}
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            ${{ runner.tool_cache }}/node/${{ steps.pins.outputs.node }}
-            ~/.npm
-          key: tools-${{ runner.os }}-${{ runner.arch }}-node-${{ steps.pins.outputs.node }}-wrangler-4.151.0
       - name: Node for wrangler
         if: ${{ !env.ACT }}
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
