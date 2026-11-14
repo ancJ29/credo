@@ -119,7 +119,7 @@ minutes a part.
   reddened on `fake.test.tsx` (the fake's address reply was parsed with its `kind` field, which the strict
   schema refuses; the test now parses `{ url }`), and one run reddened once on the My deliveries landing test,
   green alone three times and on the rerun: a timing flake under load, unfiled.
-- [ ] **Step 2. The platform's own words, then the signer** (about 15 minutes: a first shape, three
+- [x] **Step 2. The platform's own words, then the signer** (about 15 minutes: a first shape, three
   parts). A `fetch` read, verbatim with its page, of R2's pages on signed addresses, the cross-origin
   rule, object lifecycles and the price, and of AWS's page holding the published example of a signed
   address. Then `bff/src/photo-store.ts`, a file with no directory sentence so at the top (bff's
@@ -128,6 +128,12 @@ minutes a part.
   example. *Done when:* `pnpm --filter @credo/bff check` ends `== exit 0`; case 12 seen red with one
   byte of the example's secret changed; the read's quotes are in the recap. A premise the read
   contradicts stops the step and is reported, never planned around.
+  *Done 2026-11-14:* the `bff` gate ended `== exit 0` on the committed tree; case 12 was seen red (one byte of
+  the example's secret changed) and reverted. The read contradicted no premise: R2's page says a signed address is
+  made "with no communication with R2" and a signed type is enforced, and it is silent on a body's length and on
+  path-style addresses (both left to step 6's probe); the quotes are in `docs/recaps/2026-11-14-delivery-photos.md`.
+  AWS's own page returned 9 characters to every fetch, so its example was read from a search result quoting it, and
+  the signer reproduces that signature exactly. The merge of `pre-merge` was taken in first.
 - [ ] **Step 3. The routes through the stack, at its thinnest** (about 25 minutes: route steps ran 5,
   5, 8, 10 and 20; three route parts at about eight). The ask is a new route in its own module,
   `bff/src/routes/delivery-photo.ts`, as code.md's C10 asks of the next route added to `orders.ts`;

@@ -1,0 +1,71 @@
+import { createHash, createHmac } from 'node:crypto';
+
+/** What one signed address is for: the object's own address (no query), the way to it, and the
+ * headers the caller must send as signed. */
+export type SignInput = {
+  method: 'PUT' | 'GET';
+  /** The object's address without a query, such as `https://<host>/<bucket>/<name>`. */
+  url: string;
+  accessKeyId: string;
+  secretAccessKey: string;
+  /** R2 takes `auto`; AWS's published example is `us-east-1`. */
+  region: string;
+  /** Handed in, never read from the clock here. */
+  now: Date;
+  /** Seconds the address lives. */
+  expiresSeconds: number;
+  /** Headers signed beside the host: a PUT signs its type and exact length. */
+  headers?: { 'content-type': string; 'content-length': string };
+};
+
+const hmac = (key: string | Buffer, data: string) =>
+  createHmac('sha256', key).update(data).digest();
+const hex = (data: string) => createHash('sha256').update(data).digest('hex');
+// RFC 3986: encodeURIComponent leaves ! ' ( ) * bare.
+const encode = (s: string) =>
+  encodeURIComponent(s).replace(
+    /[!'()*]/g,
+    (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`,
+  );
+
+/** One address that lets its holder PUT or GET one object until it expires, by AWS's query
+ * signing (Signature Version 4), which R2 accepts at its S3 endpoint. It is arithmetic on a key
+ * and the clock: it opens no connection. */
+export const signUrl = (input: SignInput): string => {
+  const { host, origin, pathname } = new URL(input.url);
+  const path = pathname
+    .split('/')
+    .map((s) => encode(decodeURIComponent(s)))
+    .join('/');
+  const stamp = input.now.toISOString().replace(/[-:]|\.\d{3}/g, '');
+  const day = stamp.slice(0, 8);
+  const scope = `${day}/${input.region}/s3/aws4_request`;
+  const headers: Record<string, string> = { host, ...input.headers };
+  const names = Object.keys(headers).sort();
+  const query: Record<string, string> = {
+    'X-Amz-Algorithm': 'AWS4-HMAC-SHA256',
+    'X-Amz-Credential': `${input.accessKeyId}/${scope}`,
+    'X-Amz-Date': stamp,
+    'X-Amz-Expires': String(input.expiresSeconds),
+    'X-Amz-SignedHeaders': names.join(';'),
+  };
+  const canonicalQuery = Object.keys(query)
+    .sort()
+    .map((k) => `${encode(k)}=${encode(query[k])}`)
+    .join('&');
+  const canonicalRequest = [
+    input.method,
+    path,
+    canonicalQuery,
+    ...names.map((n) => `${n}:${headers[n]}\n`),
+    names.join(';'),
+    'UNSIGNED-PAYLOAD',
+  ].join('\n');
+  const toSign = ['AWS4-HMAC-SHA256', stamp, scope, hex(canonicalRequest)].join('\n');
+  const key = [day, input.region, 's3', 'aws4_request'].reduce(
+    (k, part) => hmac(k, part),
+    Buffer.from(`AWS4${input.secretAccessKey}`),
+  );
+  const signature = createHmac('sha256', key).update(toSign).digest('hex');
+  return `${origin}${path}?${canonicalQuery}&X-Amz-Signature=${signature}`;
+};
