@@ -303,7 +303,7 @@ stack_load() {
 
 # OUTPUTS_PRINTED: the outputs that carry no secret and are read in the human's log. Any other
 # output (a new one included) prints "(not printed)" until it is named here.
-OUTPUTS_PRINTED='["Env","Repository","BoxId","BoxGroupId","SubnetId","SubnetCidr","Zone","VpcId","VpcCidr","RoutesId","EndpointId","EndpointGroupId","ProviderArn","BffName","BffGroupId","UiBucketName","AppAddress","Watch"]'
+OUTPUTS_PRINTED='["Env","Repository","BoxId","BoxGroupId","SubnetId","SubnetCidr","Zone","VpcId","VpcCidr","RoutesId","EndpointId","EndpointGroupId","ProviderArn","BffName","BffGroupId","UiBucketName","AppAddress","Watch","Domain","DistributionName"]'
 
 # outputs_print: the stack's outputs from STACK_JSON, one line each. An output prints its value only
 # when it is named in OUTPUTS_PRINTED and holds no masked line (SECRETS); the secrets go to jq in its
@@ -1096,6 +1096,10 @@ app_load() {
   UI_BUCKET=$(out UiBucketName)
   APP_ADDRESS=$(out AppAddress)
   API_ADDRESS=$(out ApiAddress)
+  # The domain (an output only where the stack names one) and CloudFront's own name: neither is printed
+  # in a public log. The app's address above holds the domain whole already; this masks the bare name.
+  mask "$(out Domain)" "the domain"
+  mask "$(out DistributionName)" "CloudFront's own name"
   # shellcheck disable=SC2034 # app.sh reads it
   DISTRIBUTION_ID=$(out DistributionId)
   [ -n "$BFF_NAME" ] || return 1

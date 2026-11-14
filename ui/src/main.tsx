@@ -34,8 +34,18 @@ function realParts() {
   };
 }
 
+/** The address names a company only on the real build: the fake build is served at names of its own. */
+const address = fake ? undefined : location.hostname;
+
 createRoot(document.getElementById('root')!).render(
   <BrowserRouter>
-    <App api={api} device={device} passkeys={passkeys} build={build} today={today} />
+    <App
+      api={api}
+      device={device}
+      passkeys={passkeys}
+      build={build}
+      today={today}
+      address={address}
+    />
   </BrowserRouter>,
 );

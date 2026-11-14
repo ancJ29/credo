@@ -6,6 +6,7 @@ import { readAppOrigin, readStorageEnv } from '@credo/bff/env';
 import {
   ActivityError,
   type CStorageClient,
+  clientAddress,
   clientCodeSchema,
   createActivityClient,
   type createCStorageClient,
@@ -442,7 +443,7 @@ async function seed(io: LocalIo, code: string | undefined, name: string | undefi
   try {
     const company = name ?? code!;
     const made = await seedClient(io.connect(target), code!, Date.now(), company);
-    io.out(`${made.code} (${company}): ${target.origin}/login?client-code=${made.code}`);
+    io.out(`${made.code} (${company}): ${clientAddress(target.origin, made.code)}`);
     io.out(`sign in as ${ROOT_NAME} with the password ${made.rootPassword}`);
     for (const [person, password] of Object.entries(made.people)) {
       io.out(`${person}: ${password}`);

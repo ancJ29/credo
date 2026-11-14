@@ -156,6 +156,30 @@ describe('The operator makes a client from a code and the company’s name, and 
   });
 });
 
+describe('A code kept back for the app’s own address is refused as taken, and nothing is written', () => {
+  it('answers 409 for operator and www, by the form’s route and by createClient, and writes nothing', async () => {
+    let calls: ReturnType<typeof watched>['calls'] = [];
+    const t = await signedInOperator({
+      wrap: (client) => {
+        const w = watched(client);
+        calls = w.calls;
+        return w.wrapped;
+      },
+    });
+    calls.length = 0;
+    for (const code of ['operator', 'www']) {
+      const refused = await t.make({ code, name: 'Kept Back' });
+      expect(refused.statusCode, code).toBe(409);
+      expect(refused.json(), code).toEqual({ error: 'That code is taken' });
+      expect(await createClient(t.client, { code, name: 'Kept Back', madeAt: 1 }), code).toBe(
+        'taken',
+      );
+      expect(await t.client.getRecord(recordKeys.client(code)), code).toBeNull();
+    }
+    expect(calls.filter((call) => call.op === 'put')).toEqual([]);
+  });
+});
+
 describe('A code already taken is refused, and the client that holds it is unchanged', () => {
   it('answers 409 and leaves the index, the settings and the root’s password as they were', async () => {
     const t = await signedInOperator();

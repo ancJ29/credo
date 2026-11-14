@@ -269,6 +269,18 @@ else
   tenant_pass=$(INTERNAL_ACCESS_KEY=$INTERNAL_KEY SERVICE_CODE=$SERVICE_CODE SERVICE_ACCESS_KEY=$SERVICE_ACCESS_KEY C_STORAGE_URL=http://127.0.0.1:$LOCAL_PORT \
     ridge_cli tenant "$tenant" "$tenant_name") || die "the check's client could not be made"
   mask "$tenant_pass"
+  # The same company through its own address (docs/plans/2026-11-12-company-address.md, case 13): where the stack
+  # names a domain, its page, its settings and its root's sign-in are read at https://<code>.<domain>, with no
+  # customer added (the one add below is the log's one entry) and none of the six open reads, whose relying-party
+  # read names the operator's host. CHECK_OWN_BASE stands in for that address in the stand-in cases, whose edge has no name.
+  own_domain=$(out Domain)
+  if [ -n "$own_domain" ]; then
+    echo "the check's company, through its own address:"
+    EDGE_ADD_CUSTOMER='' edge_reads_client "${CHECK_OWN_BASE:-https://$tenant.$own_domain}" "$tenant" "$tenant_pass" "$tenant_name"
+  else
+    echo "skipped: $ENVNAME's stack names no domain, so no company's own address is read"
+  fi
+  echo "the check's company, through the app's address:"
   EDGE_ADD_CUSTOMER=1
   edge_reads "$APP_ADDRESS" "$tenant" "$tenant_pass" "$tenant_name"
   # The customer the root added is read back from the activity log on the box itself: the box mints a read token

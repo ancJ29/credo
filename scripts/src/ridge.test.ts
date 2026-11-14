@@ -345,6 +345,17 @@ describe('what the ops scripts ask of ridge', () => {
     expect((await run(['tenant', 'good-code'], KEYS, call)).status).toBe(1);
   });
 
+  it('refuses a code kept back for the app’s own address, and writes nothing', async () => {
+    const { records, call } = memoryCStorage();
+    for (const code of ['operator', 'www']) {
+      expect(await run(['tenant', code, 'Kept'], KEYS, call), code).toMatchObject({
+        status: 1,
+        err: [`error: the code ${code} names a client already`],
+      });
+    }
+    expect(records.size).toBe(0);
+  });
+
   const CHECK = 'check-20261107t085500z';
 
   it('untenant deletes the client the tenant command made, every record of it, and frees the code', async () => {

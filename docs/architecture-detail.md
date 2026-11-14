@@ -165,12 +165,15 @@ without the listener's two, since API Gateway is the listener
   names, and a line naming a box the back end was not handed is a 503, the log naming the box and
   no key. No memory is kept: the read costs a call under two cents a company a month, and without
   one a later move's mark is seen by the very next call.
-- **The code comes from the screens, never from the address.** `ui/src/ClientApp.tsx`'s
-  `linkedCode` reads the link's `?client-code=` (made by `shared/src/wire.ts`'s `clientLinkPath`),
-  and `ui/src/ClientApp.tsx`'s `boot` falls back to the code the device keeps. The distribution
-  forwards every viewer header to the back end but `Host` (the comment above `ops/env.yml`'s
-  `Distribution`), so the back end could not read the address if it tried, and it serves
-  CloudFront's own name and certificate (`ops/env.yml`'s `CloudFrontDefaultCertificate`).
+- **The screens send the code; the back end never reads the address.** On a company's own address
+  (`shared/src/wire.ts`'s `companyOfAddress`, handed to the app by `ui/src/main.tsx`) the screens take
+  the code from the address's first part, ahead of the link and the device; elsewhere
+  `ui/src/ClientApp.tsx`'s `linkedCode` reads the link's `?client-code=` (made by `shared/src/wire.ts`'s
+  `clientLinkPath`) and `boot` falls back to the code the device keeps. The distribution forwards
+  every viewer header to the back end but `Host` (the comment above `ops/env.yml`'s `Distribution`),
+  so the back end could not read the address if it tried. With the stack's `Domain` and
+  `CertificateArn` empty it serves CloudFront's own name and certificate (`ops/env.yml`'s
+  `CloudFrontDefaultCertificate`); set, it answers `*.<Domain>` under that certificate.
 - **What a screen reads of its tenant** is the tenant's settings record (`shared/src/config.ts`'s
   `TenantConfig`), through the back end, before sign-in (`boot`). No config file exists for a screen
   to read.
@@ -221,12 +224,14 @@ without the listener's two, since API Gateway is the listener
   a box:* real tenants' data is live and reading a change set is no longer assurance enough that a
   back-end change cannot restart a pooled box, or someone other than the human must be able to
   change some boxes and not others.
-- **The address.** Not built. `<tenant-code>.<credo-domain>` on the one distribution, through one free
-  ACM certificate for `*.<credo-domain>` in `us-east-1` and one wildcard DNS name; the screens read the
-  code from the address instead of the link, and `CLIENT_HEADER` still carries it to the back end.
-  The operator keeps one name of its own, because every passkey is checked against it
-  (`bff/src/env.ts`'s `originShape`), and a few codes are kept back from tenants. The domain is a
-  setting.
+- **The address.** Built in the code and the template, not yet run on ridge.
+  `<tenant-code>.<credo-domain>` on the one distribution, through one free ACM certificate for
+  `*.<credo-domain>` in `us-east-1` (made by hand, since CloudFront takes no other Region's) and one
+  wildcard DNS name; the screens read the code from the address instead of the link, and
+  `CLIENT_HEADER` still carries it to the back end. The operator keeps one name of its own,
+  `operator.<credo-domain>`, because every passkey is checked against it (`bff/src/env.ts`'s
+  `originShape`), and `operator` and `www` are kept back from tenants (`shared/src/records.ts`'s
+  `KEPT_CODES`). The domain is the stack's `Domain` setting, never in git.
 - **A tenant whose contract needs its keys or its code apart** takes a stack of its own from
   `ops/env.yml` as it is, and the rest stay pooled.
 - **The address.** `<tenant-code>.<credo-domain>` on the one distribution, through one free ACM

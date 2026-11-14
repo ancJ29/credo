@@ -48,6 +48,20 @@ describe('AddClientPage', () => {
     expect(document.body.innerHTML).not.toContain(made.password);
   });
 
+  it('From the operator’s address the link shown is the company’s own address', async () => {
+    vi.stubGlobal('location', new URL('https://operator.ridge.example.test/operator'));
+    try {
+      page(vi.fn<Api['makeClient']>(() => Promise.resolve({ kind: 'made', client: made })));
+      await fillAndMake();
+
+      expect((await screen.findByRole<HTMLInputElement>('textbox', { name: /Link/ })).value).toBe(
+        'https://minh-phat.ridge.example.test/login',
+      );
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('After Add another client the operator makes a second client, the button ready again', async () => {
     const makeClient = vi.fn<Api['makeClient']>(() =>
       Promise.resolve({ kind: 'made', client: made }),

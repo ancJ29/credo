@@ -677,6 +677,22 @@ describe('local seed', () => {
     );
   });
 
+  it('seed prints the company’s own address when the origin is the operator’s', async () => {
+    const said = lines();
+    const { storage } = memoryStorage();
+    await writeHandle(paths, handleOf({ ports }));
+    const connect = vi.fn(() => storage);
+    const env = envOf(9);
+
+    const status = await runLocal(
+      ['seed', 'ridge-one'],
+      baseIo(said, { connect, env: { ...env, APP_ORIGIN: 'https://operator.ridge.example.test' } }),
+    );
+
+    expect(status).toBe(0);
+    expect(said.out[0]).toBe('ridge-one (ridge-one): https://ridge-one.ridge.example.test/login');
+  });
+
   it('refuses before writing when the environment names a target badly, or names none and there is no handle', async () => {
     const connect = vi.fn(() => memoryStorage().storage);
     const cases: [string[], Partial<LocalIo>, string][] = [
