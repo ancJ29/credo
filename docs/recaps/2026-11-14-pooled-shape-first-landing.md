@@ -23,7 +23,7 @@ A box added to ridge by command, and the move: later landings.
 ## Still yours
 
 - Point 1, the box list: answered yes on 2026-11-14, on the walk's screen 10, where each box's figures sit under a mask. Case 8's and the form's tests hold the figures.
-- The reviewer's reread of the fix. <!-- FILL: the reread's verdict, not yet known -->
+- The reviewer's reread of the fix said may merge: both fixes close their findings, none added.
 - The whole check on `pre-merge`, then `main`, then ridge. <!-- FILL: the verdict of each, not yet known -->
 
 ## Evidence
