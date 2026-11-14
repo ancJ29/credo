@@ -69,3 +69,43 @@ export const signUrl = (input: SignInput): string => {
   const signature = createHmac('sha256', key).update(toSign).digest('hex');
   return `${origin}${path}?${canonicalQuery}&X-Amz-Signature=${signature}`;
 };
+
+/** Where the photos are kept and the key that signs for them: `url` is the bucket's address at the
+ * S3 endpoint, by path, with no query. */
+export type PhotoStore = { url: string; keyId: string; keySecret: string };
+
+/** The store the environment names, none where it names none. The environment is read with the three
+ * together, so an address has its key; a trailing slash is dropped so a name joins with one. */
+export const photoStoreOf = (config: {
+  PHOTO_STORE_URL?: string | undefined;
+  PHOTO_STORE_KEY_ID?: string | undefined;
+  PHOTO_STORE_KEY_SECRET?: string | undefined;
+}): PhotoStore | null =>
+  config.PHOTO_STORE_URL === undefined
+    ? null
+    : {
+        url: config.PHOTO_STORE_URL.replace(/\/$/, ''),
+        keyId: config.PHOTO_STORE_KEY_ID as string,
+        keySecret: config.PHOTO_STORE_KEY_SECRET as string,
+      };
+
+/** How long a photo's address lives, to send the picture or to read it. */
+const PHOTO_ADDRESS_SECONDS = 300;
+
+/** The address for one object of the store: a PUT signs the picture's type and exact length. */
+export const photoAddress = (
+  store: PhotoStore,
+  name: string,
+  now: number,
+  put?: { type: string; bytes: number },
+) =>
+  signUrl({
+    method: put ? 'PUT' : 'GET',
+    url: `${store.url}/${name}`,
+    accessKeyId: store.keyId,
+    secretAccessKey: store.keySecret,
+    region: 'auto',
+    now: new Date(now),
+    expiresSeconds: PHOTO_ADDRESS_SECONDS,
+    ...(put ? { headers: { 'content-type': put.type, 'content-length': String(put.bytes) } } : {}),
+  });

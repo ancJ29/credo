@@ -80,6 +80,17 @@ describe('the record keys', () => {
     ).toBe(false);
   });
 
+  it('A delivery photo’s object is <tenant id>/<day>/<request id>.jpg, built from the company’s id and the request’s, never from anything the phone sends', () => {
+    const id = '3f2a91bc-0000-4000-8000-000000000001';
+
+    expect(recordKeys.tenant(id).deliveryPhotoObject('2026-11-04', 'r1')).toBe(
+      `${id}/2026-11-04/r1.jpg`,
+    );
+    expect(recordKeys.tenant('other').deliveryPhotoObject('2026-11-04', 'r1')).not.toBe(
+      recordKeys.tenant(id).deliveryPhotoObject('2026-11-04', 'r1'),
+    );
+  });
+
   it('C: An email and a QR code each have a record of their own, none of them under the staff list’s prefix', () => {
     const id = '3f2a91bc-0000-4000-8000-000000000001';
     const tenant = recordKeys.tenant(id);

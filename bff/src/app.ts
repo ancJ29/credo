@@ -56,7 +56,9 @@ import {
 } from './records/staff-records';
 import { registerOperatorAuth } from './routes/operator-auth';
 import { registerListRoutes } from './routes/lists';
+import { registerDeliveryPhotoRoutes } from './routes/delivery-photo';
 import { registerOrderRoutes } from './routes/orders';
+import type { PhotoStore } from './photo-store';
 import { registerReconciliationRoutes } from './routes/reconciliations';
 import { registerOperatorTeamRoutes } from './routes/operator-team';
 import { registerDeleteClientRoutes } from './routes/clients-delete';
@@ -86,6 +88,9 @@ export type AppDeps = {
   /** The audit service, or none where it is not configured: the change is saved and the lost entry
    * logged, never refused. */
   activity?: ActivityClient | null;
+  /** Where delivery photos are kept, or none where it is not configured: asking a photo address is
+   * then a 503 and every other route runs. */
+  photoStore?: PhotoStore | null;
   now: () => number;
   /** The address the operator opens (`APP_ORIGIN`): passkeys are checked against it, never the
    * request's host. */
@@ -106,6 +111,7 @@ export function buildApp({
   storage,
   boxes = {},
   activity = null,
+  photoStore = null,
   now,
   origin,
   serviceKey,
@@ -563,7 +569,8 @@ export function buildApp({
 
   registerStaffRoutes(app, { now, forClient, signedIn, mustBeRoot, mustCan });
   registerListRoutes(app, { now, forClient, signedIn, mustBeRoot, mustCan });
-  registerOrderRoutes(app, { now, forClient, signedIn, mustBeRoot, mustCan });
+  const requests = registerOrderRoutes(app, { now, forClient, signedIn, mustBeRoot, mustCan });
+  registerDeliveryPhotoRoutes(app, { now, forClient, photoStore }, requests);
   registerReconciliationRoutes(app, { now, forClient, signedIn, mustBeRoot, mustCan });
 
   return app;

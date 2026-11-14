@@ -442,7 +442,9 @@ describe('what the BFF is given', () => {
       frontDoorKey: 'door-key',
     });
 
-    expect(Object.keys(environment).sort()).toEqual([...BFF_ENV_KEYS].sort());
+    // The photo store's three settings are handed by step 4 of the delivery photos' plan, with its stand-in.
+    const handed = BFF_ENV_KEYS.filter((name) => !name.startsWith('PHOTO_STORE_'));
+    expect(Object.keys(environment).sort()).toEqual([...handed].sort());
     expect(environment.HOST).toBe('127.0.0.1');
     expect(environment.APP_ORIGIN).toBe('http://localhost:4002');
     expect(environment.AUDIT_URL).toBe('http://127.0.0.1:4003');

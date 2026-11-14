@@ -48,6 +48,9 @@ export const recordKeys = {
      * `deliveryDayPrefix`, so a day's list never reads a photo. */
     deliveryPhoto: (day: string, requestId: string) =>
       `tenant.${id}.delivery-photo.${day}.${requestId}`,
+    /** The name of the object a delivery's photo is kept under: built here from the company's minted
+     * id, the day and the request's id, and nothing the phone sends names it. */
+    deliveryPhotoObject: (day: string, requestId: string) => `${id}/${day}/${requestId}.jpg`,
     /** A driver's closed day, by the day and the driver's minted id: written once, and a day's are one
      * prefix read. */
     reconciliation: (day: string, driverId: string) =>

@@ -10,6 +10,7 @@ import {
   type StoredUser,
 } from '@credo/shared';
 import { buildApp } from '../src/app';
+import type { PhotoStore } from '../src/photo-store';
 import { hashPassword } from '../src/calling/password';
 import { startingConfig } from '../src/records/clients';
 import { freshTenant, type RunningCStorage } from './c-storage';
@@ -118,6 +119,13 @@ export async function seedSettings(storage: CStorageClient, id: string) {
   await storage.putRecord(recordKeys.tenant(id).config, startingConfig('Acme'), null);
 }
 
+/** A photo store that exists on no network: only the addresses signed for it are looked at. */
+const TEST_PHOTO_STORE: PhotoStore = {
+  url: 'https://photos.test/bucket',
+  keyId: 'TESTKEYID',
+  keySecret: 'test-key-secret',
+};
+
 /** The BFF over a service of its own on the running c-storage, where tests keep apart. */
 export async function bffOn(
   cs: RunningCStorage,
@@ -127,6 +135,8 @@ export async function bffOn(
     /** Other boxes, each by name, as `STORAGE_BOXES` hands them in. */
     boxes?: Record<string, CStorageClient>;
     activity?: ActivityClient;
+    /** Where photos are kept; the test store unless a test says none (`null`). */
+    photoStore?: PhotoStore | null;
     logger?: Parameters<typeof buildApp>[0]['logger'];
     build?: string;
   } = {},
@@ -138,6 +148,7 @@ export async function bffOn(
     storage,
     ...(options.boxes === undefined ? {} : { boxes: options.boxes }),
     ...(options.activity === undefined ? {} : { activity: options.activity }),
+    photoStore: options.photoStore === undefined ? TEST_PHOTO_STORE : options.photoStore,
     now: options.now ?? time.now,
     origin: ORIGIN,
     serviceKey: service.accessKey,

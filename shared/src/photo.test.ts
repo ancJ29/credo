@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
-  deliverRequestSchema,
   deliverSentRequestSchema,
-  deliveryPhotoReplySchema,
+  deliveryPhotoRecordSchema,
   MAX_PHOTO_BYTES,
   MAX_PROOF_BYTES,
   photoAddressReplySchema,
@@ -67,7 +66,7 @@ describe('a photo', () => {
 });
 
 describe('a delivery’s photo', () => {
-  it('A delivery’s photo is a JPEG, PNG or WebP of at most 200 KB shrunk to 1280 px on its long side, and the deliver and the photo’s record take that alone', () => {
+  it('A delivery’s photo is a JPEG, PNG or WebP of at most 200 KB shrunk to 1280 px on its long side, and the photo’s record holds an object’s name alone', () => {
     expect(MAX_PROOF_BYTES).toBe(204_800);
     expect(PROOF_SIDE).toBe(1280);
     expect(proofIsValid(image(MAX_PROOF_BYTES))).toBe(true);
@@ -75,17 +74,11 @@ describe('a delivery’s photo', () => {
     expect(proofIsValid(image(MAX_PHOTO_BYTES + 1))).toBe(true);
     expect(proofIsValid(image(10, 'gif'))).toBe(false);
     expect(proofIsValid('')).toBe(false);
-    const tag = 'a'.repeat(64);
-    const photo = image(10);
-    expect(deliverRequestSchema.safeParse({ version: tag, photo }).success).toBe(true);
-    expect(deliverRequestSchema.safeParse({ version: tag }).success).toBe(false);
-    expect(deliverRequestSchema.safeParse({ version: 'nope', photo }).success).toBe(false);
-    expect(
-      deliverRequestSchema.safeParse({ version: tag, photo: image(MAX_PROOF_BYTES + 1) }).success,
-    ).toBe(false);
-    expect(deliverRequestSchema.safeParse({ version: tag, photo, day: 'x' }).success).toBe(false);
-    expect(deliveryPhotoReplySchema.safeParse({ photo }).success).toBe(true);
-    expect(deliveryPhotoReplySchema.safeParse({ photo, version: tag }).success).toBe(false);
+    expect(deliveryPhotoRecordSchema.safeParse({ name: 'a/b/c.jpg' }).success).toBe(true);
+    expect(deliveryPhotoRecordSchema.safeParse({ name: '' }).success).toBe(false);
+    expect(deliveryPhotoRecordSchema.safeParse({ name: 'x', photo: image(10) }).success).toBe(
+      false,
+    );
   });
 });
 

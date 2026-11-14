@@ -3,7 +3,7 @@ import {
   type CStorageClient,
   deliveryDocSchema,
   deliveryListReplySchema,
-  deliveryPhotoReplySchema,
+  photoAddressReplySchema,
   deliveryRoutes,
   orderListReplySchema,
   orderRoutes,
@@ -11,7 +11,7 @@ import {
 } from '@credo/shared';
 import { afterAll, beforeAll, describe, expect, inject, it } from 'vitest';
 import { type RunningCStorage, startCStorage } from '../../tests/c-storage';
-import { DAY, ordersTenant } from '../../tests/orders';
+import { DAY, ordersTenant, PHOTO_ASK } from '../../tests/orders';
 
 let cs: RunningCStorage;
 beforeAll(async () => {
@@ -21,10 +21,8 @@ afterAll(async () => {
   await cs.stop();
 });
 
-/** A data URL whose payload decodes to exactly `bytes` bytes. */
-const image = (bytes = 10, type = 'png') =>
-  `data:image/${type};base64,${Buffer.alloc(bytes, 1).toString('base64')}`;
-const PHOTO = image();
+/** The query of a signed address, read as the store would read it. */
+const queryOf = (url: string) => new URL(url).searchParams;
 
 /** A client that fails or moves the write of a chosen key, while its plan names it. */
 function flaky() {
@@ -52,19 +50,26 @@ async function deliveryTenant(options: Parameters<typeof ordersTenant>[1] = {}) 
     const request = await w.requestDoc(DAY, sent.order.request!.id, driver.call);
     return { order: sent, request };
   };
-  const deliver = (
+  /** The phone's two calls: ask where to send the photo (unless told not to), then mark delivered. The
+   * answer is the deliver's. */
+  const ask = (driver: { call: typeof tung.call }, id: string, body: unknown = PHOTO_ASK) =>
+    driver.call.send('POST', deliveryRoutes.photoAddress(DAY, id), body);
+  const deliver = async (
     driver: { call: typeof tung.call },
     id: string,
     version: string,
-    photo: unknown = PHOTO,
-  ) => driver.call.send('POST', deliveryRoutes.deliver(DAY, id), { version, photo });
+    asked = true,
+  ) => {
+    if (asked) await ask(driver, id);
+    return await driver.call.send('POST', deliveryRoutes.deliver(DAY, id), { version });
+  };
   const delivered = async (driver = tung) => {
     const todo = await sentTo(driver);
     const reply = await deliver(driver, todo.request.request.id, todo.request.version);
     expect(reply.statusCode).toBe(200);
     return { ...todo, reply };
   };
-  return { w, tung, nam, sentTo, deliver, delivered };
+  return { w, tung, nam, sentTo, ask, deliver, delivered };
 }
 
 describe('Rows 2 and 16: the driver’s list', () => {
@@ -110,7 +115,7 @@ describe('Rows 2 and 16: the driver’s list', () => {
 });
 
 describe('Rows 4, 5, 6, 13 and 14: Delivered', () => {
-  it('Delivered writes the photo, then the request delivered with deliveredAt, then the order fulfilled; the office reads both, and the photo as sent', async () => {
+  it('Asking the photo’s address writes its record, then Delivered marks the request delivered with deliveredAt, then the order fulfilled; the office reads both, and an address for the photo', async () => {
     const d = await deliveryTenant();
 
     const done = await d.delivered();
@@ -128,10 +133,12 @@ describe('Rows 4, 5, 6, 13 and 14: Delivered', () => {
     ).orders;
     expect(listed.find((one) => one.id === done.order.order.id)?.state).toBe('fulfilled');
     const photo = await d.w.office.call.get(deliveryRoutes.photo(DAY, doc.request.id));
-    expect(deliveryPhotoReplySchema.parse(photo.json())).toEqual({ photo: PHOTO });
-    // the photo is a record of its own, outside the day's prefix, so no list reads it
+    expect(photoAddressReplySchema.parse(photo.json()).url).toContain(
+      `/bucket/${d.w.t.keys.deliveryPhotoObject(DAY, doc.request.id)}?`,
+    );
+    // the photo is a record of its own, outside the day's prefix, holding the object's name alone
     const stored = await d.w.t.client.getRecord(d.w.t.keys.deliveryPhoto(DAY, doc.request.id));
-    expect(stored?.data).toEqual({ photo: PHOTO });
+    expect(stored?.data).toEqual({ name: d.w.t.keys.deliveryPhotoObject(DAY, doc.request.id) });
     const day = await d.w.t.client.listRecords(d.w.t.keys.deliveryDayPrefix(DAY));
     expect(
       day.records.some((one) => one.key === d.w.t.keys.deliveryPhoto(DAY, doc.request.id)),
@@ -181,19 +188,24 @@ describe('Rows 4, 5, 6, 13 and 14: Delivered', () => {
     expect(resend.statusCode).toBe(409);
   });
 
-  it('Delivered takes the version read and a photo of at most 200 KB: a missing, oversized or wrong kind of photo, or a version that moved, delivers nothing', async () => {
+  it('Delivered takes the version read alone: a photo in the body, no version or a version that moved delivers nothing', async () => {
     const d = await deliveryTenant();
     const todo = await d.sentTo();
     const id = todo.request.request.id;
     const { version } = todo.request;
+    await d.ask(d.tung, id);
 
-    for (const photo of [null, '', image(200 * 1024 + 1), image(10, 'gif'), 'nope']) {
-      expect((await d.deliver(d.tung, id, version, photo)).statusCode, String(photo)).toBe(400);
+    for (const body of [
+      { version, photo: 'data:image/png;base64,AAAA' },
+      {},
+      { version: 'nope' },
+    ]) {
+      const reply = await d.tung.call.send('POST', deliveryRoutes.deliver(DAY, id), body);
+      expect(reply.statusCode, JSON.stringify(body)).toBe(400);
     }
     expect((await d.deliver(d.tung, id, 'f'.repeat(64))).statusCode).toBe(409);
     expect((await d.w.requestDoc(DAY, id)).request.state).toBe('waiting');
-    // a photo of 200 KB exactly is taken
-    expect((await d.deliver(d.tung, id, version, image(200 * 1024))).statusCode).toBe(200);
+    expect((await d.deliver(d.tung, id, version)).statusCode).toBe(200);
     expect(
       (await d.deliver(d.tung, '00000000-0000-4000-8000-000000000000', version)).statusCode,
     ).toBe(404);
@@ -203,10 +215,27 @@ describe('Rows 4, 5, 6, 13 and 14: Delivered', () => {
         await d.w.t.app.inject({
           method: 'POST',
           url: deliveryRoutes.deliver(DAY, id),
-          payload: { version, photo: PHOTO },
+          payload: { version },
         })
       ).statusCode,
     ).toBe(401);
+  });
+
+  it('Case 4: Delivered with no address asked for that request is a 400 naming the photo, and the request stays waiting', async () => {
+    const d = await deliveryTenant();
+    const todo = await d.sentTo();
+    const id = todo.request.request.id;
+
+    const reply = await d.deliver(d.tung, id, todo.request.version, false);
+
+    expect(reply.statusCode).toBe(400);
+    expect(reply.json<{ details: string }>().details).toContain('photo');
+    expect((await d.w.requestDoc(DAY, id)).request.state).toBe('waiting');
+    expect((await d.w.read(DAY, todo.order.order.id)).order.state).toBe('confirmed');
+    // another request's ask does not stand for this one
+    const other = await d.sentTo();
+    await d.ask(d.tung, other.request.request.id);
+    expect((await d.deliver(d.tung, id, todo.request.version, false)).statusCode).toBe(400);
   });
 
   it('A driver who is no longer allowed to deliver is refused', async () => {
@@ -282,7 +311,7 @@ describe('Rows 4, 5, 6, 13 and 14: Delivered', () => {
     expect((await d.w.read(DAY, left.order.order.id)).order.state).toBe('fulfilled');
   });
 
-  it('A stop after the photo leaves a waiting request with a photo nothing reads, written over by the next try; a request moved meanwhile is a conflict', async () => {
+  it('A stop after the ask leaves a waiting request and a record of the photo’s name, which the next ask writes over; a request moved meanwhile is a conflict', async () => {
     const f = flaky();
     const d = await deliveryTenant({ wrap: f.wrap });
     const todo = await d.sentTo();
@@ -295,11 +324,8 @@ describe('Rows 4, 5, 6, 13 and 14: Delivered', () => {
     expect((await d.w.requestDoc(DAY, id)).request.state).toBe('waiting');
     expect((await d.tung.call.get(deliveryRoutes.photo(DAY, id))).statusCode).toBe(404);
 
-    const other = image(20);
-    expect((await d.deliver(d.tung, id, todo.request.version, other)).statusCode).toBe(200);
-    expect(
-      deliveryPhotoReplySchema.parse((await d.tung.call.get(deliveryRoutes.photo(DAY, id))).json()),
-    ).toEqual({ photo: other });
+    expect((await d.deliver(d.tung, id, todo.request.version)).statusCode).toBe(200);
+    expect((await d.tung.call.get(deliveryRoutes.photo(DAY, id))).statusCode).toBe(200);
 
     // the request moves between the read and the write
     const racing = await d.sentTo();
@@ -307,12 +333,13 @@ describe('Rows 4, 5, 6, 13 and 14: Delivered', () => {
     const lost = await d.deliver(d.tung, racing.request.request.id, racing.request.version);
     f.plan.on = undefined;
     expect(lost.statusCode).toBe(409);
-    // the photo's record moving every time is a 503
+    // the photo's record moving every time is a 503 at the ask, and nothing is delivered
     const busy = await d.sentTo();
     f.plan.on = (key) => (key.includes('delivery-photo') ? 'moved' : null);
-    const refused = await d.deliver(d.tung, busy.request.request.id, busy.request.version);
+    const refused = await d.ask(d.tung, busy.request.request.id);
     f.plan.on = undefined;
     expect(refused.statusCode).toBe(503);
+    expect((await d.w.requestDoc(DAY, busy.request.request.id)).request.state).toBe('waiting');
   });
 });
 
@@ -376,7 +403,9 @@ describe('Rows 7 and 17: who reads a request and its photo', () => {
     for (const reader of [d.w.office, d.w.viewer, d.tung, { call: d.w.t.rootCall }]) {
       const reply = await reader.call.get(photo);
       expect(reply.statusCode).toBe(200);
-      expect(deliveryPhotoReplySchema.parse(reply.json())).toEqual({ photo: PHOTO });
+      expect(photoAddressReplySchema.parse(reply.json()).url).toContain(
+        `/bucket/${d.w.t.keys.deliveryPhotoObject(DAY, id)}?`,
+      );
       expect((await reader.call.get(deliveryRoutes.one(DAY, id))).statusCode).toBe(200);
     }
     for (const reader of [d.nam, d.w.someone]) {
@@ -426,5 +455,136 @@ describe('Row 15: an order’s request is shown while it waits or is delivered',
       done.request.request.id,
     );
     expect((await d.w.read(DAY, cancelled.order.order.id)).order.request).toBeNull();
+  });
+});
+
+describe('Cases 6 to 11 and 13: the photo’s address', () => {
+  it('Case 6: only the request’s own driver is given an address to send to; the root, the office and another driver are refused with a 403 and nothing is written', async () => {
+    const d = await deliveryTenant();
+    const todo = await d.sentTo();
+    const id = todo.request.request.id;
+
+    for (const who of [d.nam, d.w.office, d.w.someone, { call: d.w.t.rootCall }]) {
+      expect((await d.ask(who, id)).statusCode).toBe(403);
+    }
+    expect(
+      (
+        await d.w.t.app.inject({
+          method: 'POST',
+          url: deliveryRoutes.photoAddress(DAY, id),
+          payload: PHOTO_ASK,
+        })
+      ).statusCode,
+    ).toBe(401);
+    expect((await d.w.t.client.getRecord(d.w.t.keys.deliveryPhoto(DAY, id))) === null).toBe(true);
+    expect((await d.ask(d.tung, id)).statusCode).toBe(200);
+  });
+
+  it('Case 7: a request already delivered or cancelled gets no address, a 409 carrying it as it is now, and a request that is not there a 404', async () => {
+    const d = await deliveryTenant();
+    const done = await d.delivered();
+    const cancelled = await d.sentTo();
+    await d.w.office.call.send('POST', orderRoutes.cancel(DAY, cancelled.order.order.id), {
+      version: cancelled.order.version,
+    });
+
+    for (const [id, state] of [
+      [done.request.request.id, 'delivered'],
+      [cancelled.request.request.id, 'cancelled'],
+    ] as const) {
+      const reply = await d.ask(d.tung, id);
+      expect(reply.statusCode).toBe(409);
+      expect(
+        deliveryDocSchema.parse(reply.json<{ current: unknown }>().current).request.state,
+      ).toBe(state);
+    }
+    expect((await d.ask(d.tung, '00000000-0000-4000-8000-000000000000')).statusCode).toBe(404);
+    expect(
+      (await d.w.t.client.getRecord(
+        d.w.t.keys.deliveryPhoto(DAY, cancelled.request.request.id),
+      )) === null,
+    ).toBe(true);
+  });
+
+  it('Cases 9, 10 and 11: the address is for one object named by the back end, signs the type and the exact length, lives five minutes and is the same on a second ask; a picture that is not a JPEG, a length of none or over 200 KB, or a body with more is a 400', async () => {
+    const d = await deliveryTenant();
+    const todo = await d.sentTo();
+    const id = todo.request.request.id;
+
+    const first = await d.ask(d.tung, id, { type: 'image/jpeg', bytes: 1234 });
+    const again = await d.ask(d.tung, id, { type: 'image/jpeg', bytes: 1234 });
+
+    expect(first.statusCode).toBe(200);
+    const url = photoAddressReplySchema.parse(first.json()).url;
+    const name = d.w.t.keys.deliveryPhotoObject(DAY, id);
+    expect(new URL(url).pathname).toBe(`/bucket/${name}`);
+    expect(name).toBe(`${d.w.t.id}/${DAY}/${id}.jpg`);
+    expect(queryOf(url).get('X-Amz-Expires')).toBe('300');
+    expect(queryOf(url).get('X-Amz-SignedHeaders')).toBe('content-length;content-type;host');
+    // the same name again; the signature differs only with the clock
+    expect(new URL(photoAddressReplySchema.parse(again.json()).url).pathname).toBe(
+      `/bucket/${name}`,
+    );
+    const other = await d.ask(d.tung, id, { type: 'image/jpeg', bytes: 1235 });
+    expect(
+      queryOf(photoAddressReplySchema.parse(other.json()).url).get('X-Amz-Signature'),
+    ).not.toBe(queryOf(url).get('X-Amz-Signature'));
+    expect((await d.w.t.client.getRecord(d.w.t.keys.deliveryPhoto(DAY, id)))?.data).toEqual({
+      name,
+    });
+    // nothing the phone sends names a folder or a key
+    expect((await d.ask(d.tung, id, { ...PHOTO_ASK, name: '../x', folder: 'y' })).statusCode).toBe(
+      400,
+    );
+
+    for (const body of [
+      { type: 'image/png', bytes: 10 },
+      { type: 'image/webp', bytes: 10 },
+      { type: 'image/jpeg', bytes: 0 },
+      { type: 'image/jpeg', bytes: 200 * 1024 + 1 },
+      { type: 'image/jpeg' },
+      null,
+    ]) {
+      expect((await d.ask(d.tung, id, body)).statusCode, JSON.stringify(body)).toBe(400);
+    }
+    expect((await d.ask(d.tung, id, { type: 'image/jpeg', bytes: 200 * 1024 })).statusCode).toBe(
+      200,
+    );
+  });
+
+  it('Case 8: a read address goes to those who may read the request, only once it is delivered, and lives five minutes', async () => {
+    const d = await deliveryTenant();
+    const done = await d.delivered();
+    const id = done.request.request.id;
+    const waiting = await d.sentTo();
+
+    const reply = await d.w.office.call.get(deliveryRoutes.photo(DAY, id));
+    const url = photoAddressReplySchema.parse(reply.json()).url;
+
+    expect(queryOf(url).get('X-Amz-Expires')).toBe('300');
+    expect(queryOf(url).get('X-Amz-SignedHeaders')).toBe('host');
+    expect((await d.nam.call.get(deliveryRoutes.photo(DAY, id))).statusCode).toBe(403);
+    expect(
+      (await d.w.office.call.get(deliveryRoutes.photo(DAY, waiting.request.request.id))).statusCode,
+    ).toBe(404);
+  });
+
+  it('Case 13: with no photo store set, asking an address is a 503 and nothing is written, a read address is a 503 and every other route runs', async () => {
+    const d = await deliveryTenant({ photoStore: null });
+    const todo = await d.sentTo();
+    const id = todo.request.request.id;
+
+    expect((await d.ask(d.tung, id)).statusCode).toBe(503);
+    expect((await d.w.t.client.getRecord(d.w.t.keys.deliveryPhoto(DAY, id))) === null).toBe(true);
+    expect((await d.tung.call.get(deliveryRoutes.one(DAY, id))).statusCode).toBe(200);
+    expect((await d.w.office.call.get(orderRoutes.list(DAY, DAY))).statusCode).toBe(200);
+    // a delivered request's photo reads as none address: the record is there, the store is not
+    await d.w.t.client.putRecord(
+      d.w.t.keys.deliveryPhoto(DAY, id),
+      { name: d.w.t.keys.deliveryPhotoObject(DAY, id) },
+      null,
+    );
+    expect((await d.deliver(d.tung, id, todo.request.version, false)).statusCode).toBe(200);
+    expect((await d.w.office.call.get(deliveryRoutes.photo(DAY, id))).statusCode).toBe(503);
   });
 });

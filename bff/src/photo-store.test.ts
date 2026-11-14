@@ -1,6 +1,6 @@
 import net from 'node:net';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { signUrl } from './photo-store';
+import { photoAddress, photoStoreOf, signUrl } from './photo-store';
 
 // AWS's published example of a signed address: a GET of `test.txt` from `examplebucket`, signed
 // with the documented example key on 2013-05-24, valid 86400 seconds, region us-east-1.
@@ -48,5 +48,21 @@ describe('the signer of a photo address', () => {
     expect(url).not.toBe(put('1001'));
     expect(url).not.toBe(put('1000', 'image/png'));
     expect(url).toBe(put('1000'));
+  });
+
+  it('is made from the environment’s three settings, or is none, and its addresses live five minutes', () => {
+    expect(photoStoreOf({})).toBeNull();
+    const store = photoStoreOf({
+      PHOTO_STORE_URL: 'https://objects.test/bucket/',
+      PHOTO_STORE_KEY_ID: 'id',
+      PHOTO_STORE_KEY_SECRET: 'secret',
+    });
+    expect(store).toEqual({ url: 'https://objects.test/bucket', keyId: 'id', keySecret: 'secret' });
+    const read = new URL(photoAddress(store!, 'a/b.jpg', Date.UTC(2026, 10, 14)));
+    expect(read.pathname).toBe('/bucket/a/b.jpg');
+    expect(read.searchParams.get('X-Amz-Expires')).toBe('300');
+    expect(read.searchParams.get('X-Amz-Date')).toBe('20261114T000000Z');
+    const put = new URL(photoAddress(store!, 'a/b.jpg', 0, { type: 'image/jpeg', bytes: 7 }));
+    expect(put.searchParams.get('X-Amz-SignedHeaders')).toBe('content-length;content-type;host');
   });
 });

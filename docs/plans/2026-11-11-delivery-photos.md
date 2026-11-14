@@ -33,7 +33,7 @@ stamp burned into the picture, deleting one photo, a deleted company's photos (o
 The machine's decisions until real clients, each vetoable on sight.
 
 1. **Who signs: the back end, inside its own process.** It is the only part that knows who is asking
-   (`bff/src/routes/orders.ts#L413-L422`), and signing an address is arithmetic on a key and the
+   (`bff/src/routes/orders.ts#L427-L440`), and signing an address is arithmetic on a key and the
    clock, not a call, so the back end's network with no way out (`ops/network.yml#L32`) does not stop
    it. That last claim is the architecture page's and unverified: step 2 holds it with a test that
    runs with every outbound call refused. The legacy's separate worker
@@ -134,7 +134,7 @@ minutes a part.
   path-style addresses (both left to step 6's probe); the quotes are in `docs/recaps/2026-11-14-delivery-photos.md`.
   AWS's own page returned 9 characters to every fetch, so its example was read from a search result quoting it, and
   the signer reproduces that signature exactly. The merge of `pre-merge` was taken in first.
-- [ ] **Step 3. The routes through the stack, at its thinnest** (about 25 minutes: route steps ran 5,
+- [x] **Step 3. The routes through the stack, at its thinnest** (about 25 minutes: route steps ran 5,
   5, 8, 10 and 20; three route parts at about eight). The ask is a new route in its own module,
   `bff/src/routes/delivery-photo.ts`, as code.md's C10 asks of the next route added to `orders.ts`;
   it reuses the finding and reading of a request from `registerOrderRoutes`, passed in rather than
@@ -146,6 +146,17 @@ minutes a part.
   `bff/src/env.ts` optional, as the activity log's pair is (`#L24-L25`). The old picture schemas go,
   and with them the three copies of the test photo (open item 228). *Done when:* `pnpm --filter
   @credo/bff check` ends `== exit 0`; cases 2, 4, 6 to 11 and 13 each seen red once.
+  *Done 2026-11-14:* the `bff` gate ended `== exit 0` on the committed tree (and the `shared` gate); cases 2, 4, 6,
+  7, 8, 9, 10, 11 and 13 were each seen red by one mutation, reverted and compared equal (case 8's "delivered only"
+  by the stop-after-the-ask test, which holds a record on a waiting request; case 11 by the second ask's name in
+  case 9's and 10's one test). The ask is `bff/src/routes/delivery-photo.ts`, which also answers the read address;
+  `orders.ts` returns the finding and reading of a request to it. The settings are `PHOTO_STORE_URL` (the bucket
+  by path), `PHOTO_STORE_KEY_ID` and `PHOTO_STORE_KEY_SECRET`, all three or none. The lines this plan cites that
+  moved on the merged tree: `orders.ts`'s deliver (`#L475-L517`) is now `#L466-L516`, its read of the photo left
+  for `delivery-photo.ts`, `#L413-L422` is `#L427-L440`, and `env.ts#L24-L25` is no longer the audit pair, which is
+  `#L58-L60`; `records.ts#L47-L50` and `audit.ts#L84-L88` did not move. The old picture schemas are gone from
+  `shared`; the seed and the generator still write the old record and move with step 4, and `scripts/src/stack.test.ts`
+  leaves the three settings out of its list of the back end's variables until step 4 hands them.
 - [ ] **Step 4. The stand-in for R2, the stack and the seed** (about 25 minutes: four parts, the
   stand-in a first shape, the rest the same call changed in place, plus the whole check).
   `scripts/src/running/photo-store.ts` keeps pictures in memory behind the same signed addresses,
