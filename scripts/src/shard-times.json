@@ -147,9 +147,13 @@
     "file": "seeding.test.ts",
     "ms": 61
   },
-  "6151d1d20d53321a": {
+  "10e19c447379c2d1": {
     "file": "shard-sequencer.test.ts",
-    "ms": 24
+    "ms": 32
+  },
+  "573d9e275082b3f7": {
+    "file": "shard-times.test.ts",
+    "ms": 19
   },
   "856ae182850faa97": {
     "file": "stack.test.ts",

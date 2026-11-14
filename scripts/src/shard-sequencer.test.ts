@@ -1,8 +1,8 @@
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { join, relative, resolve } from 'node:path';
 import type { TestSpecification } from 'vitest/node';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { assignShards, TableShardSequencer } from './shard-sequencer';
 import { hashOf, readTable, TABLE_PATH, testFilesUnder, weigh } from './shard-times';
 
@@ -14,6 +14,12 @@ const sequencer = (shard: { index: number; count: number } | undefined) =>
 
 /** The sequencer reading the table at `path` instead of the package's own. */
 class AtTable extends TableShardSequencer {
+  said: string[] = [];
+
+  protected override say(line: string): void {
+    this.said.push(line);
+  }
+
   constructor(shard: { index: number; count: number }, path: string) {
     super({ config: { shard } } as never);
     this.tablePath = path;
@@ -79,33 +85,57 @@ describe('TableShardSequencer on a made-up table', () => {
     });
   });
   afterEach(() => rmSync(scratch, { recursive: true, force: true }));
+  const said: string[] = [];
   const shards = async (path: string) =>
     Promise.all(
-      [1, 2].map(async (index) =>
-        (await new AtTable({ index, count: 2 }, path).shard(files.map(spec))).map(
-          (s) => s.moduleId,
-        ),
-      ),
+      [1, 2].map(async (index) => {
+        const sequencer = new AtTable({ index, count: 2 }, path);
+        const mine = await sequencer.shard(files.map(spec));
+        if (index === 1) said.splice(0, said.length, ...sequencer.said);
+        return mine.map((s) => s.moduleId);
+      }),
     );
-  const table = (path: string, ms: number[]) =>
+  /** The table holding every file but those at `left`, as `ms` says, its paths as the sequencer reads them. */
+  const table = (path: string, ms: number[], left: number[] = []) =>
     writeFileSync(
       path,
-      JSON.stringify(Object.fromEntries(files.map((f, i) => [hashOf(f), { file: f, ms: ms[i] }]))),
+      JSON.stringify(
+        Object.fromEntries(
+          files.flatMap((f, i) =>
+            left.includes(i) ? [] : [[hashOf(f), { file: relative(here, f), ms: ms[i] }]],
+          ),
+        ),
+      ),
     );
 
   it('splits by the table: a slow small file stands alone against the rest, which size alone would not do', async () => {
     const path = join(scratch, 'hit.json');
     table(path, [9000, 1000, 1000, 1000]);
     expect(await shards(path)).toEqual([[files[0]], [files[1], files[2], files[3]]]);
+    expect(said).toEqual([]);
   });
 
-  it('a file the table does not hold falls back to its size, at the rate the table gives', async () => {
-    const path = join(scratch, 'miss.json');
+  it('an edited file weighs the time last recorded for its path, however many bytes it grew, and says so in one line', async () => {
+    const path = join(scratch, 'edited.json');
     table(path, [9000, 1000, 1000, 1000]);
     writeFileSync(files[3], 'changed '.repeat(2000));
+    expect(await shards(path)).toEqual([[files[0]], [files[1], files[2], files[3]]]);
+    expect(said).toHaveLength(1);
+    expect(said[0]).toContain(
+      'd.test.ts not in the table by its hash, weighs 1000 ms (its last recorded time)',
+    );
+  });
+
+  it('a path the table never saw weighs its bytes at the table rate, and says so', async () => {
+    const path = join(scratch, 'new.json');
+    table(path, [9000, 1000, 1000, 1000], [3]);
+    writeFileSync(files[3], 'new '.repeat(2000));
     const [first, second] = await shards(path);
     expect(first).toEqual([files[3]]);
     expect(second).toEqual([files[0], files[1], files[2]]);
+    expect(said).toHaveLength(1);
+    expect(said[0]).toContain('d.test.ts not in the table by its hash');
+    expect(said[0]).toContain('(its bytes, a new file)');
   });
 
   it('an empty or an absent table splits by size alone', async () => {
@@ -116,5 +146,17 @@ describe('TableShardSequencer on a made-up table', () => {
     ];
     expect(await shards(join(scratch, 'empty.json'))).toEqual(bySize);
     expect(await shards(join(scratch, 'absent.json'))).toEqual(bySize);
+  });
+
+  it('writes each miss to the process output, the shard step in CI', async () => {
+    const write = vi.spyOn(process.stdout, 'write').mockReturnValue(true);
+    try {
+      await new TableShardSequencer({ config: { shard: { index: 1, count: 2 } } } as never).shard([
+        spec(files[0]),
+      ]);
+      expect(write).toHaveBeenCalledWith(expect.stringContaining('shard-times: '));
+    } finally {
+      write.mockRestore();
+    }
   });
 });

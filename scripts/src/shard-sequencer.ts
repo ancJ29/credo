@@ -1,5 +1,8 @@
 import { BaseSequencer, type TestSpecification } from 'vitest/node';
+import { relative } from 'node:path';
 import { readTable, TABLE_PATH, weigh } from './shard-times';
+
+const SRC_DIR = import.meta.dirname;
 
 /**
  * Which of `count` shards each file runs in, by weight: the heaviest file first, each into the shard whose total is
@@ -27,13 +30,26 @@ export function assignShards(
 export class TableShardSequencer extends BaseSequencer {
   protected tablePath = TABLE_PATH;
 
+  /** One line into the shard step's output. */
+  protected say(line: string): void {
+    process.stdout.write(line);
+  }
+
   override shard(files: TestSpecification[]): Promise<TestSpecification[]> {
     const shard = this.ctx.config.shard;
     if (!shard) return Promise.resolve(files);
     const weights = weigh(
       files.map((spec) => spec.moduleId),
       readTable(this.tablePath),
+      SRC_DIR,
     );
+    for (const w of weights.filter((x) => x.miss)) {
+      this.say(
+        `shard-times: ${relative(SRC_DIR, w.path)} not in the table by its hash, weighs ${Math.round(w.size)} ms (${
+          w.miss === 'path' ? 'its last recorded time' : 'its bytes, a new file'
+        })\n`,
+      );
+    }
     const mine = new Set(assignShards(weights, shard.count)[shard.index - 1]);
     return Promise.resolve(files.filter((spec) => mine.has(spec.moduleId)));
   }

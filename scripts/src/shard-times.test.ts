@@ -69,31 +69,50 @@ describe('weigh', () => {
   it('a hit weighs its time from the table', () => {
     const a = file('a.test.ts', 'aaaa');
     const b = file('b.test.ts', 'bbbbbbbb');
-    const table = { [hashOf(a)]: { file: 'a', ms: 7000 }, [hashOf(b)]: { file: 'b', ms: 1000 } };
-    expect(weigh([a, b], table)).toEqual([
+    const table = {
+      [hashOf(a)]: { file: 'a.test.ts', ms: 7000 },
+      [hashOf(b)]: { file: 'b.test.ts', ms: 1000 },
+    };
+    expect(weigh([a, b], table, dir)).toEqual([
       { path: a, size: 7000 },
       { path: b, size: 1000 },
     ]);
   });
 
-  it('a miss weighs its bytes at the hits rate of milliseconds per byte, so a changed file lands by its size', () => {
+  it('an edited file, its path in the table under another hash, weighs the time last recorded for the path, whatever its bytes', () => {
+    const a = file('a.test.ts', 'aaaa');
+    const edited = file('sub/e.test.ts', 'e'.repeat(5000));
+    const table = {
+      [hashOf(a)]: { file: 'a.test.ts', ms: 4000 },
+      oldhash: { file: 'sub/e.test.ts', ms: 25 },
+    };
+    expect(weigh([a, edited], table, dir)).toEqual([
+      { path: a, size: 4000 },
+      { path: edited, size: 25, miss: 'path' },
+    ]);
+  });
+
+  it('a path the table never saw weighs its bytes at the hits rate of milliseconds per byte', () => {
     const a = file('a.test.ts', 'aaaa');
     const b = file('b.test.ts', 'bbbbbbbb');
-    const changed = file('c.test.ts', 'cc');
-    const table = { [hashOf(a)]: { file: 'a', ms: 4000 }, [hashOf(b)]: { file: 'b', ms: 8000 } };
-    expect(weigh([a, b, changed], table)).toEqual([
+    const fresh = file('c.test.ts', 'cc');
+    const table = {
+      [hashOf(a)]: { file: 'a.test.ts', ms: 4000 },
+      [hashOf(b)]: { file: 'b.test.ts', ms: 8000 },
+    };
+    expect(weigh([a, b, fresh], table, dir)).toEqual([
       { path: a, size: 4000 },
       { path: b, size: 8000 },
-      { path: changed, size: 2000 },
+      { path: fresh, size: 2000, miss: 'bytes' },
     ]);
   });
 
   it('an empty table weighs every file by its bytes', () => {
     const a = file('a.test.ts', 'aaaa');
     const b = file('b.test.ts', 'bb');
-    expect(weigh([a, b], {})).toEqual([
-      { path: a, size: 4 },
-      { path: b, size: 2 },
+    expect(weigh([a, b], {}, dir)).toEqual([
+      { path: a, size: 4, miss: 'bytes' },
+      { path: b, size: 2, miss: 'bytes' },
     ]);
   });
 });
@@ -155,6 +174,17 @@ describe('TimesReporter', () => {
     const a = file('src/a.test.ts', 'aaaa');
     const table = join(dir, 'times.json');
     new TimesReporter(table, join(dir, 'src')).onTestRunEnd(modules([a, 10]), [], 'failed');
+    expect(() => readFileSync(table)).toThrow();
+  });
+
+  it('writes nothing when the run had an unhandled error, though its modules passed', () => {
+    const a = file('src/a.test.ts', 'aaaa');
+    const table = join(dir, 'times.json');
+    new TimesReporter(table, join(dir, 'src')).onTestRunEnd(
+      modules([a, 10]),
+      [new Error('x')],
+      'passed',
+    );
     expect(() => readFileSync(table)).toThrow();
   });
 });

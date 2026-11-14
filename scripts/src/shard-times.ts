@@ -32,30 +32,35 @@ export function testFilesUnder(dir: string): string[] {
   });
 }
 
+/** A file's weight in the split, and for a file the table holds by no hash where the weight came from. */
+export type Weight = { path: string; size: number; miss?: 'path' | 'bytes' };
+
 /**
- * What each file weighs in the split: its time from the table when the table holds its hash, else its size in bytes
- * times the table's milliseconds per byte over the files it does hold (1 when it holds none, so the weights are then
- * plain sizes and the split is the by-size one). A file that changed or is new thus lands by its size until a local
- * run (`pnpm --filter @credo/scripts times`) writes its time.
+ * What each file weighs in the split: its time from the table when the table holds its hash. A file whose hash the
+ * table lacks (edited since the last local run) weighs the time last recorded under its path (`miss: 'path'`): an
+ * edit moves a file's time little beside its size, where bytes at the table's ms per byte were off by a factor of
+ * 1000 for two small files. Only a path the table never saw (a new file) weighs its bytes times the table's
+ * milliseconds per byte over the files it holds by hash (`miss: 'bytes'`; 1 when it holds none, so the weights are
+ * then plain sizes and the split is the by-size one). `base` is the folder the table's paths are relative to.
  */
-export function weigh(
-  paths: readonly string[],
-  table: TimeTable,
-): { path: string; size: number }[] {
+export function weigh(paths: readonly string[], table: TimeTable, base = SRC): Weight[] {
+  const byPath = new Map(Object.values(table).map((entry) => [entry.file, entry.ms]));
   const files = paths.map((path) => ({
     path,
     size: statSync(path).size,
     hit: table[hashOf(path)],
+    last: byPath.get(relative(base, path)),
   }));
   const known = files.reduce(
     (sum, file) => (file.hit ? { ms: sum.ms + file.hit.ms, bytes: sum.bytes + file.size } : sum),
     { ms: 0, bytes: 0 },
   );
   const perByte = known.bytes > 0 ? known.ms / known.bytes : 1;
-  return files.map((file) => ({
-    path: file.path,
-    size: file.hit ? file.hit.ms : file.size * perByte,
-  }));
+  return files.map((file): Weight => {
+    if (file.hit) return { path: file.path, size: file.hit.ms };
+    if (file.last !== undefined) return { path: file.path, size: file.last, miss: 'path' };
+    return { path: file.path, size: file.size * perByte, miss: 'bytes' };
+  });
 }
 
 /**
@@ -79,15 +84,15 @@ export function mergeTimes(
   );
 }
 
-/** Writes the table after a green run (`SCRIPTS_WRITE_TIMES` in vitest.config.ts, `pnpm times`); a red run's times say nothing. */
+/** Writes the table after a green run (`SCRIPTS_WRITE_TIMES` in vitest.config.ts, `pnpm times`); a red run's times, and a run with an unhandled error, say nothing. */
 export class TimesReporter {
   constructor(
     private readonly tablePath = TABLE_PATH,
     private readonly dir = SRC,
   ) {}
 
-  onTestRunEnd(modules: readonly TestModule[], _errors: unknown, reason: string): void {
-    if (reason !== 'passed') return;
+  onTestRunEnd(modules: readonly TestModule[], errors: readonly unknown[], reason: string): void {
+    if (reason !== 'passed' || errors.length > 0) return;
     const ran = modules.map((module) => ({
       path: module.moduleId,
       ms: module.diagnostic().duration,
