@@ -170,9 +170,15 @@ address in the same run.
   *Done 2026-11-14:* `pnpm --filter @credo/bff check` and `pnpm --filter @credo/scripts check` each `== exit 0`. Each case
   seen red by one mutation, reverted, files compared equal: 11 (the refusal removed from `createClient`: the route's test
   and the script's test both red), 12 (`local.ts`'s printed line back to the query form).
-- [ ] **4. The check through a company's own address.** `ops/check.sh`'s second `edge_reads` and
+- [x] **4. The check through a company's own address.** `ops/check.sh`'s second `edge_reads` and
   its skip. Case 13. *Done when:* the ops gate's three commands exit 0, the case red once. **About
   7 min.**
+  *Done 2026-11-14:* the ops gate's three commands exit 0 on the tree (ShellCheck, cfn-lint, `bash ops/test.sh`).
+  The second read is `edge_reads_client` alone, not `edge_reads`: the six open reads' relying-party read compares the
+  options' host with the base's, and a company's address is not the operator's host, so it would be red by design; it
+  adds no customer (the log's one entry stays one). `CHECK_OWN_BASE` stands in for the company's address in the
+  stand-in cases, whose edge has no name. The stand-in edge's sign-out is now undone by a new sign-in. Case 13 seen red
+  by one mutation, reverted, file compared equal: the domain's condition made `false` (the second read vanished).
 - [ ] **5. The review.** Another model reads the code, the tests and this table (QA's rule 5): one
   review, one fix pass, each finding tagged. *Done when:* every finding is tagged and each touched
   package's gate ends `== exit 0` after the fix pass. **About 20 min.**

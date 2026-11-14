@@ -2750,6 +2750,8 @@ case "$*" in
       layer4=',{"OutputKey":"BffName","OutputValue":"ridge-bff"},{"OutputKey":"BffGroupId","OutputValue":"sg-0bff"},{"OutputKey":"SubnetId","OutputValue":"subnet-test"},{"OutputKey":"UiBucketName","OutputValue":"ui-test-bucket"},{"OutputKey":"AppAddress","OutputValue":"'"$FAKE_APP"'"},{"OutputKey":"ApiAddress","OutputValue":"'"$FAKE_API"'"}'
       [ -n "${FAKE_DISTID_NONE:-}" ] || layer4="$layer4"',{"OutputKey":"DistributionId","OutputValue":"E1TESTDIST"}'
     fi
+    # a domain (FAKE_DOMAIN): the stack's output the company's own address is made from
+    [ -z "${FAKE_DOMAIN:-}" ] || layer4="$layer4"',{"OutputKey":"Domain","OutputValue":"ridge.example.test"}'
     # a box added to the home box (FAKE_BOX2): its id, address and records disk, as the loop's outputs name them
     [ -z "${FAKE_BOX2:-}" ] || layer4="$layer4"',{"OutputKey":"MoreBoxb2Id","OutputValue":"i-test-b2"},{"OutputKey":"MoreBoxb2Address","OutputValue":"10.20.30.41"},{"OutputKey":"MoreRecordsVolumeb2Id","OutputValue":"vol-test-b2"}'
     echo '{"Stacks":[{"StackName":"ridge","StackStatus":"UPDATE_COMPLETE","Parameters":[{"ParameterKey":"Repository","ParameterValue":"test-owner/test-repo"},{"ParameterKey":"SubjectPrefix","ParameterValue":"repo:test-owner/test-repo"},{"ParameterKey":"FrontDoorKey","ParameterValue":"****"}],"Outputs":[{"OutputKey":"BoxId","OutputValue":"i-test"},{"OutputKey":"BoxAddress","OutputValue":"10.20.30.40"},{"OutputKey":"Zone","OutputValue":"ap-southeast-5a"}'"$layer4"']}]}' ;;
@@ -3266,6 +3268,7 @@ class H(BaseHTTPRequestHandler):
         if path == '/api/auth/sign-in':
             b = self.body()
             if self.known() and b.get('name') == 'root' and b.get('password') == PASS:
+                signed_out[0] = False  # a new sign-in is a new session, as the check's second pass through a company's own address makes
                 return self.reply(200, json.dumps({'authId': HANDLE, 'expiresAt': 1, 'user': {'name': 'root', 'root': True}}).encode())
             return self.reply(401, b'{}')
         if path == '/api/customers':
@@ -3523,6 +3526,11 @@ check "  and prints nothing about real data" 0 "$(chk_has 'may hold real data' "
 # the activity log in the whole check (cases 11, 13 and 16 of docs/plans/2026-11-12-activity-log.md)
 check "case 13: the check adds a customer through the edge, makes the client's id known to the box and reads the record's entry there, green" "1 1 1 0" \
   "$(chk_has '^ok   .*adds one customer through the edge' "$S/out") $(chk_has '^ok   the customer the root added is in the activity log on the box, read by its record, with no key in it' "$S/out") $(chk_has '-- entry 10.20.30.40 3184 3185 0b9c1f5e-4c1d-4a53-9d0e-6f2a3b1c7d11 rec-0001$' "$S/ssh.calls") $(chk_has '^RED' "$S/out")"
+check "case 13: where the stack names no domain the check says 'skipped' by name and reads one company address, the app's" "1 1 1" \
+  "$(chk_has "^skipped: ridge's stack names no domain, so no company's own address is read" "$S/out") $(chk_has "^ok   the app's page at the client's link" "$S/out") $(chk_has '^ok   the root signs in through the edge' "$S/out")"
+FAKE_DOMAIN=1 CHECK_OWN_BASE=$FAKE_APP chk_run own check.sh ridge
+check "case 13: where the stack names a domain the check reads the company's page, settings and sign-in a second time through its own address, adding no second customer, green" "0 1 2 2 2 1 0" \
+  "$RC $(chk_has '^== green' "$S/out") $(chk_has "^ok   the app's page at the client's link" "$S/out") $(chk_has '^ok   the root signs in through the edge' "$S/out") $(chk_has '^ok   /api/config reaches the BFF' "$S/out") $(chk_has '^ok   .*adds one customer through the edge' "$S/out") $(chk_has '^skipped: ridge.s stack names no domain' "$S/out")"
 check "  and the key goes to curl on a pipe as a config, never on a command line or back off the box" "1 0 0" \
   "$(grep -c "printf 'header = \"x-internal-access-key: %s" "$OPS_DIR/check.sh" || true) $(grep -cE 'curl .*(-H|--header) .?.?x-internal-access-key' "$OPS_DIR/check.sh" || true) $(grep -cE 'echo "[^"]*[$][{]?key' "$OPS_DIR/check.sh" || true)"
 check "case 11: the log's unit, listeners, key file, folder, files and /health read sound on the box, green" "1 0" \
