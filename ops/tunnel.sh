@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ops/tunnel.sh <env>
+# ops/tunnel.sh <env> [--box <name>]
 # Holds http://127.0.0.1:3192 open to <env>'s c-storage from this machine, in the caller's own AWS
 # session, until Ctrl-C or the endpoint's hour, so Bruno or curl can read it. Says ready only once
 # /health through it names a commit of main; then writes <env>'s keys and a fresh service's into one
@@ -11,11 +11,14 @@ set -euo pipefail
 # shellcheck source=lib.sh
 . "$(dirname "$0")/lib.sh"
 
-[ $# -eq 1 ] || {
-  echo "usage: ops/tunnel.sh <env>" >&2
+usage() {
+  echo "usage: ops/tunnel.sh <env> [--box <name>]" >&2
   exit 2
 }
+[ $# -eq 1 ] || { [ $# -eq 3 ] && [ "$2" = --box ]; } || usage
 ENVNAME=$1
+# The home box, or one added: one tunnel at a time, on the one port.
+BOX_WANTED=${3:-home}
 STEPS=4
 # Fixed, with no override: the port is the lock against a second run. Neither the local stack's
 # (3181) nor the check's (3191), so ops/check.sh runs beside an open tunnel.
@@ -23,7 +26,7 @@ TUNNEL_PORT=3192
 KEYS_FILE=$REPO_DIR/services/c-storage/bruno/environments/$ENVNAME-tunnel.yml
 CHECK_EVERY=5
 
-log_start tunnel "$ENVNAME"
+log_start tunnel "$ENVNAME$([ "$BOX_WANTED" = home ] || echo "-$BOX_WANTED")"
 
 # Ridge alone until the guard that refuses a client's stack exists (ridge's plan, "Left behind"): a
 # client's stack reachable from the same AWS session would put its admin keys on this disk and point
@@ -35,7 +38,7 @@ require_ignored "$KEYS_FILE"
 main_synced
 
 step "the tunnel to $ENVNAME's box"
-box_open "$ENVNAME" "$TUNNEL_PORT" ||
+box_open "$ENVNAME" "$TUNNEL_PORT" "$BOX_WANTED" ||
   die "the box does not answer through the endpoint, or 127.0.0.1:$TUNNEL_PORT could not be bound (taken since it was checked)"
 opened=$(date +%s)
 
