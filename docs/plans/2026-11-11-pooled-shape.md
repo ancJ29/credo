@@ -248,6 +248,45 @@ milestone if the orchestrator wants one.
   deploy role, case 14 (*size* 8, the access log's guard, 8); the scripts learning a box, case 15,
   `shellcheck -x ops/*.sh` at 0 too (*size* 14, the ten scripts' guard, 14). The runbook gains
   "Adding a box".
+  *Part 1 ticked 2026-11-14 (AWS's and cfn-lint's reading; the loop stands, no fallback).* Pages fetched:
+  the `Fn::ForEach` and `AWS::LanguageExtensions` pages of the Template Reference, its Outputs examples,
+  `CreateChangeSet`'s API page, and the service reference JSON for `ec2-instance-connect`.
+  (1) *Where it may stand:* "`Fn::ForEach` can contain other intrinsic functions, including `Fn::ForEach`
+  itself, and be used within the `Conditions`, `Outputs`, and `Resources` (including the resource
+  properties) sections." (`https://docs.aws.amazon.com/AWSCloudFormation/latest/TemplateReference/intrinsic-function-reference-foreach.html`);
+  and "If you use the `Fn::ForEach` intrinsic function in your template, you must also use the
+  `AWS::LanguageExtensions` transform." (same page).
+  (2) *An empty list:* not found on the pages fetched (the `Fn::ForEach` page, its Resources, Outputs
+  and Conditions examples index, the transform's page); the loop's collection is "an array in this
+  parameter, or ... a `Ref` to a `CommaDelimitedList`" (same first page), so the loop takes
+  `MoreBoxes` as a `CommaDelimitedList` with default `''`, and ridge's `--plan` (point 2) is where an
+  empty one is first read by CloudFormation itself; item 446.
+  (3) *Outputs from the loop:* "These examples demonstrate using the `Fn::ForEach` intrinsic function
+  in the `Outputs` section." with an output key `S3Bucket${Identifier}${Property}` per item
+  (`https://docs.aws.amazon.com/AWSCloudFormation/latest/TemplateReference/intrinsic-function-reference-foreach-example-outputs.html`);
+  the key is built from the identifier as a resource's logical id is, so `Box${Name}Id`.
+  (4) *The capability:* "This capacity doesn't apply to creating change sets, and specifying it when
+  creating change sets has no effect." about `CAPABILITY_AUTO_EXPAND`
+  (`https://docs.aws.amazon.com/AWSCloudFormation/latest/APIReference/API_CreateChangeSet.html`); the
+  transform page itself names "when you create or update a stack using a change set" and no
+  capability. So the change set needs none beyond `CAPABILITY_IAM`; `stack.sh` still passes
+  `CAPABILITY_AUTO_EXPAND` beside it, which AWS says has no effect there.
+  (5) *Instance Connect's two actions under a tag and a subnet*, from the service reference JSON
+  (`https://servicereference.us-east-1.amazonaws.com/v1/ec2-instance-connect/ec2-instance-connect.json`):
+  `SendSSHPublicKey` has the resource `instance` (`arn:${Partition}:ec2:${Region}:${Account}:instance/${InstanceId}`),
+  its resource condition keys `aws:ResourceTag/${TagKey}` and `ec2:ResourceTag/${TagKey}`, its action
+  condition key `ec2:osuser`, and no subnet key; `OpenTunnel` has the resource `instance-connect-endpoint`
+  with the condition keys `ec2-instance-connect:privateIpAddress`, `ec2-instance-connect:remotePort`,
+  `ec2-instance-connect:MaxTunnelDuration` and the two tag keys. So a tag scopes the key push, and the
+  subnet scopes the tunnel by its address range (`privateIpAddress` as the subnet's CIDR), which is
+  what the deploy role will say.
+  (6) *cfn-lint:* 1.46.0 would not install here (no package host in the sandbox) and its source path
+  404s, so this was read at the installed 1.59.0, its `_language_extensions.py`: a collection that is a
+  `Ref` is resolved from the parameter's default or value, and an inline empty list raises "Fn::ForEach
+  could not be resolved" (E0001), while a `CommaDelimitedList` parameter whose default is `''` passes with
+  no loop error; run on a loop in `Resources` and `Outputs` it printed only the hardcoded-zone warning of
+  the scratch template. CI pins 1.46.0, so the loop's commit is the first proof at that version; its
+  `ops` job reads it.
 - [ ] **6r. Reviewed, fixed, recapped**, done as 5r. *Size:* 20 and 12, then 3 (a review about 20 by
   this ledger; the ops fixes ran 4 and 23).
 - [ ] 👤 **Once the landing is on `main`, your push**; its deploy runs on the one box. Then, in one
