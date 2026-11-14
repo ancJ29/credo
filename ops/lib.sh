@@ -353,6 +353,7 @@ boxes_list_refusal() {
   while IFS= read -r name; do
     [[ "$name" =~ ^[a-z][a-z0-9]{0,15}$ ]] || { echo "--more-boxes: '$name' is not a box name (a lowercase letter, then lowercase letters and digits, 16 at most)" >&2; return 1; }
     [ "$name" != home ] || { echo "--more-boxes: home is the first box's name, which the stack already holds" >&2; return 1; }
+    if [ "$name" = none ] && [ "$list" != none ]; then echo "--more-boxes: none is the word for no box, never one box's name" >&2; return 1; fi
     case "$seen" in *",$name,"*) echo "--more-boxes: '$name' is named twice" >&2; return 1 ;; esac
     seen="$seen$name,"
   done < <(tr ',' '\n' <<<"$list")
@@ -549,13 +550,13 @@ AUDIT_OPEN_PORT=$(sed -n 's/^Environment=OPEN_PORT=//p' "$OPS_DIR/audit-backbone
 # and drill.sh. release.sh writes it into /etc/c-storage/listen.env, which the unit reads.
 BOX_LISTEN_ADDR=''
 box_ready=0
-# The box in hand: home, or the name of one the stack holds beyond it (its Box<name>Id output). box_open sets it.
+# The box in hand: home, or the name of one the stack holds beyond it (its MoreBox<name>Id output). box_open sets it.
 BOX_NAME=home
 
 # stack_boxes: the names of the boxes added to the home box, one a line, sorted, read from the stack's outputs
-# (Box<name>Id: a name is lowercase letters and digits, so BoxId, BoxGroupId and the like are not one).
+# (MoreBox<name>Id: a name is lowercase letters and digits, so BoxId, BoxGroupId and the like are not one).
 stack_boxes() {
-  jq -r '.Stacks[0].Outputs // [] | map(.OutputKey | select(test("^Box[a-z0-9]+Id$")) | sub("^Box"; "") | sub("Id$"; "")) | sort | .[]' <<<"$STACK_JSON"
+  jq -r '.Stacks[0].Outputs // [] | map(.OutputKey | select(test("^MoreBox[a-z0-9]+Id$")) | sub("^MoreBox"; "") | sub("Id$"; "")) | sort | .[]' <<<"$STACK_JSON"
 }
 
 # require_box <env> <name>: dies unless the stack in STACK_JSON holds a box added of that name, naming those it does
@@ -566,9 +567,9 @@ require_box() {
 }
 
 # box_out <the home box's output key>: that output for the box in hand. The home box's are BoxId, BoxAddress and
-# RecordsVolumeId; a box added has its name before the last word (Boxb2Id, Boxb2Address, RecordsVolumeb2Id).
+# RecordsVolumeId; a box added has the stem More and its name before the last word (MoreBoxb2Id, MoreBoxb2Address, MoreRecordsVolumeb2Id).
 box_out() {
-  if [ "$BOX_NAME" = home ]; then out "$1"; else out "$(sed -E "s/(Id|Address)\$/$BOX_NAME\\1/" <<<"$1")"; fi
+  if [ "$BOX_NAME" = home ]; then out "$1"; else out "$(sed -E "s/^/More/; s/(Id|Address)\$/$BOX_NAME\\1/" <<<"$1")"; fi
 }
 
 # box_open <env> [<local port> [<box>]]: mints a key for this run, pushes it through Instance Connect (it

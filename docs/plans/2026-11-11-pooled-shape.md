@@ -327,6 +327,15 @@ milestone if the orchestrator wants one.
   `STORAGE_BOXES`). `shellcheck -x ops/*.sh` and `cfn-lint` exit 0. Not run, as the plan says: the human's acts on ridge.
 - [ ] **6r. Reviewed, fixed, recapped**, done as 5r. *Size:* 20 and 12, then 3 (a review about 20 by
   this ledger; the ops fixes ran 4 and 23).
+  *Fix pass of the review of the second landing, 2026-11-14 (not yet the step's tick):* High 1, a blank
+  `MoreBoxes` is one empty name on AWS's Parameters page, so the loop's ids were the home box's: the loop's ids
+  and outputs now have the stem `More` (`MoreBoxb2`, `MoreBoxb2Id`), "no box" is the word `none` (the default,
+  the runbook's removal; `stack.sh` turns a blank into it and refuses it as a name), and `HasMoreBoxes` keeps
+  every loop resource and output out for it; case 12 expands the loop for the word, an empty name and one name
+  and sets the ids beside the template's own, red when the stem is gone. Medium 2 and Low 3, the runbook's removal
+  looks the box up by `credo-<env>-<name>` (a guard refuses a command that can match the home box's tag) and says
+  the records disk is snapshotted and deleted. Low 4, `release.sh` names the commit given. Items 446 rewritten,
+  449 and 462 filed.
 - [ ] 👤 **Once the landing is on `main`, your push**; its deploy runs on the one box. Then, in one
   sitting, ridge being a test environment that returns to one box: `ops/stack.sh env ridge
   --more-boxes b2 --plan`, point 2, then without `--plan`; `ops/release.sh ridge`, `ops/app.sh ridge`,

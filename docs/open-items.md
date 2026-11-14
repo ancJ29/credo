@@ -1782,9 +1782,9 @@ The wrap in `bff/src/boxes.route.test.ts` covers `getRecord` and `listRecords` o
 
 The row's check, `git diff --stat pre-merge -- '*.test.ts'`, misses `*.test.tsx`, `*.spec.ts` and the walks' base pictures, so a loosened ui test or a rewritten base passes it unseen; the first landing's screens 2, 4, 8, 9 and passkeys' 6 gained a mask, with their bases rewritten, outside it (disclosed in step 4's tick). *Fix, if taken:* the check's pathspec lists `*.test.ts`, `*.test.tsx`, `*.spec.ts` and the walks' `bases` folder, and the plan row says which of them it expects to move. *Trigger:* the next plan with a row of this kind.
 
-## 446. What CloudFormation does with an empty `MoreBoxes` is read from no page of AWS's — the machine; `[DEFERRED]` (the pooled shape's step 6, reading, 2026-11-14, Low)
+## 446. What CloudFormation's own transform does with an empty collection is read from no page of AWS's — the machine; `[DEFERRED]` (the pooled shape's step 6, 2026-11-14, Low)
 
-None of the pages fetched for `Fn::ForEach` says what a collection with no item expands to, and cfn-lint resolves a `CommaDelimitedList` parameter whose default is `''` without a loop error (read at 1.59.0; 1.46.0 would not install here). If CloudFormation reads `''` as one item with an empty name, the loop makes a resource named `Box` beside the home box's and the first change set after the template lands fails in its creation, before anything runs. The stack's own `--plan` shows it; the fix is a default that names no box and a loop that skips it.
+Two AWS pages disagree: the Parameters page says a `CommaDelimitedList` "should be one more than the total number of commas", so a blank is one empty name, while the SAM CLI page says a collection that resolves to an empty list is "silently skipped". Neither says what CloudFormation's own `AWS::LanguageExtensions` does. The template no longer depends on it: the default and the runbook's removal are the word `none` (never a blank), the loop's ids have a stem of their own (`More`), so no name, an empty one included, makes one equal to the home box's, and `HasMoreBoxes` keeps the loop out for the word `none`; `ops/test.sh` expands the loop for the word, for an empty name and for one name. What stays unread is only that `ops/stack.sh env ridge --plan` with the word `none` on a stack with no box added shows no loop resource; the sitting's first `--plan` can name it.
 
 ## 447. A box added has no alarm, and the destroy's list of what a stack delete keeps names the home box's ids alone — the machine; `[DEFERRED]` (the pooled shape's step 6, 2026-11-14, Low)
 
@@ -1793,3 +1793,12 @@ None of the pages fetched for `Fn::ForEach` says what a collection with no item 
 ## 448. A key run drops `STORAGE_BOXES` from the function's settings — the machine; `[DEFERRED]` (the pooled shape's step 6, 2026-11-14, Low)
 
 `ops/keys.sh` sets the function's environment through `bff_settings_set` from the keys it holds, and a settings call replaces the whole environment; `STORAGE_BOXES` is written only by `ops/app.sh` (`other_boxes_read`), so after a key run on a stack that holds a box added, a company on that box answers 503 until `ops/app.sh` runs again. The runbook's "Adding a box" says so. A key run that reads the function's own `STORAGE_BOXES` first, or refuses on a stack with boxes added, closes it.
+
+## 449. Each box added's release downloads Litestream again in the human's terminal — the machine; `[DEFERRED]` (the review of the pooled shape's second landing, 2026-11-14, Low)
+
+`ops/release.sh`'s run for each box added is handed the c-storage and activity log binaries, the tree and the commit, but not `LITESTREAM_ARCHIVE`, so `litestream_binary` fetches the pinned archive once more for each box (`ops/lib.sh`), though the home box's run checked one into its own work folder. In the deploy job the variable is the job's own and the sub-run inherits it. Passing `LITESTREAM_ARCHIVE=${LITESTREAM_ARCHIVE:-$WORK/litestream.tar.gz}` to the sub-run closes it; ridge runs one box, so it does not bite yet.
+
+## 462. No check pins `Box`'s `Env` tag, which the deploy role's key push now rests on — the machine; `[DEFERRED]` (the review of the pooled shape's second landing, 2026-11-14, Low)
+
+The key push is held to this environment's boxes by `ec2:ResourceTag/Env` (`ops/env.yml`, `PushKeyToOwnBox`); case 14 reads the role alone and case 12 compares the loop's instance with `Box`, so with `Env` taken off both, both are green. A lost tag fails closed (the push is denied at `box_open`, before anything is sent). Case 14's guard asserting that `Box` carries `{"Key":"Env","Value":{"Ref":"Env"}}` closes it, and case 12 then carries it to every box added.
+

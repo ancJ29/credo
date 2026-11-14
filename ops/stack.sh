@@ -6,7 +6,7 @@
 # change set, deletes it, and changes nothing: for a first creation it also deletes the empty stack
 # that CloudFormation keeps for the change set (REVIEW_IN_PROGRESS), so the next run is a creation too.
 # --more-boxes b2,b3 (env only) is the names of the boxes added to the home box, one block each in the template
-# (the loop over MoreBoxes); a blank value is none. Without the flag the stack keeps the list it has: a box is
+# (the loop over MoreBoxes); a blank value is the word none, which the template reads as no box. Without the flag the stack keeps the list it has: a box is
 # added or taken out by naming the whole list. A box taken out is a removal, which the guard refuses unless it is
 # named with --take (its instance, its records disk, its attachment, its role and its profile).
 # Run by the human, from a worktree at main, in a terminal holding an AWS session. Never by CI.
@@ -64,7 +64,11 @@ while [ $# -gt 0 ]; do
   esac
   shift
 done
-if [ "$MORE_BOXES_GIVEN" = 1 ]; then boxes_list_refusal "$MORE_BOXES" || exit 1; fi
+# A list is never blank: AWS reads a blank CommaDelimitedList as one empty name, so no box is the word none (env.yml's HasMoreBoxes).
+if [ "$MORE_BOXES_GIVEN" = 1 ]; then
+  boxes_list_refusal "$MORE_BOXES" || exit 1
+  [ -n "$MORE_BOXES" ] || MORE_BOXES=none
+fi
 
 case "$KIND" in
   network)

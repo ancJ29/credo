@@ -72,7 +72,7 @@ if [ -n "${RELEASE_BINARY:-}" ]; then
   # A run for a box added is handed the home box's run's commit and tree (RELEASE_SHA, RELEASE_SRC), so it builds nothing again.
   sha=${RELEASE_SHA:-$(git -C "$REPO_DIR" rev-parse HEAD)}
 else
-  sha=$(git -C "$REPO_DIR" rev-parse --verify -q "${SHA_ARG:-origin/main}^{commit}") || die "'${2:-origin/main}' is not a commit"
+  sha=$(git -C "$REPO_DIR" rev-parse --verify -q "${SHA_ARG:-origin/main}^{commit}") || die "'${SHA_ARG:-origin/main}' is not a commit"
 fi
 git -C "$REPO_DIR" merge-base --is-ancestor "$sha" origin/main || die "$sha is not a commit of main: only main is released"
 echo "commit: $sha"
