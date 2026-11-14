@@ -381,6 +381,7 @@ describe('The operator never reads or changes a client, never sees a root’s pa
         '├── /api/operator/operators (GET, HEAD, POST)',
         '│   └── /:id (DELETE)',
         '│       └── /link (POST)',
+        '├── /api/operator/boxes (GET, HEAD)',
         '├── /api/orders (GET, HEAD, POST)',
         '│   └── /:day/:id (GET, HEAD, PUT)',
         '│       ├── /confirm (POST)',

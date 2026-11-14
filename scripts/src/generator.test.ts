@@ -78,6 +78,7 @@ function memoryStorage() {
       return Promise.resolve('removed');
     },
     health: () => Promise.resolve({ buildVersion: 'dev' }),
+    status: () => Promise.resolve({ freeBytes: 1, lastWriteAt: null }),
   };
   return { records, storage };
 }

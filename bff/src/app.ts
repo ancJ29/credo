@@ -6,6 +6,7 @@ import {
   CLIENT_HEADER,
   clientCodeSchema,
   clientLinkPath,
+  type BoxesReply,
   type ClientListReply,
   type ServicesReply,
   type ConfigDoc,
@@ -36,7 +37,7 @@ import {
   waitAfter,
 } from '@credo/shared';
 import Fastify, { type FastifyRequest, type RouteOptions } from 'fastify';
-import { createClient, listClients, ROOT_NAME } from './records/clients';
+import { companiesByBox, createClient, listClients, ROOT_NAME } from './records/clients';
 import { type TenantStorage, tenantStorage } from './records/records';
 import { clearWait, countTry, waitKeyFrom } from './records/sign-in-wait';
 import { HttpError, parse, replyFor } from './errors';
@@ -512,6 +513,23 @@ export function buildApp({
     return reply
       .header('cache-control', 'no-store')
       .send({ build, storage: { build: buildVersion, ms } });
+  });
+
+  /** Every box the back end holds, the home box first: its companies by the lines on the home box,
+   * and its free disk from its own status. A box that does not answer is shown with no disk, and
+   * the others still are. */
+  app.get(ROUTES.operatorBoxes, async (request, reply): Promise<BoxesReply> => {
+    await operatorSignedIn(request);
+    const counts = await companiesByBox(storage);
+    const held = [[HOME_BOX, storage] as const, ...Object.entries(boxes).sort()];
+    const listed = await Promise.all(
+      held.map(async ([name, store]) => {
+        const read = await store.status().catch(() => null);
+        if (!read) request.log.warn({ box: name }, 'a box did not answer its status');
+        return { name, companies: counts.get(name) ?? 0, freeBytes: read?.freeBytes ?? null };
+      }),
+    );
+    return reply.header('cache-control', 'no-store').send({ boxes: listed });
   });
 
   app.post(

@@ -28,6 +28,15 @@ export const ATTEMPTS = 3;
 /** How long the services status waits for c-storage's `/health` (the plan's row 38). */
 const HEALTH_TIMEOUT_MS = 3000;
 
+const statusReplySchema = z.object({
+  freeBytes: z.number().int().nonnegative(),
+  lastWriteAt: z.string().nullable(),
+});
+
+/** What c-storage's `/api/status` reads: the bytes a writer can still use on the disk under its
+ * database, and the time of its last write since it started, null before the first. */
+export type StorageStatus = { freeBytes: number; lastWriteAt: string | null };
+
 const healthReplySchema = z.object({ status: z.literal('OK'), buildVersion: z.string().min(1) });
 
 async function send(
@@ -99,6 +108,9 @@ export type CStorageClient = {
   /** c-storage's build, from its `/health`, which answers `OK` without a key within 3 seconds.
    * Anything else, a late answer included, is an error. */
   health(): Promise<{ buildVersion: string }>;
+  /** The box's free disk and last write, from `GET /api/status` behind the internal key, waiting
+   * as long as `health` does: a box that does not answer is an error, never a guess. */
+  status(): Promise<StorageStatus>;
 };
 
 export function createCStorageClient(
@@ -179,6 +191,21 @@ export function createCStorageClient(
       if (!parsed.success)
         throw new CStorageError(null, 'c-storage sent a health in no known shape');
       return { buildVersion: parsed.data.buildVersion };
+    },
+
+    async status() {
+      const what = 'GET /api/status';
+      const response = await send(
+        connection,
+        '/api/status',
+        { method: 'GET', headers: {}, timeoutMs: HEALTH_TIMEOUT_MS },
+        what,
+      );
+      if (response.status !== 200) throw refused(response, what);
+      const parsed = statusReplySchema.safeParse(await response.json().catch(() => null));
+      if (!parsed.success)
+        throw new CStorageError(null, 'c-storage sent a status in no known shape');
+      return parsed.data;
     },
   };
 }

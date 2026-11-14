@@ -174,7 +174,7 @@ milestone if the orchestrator wants one.
   `tenantStorage`; the seed and the root password script refuse a copy whose line names another box,
   naming it, writing nothing; case 11 red once in each (the refusal disabled). The grep shows
   calls keyed on a company's client alone. `pnpm check` ended `== exit 0`.
-- [ ] **3. The operator's choice.** Two parts. The form's list on the fake first (`pnpm fake`,
+- [x] **3. The operator's choice.** Two parts. The form's list on the fake first (`pnpm fake`,
   `ui/src/fake.ts` answering two boxes): *done when* the ui gate ends `== exit 0`, case 9 red once;
   *size* 8 (the shared record page's add screen, 8). Then the boxes route and the status call
   (decision 8), once the continuous copy's reading is on `pre-merge`: *done when* `pnpm check` ends
@@ -187,10 +187,18 @@ milestone if the orchestrator wants one.
   counts a company made on `b2` there. Case 9 red once by three mutations (the form's default box
   `b2`, the page not passing the box, a down box left choosable), put back. Two old tests gained a
   stub line for the new call (`App.test.tsx`, `OperatorApp.test.tsx`) and `fake.test.tsx`'s list of
-  the fake's calls one name, no expectation changed. *Second part not built:* the continuous copy's
-  c-storage reading (`GET /api/status`) is not on `pre-merge` (no `status` call in
-  `shared/src/c-storage.ts`), so the boxes route and case 8 wait for it. Look: `pnpm fake`, the
-  operator's add-a-client screen.
+  the fake's calls one name, no expectation changed. Look: `pnpm fake`, the operator's
+  add-a-client screen.
+  *Second part ticked 2026-11-14:* the store already served `GET /api/status` (`freeBytes`,
+  `lastWriteAt`); `CStorageClient` gains `status()` (the internal key alone, waiting 3 seconds as
+  `health` does), and `GET /api/operator/boxes` answers each box the back end holds, the home box
+  first, with its companies counted from the lines on the home box (`companiesByBox`) and its free
+  disk, null for a box whose status did not answer, the others still shown, and the log naming the
+  box. Case 8 red once by three mutations (every company counted on the home box, a failed status
+  left to fail the route, a down box shown with 0 free), put back. `operator.route.test.ts`'s
+  pinned list of routes gained the new line, and three scripts tests' in-memory stand-ins of the
+  client (`dashboard-list`, `generator`, `local`) one `status` line each. Gates: shared, bff, ui and
+  scripts each `== exit 0`.
 - [ ] **4. Two boxes on this machine, and the screen to look at.** `pnpm stack` registers a second
   service as box `b2` and hands it in `STORAGE_BOXES`; the operator walk gains, appended and never
   inserted, the form with its list of boxes. *Done when:* `pnpm --filter @credo/scripts check` and

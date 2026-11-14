@@ -122,6 +122,22 @@ export async function listClients(storage: CStorageClient): Promise<ClientListIt
     .sort(newestFirst);
 }
 
+/** How many companies each box holds, by the box their line names (none is the home box). Boxes
+ * with no company are absent; it reads the index alone, as `listClients` does. */
+export async function companiesByBox(storage: CStorageClient): Promise<Map<string, number>> {
+  const listed = await recordTools(storage).every(
+    recordKeys.clientPrefix,
+    storedClientSchema,
+    'client index',
+  );
+  const counts = new Map<string, number>();
+  for (const { record } of listed) {
+    const box = record.box ?? HOME_BOX;
+    counts.set(box, (counts.get(box) ?? 0) + 1);
+  }
+  return counts;
+}
+
 /** The most records one press of a deletion removes, so one request ends well inside the BFF's
  * time and the page presses again for the rest. */
 export const DELETE_BOUND = 200;
