@@ -596,6 +596,28 @@ export const WALKS: Walk[] = [
         },
         question: 'Would you know the client was not made, and that nothing typed is lost?',
       },
+      {
+        id: 'op-10-box-chosen',
+        number: 10,
+        path: 'main',
+        scene: {
+          path: '/operator/clients/new',
+          operator: true,
+          steps: [
+            ...FILLED_CLIENT,
+            {
+              press: 'operator.boxLine',
+              with: { name: 'b2', free: '112', companies: '0' },
+            },
+          ],
+        },
+        sentence: {
+          en: 'The add form’s list of boxes, each with its free disk and its companies, the second one chosen',
+          vi: 'Danh sách máy chủ trong biểu mẫu tạo khách hàng, mỗi máy kèm chỗ trống và số công ty, máy thứ hai được chọn',
+        },
+        question:
+          'Would you know which box the company will live on, and how much room each box has left?',
+      },
     ],
   },
 

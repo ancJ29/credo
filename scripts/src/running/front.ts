@@ -18,6 +18,9 @@ const TYPES: Record<string, string> = {
 /** Headers a hop sets for itself: the front's request to the BFF names its own. */
 const HOP = new Set(['host', 'connection', 'content-length', 'transfer-encoding']);
 
+/** The header the front door adds to each call it passes to the back end. */
+const DOOR_HEADER = 'x-front-door-key';
+
 class TooLarge extends Error {}
 
 async function readBody(request: IncomingMessage) {
@@ -42,10 +45,20 @@ const sendError = (response: ServerResponse, status: number, error: string) =>
 /**
  * The local front, standing where CloudFront and the HTTP API stand: the UI's files, and `/api`
  * on to the BFF. Each `/api` call goes on as it came, any method and any body, and the BFF's answer
- * comes back with its status; the front asks for nothing and signs nothing. With no BFF, as under
+ * comes back with its status; the front asks for nothing and signs nothing, but for the door's key. With no BFF, as under
  * `pnpm fake`, every `/api` call is a 404.
  */
-export function createFront({ staticDir, bffUrl }: { staticDir: string; bffUrl: string | null }) {
+export function createFront({
+  staticDir,
+  bffUrl,
+  frontDoorKey = null,
+}: {
+  staticDir: string;
+  bffUrl: string | null;
+  /** The key the front adds to each `/api` call, as `x-front-door-key`, replacing any the caller
+   * sent, as the real front door does; none under `pnpm fake`, which has no BFF to send it to. */
+  frontDoorKey?: string | null;
+}) {
   const root = resolve(staticDir);
 
   async function api(request: IncomingMessage, response: ServerResponse, url: URL) {
@@ -58,8 +71,11 @@ export function createFront({ staticDir, bffUrl }: { staticDir: string; bffUrl: 
       return sendError(response, 413, 'Payload too large');
     }
     const headers = Object.entries(request.headers).flatMap(([name, value]) =>
-      HOP.has(name) || typeof value !== 'string' ? [] : [[name, value] as [string, string]],
+      HOP.has(name) || name === DOOR_HEADER || typeof value !== 'string'
+        ? []
+        : [[name, value] as [string, string]],
     );
+    if (frontDoorKey !== null) headers.push([DOOR_HEADER, frontDoorKey]);
     try {
       const answer = await fetch(`${bffUrl}${url.pathname}${url.search}`, {
         method: request.method,

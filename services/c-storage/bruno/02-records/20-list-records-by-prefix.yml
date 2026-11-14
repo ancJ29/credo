@@ -33,6 +33,6 @@ settings:
   forwardAuthorizationHeader: true
 
 docs: |-
-  The records whose key starts with `prefix`, a literal, in key order, at most 1,000. `more` is
+  The records whose key starts with `prefix`, a literal, in key order, at most 1,000 and about 4 MiB of data. `more` is
   `true` when the prefix holds more than that, so a short list is never taken for the whole.
   A record's tag here is the tag a read of its key returns.

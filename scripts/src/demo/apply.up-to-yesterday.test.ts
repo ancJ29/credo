@@ -46,12 +46,12 @@ describe('a copy brought up to yesterday', () => {
     expect((await readLedger(storage, id))!.ledger).toEqual({
       client: 'B',
       scenario: 'S2',
-      firstDay: '2026-10-22',
+      firstDay: '2026-10-08',
       lastDay: '2026-10-28',
       filled: true,
       blocks: [...SEED_BLOCKS],
     });
-    expect(lines.some((line) => line.includes('filled as of 2026-10-22'))).toBe(true);
+    expect(lines.some((line) => line.includes('filled as of 2026-10-08'))).toBe(true);
   });
 
   it('row 16: each event is written with the BFF’s clock at its time, and no date is after yesterday', async () => {
@@ -81,10 +81,10 @@ describe('a copy brought up to yesterday', () => {
     await applyCopy(storage, B1, TODAY);
 
     const id = await tenantOf(storage, B1.code);
-    const [one] = staffAsOf('B', 'S2', addDays(TODAY, -7));
+    const [one] = staffAsOf('B', 'S2', addDays(TODAY, -HISTORY_DAYS));
     const user = await storage.getRecord(recordKeys.tenant(id).user(normaliseSignInName(one.code)));
     expect((user!.data as { passwordAt: number }).passwordAt).toBe(
-      atMinute(addDays(TODAY, -7), 6 * 60),
+      atMinute(addDays(TODAY, -HISTORY_DAYS), 6 * 60),
     );
   });
 

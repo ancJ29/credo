@@ -45,7 +45,7 @@ describe('the driver’s landing', () => {
         .getAllByRole('link')
         .map((link) => link.textContent),
     ).toEqual(['My deliveries']);
-    expect(drawn.api.myDeliveries).toHaveBeenCalledExactlyOnceWith(DEMO_TODAY);
+    await waitFor(() => expect(drawn.api.myDeliveries).toHaveBeenCalledExactlyOnceWith(DEMO_TODAY));
     drawn.unmount();
 
     // the root lands on orders and is refused the driver's pages by their addresses

@@ -6,6 +6,7 @@
     ".": "./src/app.ts",
     "./password": "./src/calling/password.ts",
     "./clients": "./src/records/clients.ts",
+    "./company-copy": "./src/records/company-copy.ts",
     "./operators": "./src/records/operators.ts",
     "./sessions": "./src/calling/sessions.ts",
     "./staff-records": "./src/records/staff-records.ts",

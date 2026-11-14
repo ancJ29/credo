@@ -5,7 +5,7 @@ const entry = fileURLToPath(new URL('./lambda-main.ts', import.meta.url));
 
 /** The BFF's Lambda as one CommonJS file for the nodejs24.x runtime: no `node_modules` ships beside
  * it. Lambda runs the handler by `index.handler`, so the file is named `index.js` by the caller.
- * esbuild bundles for the target Node's syntax; whether the bundle runs there is the `app` job's
+ * esbuild bundles for the target Node's syntax; whether the bundle runs there is the `app-bff` job's
  * check (the bundle under Node 24). `commit` is the one stamped into it. */
 export async function bundleBff(outfile: string, commit?: string) {
   await build({

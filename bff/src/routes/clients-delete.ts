@@ -6,6 +6,7 @@ import {
   type CStorageClient,
   type DeleteClientReply,
   deleteClientRequestSchema,
+  HOME_BOX,
   recordKeys,
   storedClientDeletionSchema,
   storedClientSchema,
@@ -14,9 +15,12 @@ import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { declare, operatorOf } from '../audit';
 import { deleteClient } from '../records/clients';
 import { HttpError, parse } from '../errors';
+import { tenantStorage } from '../records/records';
 
 type Deps = {
   storage: CStorageClient;
+  /** The store of a box this back end holds, or none. */
+  boxStorage: (box: string) => CStorageClient | undefined;
   now: () => number;
   /** The operator's live session, or a 401. */
   operatorSignedIn: (request: FastifyRequest) => Promise<{ id: string; name: string }>;
@@ -27,17 +31,18 @@ type Deps = {
 /**
  * An operator deletes a client whole, with a fresh touch of their own passkey. Every check comes
  * before any write, in the order the root password's route keeps: the operator's session (401), the
- * code (400 if malformed), the index, the body (400), the touch (403). With an index, the body and
- * the touch come next; with none, the deletion record is read, and with none of that either the
- * answer is 404 (so a malformed body on an unknown code is a 404, nothing written). Then
- * `deleteClient` writes, only over the index and the deletion record as they were read (409 if
+ * code (400 if malformed), the index, the box (503 if this back end does not hold the one it names),
+ * the body (400), the company's settings on that box (409 if there are none: a wrong line), the
+ * touch (403). With an index, the body, the settings and the touch come next; with none, the
+ * deletion record is read, and with none of that either the answer is 404 (so a malformed body on
+ * an unknown code is a 404, nothing written). Then `deleteClient` writes, only over the index and the deletion record as they were read (409 if
  * either moved). A press after the index is gone resumes a deletion in progress on the session
  * alone: the touch was given to begin it, and any live operator may continue it. The answer says
  * how many records are left; zero is done.
  */
 export function registerDeleteClientRoutes(
   app: FastifyInstance,
-  { storage, now, operatorSignedIn, confirmed }: Deps,
+  { storage, boxStorage, now, operatorSignedIn, confirmed }: Deps,
 ) {
   app.delete<{ Params: { code: string } }>(
     clientDeleteRoute(':code'),
@@ -56,11 +61,33 @@ export function registerDeleteClientRoutes(
         index?.id ?? (resuming ? storedClientDeletionSchema.parse(resuming.data).id : null);
       const entry = id ? declare(request, operatorOf(operator), id, id) : null;
       if (!entry) request.audit = []; // declared on purpose: no client to name
+      const box =
+        index?.box ??
+        (resuming ? storedClientDeletionSchema.parse(resuming.data).box : undefined) ??
+        HOME_BOX;
+      const onBox = boxStorage(box);
+      if (!onBox) {
+        request.log.error({ box }, 'a company names a box this back end does not hold');
+        throw new HttpError(503, 'Service unavailable');
+      }
       if (index) {
         const body = parse(deleteClientRequestSchema, request.body);
+        // A line naming a box that holds no settings of the company is a wrong line: a delete would
+        // sweep nothing and remove the line. Settings, not any record: a sign-in try leaves a wait
+        // record on the box the line names. Nothing is written, the touch included.
+        const settings = await tenantStorage(onBox, index.id).getRecord(
+          recordKeys.tenant(index.id).config,
+        );
+        if (!settings) throw new HttpError(409, 'The client’s records are not on its box');
         await confirmed(operator, 'delete-client', body.confirm);
       }
-      const done = await deleteClient(storage, { code: code.data, index, by: operator.id, now });
+      const done = await deleteClient(storage, {
+        code: code.data,
+        index,
+        by: operator.id,
+        now,
+        box: onBox,
+      });
       if (done === 'unknown') throw new HttpError(404, 'Unknown client');
       if (done === 'busy' || done === 'moved') throw new HttpError(409, 'The client changed');
       entry?.saved({ code: code.data }, null);

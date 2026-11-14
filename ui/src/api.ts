@@ -15,6 +15,8 @@ import {
   type OperatorLinkRequest,
   operatorRoutes,
   AUTH_HEADER,
+  type BoxItem,
+  boxesReplySchema,
   type ClientListItem,
   clientListReplySchema,
   CLIENT_HEADER,
@@ -389,6 +391,13 @@ export function createApi({
       return { ...reply, bffMs: ended - began, checkedAt: ended };
     },
 
+    /** Every box a company may be put on, with its companies and its free disk. */
+    async operatorBoxes(): Promise<BoxItem[]> {
+      const response = await send('GET', ROUTES.operatorBoxes, undefined, 'operator');
+      if (!response.ok) throw new ApiError(response.status);
+      return (await read(response, boxesReplySchema)).boxes;
+    },
+
     /** The signed-in operator's own passkeys. */
     async operatorPasskeys(): Promise<PasskeyItem[]> {
       const response = await send('GET', ROUTES.operatorPasskeys, undefined, 'operator');
@@ -430,8 +439,9 @@ export function createApi({
     },
 
     /** A code already taken is a result, not an error: the form says so and keeps what was typed. */
-    async makeClient(code: string, name: string): Promise<MakeResult> {
-      const response = await send('POST', ROUTES.operatorClients, { code, name }, 'operator');
+    async makeClient(code: string, name: string, box?: string): Promise<MakeResult> {
+      const body = box === undefined ? { code, name } : { code, name, box };
+      const response = await send('POST', ROUTES.operatorClients, body, 'operator');
       if (response.status === 409) return { kind: 'taken' };
       if (!response.ok) throw new ApiError(response.status);
       return { kind: 'made', client: await read(response, createClientReplySchema) };

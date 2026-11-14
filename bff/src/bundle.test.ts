@@ -34,7 +34,7 @@ const callHandler = `
     .then((answer) => console.log('ANSWER ' + JSON.stringify(answer) + '\\nNODE ' + process.version));
 `;
 
-/** The runtime's Node, which the app job names in BUNDLE_NODE (Node 24: a Node 26 API that Lambda
+/** The runtime's Node, which the app-bff job names in BUNDLE_NODE (Node 24: a Node 26 API that Lambda
  * lacks fails there alone). Everywhere else the bundle runs under the Node running the tests. */
 const bundleNode = process.env['BUNDLE_NODE'];
 
@@ -71,7 +71,7 @@ describe('the Lambda bundle', () => {
         JSON.stringify({
           method: 'GET',
           path: '/api/config',
-          headers: { 'x-client-code': 'no-such-co' },
+          headers: { 'x-client-code': 'no-such-co', 'x-front-door-key': 'door-key-one' },
         }),
       ],
       {
@@ -82,6 +82,7 @@ describe('the Lambda bundle', () => {
           SERVICE_CODE: tenant.serviceCode,
           SERVICE_ACCESS_KEY: tenant.accessKey,
           APP_ORIGIN: ORIGIN,
+          FRONT_DOOR_KEYS: 'door-key-one',
         },
       },
     );

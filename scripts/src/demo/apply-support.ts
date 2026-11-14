@@ -3,6 +3,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { buildApp } from '@credo/bff';
+import { tenantStorage } from '@credo/bff/company-copy';
 import { createClient, ROOT_NAME } from '@credo/bff/clients';
 import { buildCStorage } from '@credo/bff/tests/build';
 import { freshTenant, type RunningCStorage, startCStorage } from '@credo/bff/tests/c-storage';
@@ -58,15 +59,26 @@ export const make = async (storage: CStorageClient, copy: MappedCopy) => {
 export const tenantOf = async (storage: CStorageClient, code: string) =>
   storedClientSchema.parse((await storage.getRecord(recordKeys.client(code)))!.data).id;
 export const staffOf = async (storage: CStorageClient, code: string) => {
-  const listed = await storage.listRecords(
-    recordKeys.tenant(await tenantOf(storage, code)).employeePrefix,
-  );
+  const id = await tenantOf(storage, code);
+  const listed = await tenantStorage(storage, id).listRecords(recordKeys.tenant(id).employeePrefix);
   return listed.records
     .map((record) => employeeSchema.parse(record.data))
     .sort((a, b) => (a.code < b.code ? -1 : 1));
 };
-export const everything = async (storage: CStorageClient, code: string) =>
-  (await storage.listRecords(recordKeys.tenant(await tenantOf(storage, code)).all)).records;
+/** Every record of a company, page after page: c-storage answers a prefix in pages, and one page
+ * of a whole company is short once it holds more than a page. */
+export const everything = async (storage: CStorageClient, code: string) => {
+  const id = await tenantOf(storage, code);
+  const company = tenantStorage(storage, id);
+  const prefix = recordKeys.tenant(id).all;
+  const all: Awaited<ReturnType<CStorageClient['listRecords']>>['records'] = [];
+  for (let more = true; more;) {
+    const page = await company.listRecords(prefix, all.at(-1)?.key);
+    all.push(...page.records);
+    more = page.more && page.records.length > 0;
+  }
+  return all;
+};
 export const standing = (copy: MappedCopy, today: string) =>
   staffAsOf(copy.client, copy.scenario, today)
     .map((p) => [p.code, p.name, p.archived])
@@ -75,7 +87,7 @@ export const read = (people: Awaited<ReturnType<typeof staffOf>>) =>
   people.map((p) => [p.code, p.name, p.archived]);
 
 /** The first day from `from` on that has an event of this kind for the copy. */
-export function firstEvent(copy: MappedCopy, kind: 'hire' | 'leave', from = addDays(ANCHOR, 12)) {
+export function firstEvent(copy: MappedCopy, kind: 'hire' | 'leave', from = addDays(ANCHOR, 22)) {
   for (let day = from; ; day = addDays(day, 1)) {
     const event = dayEvents(copy.client, copy.scenario, day).find((e) => e.kind === kind);
     if (event) return { day, event };

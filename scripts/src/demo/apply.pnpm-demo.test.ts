@@ -27,7 +27,7 @@ describe('what pnpm demo makes', () => {
       expect(copy.rootPassword.length).toBeGreaterThan(8);
       const id = await tenantOf(storage, copy.code);
       expect((await readLedger(storage, id))!.ledger).toMatchObject({
-        firstDay: '2026-10-19',
+        firstDay: '2026-10-05',
         lastDay: '2026-10-28',
         filled: true,
       });

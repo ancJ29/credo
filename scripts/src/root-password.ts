@@ -1,5 +1,6 @@
 import { buildApp } from '@credo/bff';
 import { ROOT_NAME } from '@credo/bff/clients';
+import { tenantStorage } from '@credo/bff/company-copy';
 import { hashPassword } from '@credo/bff/password';
 import { readSignIn, setSignInPassword } from '@credo/bff/staff-records';
 import {
@@ -7,6 +8,7 @@ import {
   CLIENT_HEADER,
   type CStorageClient,
   DEVICE_HEADER,
+  HOME_BOX,
   normaliseClientCode,
   passwordIsValid,
   recordKeys,
@@ -63,7 +65,16 @@ async function readTargets(storage: CStorageClient, codes: string[]) {
     if (!index) throw new Refused(`${code} is not on this service`);
     const client = storedClientSchema.safeParse(index.data);
     if (!client.success) throw new Refused(`${code}: its index record does not parse`);
-    const root = await readSignIn(storage, client.data.id, ROOT_NAME);
+    // The script serves the home box alone (item 271): a copy moved off it is named and refused.
+    const box = client.data.box ?? HOME_BOX;
+    if (box !== HOME_BOX) {
+      throw new Refused(`${code}: its line names box ${box}, and this script serves the home box`);
+    }
+    const root = await readSignIn(
+      tenantStorage(storage, client.data.id),
+      client.data.id,
+      ROOT_NAME,
+    );
     if (!root?.user.root) throw new Refused(`${code}: its root record is missing or is no root's`);
     targets.push({ code, tenantId: client.data.id, company: client.data.name });
   }
@@ -120,7 +131,7 @@ export async function setRootPasswords(
     try {
       const hash = await hashPassword(password);
       const set = await setSignInPassword(
-        storage,
+        tenantStorage(storage, tenantId),
         tenantId,
         ROOT_NAME,
         (user) => user.root,
