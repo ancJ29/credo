@@ -234,9 +234,10 @@ milestone if the orchestrator wants one.
   by screens 2, 4, 8, 9 and 10 of the operator walk and `pk-6-sign-in-ended` of both passkeys
   passes), so those pictures show each box's name, its radio and the chosen one. The citation test
   exited 0 and `git grep` for local paths found nothing new. The walk was not run: it is the human's.
-- [ ] **5r. Reviewed, fixed, recapped.** A model other than the author's, one fix pass, a recap.
+- [x] **5r. Reviewed, fixed, recapped.** A model other than the author's, one fix pass, a recap.
   *Done when:* every finding tagged in the recap, the fix pass's gate `== exit 0`, the recap
   committed. *Size:* 14 and 3 (the cross-company tests' review, fix and reread, 6, 6 and 2; recap 3).
+  *Ticked 2026-11-14:* opus reviewed (two must-fix findings, six Lows); the fix pass made the delete read the company's settings on its box and `deleteClient` refuse a box it was not handed, with `ridge.ts`'s two other commands, and filed five Lows as items 440 to 443 and 445; the bff and scripts gates each ended `== exit 0` on the fix; every finding is tagged in the recap, item 246 is closed and the memo's sentence made true; the recap is committed with its markers for the reread, the whole check, `main` and ridge.
 
 **Second landing: a box added by command** (after the continuous copy is on `pre-merge`).
 

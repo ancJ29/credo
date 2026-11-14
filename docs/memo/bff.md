@@ -360,8 +360,9 @@ leaves it.**
   there could reach it and nothing but review would say so. A client made for the wrong company
   passes every key of that company: the guard checks a key against the company its client was made
   for, never that this is the company the caller's code names, and only `resolveTenant` in
-  `bff/src/app.ts` decides that, held by the route tests above. The terminal scripts reach a company's records with the
-  whole store (open item 246).
+  `bff/src/app.ts` decides that, held by the route tests above. The terminal scripts reach a company's records through
+  `tenantStorage` over the home box, and refuse a company whose line names another box (open item 246, closed;
+  the seed's side, item 271).
 - *Price of the choice:* one SQLite file holds every company's records, so one company's write rate
   is every company's ceiling ([c-storage's memo](c-storage.md#one-writer-at-a-time)). In the pooled
   shape, built in the back end, that narrows to the companies on the same box.
