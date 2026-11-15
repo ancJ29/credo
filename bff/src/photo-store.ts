@@ -28,6 +28,27 @@ const encode = (s: string) =>
     (c) => `%${c.charCodeAt(0).toString(16).toUpperCase()}`,
   );
 
+/** The canonical request of Signature Version 4: the method, the path, the query, each header as
+ * `name:value` with a newline after it (the blank line after the last one is part of the form), the
+ * signed names and the payload's hash or `UNSIGNED-PAYLOAD`. Names are sorted by the caller's keys. */
+export const canonicalRequest = (parts: {
+  method: string;
+  path: string;
+  query: string;
+  headers: Record<string, string>;
+  payload: string;
+}): string => {
+  const names = Object.keys(parts.headers).sort();
+  return [
+    parts.method,
+    parts.path,
+    parts.query,
+    names.map((n) => `${n}:${parts.headers[n]}\n`).join(''),
+    names.join(';'),
+    parts.payload,
+  ].join('\n');
+};
+
 /** One address that lets its holder PUT or GET one object until it expires, by AWS's query
  * signing (Signature Version 4), which R2 accepts at its S3 endpoint. It is arithmetic on a key
  * and the clock: it opens no connection. */
@@ -53,15 +74,14 @@ export const signUrl = (input: SignInput): string => {
     .sort()
     .map((k) => `${encode(k)}=${encode(query[k])}`)
     .join('&');
-  const canonicalRequest = [
-    input.method,
+  const canonical = canonicalRequest({
+    method: input.method,
     path,
-    canonicalQuery,
-    ...names.map((n) => `${n}:${headers[n]}\n`),
-    names.join(';'),
-    'UNSIGNED-PAYLOAD',
-  ].join('\n');
-  const toSign = ['AWS4-HMAC-SHA256', stamp, scope, hex(canonicalRequest)].join('\n');
+    query: canonicalQuery,
+    headers,
+    payload: 'UNSIGNED-PAYLOAD',
+  });
+  const toSign = ['AWS4-HMAC-SHA256', stamp, scope, hex(canonical)].join('\n');
   const key = [day, input.region, 's3', 'aws4_request'].reduce(
     (k, part) => hmac(k, part),
     Buffer.from(`AWS4${input.secretAccessKey}`),

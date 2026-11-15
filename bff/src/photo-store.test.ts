@@ -1,6 +1,7 @@
 import net from 'node:net';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { photoAddress, photoStoreOf, signUrl } from './photo-store';
+import { createHash } from 'node:crypto';
+import { canonicalRequest, photoAddress, photoStoreOf, signUrl } from './photo-store';
 
 // AWS's published example of a signed address: a GET of `test.txt` from `examplebucket`, signed
 // with the documented example key on 2013-05-24, valid 86400 seconds, region us-east-1.
@@ -26,6 +27,27 @@ describe('the signer of a photo address', () => {
     vi.spyOn(globalThis, 'fetch').mockImplementation(refuse);
     vi.spyOn(net.Socket.prototype, 'connect').mockImplementation(refuse);
     expect(signUrl(example)).toBe(published);
+  });
+
+  it('writes several signed headers as AWS’s GET Object example does', () => {
+    // The example's four signed headers (host, range, x-amz-content-sha256, x-amz-date) of AWS's
+    // Signature Version 4 page for S3, whose canonical request hashes to the value below; the PUT of
+    // a photo signs three headers, and a blank line between them would make R2 refuse every upload.
+    const request = canonicalRequest({
+      method: 'GET',
+      path: '/test.txt',
+      query: '',
+      headers: {
+        host: 'examplebucket.s3.amazonaws.com',
+        range: 'bytes=0-9',
+        'x-amz-content-sha256': 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+        'x-amz-date': '20130524T000000Z',
+      },
+      payload: 'e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855',
+    });
+    expect(createHash('sha256').update(request).digest('hex')).toBe(
+      '7344ae5b7ee6c3e7e6b0fe0640412a37625d1fbfff95c48bbb2dc43964946972',
+    );
   });
 
   it('changes with one byte of the secret', () => {
