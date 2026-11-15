@@ -4,7 +4,7 @@ import { Link } from 'react-router';
 import { CopyText } from './CopyText';
 
 type Props = {
-  /** The client's sign-in address, `…/login?client-code=<code>`. */
+  /** The client's sign-in address: its own (`https://<code>.<domain>/login`) from the operator's address, else `…/login?client-code=<code>`. */
   link: string;
   rootName: string;
   /** The root's first password, shown on this screen and nowhere after it. */

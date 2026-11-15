@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { tenantConfigSchema } from './config';
 import { permissionLayerSchema } from './permissions';
-import { boxNameSchema, clientCodeSchema } from './records';
+import { boxNameSchema, clientCodeSchema, KEPT_CODES } from './records';
 
 export const ROUTES = {
   config: '/api/config',
@@ -194,6 +194,28 @@ export type CreateClientReply = z.infer<typeof createClientReplySchema>;
 /** The path a client signs in at, `…/login?client-code=<code>`: the one function that builds it,
  * for the create's answer and the list's alike. */
 export const clientLinkPath = (code: string) => `/login?client-code=${code}`;
+
+/** The company a web address names: the first part of a name of three parts or more, when that part
+ * is a company code and not one kept back, and the name is not CloudFront's own. Anything else names
+ * none (`localhost`, an IP address, the operator's name), and no domain is written here. */
+export const companyOfAddress = (hostname: string): string | null => {
+  const name = hostname.toLowerCase();
+  if (name.split('.').length < 3 || name.endsWith('.cloudfront.net')) return null;
+  const first = name.slice(0, name.indexOf('.'));
+  return clientCodeSchema.safeParse(first).success && !KEPT_CODES.includes(first) ? first : null;
+};
+
+const OPERATOR_PART = 'operator.';
+
+/** The address a company is opened at, made from the origin the operator works at: from the
+ * operator's own address (`operator.<the rest>`, three parts or more) it is `<code>.<the rest>`'s
+ * login; from any other origin it is today's link, the code in the query. */
+export const clientAddress = (origin: string, code: string): string => {
+  const { protocol, host, hostname } = new URL(origin);
+  return hostname.startsWith(OPERATOR_PART) && hostname.split('.').length >= 3
+    ? `${protocol}//${code}.${host.slice(OPERATOR_PART.length)}/login`
+    : `${origin}${clientLinkPath(code)}`;
+};
 
 /** One client in the operator's list: its code, the name as made, when it was made (null for a
  * client made before the time was kept) and the path of its link. */

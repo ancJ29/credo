@@ -43,7 +43,8 @@ gateway, its Instance Connect Endpoint; the S3 gateway endpoint is not there yet
 environment's stack (subnet, box, the role its deploys take; with piece 1 its function, bucket and
 distribution). ridge is the first stack from each. Production is one more stack from `env.yml`,
 and still waits for a client; in the pooled shape, intended and not built, it holds every tenant
-group's box, and its tenants' names sit under one wildcard certificate requested in `us-east-1`,
+group's box, and its tenants' names sit under one wildcard certificate requested in `us-east-1`
+(the stack's `Domain` and `CertificateArn` settings; ridge's is the next act of the human's),
 with one wildcard name in Cloudflare
 ([how a call finds its tenant's box](architecture-detail.md#how-a-call-finds-its-tenants-box)). A
 tenant takes a stack of its own only where its contract needs its keys apart.
@@ -1488,6 +1489,10 @@ workflow that only reads ridge, or a review finding on the read job's rights.
 
 `docs/memo/bff.md`'s sentence on a client made for the wrong company says only `resolveTenant` in `bff/src/app.ts` decides which company a client serves. The operator's three acts also decide it, each for the client it makes from an id it has just read or minted: the root password route in `bff/src/routes/root-password.ts`, and `createClient` and `deleteClient` in `bff/src/records/clients.ts`. The memo's route tests cover them ("reaches one client only" in the delete and root password route tests), so nothing is unguarded; the sentence is short by three callers. *Fix:* "`resolveTenant`, and the operator's three acts for the client they make". *Trigger:* the next change to that memo section, or a fourth place that calls `tenantStorage`.
 
+## 291. At a company's own address, `/operator` still draws the operator's sign-in, where every passkey is refused — the machine; `[DEFERRED]` (the company address plan, 2026-11-12, Low)
+
+`ui/src/App.tsx`'s `isOperatorPath` chooses the console by the path alone, so `https://<code>.<domain>/operator` draws the operator's sign-in there, and its passkey ceremony is refused, since the back end checks every ceremony against `APP_ORIGIN`, the operator's own address (`bff/src/routes/operator-auth.ts`'s `registerOperatorAuth`). Nothing leaks: a company's address keeps its own browser storage and holds no operator handle. Fix: on a company's address, send `/operator` to the operator's address, which the company address plan's link maker can derive the same way. *Trigger:* an operator who reaches the console from a company's address, or the first real client's address.
+
 ## 296. By hand, `ops/release.sh` and `ops/app.sh` ship any commit of `main` to production, one ridge never ran included — the production lane; `[OPEN]` (the safe scripts' plan, 2026-11-12, Medium)
 
 Both refuse a commit `main` lacks and one older than what the environment runs (`ops/release.sh#L42`, `#L67`; `ops/app.sh#L48`, `#L92`), and nothing more. The final architecture ships to production only a commit ridge has already run and checked, by the human's own act; the deploy job is the lane's to hold to that, and the by-hand path, used while GitHub Actions is down, holds nothing of it. *Fix:* the production lane decides how a commit reaches production and holds the by-hand path to the same rule, or refuses it there. *Trigger:* the production lane's plan.
@@ -1849,3 +1854,23 @@ The page for conditions lists `Fn::FindInMap`, `Ref` and other condition functio
 ## 471. A request that its users delivered between the seed's read and its ask of the photo address stops the run red instead of being skipped — the machine; `[DEFERRED]` (the delivery photos' plan, step 4, 2026-11-14, Low)
 
 In `dayDeliveries` (`scripts/src/demo/apply.ts`) the ask is `driver.must`, so a 409 or a 404 from it throws, where the deliver after it was a skip (`unlessChanged`, "only a 409 or a 404 is a skip"). The read just before shows the request waiting, so only users acting within milliseconds reach it; no test provokes it, since the ask writes no delivery record to hook. Wanted: the ask through `unlessChanged`, with a case that moves the request between the read and the ask.
+
+## 472. The company's own address on a ridge run is built in no tested line, and the setting that replaces it is honoured outside the tests — the machine; `[DEFERRED]` (the review of the company address, 2026-11-14, Low)
+
+`ops/check.sh`'s `"${CHECK_OWN_BASE:-https://$tenant.$own_domain}"` is only ever run with `CHECK_OWN_BASE` set, so a wrong default that still answers (the app's address) would pass every test and read the operator's address twice on ridge, green; and nothing limits `CHECK_OWN_BASE` to the tests, as `OPS_TESTS_RUNNING` limits the other switches. Fix: one `own_address <code> <domain>` in `ops/lib.sh` with a test of its output, and `CHECK_OWN_BASE` read only under `OPS_TESTS_RUNNING`, refused by name otherwise.
+
+## 473. The template guard does not read which condition each address branch names, nor the rule's logic or the domain's pattern — the machine; `[DEFERRED]` (the review of the company address, 2026-11-14, Low)
+
+`resolved()` in `ops/test.sh` takes every `Fn::If` one way and the rule's check asks only for one rule mentioning both names; six mutations of a copied guard (aliases or certificate under `HasSlack`, the app's address under `HasMoreBoxes`, the rule asserting `Domain` alone or always true, `AllowedPattern` set to `.*`) all passed it. Fix: `resolved` takes only `Fn::If`s on `HasDomain` and asserts the three conditionals name it; the rule and the pattern pinned by value.
+
+## 474. The operator's name has three homes, the script's refusal message says a client exists when none does, and the fake makes the kept-back codes — the machine; `[DEFERRED]` (the review of the company address, 2026-11-14, Low)
+
+`https://operator.${Domain}` in `ops/env.yml`, `'operator'` in `KEPT_CODES` and `OPERATOR_PART` in `shared/src/wire.ts` agree today and no check ties them (one exported `OPERATOR_NAME`, and the domain guard comparing it with `AppAddress`); `ridge_cli tenant` answers "names a client already" for a kept-back code, where `tenant-id` then finds none (the message says it is taken or kept back); `ui/src/fake.ts`'s create refuses only a code it holds, so a fake walk typing `operator` or `www` shows the made screen where ridge says taken (`KEPT_CODES.includes(code)` joins the refusal).
+
+## 475. The company address's reader-facing text: an orphaned comment, a case-5 label, four living citations and a stale comment — the machine; *partly closed* by the company address's step 6 (2026-11-14): the four living citations are `[FIXED]` (file and symbol now), the orphaned comment, the case-5 label and the stale comment stay `[DEFERRED]` (the review of the company address, 2026-11-14, Low)
+
+`normaliseClientCode`'s doc comment in `shared/src/records.ts` now sits above `KEPT_CODES`'s own and wants moving back; a case-5 test in `ops/test.sh` is labelled "masks neither" but checks only the domain, since `DistributionName` stays masked; `docs/conventions/code.md` (three lines) and `docs/README.md` cite `App.tsx` and `ClientApp.tsx` lines the piece moved, to become file and symbol at step 6; the comment above `bff_settings_set` in `ops/lib.sh` still says the passkeys' address is "CloudFront's name, kept for good", where under a domain it is `operator.<Domain>`.
+
+## 476. The plan's order of acts assumes step 1 lands alone; landing whole, an app deploy must follow the stack run before the operator's passkey — the machine; `[DEFERRED]` (the review of the company address, 2026-11-14, Low)
+
+The function's `APP_ORIGIN` is written only by `bff_settings_set`, which only `ops/app.sh` and `ops/keys.sh` call, so a push before the stack run leaves it at CloudFront's name and the passkey at the operator's address is refused until a later deploy. Fix at step 6 and in step 7's one-off: push, certificate, stack run, wildcard record, then `ops/app.sh ridge` or any deploy, before the passkey; and one line that the check is red on the own-address pass until the wildcard record exists.

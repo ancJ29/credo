@@ -87,8 +87,8 @@ layer, and a screen's test sits beside it as `<Name>Page.test.tsx`.
 
 | The part | What decides it | Next, if that was not enough |
 | --- | --- | --- |
-| which app an address gets | `ui/src/App.tsx#L31-L34`; the operator's door is the test at `#L28-L29` | `ui/src/ClientApp.tsx`, `ui/src/OperatorApp.tsx` |
-| what is on screen before any data, and when the service does not answer | `ui/src/frame/Boot.tsx`'s `Boot` | the verdict is `ui/src/ClientApp.tsx#L79`, at `#L99` for the failing case |
+| which app an address gets | `ui/src/App.tsx`'s `App`; the operator's door is its `isOperatorPath` | `ui/src/ClientApp.tsx`, `ui/src/OperatorApp.tsx` |
+| what is on screen before any data, and when the service does not answer | `ui/src/frame/Boot.tsx`'s `Boot` | the verdict is `ui/src/ClientApp.tsx`'s `boot`, whose catch answers the failing case |
 | what one page shows while loading or after a failed load | `ui/src/frame/Loaded.tsx`'s `Loaded` | `ui/src/page.ts`'s `useLoad`, the state it draws |
 | what every screen is handed | `ui/src/page.ts#L6` (`PageProps`) | built at `ui/src/ClientApp.tsx`; see [the winner](#the-winner-named)'s third row before assuming it |
 | the words a screen shows | `ui/src/i18n/en.ts#L2`, whose shape `vi.ts` must match (`ui/src/i18n/en.ts`'s `en`) | — |
@@ -202,7 +202,7 @@ written again.
 | --- | --- | --- | --- |
 | C4 · a form reports a refusal | per field against the shared schema, the message on the field; one alert above the card only for a whole-form refusal | `ui/src/parts/ProductForm.tsx`'s `ProductForm` | `pnpm counts` (C4: a named list of the forms); the other shapes are a `tried` flag and a guard clause with one alert (`ui/src/pages/client/OwnPasswordPage.tsx`'s `change`) |
 | C5 · storage is reached in the back end | a record kind's reads and writes in a module of its own, never in the route closure | `bff/src/records/staff-records.ts`'s `readEmployee` | `pnpm counts` (C5: the calls made in a file that registers routes, against those made in a module) |
-| C6 · a screen gets its data | handed down in `PageProps`, never the API client imported into the screen | `ui/src/page.ts#L6`, built at `ui/src/ClientApp.tsx#L249` | `pnpm counts` (C6) |
+| C6 · a screen gets its data | handed down in `PageProps`, never the API client imported into the screen | `ui/src/page.ts#L6`, built in `ui/src/ClientApp.tsx`'s `ClientApp` | `pnpm counts` (C6) |
 | C7 · an error becomes a response | thrown, and the one handler writes the reply | `bff/src/app.ts#L92` | two routes write it themselves (`bff/src/app.ts#L226-L228`, `bff/src/routes/operator-auth.ts`'s `registerOperatorAuth`), and the conflict reply has four spellings while `shared/src/wire.ts#L151` declares the schema all of them mean to meet |
 | C8 · a command dispatches and fails | one dispatch with one catch, the exit codes stated once | — | `scripts/src/ridge.ts`'s `runRidge` is a seven-arm chain under one catch that turns a new failure into exit 1; `scripts/src/walks.ts`'s `walksCommand` is three arms each with its own catch and prefix. `scripts/src/cli.ts` is outside this rule: its three commands are a lifecycle, not a verb table |
 

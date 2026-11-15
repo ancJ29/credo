@@ -91,6 +91,10 @@ export const boxNameSchema = z.string().regex(/^[a-z][a-z0-9]{0,15}$/);
 export const clientCodeSchema = z.string().regex(/^[a-z][a-z0-9-]{1,30}[a-z0-9]$/);
 
 /** A code as typed or linked, to the form the BFF takes: spaces around it go and capitals fall. */
+/** The codes kept back from companies, since each is a name of the app's own on the one domain:
+ * `operator` is the operator's address and `www` the one a visitor guesses. */
+export const KEPT_CODES: readonly string[] = ['operator', 'www'];
+
 export const normaliseClientCode = (raw: string) => raw.trim().toLowerCase();
 
 /** The index record: the tenant's minted id, the name as made for the reader, and the time it was

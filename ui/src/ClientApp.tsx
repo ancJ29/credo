@@ -1,6 +1,7 @@
 import {
   can,
   clientCodeSchema,
+  companyOfAddress,
   type ConfigDoc,
   type Language,
   normaliseClientCode,
@@ -50,6 +51,8 @@ type Props = {
   device: DeviceStore;
   /** Tests switch Mantine's transitions off. */
   test?: boolean;
+  /** The web address's name, when the page gives it: a company's address wins over a link and the device. */
+  address?: string;
   /** Where the app is drawn inside another page's window: its colour scheme and root element. */
   look?: Look;
   /** The office's day now; the data set's on the fake, the browser's own otherwise. */
@@ -112,6 +115,7 @@ export function ClientApp({
   api,
   device,
   test,
+  address,
   look,
   today = localToday,
   shrink = shrinkToProof,
@@ -125,7 +129,9 @@ export function ClientApp({
   const [waitSeconds, setWaitSeconds] = useState(0);
   /** What the address named when the app opened; the sign-in's own navigation does not change it. */
   const { search } = useLocation();
-  const [linked] = useState(() => linkedCode(search));
+  const [linked] = useState(
+    () => (address === undefined ? null : companyOfAddress(address)) ?? linkedCode(search),
+  );
   /** The QR code the address carried when the app opened: it signs this device in once the
    * settings are known, and the address is then cleared of it. */
   const [qr] = useState(() => parseQr(new URLSearchParams(search).get('qr')));

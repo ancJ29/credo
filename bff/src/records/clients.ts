@@ -6,6 +6,7 @@ import {
   CStorageError,
   CREDO_COLOUR,
   HOME_BOX,
+  KEPT_CODES,
   newestFirst,
   type CStorageClient,
   type StoredClient,
@@ -52,7 +53,8 @@ export function startingConfig(name: string, settings: Partial<TenantConfig> = {
  * returned here and stored as its hash alone. `settings` replaces the starting settings, for the
  * local stack's demo client; the operator's route never passes any. `madeAt` is the time the
  * index records, from the caller's clock: the route's is the BFF's own, never a request's.
- * `'taken'` means the code names a client already, and nothing was written.
+ * `'taken'` means the code names a client already, or is one kept back for the app's own address
+ * (`KEPT_CODES`), and nothing was written.
  */
 export async function createClient(
   storage: CStorageClient,
@@ -72,6 +74,7 @@ export async function createClient(
     box?: { name: string; storage: CStorageClient };
   },
 ): Promise<{ id: string; password: string } | 'taken'> {
+  if (KEPT_CODES.includes(code)) return 'taken';
   if (await storage.getRecord(recordKeys.client(code))) return 'taken';
   // A deletion of an earlier client of this code still unfinished keeps the code, or its records
   // would be left with no way to finish them.
