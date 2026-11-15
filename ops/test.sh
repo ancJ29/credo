@@ -1890,7 +1890,7 @@ refuses "  a build step that does not stamp the commit is refused (row 39)" "CRE
 
 # app_guards <workflow>: row 34, the app's gate in CI, and row 24's half: the bundle under Node 24. One job a package
 # (every package pnpm-workspace.yaml lists, so none is dropped), each running that package's own check under a
-# 40-minute cap, and the job `app`, which the deploy waits on, needing every one of them with no `if` of its own.
+# 15-minute cap, and the job `app`, which the deploy waits on, needing every one of them with no `if` of its own.
 job_block() { awk -v j="$2" '$0 == "  " j ":" {f = 1; next} f && /^  [A-Za-z0-9_-]+:/ {exit} f' "$1"; }
 app_guards() {
   local pkgs p block missing='' want_needs='' n24 n26 chk have
@@ -1907,7 +1907,7 @@ app_guards() {
     else
       need "        run: pnpm --filter @credo/$p --fail-if-no-match check"
     fi
-    need "    timeout-minutes: 40"
+    need "    timeout-minutes: 15"
     need "          node-version-file: .node-version"
     need "    runs-on: ubuntu-24.04"
     need "        run: pnpm install --frozen-lockfile"
@@ -1943,7 +1943,7 @@ app_guards() {
   grep -q 'continue-on-error' <<<"$block" && missing="${missing}[app: no continue-on-error] "
   [ -z "$missing" ] || die "the app jobs lack: $missing"
 }
-passes "the app gate is one job a package, each with its own check and a 40-minute cap, and the job app waits on all (rows 34 and 24)" app_guards "$WORKFLOW"
+passes "the app gate is one job a package, each with its own check and a 15-minute cap, and the job app waits on all (rows 34 and 24)" app_guards "$WORKFLOW"
 sed 's#^        run: pnpm --filter @credo/bff --fail-if-no-match check$#        run: pnpm --filter @credo/bff lint#' "$WORKFLOW" >"$WORK/wf-nocheck.yml"
 refuses "  a package job that does not run its package's check is refused" "app-bff: " app_guards "$WORK/wf-nocheck.yml"
 sed 's#^        run: pnpm exec vitest --merge-reports --coverage$#        run: pnpm exec vitest --merge-reports#' "$WORKFLOW" >"$WORK/wf-nomergecov.yml"
@@ -1959,8 +1959,8 @@ awk '$0 == "  app:" {print; print "    if: always()"; next} 1' "$WORKFLOW" >"$WO
 refuses "  an app job with an if of its own (always() would let the deploy start over a red package) is refused" "app: no if of its own" app_guards "$WORK/wf-appalways.yml"
 awk '$0 == "  app-ui:" {skip = 1; next} skip && /^  [A-Za-z_-]+:/ {skip = 0} !skip' "$WORKFLOW" >"$WORK/wf-nopkg.yml"
 refuses "  a package with no job (a dropped package) is refused" "no job app-ui" app_guards "$WORK/wf-nopkg.yml"
-awk '$0 == "  app-visual:" {f = 1} f && $0 == "    timeout-minutes: 40" {print "    timeout-minutes: 90"; f = 0; next} 1' "$WORKFLOW" >"$WORK/wf-cap.yml"
-refuses "  a package job with another cap than 40 minutes is refused" "app-visual:     timeout-minutes: 40" app_guards "$WORK/wf-cap.yml"
+awk '$0 == "  app-visual:" {f = 1} f && $0 == "    timeout-minutes: 15" {print "    timeout-minutes: 90"; f = 0; next} 1' "$WORKFLOW" >"$WORK/wf-cap.yml"
+refuses "  a package job with another cap than 15 minutes is refused" "app-visual:     timeout-minutes: 15" app_guards "$WORK/wf-cap.yml"
 awk '$0 == "  app-walk:" {f = 1} f && $0 == "    runs-on: ubuntu-24.04" {print; print "    continue-on-error: true"; f = 0; next} 1' "$WORKFLOW" >"$WORK/wf-cont.yml"
 refuses "  a package job that may fail and go on is refused" "app-walk: no continue-on-error" app_guards "$WORK/wf-cont.yml"
 awk '$0 == "  app-ui:" {f = 1} f && /^      - name: Gate ui$/ {print; print "        if: always()"; f = 0; next} 1' "$WORKFLOW" >"$WORK/wf-stepif.yml"
@@ -1989,7 +1989,7 @@ scripts_guards() {
   grep -qxF -- '          SCRIPTS_SHARD: ${{ matrix.shard }}' <<<"$b" || missing="${missing}[SCRIPTS_SHARD in a shard] "
   grep -qxF -- "          go-version-file: services/c-storage/go.mod" <<<"$b" || missing="${missing}[Go in a shard] "
   grep -qxF -- "          include-hidden-files: true" <<<"$b" || missing="${missing}[the blob's hidden folder kept] "
-  grep -qxF -- "    timeout-minutes: 40" <<<"$b" || missing="${missing}[a shard's 40-minute cap] "
+  grep -qxF -- "    timeout-minutes: 22" <<<"$b" || missing="${missing}[a shard's 22-minute cap] "
   b=$(job_block "$1" scripts-stages)
   [ -n "$b" ] || die "no job scripts-stages"
   grep -qxF -- "        run: pnpm --filter @credo/scripts run typecheck" <<<"$b" || missing="${missing}[stages: typecheck] "
@@ -2031,7 +2031,7 @@ awk '$0 == "  scripts-shard:" {f = 1} f && /uses: actions\/setup-go/ {skip = 4} 
 refuses "  the scripts' shards without Go are refused" "Go in a shard" scripts_guards "$WORK/wf-nogo.yml"
 awk '/^  VITEST_MAX_WORKERS: 2$/ {print; print "  SCRIPTS_SHARD: 1"; next} 1' "$WORKFLOW" >"$WORK/wf-envflag.yml"
 refuses "  the shard flag in the workflow's env, where the merge would turn its thresholds off, is refused" "SCRIPTS_SHARD anywhere but" scripts_guards "$WORK/wf-envflag.yml"
-awk '$0 == "  app-scripts:" {f = 1} f && /^    timeout-minutes: 40$/ {print; print "    env:"; print "      SCRIPTS_SHARD: 1"; f = 0; next} 1' "$WORKFLOW" >"$WORK/wf-mergeflag.yml"
+awk '$0 == "  app-scripts:" {f = 1} f && /^    timeout-minutes: 15$/ {print; print "    env:"; print "      SCRIPTS_SHARD: 1"; f = 0; next} 1' "$WORKFLOW" >"$WORK/wf-mergeflag.yml"
 refuses "  the shard flag in the merge job is refused" "app-scripts: no SCRIPTS_SHARD" scripts_guards "$WORK/wf-mergeflag.yml"
 awk '$0 == "  scripts-stages:" {f = 1} f && /^      - name: Typecheck$/ {print; print "        continue-on-error: true"; f = 0; next} 1' "$WORKFLOW" >"$WORK/wf-stcont.yml"
 refuses "  a typecheck step that may fail and go on is refused" "scripts-stages: no continue-on-error" scripts_guards "$WORK/wf-stcont.yml"
