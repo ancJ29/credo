@@ -11,7 +11,7 @@ says otherwise.
 
 | # | Command | What it covers | In CI |
 | --- | --- | --- | --- |
-| 1 | `pnpm check` | typecheck, eslint, prettier, every TypeScript package's tests at 100 %, knip, all through `ops/gate.sh` (`package.json`'s `scripts.check`) | `.github/workflows/ci.yml`'s `app` job, which waits on six package jobs, one a package (`app-bff` to `app-walk`, each running that package's check under a 40-minute cap) |
+| 1 | `pnpm check` | typecheck, eslint, prettier, every TypeScript package's tests at 100 %, knip, all through `ops/gate.sh` (`package.json`'s `scripts.check`) | `.github/workflows/ci.yml`'s `app` job, which waits on six package jobs, one a package (`app-bff` to `app-walk`, each running that package's check under a 15-minute cap, the scripts' tests in three shards under 28, `app-scripts` only merging them) |
 | 2 | `make check`, in `services/c-storage/` | gofmt, `go vet`, the race tests at 100 % through `services/c-storage/scripts/cover.sh`, and the box's arm64 cross-compile (`services/c-storage/Makefile`) | `ci.yml`'s `check` job, step `name: make check` |
 | 3 | `shellcheck -x ops/*.sh walk/*.sh services/c-storage/scripts/*.sh` | every tracked `.sh`: `ops/`, `walk/run.sh` and `services/c-storage/scripts/` | `ci.yml`'s `ShellCheck 0.11.0` step, ShellCheck 0.11.0 |
 | 4 | `cfn-lint ops/network.yml ops/github.yml ops/env.yml` | the three CloudFormation templates | `ci.yml`'s `ops` job, step `name: cfn-lint`, cfn-lint 1.46.0 |
