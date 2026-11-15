@@ -1890,7 +1890,7 @@ refuses "  a build step that does not stamp the commit is refused (row 39)" "CRE
 
 # app_guards <workflow>: row 34, the app's gate in CI, and row 24's half: the bundle under Node 24. One job a package
 # (every package pnpm-workspace.yaml lists, so none is dropped), each running that package's own check under a
-# 15-minute cap, and the job `app`, which the deploy waits on, needing every one of them with no `if` of its own.
+# 15-minute cap (the scripts' tests run in the shards, under 28, and `app-scripts` only merges them), and the job `app`, which the deploy waits on, needing every one of them with no `if` of its own.
 job_block() { awk -v j="$2" '$0 == "  " j ":" {f = 1; next} f && /^  [A-Za-z0-9_-]+:/ {exit} f' "$1"; }
 app_guards() {
   local pkgs p block missing='' want_needs='' n24 n26 chk have
@@ -1943,7 +1943,7 @@ app_guards() {
   grep -q 'continue-on-error' <<<"$block" && missing="${missing}[app: no continue-on-error] "
   [ -z "$missing" ] || die "the app jobs lack: $missing"
 }
-passes "the app gate is one job a package, each with its own check and a 15-minute cap, and the job app waits on all (rows 34 and 24)" app_guards "$WORKFLOW"
+passes "the app gate is one job a package, each with its own check and a 15-minute cap (the scripts' tests in shards under 28), and the job app waits on all (rows 34 and 24)" app_guards "$WORKFLOW"
 sed 's#^        run: pnpm --filter @credo/bff --fail-if-no-match check$#        run: pnpm --filter @credo/bff lint#' "$WORKFLOW" >"$WORK/wf-nocheck.yml"
 refuses "  a package job that does not run its package's check is refused" "app-bff: " app_guards "$WORK/wf-nocheck.yml"
 sed 's#^        run: pnpm exec vitest --merge-reports --coverage$#        run: pnpm exec vitest --merge-reports#' "$WORKFLOW" >"$WORK/wf-nomergecov.yml"
@@ -2018,6 +2018,9 @@ scripts_guards() {
   # shellcheck disable=SC2016 # the workflow's literal text
   [ "$(grep -cxF -- '        if: ${{ !cancelled() }}' <<<"$b")" = 3 ] || missing="${missing}[scripts-stages: exactly three !cancelled() ifs] "
   [ "$(grep -cE '^      - if:|^        if:' <<<"$b")" = 3 ] || missing="${missing}[scripts-stages: no other step-level if] "
+  grep -qxF -- "    timeout-minutes: 15" <<<"$b" || missing="${missing}[scripts-stages: a 15-minute cap] "
+  b=$(job_block "$1" ops)
+  grep -qxF -- "    timeout-minutes: 19" <<<"$b" || missing="${missing}[ops: a 19-minute cap] "
   [ -z "$missing" ] || die "the scripts' gate lacks: $missing"
 }
 passes "the scripts' gate is three shards, the four other stages once, and the merge that holds the thresholds (piece 140)" scripts_guards "$WORKFLOW"
@@ -2044,6 +2047,12 @@ awk '$0 == "  scripts-shard:" {f = 1} f && /^      - name: Test shard$/ {print; 
 refuses "  a shard's test step with an if of its own is refused" "scripts-shard: no step-level if" scripts_guards "$WORK/wf-shif.yml"
 awk '$0 == "  scripts-shard:" {f = 1} f && /^      - name: Test shard$/ {print "      - shell: bash {0}"; print "        name: Test shard"; f = 0; next} 1' "$WORKFLOW" >"$WORK/wf-shsh.yml"
 refuses "  a shard step whose first key is a shell is refused" "scripts-shard: no step-level shell" scripts_guards "$WORK/wf-shsh.yml"
+awk '$0 == "  scripts-shard:" {f = 1} f && $0 == "    timeout-minutes: 28" {print "    timeout-minutes: 40"; f = 0; next} 1' "$WORKFLOW" >"$WORK/wf-shcap.yml"
+refuses "  a shard with another cap than 28 minutes is refused" "a shard's 28-minute cap" scripts_guards "$WORK/wf-shcap.yml"
+awk '$0 == "  scripts-stages:" {f = 1} f && $0 == "    timeout-minutes: 15" {print "    timeout-minutes: 40"; f = 0; next} 1' "$WORKFLOW" >"$WORK/wf-stcap.yml"
+refuses "  a stages job with another cap than 15 minutes is refused" "scripts-stages: a 15-minute cap" scripts_guards "$WORK/wf-stcap.yml"
+awk '$0 == "  ops:" {f = 1} f && $0 == "    timeout-minutes: 19" {print "    timeout-minutes: 10"; f = 0; next} 1' "$WORKFLOW" >"$WORK/wf-opscap.yml"
+refuses "  an ops job with another cap than 19 minutes is refused" "ops: a 19-minute cap" scripts_guards "$WORK/wf-opscap.yml"
 sed 's# --fail-if-no-match check$# check#' "$WORKFLOW" >"$WORK/wf-nofail.yml"
 refuses "  a package job without --fail-if-no-match is refused" "--fail-if-no-match check" app_guards "$WORK/wf-nofail.yml"
 check "no DEBUG timing step is left in the workflow" 0 "$(grep -c 'DEBUG' "$WORKFLOW" || true)"
