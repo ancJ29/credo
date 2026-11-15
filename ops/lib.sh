@@ -1208,6 +1208,34 @@ audit_read() {
   mask "$AUDIT_KEY"
 }
 
+# photo_store_read: PHOTO_STORE_URL, PHOTO_STORE_KEY_ID and PHOTO_STORE_KEY_SECRET, the delivery photos' bucket and its key,
+# from the box's photo-store.env (one-off/ writes it, outside git). All three or none: with no file the function gets none
+# and prints that photos are off; a file holding some but not all is refused by name. Each value is masked the moment it is
+# read and reaches the function's settings only through a 0600 file.
+PHOTO_STORE_URL=''
+PHOTO_STORE_KEY_ID=''
+PHOTO_STORE_KEY_SECRET=''
+photo_store_read() {
+  local kv
+  PHOTO_STORE_URL=''
+  PHOTO_STORE_KEY_ID=''
+  PHOTO_STORE_KEY_SECRET=''
+  if ! box sudo test -e /etc/c-storage/photo-store.env; then
+    echo "photo-store.env: absent, photos off"
+    return 0
+  fi
+  kv=$(box sudo cat /etc/c-storage/photo-store.env) || die "the box's photo-store.env could not be read"
+  PHOTO_STORE_URL=$(sed -n 's/^PHOTO_STORE_URL=//p' <<<"$kv")
+  PHOTO_STORE_KEY_ID=$(sed -n 's/^PHOTO_STORE_KEY_ID=//p' <<<"$kv")
+  PHOTO_STORE_KEY_SECRET=$(sed -n 's/^PHOTO_STORE_KEY_SECRET=//p' <<<"$kv")
+  [ -n "$PHOTO_STORE_URL" ] && [ -n "$PHOTO_STORE_KEY_ID" ] && [ -n "$PHOTO_STORE_KEY_SECRET" ] ||
+    die "the box's photo-store.env holds not all three of PHOTO_STORE_URL, PHOTO_STORE_KEY_ID and PHOTO_STORE_KEY_SECRET: the one-off writes all three"
+  mask "$PHOTO_STORE_URL"
+  mask "$PHOTO_STORE_KEY_ID"
+  mask "$PHOTO_STORE_KEY_SECRET"
+  echo "photo-store.env: read, photos on"
+}
+
 # bff_vpc → the function's VPC settings, sent with every settings call: the deploy role may change settings
 # only when it names the subnet and group. BFF_WAIT: the seconds each of the function's updates may take.
 BFF_WAIT=120
@@ -1228,7 +1256,8 @@ bff_settings_set() {
     # STORAGE_BOXES goes in only when the stack holds boxes beyond the home box (other_boxes_read made it); without
     # them the environment is the eight variables it always was.
     STORAGE_BOXES=${STORAGE_BOXES_JSON:-} INTERNAL_ACCESS_KEY=$INTERNAL_KEY SERVICE_CODE=$SERVICE_CODE SERVICE_ACCESS_KEY=$SERVICE_ACCESS_KEY C_STORAGE_URL=http://$BOX_LISTEN_ADDR:$BOX_PORT APP_ORIGIN=${APP_ADDRESS%/} FRONT_DOOR_KEYS=$1 AUDIT_URL=$AUDIT_URL AUDIT_KEY=$AUDIT_KEY \
-      jq -n '{Variables: ({C_STORAGE_URL: env.C_STORAGE_URL, INTERNAL_ACCESS_KEY: env.INTERNAL_ACCESS_KEY, SERVICE_CODE: env.SERVICE_CODE, SERVICE_ACCESS_KEY: env.SERVICE_ACCESS_KEY, APP_ORIGIN: env.APP_ORIGIN, FRONT_DOOR_KEYS: env.FRONT_DOOR_KEYS, AUDIT_URL: env.AUDIT_URL, AUDIT_KEY: env.AUDIT_KEY} + (if env.STORAGE_BOXES != "" then {STORAGE_BOXES: env.STORAGE_BOXES} else {} end))}' \
+      PHOTO_STORE_URL=${PHOTO_STORE_URL:-} PHOTO_STORE_KEY_ID=${PHOTO_STORE_KEY_ID:-} PHOTO_STORE_KEY_SECRET=${PHOTO_STORE_KEY_SECRET:-} \
+      jq -n '{Variables: ({C_STORAGE_URL: env.C_STORAGE_URL, INTERNAL_ACCESS_KEY: env.INTERNAL_ACCESS_KEY, SERVICE_CODE: env.SERVICE_CODE, SERVICE_ACCESS_KEY: env.SERVICE_ACCESS_KEY, APP_ORIGIN: env.APP_ORIGIN, FRONT_DOOR_KEYS: env.FRONT_DOOR_KEYS, AUDIT_URL: env.AUDIT_URL, AUDIT_KEY: env.AUDIT_KEY} + (if env.STORAGE_BOXES != "" then {STORAGE_BOXES: env.STORAGE_BOXES} else {} end) + (if env.PHOTO_STORE_URL != "" then {PHOTO_STORE_URL: env.PHOTO_STORE_URL, PHOTO_STORE_KEY_ID: env.PHOTO_STORE_KEY_ID, PHOTO_STORE_KEY_SECRET: env.PHOTO_STORE_KEY_SECRET} else {} end))}' \
       >"$WORK/bff-env.json"
   )
   aws lambda update-function-configuration --function-name "$BFF_NAME" \
@@ -1371,6 +1400,9 @@ function_network_verdict() {
 # BFF_ENV_NAMES: the eight variables the function holds, sorted, and no other (never the super-admin key)
 # shellcheck disable=SC2034 # check.sh reads it
 BFF_ENV_NAMES=APP_ORIGIN,AUDIT_KEY,AUDIT_URL,C_STORAGE_URL,FRONT_DOOR_KEYS,INTERNAL_ACCESS_KEY,SERVICE_ACCESS_KEY,SERVICE_CODE
+# BFF_ENV_NAMES_PHOTOS: the same eight and the photo store's three, when the box holds photo-store.env; check.sh takes either, no other
+# shellcheck disable=SC2034 # check.sh reads it
+BFF_ENV_NAMES_PHOTOS=APP_ORIGIN,AUDIT_KEY,AUDIT_URL,C_STORAGE_URL,FRONT_DOOR_KEYS,INTERNAL_ACCESS_KEY,PHOTO_STORE_KEY_ID,PHOTO_STORE_KEY_SECRET,PHOTO_STORE_URL,SERVICE_ACCESS_KEY,SERVICE_CODE
 # function_env_names <the function, read by BFF_FN_QUERY> → the names of its variables, sorted and
 # comma-joined; no value is in what it reads
 function_env_names() {

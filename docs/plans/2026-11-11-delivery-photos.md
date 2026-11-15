@@ -178,7 +178,7 @@ minutes a part.
   walk sends by a real PUT). The stand-in allows the stack's own app address as the stack serves it today; the
   bucket's rule for each company's own address, once each opens at `<company>.ridge.<domain>`, is step 6's
   question (whether R2's rule takes a wildcard origin is on no page read). Items 469 to 471.
-- [ ] **Step 5. The walk: one screen appended, every other screen unmoved** (about 15 minutes: walk
+- [x] **Step 5. The walk: one screen appended, every other screen unmoved** (about 15 minutes: walk
   steps ran 15 and 26). `orders-15-photo-missing`, after `orders-14-repriced`: the office opens a delivery whose
   picture never arrived. On the fake its address leads nowhere; on the stack the walk asks and delivers
   by request without sending, as `reconcile.spec.ts` delivers. The human's one walk run (stage 3,
@@ -196,15 +196,39 @@ minutes a part.
   without `photoLost: true` (`visual/src/walks.test.ts`'s opening test red); the spec's `deliveredUnsent` has no
   guard but the typecheck. The first `visual` run ended red on two counts that moved with the new screen (the
   Vietnamese question, the list of signed-in persons), both fixed in the same commit.
-- [ ] **Step 6. The key's way to the function** (about 15 minutes: ops steps ran 8, 8 and 15).
-  `ops/app.sh` sets the function's whole environment at every deploy (`#L131-L132`), so a setting left
-  out of that line is wiped by the next one: it reads `photo-store.env` from the box as it reads the
-  other keys, masks it, and adds the three settings, or prints "photo-store.env: absent, photos off"
-  and adds none. Two one-offs in the credo root's `one-off/`, outside git, for the human's terminal:
+  *Done 2026-11-15:* the human's walk run with `--write` (10:42 to 10:51) ended `== verdict: green: 9 comparisons`:
+  `driver-deliveries`, `office-orders` and `office-reconcile`, each fake to the stack, the stack's two runs to each
+  other and the stack to the bases, every one 0 moved; the one bases comparison with anything new was the orders
+  walk's, 6 new pictures, all `orders-15-photo-missing` (English and Vietnamese at 390, 768 and 1280), and the
+  other two walks' bases 0 new; the pictures are committed. The human's check run without flags (10:54 to 11:04)
+  ended `== verdict: green: 9 comparisons`, 0 moved and 0 new in every one, the orders walk's bases now 90 pictures.
+- [x] **Step 6. The key's way to the function** (about 15 minutes: ops steps ran 8, 8 and 15).
+  `ops/lib.sh`'s `bff_settings_set` (`ops/app.sh` and `ops/keys.sh` both call it) sets the function's whole
+  environment, so a setting left out of it is wiped by the next deploy or key run: `ops/app.sh` reads
+  `photo-store.env` from the box as it reads the other keys, masks it, and adds the three settings, or prints
+  "photo-store.env: absent, photos off" and adds none. Two one-offs in the credo root's `one-off/`, outside git, for the human's terminal:
   one writes the file on ridge's box from four values typed without echo, the secret on a pipe from
   `printf`, never a here-document or an argument; one probes the bucket with the product's own signer
   (a signed PUT, a PUT of the wrong length, a signed GET, the preflight from ridge's address). *Done
   when:* `shellcheck -x ops/*.sh` and `bash ops/test.sh` exit 0, case 15 seen red.
+  *Written 2026-11-15:* the box's file is `/etc/c-storage/photo-store.env`, beside `bff.env`, holding the three
+  settings under their own names (`PHOTO_STORE_URL` is the bucket's address with its name, by path); `lib.sh`'s
+  `photo_store_read` reads and masks it (all three or none: a file with some is refused by name before the function
+  is touched), and `bff_settings_set` adds the three when it holds them. The key run (`ops/keys.sh`) reads it too, or
+  its settings call would wipe the three. The check takes the function's eleven names beside the eight
+  (`BFF_ENV_NAMES_PHOTOS`), or it would go red on ridge once the file exists. The line citation `#L131-L132` had
+  moved with the company address and the activity log: the environment is now written in `lib.sh`, not in `app.sh`.
+  Case 15 is five checks in `ops/test.sh` (no file: "photos off" and none of the three; a file: the three as the file
+  has them, the eleven names, each masked and in no log; a file with two of the three refused), seen red by two
+  mutations in one run, each in its own function (`bff_settings_set`'s photo clause switched off, and the "photos
+  off" line shortened), three lines red, both reverted and compared equal; `shellcheck -x ops/*.sh` and `bash ops/test.sh`
+  exit 0. The two one-offs are in the credo root's `one-off/`, outside git: `photo-store-env-write.sh` (four values
+  typed without echo, the file written through `box_secret_write` on a pipe from the shell's `printf`, read back by
+  `photo_store_read`) and `photo-store-probe.sh` (the product's own `signUrl`, five checks: the signed PUT, the PUT
+  longer than it signed, the signed GET, then the preflight from ridge's app address and, separately, from
+  `<company>.<the stack's Domain>`, the company an optional argument). The probe's reads ran once against a stand-in
+  on this machine; the box, the stack and R2 were not run here, and R2's cross-origin wildcard rule is the probe's
+  fifth line, not a guess in the script. Item 480.
 - [ ] **Step 7. The human's acts, in order** (theirs; the machine's minutes are step 6's).
   1. Make ridge's bucket: Cloudflare's dashboard, R2, Create bucket, a name of their choosing, the
      location automatic. They will see it listed, empty.
@@ -240,7 +264,7 @@ to 6. About 145 machine minutes in all, the seven steps that are the machine's, 
   `shared/src/records.ts` and `bff/src/routes/cross-tenant.route.test.ts`.
 - **The front door and its keys** owns the key replacement script: the R2 key is one more key it
   replaces (a new token, the box's file rewritten, a deploy, the old token deleted). Both lanes add a
-  setting to `ops/app.sh#L131-L132`. A content-security rule added at the front door must allow
+  setting to `bff_settings_set` in `ops/lib.sh`. A content-security rule added at the front door must allow
   R2's address for pictures and for the PUT.
 - **Ridge's re-up**: the key lives in a file on the box, so a new box needs act 4 again. If the
   re-up replaces the box more than rarely, the key moves to a parameter the deploy reads instead.
@@ -253,6 +277,7 @@ to 6. About 145 machine minutes in all, the seven steps that are the machine's, 
    where the picture would be, so they ask the driver. Every other screen of the driver's and the
    orders walks is unchanged. Does that line tell the office enough? A yes keeps it; a no reopens
    step 1 with your words.
+   *Answered yes by the human on 2026-11-15 at 10:57 ("thanks, it's ok").*
 2. **A real photo on ridge (stage 4).** After the push, deliver one request on ridge from your phone
    with a picture you take, then open that delivery as the office. Did your picture show on the
    office's page? A yes means the photos travel the real way; a no reopens step 6 with the probe's

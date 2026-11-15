@@ -228,7 +228,10 @@ else
   # read: no key value reaches this shell, on any environment (open item 50).
   fn=$(aws lambda get-function-configuration --function-name "$BFF_NAME" --query "$BFF_FN_QUERY" --output json)
   expect "the function sits in ridge's subnet, under the BFF's group alone" yes "$(function_network_verdict "$fn" "$SUBNET_ID" "$BFF_GROUP")"
-  expect "the function's variables (names only; never the super-admin key)" "$BFF_ENV_NAMES" "$(function_env_names "$fn")"
+  got_names=$(function_env_names "$fn")
+  want_names=$BFF_ENV_NAMES
+  [ "$got_names" != "$BFF_ENV_NAMES_PHOTOS" ] || want_names=$BFF_ENV_NAMES_PHOTOS # the box holds photo-store.env: the photo store's three too
+  expect "the function's variables (names only; never the super-admin key)" "$want_names" "$got_names"
   expect "the function's APP_ORIGIN is the app's address, which its passkeys are bound to" yes "$(function_origin_verdict "$fn" "$APP_ADDRESS")"
   expect "the function reaches c-storage at the box's private address" yes \
     "$([ "$(function_url "$fn")" = "http://$BOX_LISTEN_ADDR:$BOX_PORT" ] && echo yes || echo no)"

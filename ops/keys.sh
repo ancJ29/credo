@@ -76,6 +76,7 @@ box test -e /etc/c-storage/bff.env || die "the box holds no bff.env: the first a
 bff_env_read
 front_door_key_read "$DISTRIBUTION_ID"
 audit_read # the log's address and key too, before anything changes: every settings call below sends them
+photo_store_read # and the photo store's, if the box holds them: a settings call replaces the whole environment
 [ "$(store_status "$LOCAL_PORT" GET /api/status - "x-internal-access-key: $INTERNAL_KEY")" = 200 ] ||
   die "the store refuses the internal key the box's file holds: nothing was changed"
 # The service key too, for the other three kinds: a service run that stopped half way (the store rekeyed, the box's
