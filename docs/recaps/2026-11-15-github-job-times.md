@@ -21,7 +21,7 @@ The review (Opus) of `34dd2770..4a4a4877`, may merge:
 ## Still yours
 
 - No look is open.
-- The reread of the fix pass. <!-- FILL: its verdict, not yet known -->
+- The reread of the fix pass (Opus) said may merge: all four fixes hold, and two new findings are deferred, a Medium (item 483, the `ops` guards step's own 5-minute limit) and a Low (item 484).
 - Act's `ops` job. <!-- FILL: its result, not yet known -->
 - GitHub's run with the new limits. <!-- FILL: its verdict, not yet known -->
 - The whole check on `pre-merge`. <!-- FILL: its verdict, not yet known -->

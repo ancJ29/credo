@@ -1854,3 +1854,11 @@ The page for conditions lists `Fn::FindInMap`, `Ref` and other condition functio
 ## 476. The plan's order of acts assumes step 1 lands alone; landing whole, an app deploy must follow the stack run before the operator's passkey — the machine; `[DEFERRED]` (the review of the company address, 2026-11-14, Low)
 
 The function's `APP_ORIGIN` is written only by `bff_settings_set`, which only `ops/app.sh` and `ops/keys.sh` call, so a push before the stack run leaves it at CloudFront's name and the passkey at the operator's address is refused until a later deploy. Fix at step 6 and in step 7's one-off: push, certificate, stack run, wildcard record, then `ops/app.sh ridge` or any deploy, before the passkey; and one line that the check is red on the own-address pass until the wildcard record exists.
+
+## 483. The `ops` job's guards step does nearly all the job's work and holds a 5-minute limit of its own, under the job's 19 — the machine; `[DEFERRED]` until one `ops` job's step times are read from a GitHub run (the reread of the jobs' limits, 2026-11-15, Medium)
+
+In `.github/workflows/ci.yml`, the `ops` job's step "The guards" runs `bash ops/test.sh` under `timeout-minutes: 5`, and that script is nearly all of the job's minutes. As `ops/test.sh` grows, the step's 5 minutes cut before the job's 19 does. The step's own time on GitHub is unmeasured: no `ops` job log is saved, every `ops` run was green so the step took under 5 there, and the whole `ops/test.sh` took 5.7 minutes on the developer's Mac. *Fix:* read one `ops` job's step times from a GitHub run, set the step's limit by the rule (three times its longest, never under 15), and pin it in `ops/test.sh`'s guards.
+
+## 484. The `ops` limit's pin sits inside the scripts' guard, so a red names the wrong gate — the machine; `[DEFERRED]` (the reread of the jobs' limits, 2026-11-15, Low)
+
+In `ops/test.sh`, `scripts_guards` holds the `ops` job's 19-minute pin, so a red reads "the scripts' gate lacks: [ops: a 19-minute cap]", and the passes row after the function names only the scripts' gate. *Fix:* give the pin its own guard named for `ops`, or retitle the row to cover both.
