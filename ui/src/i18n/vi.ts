@@ -822,6 +822,7 @@ export const vi: Dictionary = {
     cancelFailed: 'Chưa hủy được. Hãy thử lại.',
     proofTitle: 'Bằng chứng giao hàng',
     proofAlt: 'Hàng hóa như tài xế đã giao',
+    proofMissing: 'Ảnh chưa được gửi tới.',
   },
   myDeliveries: {
     forDay: 'Các yêu cầu giao cho bạn ngày {{day}}.',

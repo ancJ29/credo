@@ -1,4 +1,11 @@
-import { addDays, driverDay, type Language, STACK_ENV } from '@credo/shared';
+import {
+  addDays,
+  deliveryRoutes,
+  driverDay,
+  type Language,
+  photoAddressRequestOf,
+  STACK_ENV,
+} from '@credo/shared';
 import { DEMO_DELIVERIES, DEMO_EMPLOYEES, DEMO_TODAY, DEMO_WALK_PROOF } from '@credo/shared/demo';
 import { DICTIONARIES } from '@credo/ui/words';
 import { expect, type Page, test } from '@playwright/test';
@@ -119,9 +126,23 @@ async function driverDelivers(page: Page, client: Seeded) {
   const read = (await (
     await page.request.get(`/api/deliveries/${DEMO_TODAY}/${request.id}`, { headers })
   ).json()) as { version: string };
-  const delivered = await page.request.post(`/api/deliveries/${DEMO_TODAY}/${request.id}/deliver`, {
+  // The phone's order: ask where to send the picture, send it there, then mark delivered. The
+  // data set's picture is a PNG and the back end takes a JPEG alone, so the ask says JPEG for the
+  // same length, as the seed's does.
+  const bytes = Buffer.from(DEMO_WALK_PROOF.split(',')[1], 'base64');
+  const asked = await page.request.post(deliveryRoutes.photoAddress(DEMO_TODAY, request.id), {
     headers,
-    data: { version: read.version, photo: DEMO_WALK_PROOF },
+    data: { ...photoAddressRequestOf(DEMO_WALK_PROOF), type: 'image/jpeg' },
+  });
+  expect(asked.ok(), 'the driver asks where to send the picture').toBe(true);
+  const sent = await page.request.put(((await asked.json()) as { url: string }).url, {
+    headers: { 'content-type': 'image/jpeg' },
+    data: bytes,
+  });
+  expect(sent.ok(), 'the picture is sent to the address').toBe(true);
+  const delivered = await page.request.post(deliveryRoutes.deliver(DEMO_TODAY, request.id), {
+    headers,
+    data: { version: read.version },
   });
   expect(delivered.ok(), 'the driver delivers the waiting request').toBe(true);
 }

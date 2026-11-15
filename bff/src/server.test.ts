@@ -253,6 +253,23 @@ describe('the audit service, as the BFF is given it', () => {
     );
   });
 
+  it('the photo store is optional, but only all three together: a missing one names the address and no value', () => {
+    const store = {
+      PHOTO_STORE_URL: 'https://objects.test/bucket',
+      PHOTO_STORE_KEY_ID: 'id',
+      PHOTO_STORE_KEY_SECRET: 'secret-value',
+    };
+    expect(readEnv(base).PHOTO_STORE_URL).toBeUndefined();
+    expect(readEnv({ ...base, ...store })).toMatchObject(store);
+    expect(readLambdaEnv({ ...base, ...store })).toMatchObject(store);
+    expect(() => readEnv({ ...base, PHOTO_STORE_KEY_SECRET: 'secret-value' })).toThrowError(
+      'invalid environment: PHOTO_STORE_URL',
+    );
+    expect(() => readLambdaEnv({ ...base, PHOTO_STORE_URL: store.PHOTO_STORE_URL })).toThrowError(
+      'invalid environment: PHOTO_STORE_URL',
+    );
+  });
+
   it('writes a save’s entry through the client the environment builds', async () => {
     const tenant = await freshTenant(cs);
     const id = await seedTenant(tenant.client, CODE);

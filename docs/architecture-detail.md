@@ -60,8 +60,8 @@ and they live in
 with what is tested, what is held by review alone, and which routes resolve a code themselves.
 
 What a session reads here instead is where key design does real work — a person's photo and a delivery's photo
-deliberately sit outside their list's prefix so a list read never drags them in
-([`records.ts#L47`](../shared/src/records.ts#L47), [`#L65`](../shared/src/records.ts#L65)), and
+record deliberately sit outside their list's prefix so a list read never drags them in
+(`deliveryPhoto` and `employeePhoto` in [`shared/src/records.ts`](../shared/src/records.ts)), and
 orders and deliveries are keyed by day so a day's list stays one page, a page being at most 1,000
 records or about 4 MiB ([`order` in `shared/src/records.ts`](../shared/src/records.ts),
 [`MaxList` in `services/c-storage/internal/store/store.go`](../services/c-storage/internal/store/store.go)).
@@ -197,9 +197,12 @@ without the listener's two, since API Gateway is the listener
 - **The groups.** The operator puts each tenant on a box when adding it, seeing each box's free disk
   and companies, and the code holds no grouping rule and no number. The disk is the first limit, at
   about 300 MB a year a tenant at the human's figures (under 10,000 calls and 500 records a
-  day each): that figure leaves out the delivery photos, which today are records on the box
-  (`shared/src/records.ts`'s `deliveryPhoto`) and which the human means to keep in Cloudflare R2, a
-  piece not opened. A premium tenant is a group of one. The operator's own records, the tenant list
+  day each): that figure leaves out the delivery photos, which are not on the box: the record
+  (`shared/src/records.ts`'s `deliveryPhoto`) holds only the name of an object
+  (`deliveryPhotoObject`, built from the company's minted id, the day and the request), and the picture
+  is in Cloudflare R2, written by the phone at an address the back end signs for five minutes after its
+  own checks (`bff/src/photo-store.ts`'s `photoAddress`). Nothing deletes a company's pictures yet
+  (open item 266). A premium tenant is a group of one. The operator's own records, the tenant list
   among them, stay on the first box, the home box: a box of their own would be a fixed charge that
   buys nothing yet, since every call still reads the list first.
 - **The record.** Built: `storedClientSchema` gains the tenant's box, and never a key. **Not built:**

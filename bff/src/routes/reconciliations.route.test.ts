@@ -15,7 +15,7 @@ import { CStorageError, type CStorageClient } from '@credo/shared';
 import { afterAll, beforeAll, describe, expect, inject, it } from 'vitest';
 import { recordingActivity } from '../../tests/audit';
 import { type RunningCStorage, startCStorage } from '../../tests/c-storage';
-import { DAY, ordersTenant } from '../../tests/orders';
+import { DAY, deliverWithPhoto, ordersTenant } from '../../tests/orders';
 
 let cs: RunningCStorage;
 beforeAll(async () => {
@@ -24,8 +24,6 @@ beforeAll(async () => {
 afterAll(async () => {
   await cs.stop();
 });
-
-const PHOTO = `data:image/png;base64,${Buffer.alloc(10, 1).toString('base64')}`;
 
 /** A client that fails or moves the write of a chosen key, while its plan names it. */
 function flaky() {
@@ -74,10 +72,10 @@ async function dayEnd(options: Parameters<typeof ordersTenant>[1] = {}) {
   };
   const deliver = async (driver = tung, over: object = {}) => {
     const todo = await sentTo(driver, over);
-    const reply = await driver.call.send(
-      'POST',
-      deliveryRoutes.deliver(DAY, todo.request.request.id),
-      { version: todo.request.version, photo: PHOTO },
+    const reply = await deliverWithPhoto(
+      driver.call,
+      todo.request.request.id,
+      todo.request.version,
     );
     expect(reply.statusCode).toBe(200);
     return todo;
@@ -387,12 +385,7 @@ describe('Rows 7, 14 and 15: the figures are the app’s', () => {
     const stale = await d.asked(d.tung, 0);
     const request = await d.w.requestDoc(DAY, waiting.request.request.id, d.tung.call);
     expect(
-      (
-        await d.tung.call.send('POST', deliveryRoutes.deliver(DAY, waiting.request.request.id), {
-          version: request.version,
-          photo: PHOTO,
-        })
-      ).statusCode,
+      (await deliverWithPhoto(d.tung.call, waiting.request.request.id, request.version)).statusCode,
     ).toBe(200);
 
     const reply = await d.close(d.tung, stale);

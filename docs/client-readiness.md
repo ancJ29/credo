@@ -347,9 +347,9 @@ Not features — jobs a client's person could finish on a Monday.
    and the delivery proved to the office.** Created at
    [`bff/src/routes/orders.ts#L253`](../bff/src/routes/orders.ts#L253), a draft corrected at
    [`#L280`](../bff/src/routes/orders.ts#L280), confirmed or sent again at
-   [`#L353-L354`](../bff/src/routes/orders.ts#L353), delivered by the driver with a photo at
-   [`#L467`](../bff/src/routes/orders.ts#L467), and that photo read back by the office at
-   [`#L421`](../bff/src/routes/orders.ts#L421). The screens exist for the wrong turns as well as the right
+   [`#L353-L354`](../bff/src/routes/orders.ts#L353), delivered by the driver after the picture is sent to the photo store at an address the back end signed
+   (`bff/src/routes/orders.ts`'s deliver route and `bff/src/routes/delivery-photo.ts`'s ask), and that picture read back by the office
+   at an address the same file signs. The screens exist for the wrong turns as well as the right
    ones — `orders-1` to `orders-12` and `driver-1` to `driver-6` in
    [`visual/src/walks.ts`](../visual/src/walks.ts) — which is what makes it a job and not a demo.
 2. **A driver's day can be settled against the cash handed in and closed for good.**

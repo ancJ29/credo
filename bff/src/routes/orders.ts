@@ -8,8 +8,7 @@ import {
   customerSchema,
   type DeliveryDoc,
   type DeliveryRequest,
-  deliverRequestSchema,
-  deliveryPhotoReplySchema,
+  deliverSentRequestSchema,
   deliveryRequestSchema,
   deliveryRoutes,
   type Driver,
@@ -439,18 +438,6 @@ export function registerOrderRoutes(app: FastifyInstance, deps: Deps) {
     return { request: found, version: tag };
   });
 
-  app.get(deliveryRoutes.photo(':day', ':id'), forClient, async (request) => {
-    const { request: found } = await mustReadRequest(request);
-    const stored =
-      found.state === 'delivered'
-        ? await request.storage.getRecord(
-            recordKeys.tenant(request.tenantId).deliveryPhoto(found.day, found.id),
-          )
-        : null;
-    if (!stored) throw notFound();
-    return parsed(deliveryPhotoReplySchema, 'a delivery photo', stored);
-  });
-
   /** The signed-in driver: allowed to deliver, and a person (the root holds none, so it is a 403). */
   async function mustBeDriver(request: FastifyRequest) {
     const who = await signedIn(request);
@@ -475,23 +462,13 @@ export function registerOrderRoutes(app: FastifyInstance, deps: Deps) {
     return { deliveries };
   });
 
-  /** The photo written over any an earlier try left: a record that moved is read again, a few times. */
-  async function writePhoto(storage: TenantStorage, day: string, id: string, photo: string) {
-    const key = recordKeys.tenant(storage.tenantId).deliveryPhoto(day, id);
-    for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
-      const held = await storage.getRecord(key);
-      if ((await storage.putRecord(key, { photo }, held?.tag ?? null)) === 'saved') return;
-    }
-    throw new HttpError(503, 'Service unavailable');
-  }
-
   app.post(
     deliveryRoutes.deliver(':day', ':id'),
     { ...forClient, config: { audit: 'delivery.deliver' } },
     async (request) => {
       const { driverId, who } = await mustBeDriver(request);
       const entry = declare(request, personOf(who), (request.params as { id: string }).id);
-      const body = parse(deliverRequestSchema, request.body);
+      const body = parse(deliverSentRequestSchema, request.body);
       const found = await mustFindRequest(request);
       const { day, id, order: named } = found.request;
       if (found.request.driver.id !== driverId) throw forbidden();
@@ -499,10 +476,14 @@ export function registerOrderRoutes(app: FastifyInstance, deps: Deps) {
         throw conflict(await requestDoc(request.storage, day, id));
       }
       const keys = recordKeys.tenant(request.tenantId);
-      // The photo, then the request delivered over its tag, then the order fulfilled over its tag: a
-      // stop after the photo leaves a waiting request, a stop after the request a confirmed order
-      // whose request is delivered, which reads fulfilled.
-      await writePhoto(request.storage, day, id, body.photo);
+      // No address asked for this request, so no picture was sent: it stays waiting.
+      const asked = await request.storage.getRecord(keys.deliveryPhoto(day, id));
+      if (!asked) {
+        throw new HttpError(400, 'Bad request', { details: 'photo: no address was asked for' });
+      }
+      // The photo was asked for first (a record of its name), then the request is delivered over its
+      // tag, then the order fulfilled over its tag: a stop after the ask leaves a waiting request, a
+      // stop after the request a confirmed order whose request is delivered, which reads fulfilled.
       const delivered: DeliveryRequest = {
         ...found.request,
         state: 'delivered',
@@ -576,4 +557,9 @@ export function registerOrderRoutes(app: FastifyInstance, deps: Deps) {
     mustCan(await signedIn(request), 'orders.canEdit');
     return { drivers: await driversOf(request.storage) };
   });
+
+  return { mustFindRequest, mustReadRequest, mustBeDriver, requestDoc };
 }
+
+/** What the orders' routes hand the photo's routes, which find and read a request as these do. */
+export type RequestTools = ReturnType<typeof registerOrderRoutes>;

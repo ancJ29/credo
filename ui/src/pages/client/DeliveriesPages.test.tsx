@@ -196,6 +196,40 @@ describe('a delivered request', () => {
     expect(screen.queryByRole('heading', { level: 3, name: 'Cancel the order' })).toBeNull();
   });
 
+  it('A delivered request whose picture never arrived shows the office “The photo did not arrive.”, never a broken picture', async () => {
+    const lost = DEMO_DELIVERIES.filter(
+      (one) => one.state === 'delivered' && one.day < DEMO_TODAY && one.driver.code !== 'EMP-0005',
+    ).at(-1)!;
+    openApp(`/deliveries/${lost.day}/${lost.id}`, { as: LAN });
+
+    // the address is given, and the picture is not there: the browser's own error on it
+    const picture = await screen.findByRole('img', {
+      name: 'The goods as the driver delivered them',
+    });
+    expect(picture.getAttribute('src')).toBe(`https://photos.invalid/never-arrived/${lost.id}`);
+    fireEvent.error(picture);
+
+    expect((await screen.findByRole('alert')).textContent).toBe('The photo did not arrive.');
+    expect(
+      screen.queryByRole('img', { name: 'The goods as the driver delivered them' }),
+    ).toBeNull();
+  });
+
+  it('The walk’s fifteenth screen: the second driver’s request delivered with no picture sent, opened from the list as the office does, says “The photo did not arrive.”', async () => {
+    openApp('/deliveries', { as: LAN, photoLost: true });
+
+    await userEvent.click(await screen.findByRole('link', { name: waiting.number }));
+    expect(await heading(`Delivery request ${waiting.number}`)).toBeTruthy();
+    expect(screen.getByText('Delivered')).toBeTruthy();
+    const picture = await screen.findByRole('img', {
+      name: 'The goods as the driver delivered them',
+    });
+    expect(picture.getAttribute('src')).toBe(`https://photos.invalid/never-arrived/${waiting.id}`);
+    fireEvent.error(picture);
+
+    expect((await screen.findByRole('alert')).textContent).toBe('The photo did not arrive.');
+  });
+
   it('says the photo could not be loaded, and tries again', async () => {
     openApp(at(delivered), {
       as: LAN,

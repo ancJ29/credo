@@ -170,7 +170,7 @@ outside the prefix is a 400, a cursor of another list (`TestAListAfterOutsideThe
 one that is not one text is a 400 as a prefix is. A list with no `after` answers as before.
 
 A page ends at 1,000 records or about 4 MiB of data (`MaxListBytes`), whichever is first, and holds
-at least one record however large: a delivery's photo is a record of up to 50 KB before its
+at least one record however large: a person's photo is a record of up to 50 KB before its
 encoding, so a page of 1,000 would be about 70 MB on a box with a little over 270 MiB free
 (`TestAListEndsAtAboutFourMebibytesAndHoldsOneRecordHoweverLarge`). `more` says so, and no caller
 sizes its own pages.

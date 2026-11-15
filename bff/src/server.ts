@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { createActivityClient, createCStorageClient } from '@credo/shared';
+import { photoStoreOf } from './photo-store';
 import { buildApp } from './app';
 import { BUILD } from './build';
 import { constantTimeEqual } from './calling/constant-time';
@@ -34,10 +35,12 @@ export function buildBff(
       ? null
       : // The environment is read with the pair together, so a URL has its key.
         createActivityClient({ baseUrl: config.AUDIT_URL, key: config.AUDIT_KEY as string });
+  const photoStore = photoStoreOf(config);
   const app = buildApp({
     storage,
     boxes,
     activity,
+    photoStore,
     now,
     origin: config.APP_ORIGIN,
     serviceKey: config.SERVICE_ACCESS_KEY,

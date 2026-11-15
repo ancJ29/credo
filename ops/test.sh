@@ -2917,6 +2917,10 @@ case $cmd in
   *"cat /etc/c-storage/bff.env"*)
     if [ -f "$S/box/bff.env" ]; then cat "$S/box/bff.env"; else printf 'SERVICE_CODE=bff\nSERVICE_ACCESS_KEY=%s\n' "$FAKE_SKEY"; fi ;;
   *"cat /etc/audit-backbone/keys.env"*) if [ -n "${FAKE_NO_AUDIT_KEY:-}" ]; then exit 1; fi; printf 'ACTIVITY_WRITE_KEY=%s\n' "$FAKE_UKEY" ;;
+  *"test -e /etc/c-storage/photo-store.env"*) if [ -n "${FAKE_PHOTO_SSH_FAIL:-}" ]; then exit 255; fi; [ -n "${FAKE_PHOTO_STORE:-}" ] ;;
+  *"cat /etc/c-storage/photo-store.env"*)
+    printf 'PHOTO_STORE_URL=%s\nPHOTO_STORE_KEY_ID=%s\n' "$FAKE_PURL" "$FAKE_PKID"
+    if [ -z "${FAKE_PHOTO_PARTIAL:-}" ]; then printf 'PHOTO_STORE_KEY_SECRET=%s\n' "$FAKE_PSEC"; fi ;;
   *"test -e /etc/c-storage/bff.env"*) [ -f "$S/bff.made" ] ;;
   *"sudo bash -s /var/lib/private/c-storage"*) cat >/dev/null; echo "${FAKE_BOX:-2048 2048 8192} " ;;
   *"sudo bash -s"*) cat >/dev/null; touch "$S/bff.made"; echo "bff.env: made"; echo "bff.env: mode 600, owner root" ;;
@@ -2928,6 +2932,7 @@ STANDIN
 chmod +x "$E2E/fakebin/aws" "$E2E/fakebin/bru" "$E2E/fakebin/node" "$E2E/fakebin/ssh"
 export FAKE_DKEY=c0ffee11c0ffee22c0ffee33c0ffee44c0ffee55c0ffee66c0ffee77c0ffee88
 export FAKE_IKEY=4f1c9e0b7a2d4c6e8f103a5b7c9d1e2f FAKE_AKEY=9a8b7c6d5e4f30211203f4e5d6c7b8a9 FAKE_SKEY=5d6e7f8091a2b3c4d5e6f708192a3b4c FAKE_UKEY=0a1b2c3d4e5f60718293a4b5c6d7e8f90a1b2c3d4e5f60718293a4b5c6d7e8f9
+export FAKE_PURL=https://r2-test-host.invalid/photo-bucket FAKE_PKID=7b1e5d0c9a3f42e8b6d4a1c0e9f87d65 FAKE_PSEC=3c9e1f7a5b2d4086a1c3e5f7092b4d6e8a0c2e4f61739b5d7f1a3c5e7092b4d6
 export RIDGE_SCRIPTS_DIR=$REPO_DIR/scripts
 export PATH="$E2E/fakebin:$PATH"
 # By hand, as the human runs it: in GitHub's job GITHUB_ACTIONS is set, and mask then writes
@@ -3384,7 +3389,7 @@ export FAKE_AUDIT_SHA=$chk_sha
 rules "$ssh_rule" "$(tcp "$BOX_PORT" "$none" sg-0bff)" "$(tcp "$AUDIT_PORT" "$none" sg-0bff)" >"$CHK/box-rules.json"
 jq -n --argjson e "$(rules "$(tcp "$BOX_PORT" "$none" sg-0box)" "$(tcp "$AUDIT_PORT" "$none" sg-0box)")" '{SecurityGroups: [{IpPermissionsEgress: $e, IpPermissions: []}]}' >"$CHK/bff-sg.json"
 jq -c --arg sha "$chk_sha" --arg app "$FAKE_APP" --arg url "http://10.20.30.40:$BOX_PORT" \
-  '.VpcConfig = {SubnetIds: ["subnet-test"], SecurityGroupIds: ["sg-0bff"]} | .Description = $sha | .AppOrigin = $app | .Url = $url' <<<"$fn" >"$CHK/fn.json"
+  '.VpcConfig = {SubnetIds: ["subnet-test"], SecurityGroupIds: ["sg-0bff"]} | .Description = $sha | .AppOrigin = $app | .Url = $url | .Names += ["PHOTO_STORE_URL", "PHOTO_STORE_KEY_ID", "PHOTO_STORE_KEY_SECRET"]' <<<"$fn" >"$CHK/fn.json"
 echo "$pab" >"$CHK/pab.json"
 # the copy: a status and a bucket listing that are sound by the stand-ins' clock (a run that wants them red rewrites them)
 chk_stamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)
@@ -3523,6 +3528,13 @@ check "  and still runs the six reads that need no client, each green" 6 "$(six_
 check "  and layer four's reads and the commit agreement are made" "1 1" \
   "$(chk_has '^ok   /health, the function.s description and index.html.s metadata name one commit: yes' "$S/out") $(chk_has '^ok   the UI.s bucket blocks all public access' "$S/out")"
 
+# the photo is mandatory: a function holding the eight alone is red, and the red names the box's file
+cp "$CHK/fn.json" "$CHK/fn.eleven"
+jq -c '.Names -= ["PHOTO_STORE_URL", "PHOTO_STORE_KEY_ID", "PHOTO_STORE_KEY_SECRET"]' "$CHK/fn.eleven" >"$CHK/fn.json"
+chk_run photoless check.sh ridge --reads-only
+check "13 of the delivery photos plan: a function with the eight variables and no photo store is red, naming the box's photo-store.env and that no driver can deliver" "1 1 1" \
+  "$RC $(chk_has "RED  the function holds the photo store's three settings.*photo-store.env" "$S/out") $(chk_has "^RED .*no driver can deliver" "$S/out")"
+cp "$CHK/fn.eleven" "$CHK/fn.json"
 chk_run flag check.sh ridge --reads-only
 check "case 9: --reads-only on ridge gives the same run: green, no key, no collection, no client" "0 1 0 gone gone 6" \
   "$RC $(chk_has '^== green' "$S/out") $(chk_has 'c-storage/keys.env' "$S/ssh.calls") $(file_state "$S/bru.calls") $(file_state "$S/ridge.calls") $(six_reads "$S/out")"
@@ -3745,6 +3757,10 @@ check "  the function's settings carry the log's address, the box's private addr
 check "  the log's key is masked first, and is in no log and nowhere on the terminal but the mask line" "1 0 0" \
   "$(grep -cE "^::add-mask::$FAKE_UKEY\$" "$S/out" || true) $(cat "$OPS_LOG_DIR"/*.log | grep -cF "$FAKE_UKEY" || true) $(grep -v '^::add-mask::' "$S/out" | grep -cF "$FAKE_UKEY" || true)"
 
+# case 15 of docs/plans/2026-11-11-delivery-photos.md: a box with no photo-store.env sends the function none of the three settings
+check "15: with no photo-store.env the deploy prints that photos are off, and that no driver can deliver, and the function's environment holds none of the three" "1 0" \
+  "$(grep -c '^photo-store.env: absent, photos off: no driver can deliver until the file is written' "$S/out" || true) $(jq -r '.Variables | keys | map(select(startswith("PHOTO_STORE_"))) | length' "$S/envfile.seen")"
+
 # a second run: the service is present; the first run's bff.env is left as it is
 GITHUB_ACTIONS='' e2e_run app.sh ridge
 check "a second app.sh finds the service present, and the box's file left as it is" "0 1 1" \
@@ -3849,6 +3865,30 @@ e2e_fresh app-no-audit-key
 FAKE_NO_AUDIT_KEY=1 e2e_run app.sh ridge
 check "a box with no /etc/audit-backbone/keys.env is refused by name, before the function or the UI is touched" "1 1 0 gone" \
   "$RC $(grep -c 'the box holds no /etc/audit-backbone/keys.env: ops/release.sh ridge ships the activity log' "$S/out" || true) $(grep -c 'lambda update-function' "$S/aws.calls" || true) $(file_state "$S/code.zip")"
+
+echo "== ops/app.sh on a box that holds photo-store.env: the three settings go into the function's whole environment, masked (case 15 of docs/plans/2026-11-11-delivery-photos.md)"
+e2e_fresh app-photos
+GITHUB_ACTIONS=true FAKE_PHOTO_STORE=1 e2e_run app.sh ridge
+check "15: with a photo-store.env on the box the function's environment holds the three settings as the file has them" "0 $FAKE_PURL $FAKE_PKID $FAKE_PSEC" \
+  "$RC $(jq -r .Variables.PHOTO_STORE_URL "$S/envfile.seen") $(jq -r .Variables.PHOTO_STORE_KEY_ID "$S/envfile.seen") $(jq -r .Variables.PHOTO_STORE_KEY_SECRET "$S/envfile.seen")"
+check "  the eight variables stay, so the function holds eleven names, and check.sh takes that list" "$BFF_ENV_NAMES_PHOTOS yes" \
+  "$(jq -r '.Variables | keys | join(",")' "$S/envfile.seen") $([ "$(function_env_names "$(jq -c '{Names: (.Variables | keys)}' "$S/envfile.seen")")" = "$BFF_ENV_NAMES_PHOTOS" ] && echo yes || echo no)"
+check "  each of the three is masked first, and is in no log and nowhere on the terminal but the mask lines" "3 0 0" \
+  "$(grep -cE "^::add-mask::($FAKE_PURL|$FAKE_PKID|$FAKE_PSEC)\$" "$S/out" || true) $(cat "$OPS_LOG_DIR"/*.log | grep -cE "$FAKE_PURL|$FAKE_PKID|$FAKE_PSEC" || true) $(grep -v '^::add-mask::' "$S/out" | grep -cE "$FAKE_PURL|$FAKE_PKID|$FAKE_PSEC" || true)"
+e2e_fresh app-photos-partial
+FAKE_PHOTO_STORE=1 FAKE_PHOTO_PARTIAL=1 e2e_run app.sh ridge
+check "  a file holding two of the three is refused by name, before the function is touched" "1 1 0" \
+  "$RC $(grep -c "photo-store.env holds not all three" "$S/out" || true) $(grep -c 'lambda update-function' "$S/aws.calls" || true)"
+
+e2e_fresh app-photos-sshfail
+FAKE_PHOTO_SSH_FAIL=1 e2e_run app.sh ridge
+check "  a box that cannot be asked about photo-store.env (ssh's 255) stops the deploy by name, before the function is touched, never as an absent file" "1 1 0 0" \
+  "$RC $(grep -c 'could not be asked whether photo-store.env is there (exit 255)' "$S/out" || true) $(grep -c 'lambda update-function' "$S/aws.calls" || true) $(grep -c 'photos off' "$S/out" || true)"
+check "  bff_settings_set refuses a call that never ran photo_store_read, as it refuses one that never ran audit_read" 1 \
+  "$(bash -c '. "$1/lib.sh"; AUDIT_KEY=k; bff_settings_set door' _ "$OPS_DIR" 2>&1 | grep -c 'bff_settings_set: photo_store_read first' || true)"
+# M2: bash 3.2 writes a here-string to a temp file, so none may carry a key's value
+check "  ops/lib.sh holds no here-string that carries a key's value (a secret reaches a command on a pipe)" 0 \
+  "$(grep -cE '<<<.*(kv|SECRET|STORAGE_BOXES_JSON|pass)' "$OPS_DIR/lib.sh" || true)"
 
 echo "== ops/release.sh ends the deploy job's later steps when superseded"
 e2e_fresh release-superseded

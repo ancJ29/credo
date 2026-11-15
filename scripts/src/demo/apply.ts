@@ -14,6 +14,7 @@ import {
   DEVICE_HEADER,
   deliveryRoutes,
   type DeliveryDoc,
+  type PhotoAddressReply,
   type DeliveryRequest,
   type Driver as Deliverer,
   driverDay,
@@ -42,6 +43,7 @@ import { companyConfig, staffSetupOf } from './company';
 import { addDays, atMinute, daysBetween } from './days';
 import { customersOf, productsOf } from './lists';
 import { type Ledger, readLedger, SEED_BLOCKS, type SeedBlock, writeLedger } from './ledger';
+import { FORGETTING_SINK, type PhotoSink, sendPicture } from '../running/photo-store';
 import { allCopies, assertLedgerScenario, type MappedCopy } from './mapping';
 import { plannedDeliveries, plannedOrders } from './orders';
 import { closeOf } from './reconcile';
@@ -86,10 +88,10 @@ const NO_OPERATOR = { origin: 'http://localhost', serviceKey: 'the demo seed' };
 /** The BFF's own code in this process, signed in as the copy's root by a session the BFF's
  * `createSessions` issues, its clock set by the caller to each event's time. No password is read,
  * made or shown for it. */
-function driverFor(storage: CStorageClient, tenantId: string, code: string) {
+function driverFor(storage: CStorageClient, tenantId: string, code: string, photos: PhotoSink) {
   let clock = 0;
   const now = () => clock;
-  const app = buildApp({ storage, now, ...NO_OPERATOR, logger: false });
+  const app = buildApp({ storage, now, ...NO_OPERATOR, photoStore: photos.store, logger: false });
   const company = tenantStorage(storage, tenantId);
   const sessions = createSessions({
     storage: company,
@@ -128,6 +130,7 @@ function driverFor(storage: CStorageClient, tenantId: string, code: string) {
     return reply.json() as T;
   }
   return {
+    photos,
     at: (ms: number) => void (clock = ms),
     send,
     must,
@@ -522,13 +525,18 @@ async function dayDeliveries(
     const photo = photos[Math.floor(plan.photoDraw * photos.length)];
     const url = deliveryRoutes.one(day, request.id);
     const read = await driver.must<DeliveryDoc>('GET', url, undefined, as);
-    const done = await unlessChanged<DeliveryDoc>(
-      driver.send(
+    // The phone's order: ask where to send the picture, send it, then mark delivered.
+    await sendPicture(driver.photos, photo, async (body) => {
+      const asked = await driver.must<PhotoAddressReply>(
         'POST',
-        deliveryRoutes.deliver(day, request.id),
-        { version: read.version, photo },
+        deliveryRoutes.photoAddress(day, request.id),
+        body,
         as,
-      ),
+      );
+      return asked.url;
+    });
+    const done = await unlessChanged<DeliveryDoc>(
+      driver.send('POST', deliveryRoutes.deliver(day, request.id), { version: read.version }, as),
       `POST ${deliveryRoutes.deliver(day, request.id)}`,
     );
     if (done === null) {
@@ -636,6 +644,7 @@ export async function applyCopy(
   today: string,
   log: Log = () => undefined,
   limit: number = Infinity,
+  photos: PhotoSink = FORGETTING_SINK,
 ): Promise<Report> {
   const through = addDays(today, -1);
   const skipped: string[] = [];
@@ -690,7 +699,7 @@ export async function applyCopy(
   const todo = missed.slice(0, limit);
   remaining = missed.length - todo.length;
 
-  const driver = driverFor(storage, tenantId, copy.code);
+  const driver = driverFor(storage, tenantId, copy.code, photos);
   if (!ledger.filled) {
     await driver.open(atMinute(ledger.firstDay, OPENING_MINUTE));
     try {
@@ -768,12 +777,13 @@ export async function applyAll(
   log: Log,
   partner?: string,
   limit?: number,
+  photos?: PhotoSink,
 ) {
   return await Promise.all(
     allCopies()
       .filter((copy) => partner === undefined || copy.partner === partner)
       .map((copy) =>
-        applyCopy(storage, copy, today, log, limit).catch((error: unknown) => {
+        applyCopy(storage, copy, today, log, limit, photos).catch((error: unknown) => {
           throw new Error(`${copy.code}: ${(error as Error).message}`, { cause: error });
         }),
       ),
@@ -791,6 +801,7 @@ export async function startDemo(
   storage: CStorageClient,
   today: string,
   partner?: string,
+  photos?: PhotoSink,
 ): Promise<DemoCopy[]> {
   const chosen = allCopies().filter((copy) => partner === undefined || copy.partner === partner);
   if (chosen.length === 0) throw new Error('no copy in the mapping for that partner');
@@ -803,7 +814,14 @@ export async function startDemo(
       });
       if (made === 'taken') throw new Error(`${copy.code}: the service already holds it`);
       for (const back of [3, 2, 1, 0]) {
-        const report = await applyCopy(storage, copy, addDays(today, -back));
+        const report = await applyCopy(
+          storage,
+          copy,
+          addDays(today, -back),
+          undefined,
+          undefined,
+          photos,
+        );
         if (report.status !== 'ok') throw new Error(`${copy.code}: ${report.note}`);
       }
       return { ...copy, rootPassword: made.password };

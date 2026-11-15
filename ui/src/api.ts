@@ -28,12 +28,10 @@ import {
   customerDocSchema,
   customerListReplySchema,
   customerRoutes,
-  type DeliverRequest,
+  type DeliverSentRequest,
   type DeliveryDoc,
   deliveryDocSchema,
   deliveryListReplySchema,
-  type DeliveryPhotoReply,
-  deliveryPhotoReplySchema,
   deliveryRoutes,
   type DeliveryRequest,
   type Driver,
@@ -68,6 +66,10 @@ import {
   type JoinOptionsReply,
   joinOptionsReplySchema,
   type JoinRequest,
+  type PhotoAddressReply,
+  photoAddressReplySchema,
+  type PhotoAddressRequest,
+  photoAddressRequestOf,
   type PhotoReply,
   photoReplySchema,
   type Product,
@@ -196,6 +198,13 @@ export type OrderResult =
 /** A request cancelled or delivered, or the version moved (or a step its state does not allow). */
 export type DeliveryResult =
   { kind: 'done'; doc: DeliveryDoc } | { kind: 'conflict'; current: DeliveryDoc | null };
+
+/** An address to send a delivery's photo to, or the request no longer waiting (a 409), as it is now
+ * when the answer held it. */
+export type PhotoAddressResult =
+  { kind: 'address'; url: string } | Extract<DeliveryResult, { kind: 'conflict' }>;
+/** How long the picture's one try to its address may take, in milliseconds. */
+const PHOTO_SEND_MS = 20_000;
 
 /** A driver's day closed, or the day moved under the page (another set of requests, or closed
  * already): a 409 is a result, and the page reads the day again. */
@@ -712,8 +721,9 @@ export function createApi({
       return (await read(response, deliveryListReplySchema)).deliveries;
     },
 
-    /** A request marked delivered with its photo, by its own driver; a 409 carries it as it is now. */
-    async deliver(day: string, id: string, request: DeliverRequest): Promise<DeliveryResult> {
+    /** A request marked delivered once its photo was sent, by its own driver; a 409 carries it as
+     * it is now. */
+    async deliver(day: string, id: string, request: DeliverSentRequest): Promise<DeliveryResult> {
       const response = await send('POST', deliveryRoutes.deliver(day, id), request);
       if (response.status === 409) {
         return { kind: 'conflict', current: await currentOf(response, deliveryDocSchema) };
@@ -722,11 +732,45 @@ export function createApi({
       return { kind: 'done', doc: await read(response, deliveryDocSchema) };
     },
 
-    /** A delivered request's photo. */
-    async getDeliveryPhoto(day: string, id: string): Promise<DeliveryPhotoReply> {
+    /** Where the photo of a waiting request may be sent; a 409 carries the request as it is now. */
+    async askPhotoAddress(
+      day: string,
+      id: string,
+      request: PhotoAddressRequest,
+    ): Promise<PhotoAddressResult> {
+      const response = await send('POST', deliveryRoutes.photoAddress(day, id), request);
+      if (response.status === 409) {
+        return { kind: 'conflict', current: await currentOf(response, deliveryDocSchema) };
+      }
+      if (!response.ok) throw new ApiError(response.status);
+      return { kind: 'address', url: (await read(response, photoAddressReplySchema)).url };
+    },
+
+    /** The picture itself to its address, in one try of `PHOTO_SEND_MS`. It goes to the photo store
+     * and not to the back end, so it carries no handle. */
+    async putPhoto(url: string, photo: string): Promise<void> {
+      const bytes = Uint8Array.from(atob(photo.slice(photo.indexOf(',') + 1)), (c) =>
+        c.charCodeAt(0),
+      );
+      let response: Response;
+      try {
+        response = await call(url, {
+          method: 'PUT',
+          headers: { 'content-type': photoAddressRequestOf(photo).type },
+          body: bytes,
+          signal: AbortSignal.timeout(PHOTO_SEND_MS),
+        });
+      } catch {
+        throw new ApiError(null);
+      }
+      if (!response.ok) throw new ApiError(response.status);
+    },
+
+    /** The address a delivered request's photo is read from. */
+    async getDeliveryPhoto(day: string, id: string): Promise<PhotoAddressReply> {
       const response = await send('GET', deliveryRoutes.photo(day, id));
       if (!response.ok) throw new ApiError(response.status);
-      return await read(response, deliveryPhotoReplySchema);
+      return await read(response, photoAddressReplySchema);
     },
 
     /** The drivers' days closed on one day. */

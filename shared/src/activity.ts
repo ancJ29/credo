@@ -20,6 +20,7 @@ export const ACTIONS = {
   'order.cancel': 'order cancelled',
   'delivery.deliver': 'delivery done',
   'delivery.cancel': 'delivery cancelled',
+  'delivery.photo': 'delivery photo asked for',
   'reconciliation.close': 'day closed for a driver',
   'employee.create': 'person added',
   'employee.import': 'person imported',

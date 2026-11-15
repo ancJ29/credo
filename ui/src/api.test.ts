@@ -1,11 +1,11 @@
-import { type TenantConfig } from '@credo/shared';
+import { photoAddressRequestOf, type TenantConfig } from '@credo/shared';
 import {
   DEMO_DELIVERIES,
-  DEMO_DELIVERY_PHOTOS,
   DEMO_ORDERS,
   DEMO_RECONCILIATIONS,
+  DEMO_WALK_PROOF,
 } from '@credo/shared/demo';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { ApiError, createApi, hopOf } from './api';
 
 const config: TenantConfig = {
@@ -1035,9 +1035,8 @@ describe('the API client', () => {
       expect(JSON.parse(calls[3]?.init.body as string)).toEqual(ask);
     });
 
-    it('lists the driver’s own requests of a day, delivers one over the version read with its photo (a 409 being a conflict, with the request as it is now when the answer holds one) and reads its photo', async () => {
-      const photo =
-        DEMO_DELIVERY_PHOTOS[DEMO_DELIVERIES.find((one) => one.state === 'delivered')!.id];
+    it('lists the driver’s own requests of a day, delivers one over the version read once its photo was sent (a 409 being a conflict, with the request as it is now when the answer holds one) and reads its photo’s address', async () => {
+      const url = 'https://photos.example/a?sig=1';
       const { calls, api } = fake(
         json({ deliveries: [request] }),
         json({}, 403),
@@ -1045,28 +1044,28 @@ describe('the API client', () => {
         json({ error: 'moved', current: requestDoc }, 409),
         json({ error: 'moved' }, 409),
         json({}, 403),
-        json({ photo }),
+        json({ url }),
         json({}, 404),
       );
 
       expect(await api.myDeliveries(request.day)).toEqual([request]);
       await expect(api.myDeliveries(request.day)).rejects.toMatchObject({ status: 403 });
-      expect(await api.deliver(request.day, request.id, { version, photo })).toEqual({
+      expect(await api.deliver(request.day, request.id, { version })).toEqual({
         kind: 'done',
         doc: requestDoc,
       });
-      expect(await api.deliver(request.day, request.id, { version, photo })).toEqual({
+      expect(await api.deliver(request.day, request.id, { version })).toEqual({
         kind: 'conflict',
         current: requestDoc,
       });
-      expect(await api.deliver(request.day, request.id, { version, photo })).toEqual({
+      expect(await api.deliver(request.day, request.id, { version })).toEqual({
         kind: 'conflict',
         current: null,
       });
-      await expect(api.deliver(request.day, request.id, { version, photo })).rejects.toMatchObject({
+      await expect(api.deliver(request.day, request.id, { version })).rejects.toMatchObject({
         status: 403,
       });
-      expect(await api.getDeliveryPhoto(request.day, request.id)).toEqual({ photo });
+      expect(await api.getDeliveryPhoto(request.day, request.id)).toEqual({ url });
       await expect(api.getDeliveryPhoto(request.day, request.id)).rejects.toMatchObject({
         status: 404,
       });
@@ -1080,7 +1079,57 @@ describe('the API client', () => {
         ['GET', `/api/deliveries/${request.day}/${request.id}/photo`],
         ['GET', `/api/deliveries/${request.day}/${request.id}/photo`],
       ]);
-      expect(calls[2]?.init.body).toBe(JSON.stringify({ version, photo }));
+      expect(calls[2]?.init.body).toBe(JSON.stringify({ version }));
+    });
+
+    it('asks where a delivery’s photo may be sent (a 409 being a conflict, a refusal an error) and sends the picture to that address in one try of 20 seconds, with its type and no handle', async () => {
+      const photo = DEMO_WALK_PROOF;
+      const ask = photoAddressRequestOf(photo);
+      const url = 'https://photos.example/a?sig=1';
+      const timeout = vi.spyOn(AbortSignal, 'timeout');
+      const { calls, api } = fake(
+        json({ url }),
+        json({ error: 'moved', current: requestDoc }, 409),
+        json({ error: 'moved' }, 409),
+        json({}, 403),
+        new Response(null, { status: 200 }),
+        new Response(null, { status: 403 }),
+        new Error('no answer'),
+      );
+
+      expect(await api.askPhotoAddress(request.day, request.id, ask)).toEqual({
+        kind: 'address',
+        url,
+      });
+      expect(await api.askPhotoAddress(request.day, request.id, ask)).toEqual({
+        kind: 'conflict',
+        current: requestDoc,
+      });
+      expect(await api.askPhotoAddress(request.day, request.id, ask)).toEqual({
+        kind: 'conflict',
+        current: null,
+      });
+      await expect(api.askPhotoAddress(request.day, request.id, ask)).rejects.toMatchObject({
+        status: 403,
+      });
+      await api.putPhoto(url, photo);
+      await expect(api.putPhoto(url, photo)).rejects.toMatchObject({ status: 403 });
+      await expect(api.putPhoto(url, photo)).rejects.toMatchObject({ status: null });
+
+      expect(calls.map((call) => [call.init.method, call.path])).toEqual([
+        ['POST', `/api/deliveries/${request.day}/${request.id}/photo-address`],
+        ['POST', `/api/deliveries/${request.day}/${request.id}/photo-address`],
+        ['POST', `/api/deliveries/${request.day}/${request.id}/photo-address`],
+        ['POST', `/api/deliveries/${request.day}/${request.id}/photo-address`],
+        ['PUT', url],
+        ['PUT', url],
+        ['PUT', url],
+      ]);
+      expect(calls[0]?.init.body).toBe(JSON.stringify(ask));
+      expect(calls[4]?.init.headers).toEqual({ 'content-type': ask.type });
+      expect((calls[4]?.init.body as Uint8Array).length).toBe(ask.bytes);
+      expect(timeout).toHaveBeenCalledWith(20_000);
+      timeout.mockRestore();
     });
   });
 });

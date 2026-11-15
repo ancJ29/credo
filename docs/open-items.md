@@ -1409,7 +1409,9 @@ The wait after wrong passwords (`docs/plans/2026-11-11-password-wait.md`) counts
 
 `LIVING` in `scripts/src/citations.ts` lists the living documents by path, and `docs/open-items.md` is not among them, so no step reads it. On 2026-11-09 a merge-conflict marker sat in that file through a full green gate for that reason. The log cites many files and symbols that later moved, and its dead citations have not been audited, so adding it today would turn the check red on old entries. *Fix:* audit the log's citations and repair or delete the dead ones, then add a `docs/open-items.md` entry to `LIVING`; a grep for a line starting with the conflict markers is the cheaper stopgap. *Trigger:* the next change to the citation check, or the next conflict in this file.
 
-## 228. The test photo in the cross-company tests is a third copy of one value — the machine; `[DEFERRED]` (the cross-company tests' review, 2026-11-11, Low)
+## 228. The test photo in the cross-company tests is a third copy of one value — the machine; `[FIXED]` (the cross-company tests' review, 2026-11-11, Low)
+
+*Fixed 2026-11-15:* the delivery photos' step 3 removed the old picture schemas and with them the three copies of the test photo; no `PHOTO` constant is left in `bff/`. As filed:
 
 `PHOTO` in `bff/src/routes/cross-tenant.route.test.ts` is a third copy of the same test photo, after `bff/src/routes/reconciliations.route.test.ts` and an inline one in `bff/src/routes/orders.route.test.ts` (code.md's C1, one home for a value). Fix: export it once from `bff/tests/orders.ts`. *Trigger:* the next change to any of those three test files.
 
@@ -1446,6 +1448,14 @@ A row cited twice in one document is the one shape where two branches each remov
 ## 251. The activity log's key, once it runs on ridge, has no way to be replaced — the machine, the activity log's lane; *parked* until that key reaches a deployed environment (the front door and keys plan, 2026-11-11)
 
 The front door and keys plan (`docs/plans/2026-11-11-front-door-keys.md`) makes `ops/keys.sh` replace the four keys a deployed environment holds once it is built: the store's internal and super-admin keys, the back end's service key and the front door's key. The back end's fifth, `AUDIT_KEY` (`bff/src/env.ts`'s `auditShape`), is set only by the local stack, since `ops/app.sh` sets no `AUDIT` variable; the activity log's own lane carries it to ridge. *Fix:* when that lane writes the key to the box and the function, it adds the key to `ops/keys.sh` as one more kind, in its own order (the service first, then the function), and to the function's variable list in `ops/lib.sh`. *Trigger:* the activity log running on any deployed environment.
+
+## 266. Deleting a company leaves its delivery photos on R2 — the machine, then the human for the run; `[DEFERRED]` (the delivery photos' plan, 2026-11-11, Medium)
+
+Once photos leave the records (`docs/plans/2026-11-11-delivery-photos.md`), the operator's delete of a company (`bff/src/routes/clients-delete.ts`) sweeps its records and cannot reach its pictures: the back end has no route out of its network (`ops/network.yml`, "nothing here can leave the VPC"). Every object's name starts with the company's minted id, so one prefix holds them all. Deferred: a terminal command the human runs after a delete, removing that prefix with the bucket's key, or a lifecycle rule; a company's pictures are personal data, so which one is the human's. *Trigger:* the first real company deleted, or the photos' landing on `main`, whichever comes first.
+
+## 267. No keeping window for delivery photos — the human, for a real client; `[PARKED]` (the delivery photos' plan, 2026-11-11, Low)
+
+A delivery photo lives in the bucket until something deletes it, and nothing does (the product has no delete); the legacy app laid its folders out for a sweep by day and never ran one. How long a client keeps its delivery evidence is that client's rule. R2's lifecycle rule, by name prefix and age, is the means once a window is stated (step 2 of the plan reads R2's own page on it). *Trigger:* the first real client, or a bucket past its free storage.
 
 ## 286. The write measurement on ridge is in the final page's order of work and in no milestone of the week's cut — the orchestrator places it; `[OPEN]` (the activity log on ridge's plan, 2026-11-12, Medium)
 
@@ -1835,6 +1845,18 @@ The key push is held to this environment's boxes by `ec2:ResourceTag/Env` (`ops/
 
 The page for conditions lists `Fn::FindInMap`, `Ref` and other condition functions as usable inside `Fn::Equals` and `Fn::Or`, and `Fn::Join` only for `Fn::If`; `HasMoreBoxes` (`ops/env.yml`) puts it inside `Fn::Equals`. cfn-lint 1.59.0 accepts the template and the idiom is common, but if CloudFormation refuses it, every change set made from this template fails at its creation, before anything runs. The sitting's first `--plan` on ridge is the run that settles it; the condition would then need another shape (item 463's fix may change it anyway).
 
+## 469. The data set's pictures are PNGs and the back end takes a JPEG alone, so the seed, the generator and the walk ask for `image/jpeg` for a PNG's bytes — the machine; `[DEFERRED]` (the delivery photos' plan, step 4, 2026-11-14, Low)
+
+`DEMO_PROOFS` in `shared/src/demo-proofs.ts` are drawn PNG data URLs; the ask (`bff/src/routes/delivery-photo.ts`) refuses any type but `image/jpeg`. `sendPicture` in `scripts/src/running/photo-store.ts` says JPEG for the same length and the stand-in keeps the bytes under that type; a browser sniffs a PNG shown as JPEG, but a real bucket holds a mislabelled object. Real JPEG pictures in the data set end it; wanted before the ridge seed sends pictures to the real bucket.
+
+## 470. The ridge seed asks photo addresses and keeps no picture, so its delivered requests name objects the bucket does not hold — the machine; `[DEFERRED]` to step 8 of the delivery photos' plan (2026-11-14, Low)
+
+`applyAll` and `applyCopy` called from `scripts/src/ridge.ts` use `FORGETTING_SINK` (`scripts/src/running/photo-store.ts`): the record names an object and the picture goes nowhere, since the ridge seed has no key of the real bucket. `pnpm demo` and `pnpm stack` pass the stand-in's sink and keep every picture. A photo read on ridge's seeded deliveries answers an address that leads to a 404 until step 8 gives the seed the bucket's key or the seed's delivered requests are left without photos there.
+
+## 471. A request that its users delivered between the seed's read and its ask of the photo address stops the run red instead of being skipped — the machine; `[DEFERRED]` (the delivery photos' plan, step 4, 2026-11-14, Low)
+
+In `dayDeliveries` (`scripts/src/demo/apply.ts`) the ask is `driver.must`, so a 409 or a 404 from it throws, where the deliver after it was a skip (`unlessChanged`, "only a 409 or a 404 is a skip"). The read just before shows the request waiting, so only users acting within milliseconds reach it; no test provokes it, since the ask writes no delivery record to hook. Wanted: the ask through `unlessChanged`, with a case that moves the request between the read and the ask.
+
 ## 472. The company's own address on a ridge run is built in no tested line, and the setting that replaces it is honoured outside the tests — the machine; `[DEFERRED]` (the review of the company address, 2026-11-14, Low)
 
 `ops/check.sh`'s `"${CHECK_OWN_BASE:-https://$tenant.$own_domain}"` is only ever run with `CHECK_OWN_BASE` set, so a wrong default that still answers (the app's address) would pass every test and read the operator's address twice on ridge, green; and nothing limits `CHECK_OWN_BASE` to the tests, as `OPS_TESTS_RUNNING` limits the other switches. Fix: one `own_address <code> <domain>` in `ops/lib.sh` with a test of its output, and `CHECK_OWN_BASE` read only under `OPS_TESTS_RUNNING`, refused by name otherwise.
@@ -1855,6 +1877,18 @@ The page for conditions lists `Fn::FindInMap`, `Ref` and other condition functio
 
 The function's `APP_ORIGIN` is written only by `bff_settings_set`, which only `ops/app.sh` and `ops/keys.sh` call, so a push before the stack run leaves it at CloudFront's name and the passkey at the operator's address is refused until a later deploy. Fix at step 6 and in step 7's one-off: push, certificate, stack run, wildcard record, then `ops/app.sh ridge` or any deploy, before the passkey; and one line that the check is red on the own-address pass until the wildcard record exists.
 
+## 480. The photo probe's second and fifth lines expect what R2 has not been read to do, and it leaves one object a run — the machine; `[OPEN]` (the delivery photos' step 6, 2026-11-15, Low)
+
+`one-off/photo-store-probe.sh` (outside git) expects R2 to refuse a PUT longer than the length it signed with a 403, and the preflight from a company's own address (`<code>.<Domain>`) to be allowed; neither is read from R2's documentation, both are the probe's to find out at step 7, and a red line there is a finding, not a script fault (whether R2's rule takes a wildcard origin is the fifth line). The probe puts one object, `probe/<stamp>.jpg`, in the bucket each run and nothing deletes it (the product has no delete); the human may empty the `probe/` folder from the dashboard.
+
+## 481. Case 2's send half is untested: the cross-company test reads only (the review of the delivery photos, 2026-11-15, Low) — the machine; `[DEFERRED]`
+
+`bff/src/routes/cross-tenant.route.test.ts#L219-L231` shows company beta reading company alpha's photo as a 404, but no test has beta's driver ask for an address on alpha's request. It needs the second company's driver in `twoCompanies`.
+
+## 482. In both photo one-offs a `die` inside an `ops/lib.sh` helper ends the run with "== done" and no verdict line (the review of the delivery photos, 2026-11-15, Low) — the machine; `[DEFERRED]`
+
+`die` prints to the terminal's error stream and exits 1, so the one-offs' own log (outside git, `one-off/`) ends on "== done" with no `== verdict` line; the human reads the terminal, the log does not say red. Fix by a `die` wrapper in each one-off that writes the verdict line first.
+
 ## 483. The `ops` job's guards step does nearly all the job's work and holds a 5-minute limit of its own, under the job's 19 — the machine; `[DEFERRED]` until one `ops` job's step times are read from a GitHub run (the reread of the jobs' limits, 2026-11-15, Medium)
 
 In `.github/workflows/ci.yml`, the `ops` job's step "The guards" runs `bash ops/test.sh` under `timeout-minutes: 5`, and that script is nearly all of the job's minutes. As `ops/test.sh` grows, the step's 5 minutes cut before the job's 19 does. The step's own time on GitHub is unmeasured: no `ops` job log is saved, every `ops` run was green so the step took under 5 there, and the whole `ops/test.sh` took 5.7 minutes on the developer's Mac. *Fix:* read one `ops` job's step times from a GitHub run, set the step's limit by the rule (three times its longest, never under 15), and pin it in `ops/test.sh`'s guards.
@@ -1862,3 +1896,16 @@ In `.github/workflows/ci.yml`, the `ops` job's step "The guards" runs `bash ops/
 ## 484. The `ops` limit's pin sits inside the scripts' guard, so a red names the wrong gate — the machine; `[DEFERRED]` (the reread of the jobs' limits, 2026-11-15, Low)
 
 In `ops/test.sh`, `scripts_guards` holds the `ops` job's 19-minute pin, so a red reads "the scripts' gate lacks: [ops: a 19-minute cap]", and the passes row after the function names only the scripts' gate. *Fix:* give the pin its own guard named for `ops`, or retitle the row to cover both.
+
+## 486. The route's JPEG-only rule has two homes, and the photo record is read and written in the route module (the review of the delivery photos, 2026-11-15, Low) — the machine; `[DEFERRED]`
+
+`bff/src/routes/delivery-photo.ts#L44-L46` refuses any type but `image/jpeg` while `shared/src/photo.ts#L31` lists three types (`PROOF_TYPES`); and the photo record's read and write sit in the route module. Move the rule to one home and the record's access beside the other records' helpers.
+
+## 487. The here-string guard is a list of names, and the root's session handle still goes through a here-string (the reread of the delivery photos, 2026-11-15, Low) — the machine; `[DEFERRED]`
+
+The guard in `ops/test.sh` refuses `<<<` on a line naming `kv`, `SECRET`, `STORAGE_BOXES_JSON` or `pass`, so a here-string of a variable under any other name (a `$keys`, say) passes it. At the root's sign-in in `ops/lib.sh` (`auth=$(jq -r '.authId // empty' <<<"$EDGE_BODY" ...)`, masked as a secret on the next line) the session handle goes through a here-string, which bash 3.2 writes to a temp file. Fix by reading the body from a pipe there, and by a guard that refuses every here-string in `ops/lib.sh` once the rest are converted.
+
+## 488. The comment in `photo_store_read` says a sudo refusal reads as a failed read, but `sudo` exits 1, as "absent" does (the reread of the delivery photos, 2026-11-15, Low) — the machine; `[DEFERRED]`
+
+`ops/lib.sh#L1225-L1226` says the exit codes other than 0 and 1 (ssh's 255, sudo's refusal) are a failed read. `sudo test -e` that sudo refuses exits 1, the same as an absent file, so only ssh's failure (255) stops the deploy; the comment is wrong, the code is as intended.
+

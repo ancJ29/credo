@@ -25,6 +25,8 @@ type Options = {
   out?: boolean;
   /** No one is allowed to deliver yet. */
   noDrivers?: boolean;
+  /** A delivered request whose picture never arrived. */
+  photoLost?: boolean;
   language?: 'en' | 'vi';
   /** What makes a delivery's photo small: the scene's stand-in unless given. */
   shrink?: (file: File) => Promise<string>;
@@ -47,6 +49,7 @@ export function openApp(
     drift,
     out,
     noDrivers,
+    photoLost,
     language = 'en',
     shrink,
     override,
@@ -60,6 +63,7 @@ export function openApp(
     drift,
     out,
     noDrivers,
+    photoLost,
     language,
   });
   const { api, device, passkeys, build, today } = parts;

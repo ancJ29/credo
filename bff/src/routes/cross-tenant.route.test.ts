@@ -4,7 +4,7 @@ import {
   customerRoutes,
   deliveryDocSchema,
   deliveryListReplySchema,
-  deliveryPhotoReplySchema,
+  photoAddressReplySchema,
   deliveryRoutes,
   driverDay,
   employeeDocSchema,
@@ -19,7 +19,7 @@ import {
 } from '@credo/shared';
 import { afterAll, beforeAll, describe, expect, inject, it } from 'vitest';
 import { type RunningCStorage, startCStorage } from '../../tests/c-storage';
-import { DAY } from '../../tests/orders';
+import { DAY, deliverWithPhoto } from '../../tests/orders';
 import { bffOn, scoped, seedEmployee, seedTenant, signIn, withAuth } from '../../tests/tenant';
 
 let cs: RunningCStorage;
@@ -29,8 +29,6 @@ beforeAll(async () => {
 afterAll(async () => {
   await cs.stop();
 });
-
-const PHOTO = `data:image/png;base64,${Buffer.alloc(10, 1).toString('base64')}`;
 
 /** Two companies in one service, as a shared box holds them, each with its root signed in; company
  * alpha with a customer, a product, a person, two drivers, a request delivered with its photo and
@@ -122,13 +120,10 @@ async function twoCompanies() {
     alphaApp,
     (await signIn(alphaApp, { name: 'DRV-1', password: 'Staff-pass-1!' })).body.authId,
   );
-  const done = await driverCall.send(
-    'POST',
-    deliveryRoutes.deliver(DAY, delivered.request.request.id),
-    {
-      version: delivered.request.version,
-      photo: PHOTO,
-    },
+  const done = await deliverWithPhoto(
+    driverCall,
+    delivered.request.request.id,
+    delivered.request.version,
   );
   expect(done.statusCode).toBe(200);
   const day = deliveryListReplySchema.parse((await alpha.get(deliveryRoutes.list(DAY))).json());
@@ -229,7 +224,9 @@ describe('Deliveries: a second company cannot reach the first one’s', () => {
     const other = await w.beta.get(deliveryRoutes.photo(DAY, id));
 
     expect(own.statusCode).toBe(200);
-    expect(deliveryPhotoReplySchema.parse(own.json())).toEqual({ photo: PHOTO });
+    expect(photoAddressReplySchema.parse(own.json()).url).toContain(
+      `/${w.alphaId}/${DAY}/${id}.jpg?`,
+    );
     expect(other.statusCode).toBe(404);
   });
 

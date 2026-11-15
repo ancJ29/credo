@@ -228,7 +228,12 @@ else
   # read: no key value reaches this shell, on any environment (open item 50).
   fn=$(aws lambda get-function-configuration --function-name "$BFF_NAME" --query "$BFF_FN_QUERY" --output json)
   expect "the function sits in ridge's subnet, under the BFF's group alone" yes "$(function_network_verdict "$fn" "$SUBNET_ID" "$BFF_GROUP")"
-  expect "the function's variables (names only; never the super-admin key)" "$BFF_ENV_NAMES" "$(function_env_names "$fn")"
+  # The photo is mandatory: with no photo store the ask for an address is a 503 and no driver can deliver, so a function
+  # without the photo store's three settings is red, naming the file that holds them.
+  got_names=$(function_env_names "$fn")
+  expect "the function holds the photo store's three settings (without them no driver can deliver: the box's /etc/c-storage/photo-store.env is missing, so write it with the photo-store-env-write one-off, then deploy)" yes \
+    "$(printf '%s' ",$got_names," | grep -qF ',PHOTO_STORE_URL,' && printf '%s' ",$got_names," | grep -qF ',PHOTO_STORE_KEY_ID,' && printf '%s' ",$got_names," | grep -qF ',PHOTO_STORE_KEY_SECRET,' && echo yes || echo no)"
+  expect "the function's variables (names only; never the super-admin key)" "$BFF_ENV_NAMES_PHOTOS" "$got_names"
   expect "the function's APP_ORIGIN is the app's address, which its passkeys are bound to" yes "$(function_origin_verdict "$fn" "$APP_ADDRESS")"
   expect "the function reaches c-storage at the box's private address" yes \
     "$([ "$(function_url "$fn")" = "http://$BOX_LISTEN_ADDR:$BOX_PORT" ] && echo yes || echo no)"

@@ -4,7 +4,7 @@
 # the deploy role's rights go (docs/plans/2026-10-28-ridge-app.md#layer-four). The deploy job runs it
 # after ops/release.sh, and so can the human while GitHub Actions is down, or after a key changed on the
 # box (the function holds a copy of the BFF's keys, set again at every run).
-#   In order: reads the keys from the box's files, and the front door's from the distribution, and masks them first; makes sure of the BFF's
+#   In order: reads the keys from the box's files, the photo store's (when the box holds them) and the front door's from the distribution, and masks them first; makes sure of the BFF's
 #   service in c-storage, on each box the stack holds (the home box's, then the others' in turn, so STORAGE_BOXES can be written); sets the function's environment from a 0600 file that is deleted at once
 #   (APP_ORIGIN is the app's address: a passkey is bound to it); then sends the bundle and compares the
 #   function's CodeSha256 with the one sent; only then sets the function's description to the commit;
@@ -103,6 +103,9 @@ bff_env_read
 # The activity log's address and write key, from the box's own files (lib.sh's audit_read): refused by name before
 # anything is sent when the box has none.
 audit_read
+# The delivery photos' bucket and key, from the box's photo-store.env (lib.sh's photo_store_read): absent means photos off, and the
+# settings call below, which replaces the whole environment, then sends none.
+photo_store_read
 # The door's key is read from the distribution, its one home, so the function's copy is what the door sends.
 front_door_key_read "$DISTRIBUTION_ID"
 

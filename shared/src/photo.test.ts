@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import {
-  deliverRequestSchema,
-  deliveryPhotoReplySchema,
+  deliverSentRequestSchema,
+  deliveryPhotoRecordSchema,
   MAX_PHOTO_BYTES,
   MAX_PROOF_BYTES,
+  photoAddressReplySchema,
+  photoAddressRequestOf,
+  photoAddressRequestSchema,
   photoIsValid,
   photoReplySchema,
   PROOF_SIDE,
@@ -63,7 +66,7 @@ describe('a photo', () => {
 });
 
 describe('a delivery’s photo', () => {
-  it('A delivery’s photo is a JPEG, PNG or WebP of at most 200 KB shrunk to 1280 px on its long side, and the deliver and the photo’s record take that alone', () => {
+  it('A delivery’s photo is a JPEG, PNG or WebP of at most 200 KB shrunk to 1280 px on its long side, and the photo’s record holds an object’s name alone', () => {
     expect(MAX_PROOF_BYTES).toBe(204_800);
     expect(PROOF_SIDE).toBe(1280);
     expect(proofIsValid(image(MAX_PROOF_BYTES))).toBe(true);
@@ -71,16 +74,45 @@ describe('a delivery’s photo', () => {
     expect(proofIsValid(image(MAX_PHOTO_BYTES + 1))).toBe(true);
     expect(proofIsValid(image(10, 'gif'))).toBe(false);
     expect(proofIsValid('')).toBe(false);
+    expect(deliveryPhotoRecordSchema.safeParse({ name: 'a/b/c.jpg' }).success).toBe(true);
+    expect(deliveryPhotoRecordSchema.safeParse({ name: '' }).success).toBe(false);
+    expect(deliveryPhotoRecordSchema.safeParse({ name: 'x', photo: image(10) }).success).toBe(
+      false,
+    );
+  });
+});
+
+describe('a delivery’s photo, sent by address', () => {
+  it('Asking where to send a delivery’s photo names its type and exact length (at most 200 KB), the reply is an address and never the picture, and delivering after it takes the version alone', () => {
     const tag = 'a'.repeat(64);
-    const photo = image(10);
-    expect(deliverRequestSchema.safeParse({ version: tag, photo }).success).toBe(true);
-    expect(deliverRequestSchema.safeParse({ version: tag }).success).toBe(false);
-    expect(deliverRequestSchema.safeParse({ version: 'nope', photo }).success).toBe(false);
+    const ask = photoAddressRequestOf(image(1234, 'jpeg'));
+    expect(ask).toEqual({ type: 'image/jpeg', bytes: 1234 });
+    expect(photoAddressRequestSchema.safeParse(ask).success).toBe(true);
     expect(
-      deliverRequestSchema.safeParse({ version: tag, photo: image(MAX_PROOF_BYTES + 1) }).success,
+      photoAddressRequestSchema.safeParse({ type: 'image/jpeg', bytes: MAX_PROOF_BYTES }).success,
+    ).toBe(true);
+    expect(
+      photoAddressRequestSchema.safeParse({ type: 'image/jpeg', bytes: MAX_PROOF_BYTES + 1 })
+        .success,
     ).toBe(false);
-    expect(deliverRequestSchema.safeParse({ version: tag, photo, day: 'x' }).success).toBe(false);
-    expect(deliveryPhotoReplySchema.safeParse({ photo }).success).toBe(true);
-    expect(deliveryPhotoReplySchema.safeParse({ photo, version: tag }).success).toBe(false);
+    expect(photoAddressRequestSchema.safeParse({ type: 'image/jpeg', bytes: 0 }).success).toBe(
+      false,
+    );
+    expect(photoAddressRequestSchema.safeParse({ type: 'image/gif', bytes: 5 }).success).toBe(
+      false,
+    );
+    expect(
+      photoAddressReplySchema.safeParse({ url: 'https://photos.example/a?sig=1' }).success,
+    ).toBe(true);
+    expect(photoAddressReplySchema.safeParse({ url: 'not an address' }).success).toBe(false);
+    expect(
+      photoAddressReplySchema.safeParse({ url: 'https://photos.example/a', photo: image(5) })
+        .success,
+    ).toBe(false);
+    expect(deliverSentRequestSchema.safeParse({ version: tag }).success).toBe(true);
+    expect(deliverSentRequestSchema.safeParse({ version: tag, photo: image(5) }).success).toBe(
+      false,
+    );
+    expect(deliverSentRequestSchema.safeParse({ version: 'nope' }).success).toBe(false);
   });
 });
