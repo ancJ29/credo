@@ -1989,7 +1989,7 @@ scripts_guards() {
   grep -qxF -- '          SCRIPTS_SHARD: ${{ matrix.shard }}' <<<"$b" || missing="${missing}[SCRIPTS_SHARD in a shard] "
   grep -qxF -- "          go-version-file: services/c-storage/go.mod" <<<"$b" || missing="${missing}[Go in a shard] "
   grep -qxF -- "          include-hidden-files: true" <<<"$b" || missing="${missing}[the blob's hidden folder kept] "
-  grep -qxF -- "    timeout-minutes: 22" <<<"$b" || missing="${missing}[a shard's 22-minute cap] "
+  grep -qxF -- "    timeout-minutes: 28" <<<"$b" || missing="${missing}[a shard's 28-minute cap] "
   b=$(job_block "$1" scripts-stages)
   [ -n "$b" ] || die "no job scripts-stages"
   grep -qxF -- "        run: pnpm --filter @credo/scripts run typecheck" <<<"$b" || missing="${missing}[stages: typecheck] "

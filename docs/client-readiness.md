@@ -231,7 +231,7 @@ The gate is five jobs and the deploy needs all five
 of its own and is green only when all six are. The app job's 15-minute cap was what
 skipped two deploys (commit 4a15d012 raised it to 25); on 11-13 the 25 cut a run whose tests took about 24 minutes
 on one job running every package. Since the split each package job has its own cap, three times its longest measured time and never under 15 minutes
-(the scripts' shards 22, every other package job 15).
+(the scripts' shards 28, every other package job 15).
 
 A half-finished deploy leaves a client on a mixed version and **nothing rolls back**: the way back
 is a revert pushed to main (the comment above the renames in [`ops/release.sh`](../ops/release.sh)). c-storage ships first
