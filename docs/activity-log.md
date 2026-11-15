@@ -110,8 +110,9 @@ found by its own test.
    spent-challenge list at once — on **every** passkey sign-in and every confirm touch. Next is the
    session renewal inside `resolve` in `bff/src/calling/sessions.ts`, a side effect of *reading* a session on
    the authenticated path of every request. Then the two numbering counters, the sign-in and link
-   bookkeeping, the client-deletion sweep, and the two photo writes whose base64 bytes must never
-   enter an entry. **A handler that declares no intent is never logged, so none of the fifteen needs
+   bookkeeping, the client-deletion sweep. (The photo writes are not among them: the employee photo and a delivery's
+   photo ask each declare an intent and are logged as the act alone, the bytes never in the memo, and a delivery's
+   picture goes from the phone to the photo store, never through the back end.) **A handler that declares no intent is never logged, so none of the fifteen needs
    an exemption.**
 
 **A mutating route that declares no audit intent is a test failure, and it is one now:**

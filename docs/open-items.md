@@ -1901,3 +1901,11 @@ In `ops/test.sh`, `scripts_guards` holds the `ops` job's 19-minute pin, so a red
 
 `bff/src/routes/delivery-photo.ts#L44-L46` refuses any type but `image/jpeg` while `shared/src/photo.ts#L31` lists three types (`PROOF_TYPES`); and the photo record's read and write sit in the route module. Move the rule to one home and the record's access beside the other records' helpers.
 
+## 487. The here-string guard is a list of names, and the root's session handle still goes through a here-string (the reread of the delivery photos, 2026-11-15, Low) — the machine; `[DEFERRED]`
+
+The guard in `ops/test.sh` refuses `<<<` on a line naming `kv`, `SECRET`, `STORAGE_BOXES_JSON` or `pass`, so a here-string of a variable under any other name (a `$keys`, say) passes it. At the root's sign-in in `ops/lib.sh` (`auth=$(jq -r '.authId // empty' <<<"$EDGE_BODY" ...)`, masked as a secret on the next line) the session handle goes through a here-string, which bash 3.2 writes to a temp file. Fix by reading the body from a pipe there, and by a guard that refuses every here-string in `ops/lib.sh` once the rest are converted.
+
+## 488. The comment in `photo_store_read` says a sudo refusal reads as a failed read, but `sudo` exits 1, as "absent" does (the reread of the delivery photos, 2026-11-15, Low) — the machine; `[DEFERRED]`
+
+`ops/lib.sh#L1225-L1226` says the exit codes other than 0 and 1 (ssh's 255, sudo's refusal) are a failed read. `sudo test -e` that sudo refuses exits 1, the same as an absent file, so only ssh's failure (255) stops the deploy; the comment is wrong, the code is as intended.
+
