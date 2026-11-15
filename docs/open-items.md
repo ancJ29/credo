@@ -1409,7 +1409,9 @@ The wait after wrong passwords (`docs/plans/2026-11-11-password-wait.md`) counts
 
 `LIVING` in `scripts/src/citations.ts` lists the living documents by path, and `docs/open-items.md` is not among them, so no step reads it. On 2026-11-09 a merge-conflict marker sat in that file through a full green gate for that reason. The log cites many files and symbols that later moved, and its dead citations have not been audited, so adding it today would turn the check red on old entries. *Fix:* audit the log's citations and repair or delete the dead ones, then add a `docs/open-items.md` entry to `LIVING`; a grep for a line starting with the conflict markers is the cheaper stopgap. *Trigger:* the next change to the citation check, or the next conflict in this file.
 
-## 228. The test photo in the cross-company tests is a third copy of one value — the machine; `[DEFERRED]` (the cross-company tests' review, 2026-11-11, Low)
+## 228. The test photo in the cross-company tests is a third copy of one value — the machine; `[FIXED]` (the cross-company tests' review, 2026-11-11, Low)
+
+*Fixed 2026-11-15:* the delivery photos' step 3 removed the old picture schemas and with them the three copies of the test photo; no `PHOTO` constant is left in `bff/`. As filed:
 
 `PHOTO` in `bff/src/routes/cross-tenant.route.test.ts` is a third copy of the same test photo, after `bff/src/routes/reconciliations.route.test.ts` and an inline one in `bff/src/routes/orders.route.test.ts` (code.md's C1, one home for a value). Fix: export it once from `bff/tests/orders.ts`. *Trigger:* the next change to any of those three test files.
 
@@ -1453,7 +1455,7 @@ Once photos leave the records (`docs/plans/2026-11-11-delivery-photos.md`), the 
 
 ## 267. No keeping window for delivery photos — the human, for a real client; `[PARKED]` (the delivery photos' plan, 2026-11-11, Low)
 
-A delivery photo lives as long as its record, as it does today; the legacy app laid its folders out for a sweep by day and never ran one. How long a client keeps its delivery evidence is that client's rule. R2's lifecycle rule, by name prefix and age, is the means once a window is stated (step 2 of the plan reads R2's own page on it). *Trigger:* the first real client, or a bucket past its free storage.
+A delivery photo lives in the bucket until something deletes it, and nothing does (the product has no delete); the legacy app laid its folders out for a sweep by day and never ran one. How long a client keeps its delivery evidence is that client's rule. R2's lifecycle rule, by name prefix and age, is the means once a window is stated (step 2 of the plan reads R2's own page on it). *Trigger:* the first real client, or a bucket past its free storage.
 
 ## 286. The write measurement on ridge is in the final page's order of work and in no milestone of the week's cut — the orchestrator places it; `[OPEN]` (the activity log on ridge's plan, 2026-11-12, Medium)
 

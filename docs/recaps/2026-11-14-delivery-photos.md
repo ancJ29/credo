@@ -23,4 +23,4 @@ AWS's published example of a signed address: the page (https://docs.aws.amazon.c
 
 ## Still to write
 
-What shipped, the review's findings, what stays the human's.
+What shipped, the review's findings and what stays the human's are in [the piece's recap](2026-11-15-delivery-photos.md).

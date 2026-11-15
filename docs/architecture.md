@@ -34,6 +34,7 @@ flowchart LR
     more["more boxes, each holding the tenants the operator puts on it<br/>[EC2] the pooled shape · the back end reaches them, none is added on ridge yet"]
   end
   ab["audit-backbone<br/>[Go service, in the repo] the activity log · shipped to the box by the release, not yet run on ridge"]
+  r2[("the delivery photos<br/>[Cloudflare R2] a private bucket per environment, outside the VPC · built, not yet run on ridge")]
   browser -- "asks for a screen, then calls /api/*" --> cdn
   cdn -- "serves the UI's files, cached" --> s3
   cdn -- "forwards every /api/* call, never cached" --> api
@@ -42,8 +43,10 @@ flowchart LR
   cs -- "stores each record under its key" --> db
   bff -. "posts one activity entry for every change · not yet run on ridge" .-> ab
   bff -. "intended: to the box the tenant's record names" .-> more
+  bff -. "signs a five-minute address for one picture; never calls R2" .-> r2
+  browser -. "sends or reads that picture at the signed address, past the edge" .-> r2
   classDef intended stroke-dasharray: 6 4
-  class ab,more intended
+  class ab,more,r2 intended
 ```
 
 **Key.** Each box names a thing that runs and, in square brackets, what it runs on. A rounded box is
@@ -57,7 +60,13 @@ box beside c-storage, its first run there still to be read — the whole of that
 second dashed box is **built in the back end and not on ridge**: the further boxes of the pooled
 shape, each holding the tenants the operator puts on it, which [where a tenant's records
 live](#where-a-tenants-records-live) describes. The back end and the local stack reach a second box
-today; no command yet adds one to ridge's stack.
+today; no command yet adds one to ridge's stack. The third dashed box is **built and not on ridge**: the
+photo store, where a delivery's picture lives so that records hold only its object's name. The back end
+holds the bucket's key and signs, but the VPC has no way out to R2, so the phone and the office's page
+carry the picture themselves; the back end writes the photo's record and refuses to mark a request
+delivered without it (`bff/src/routes/delivery-photo.ts`, `bff/src/photo-store.ts`'s `photoAddress`).
+Where no photo store is set, asking an address is a 503, so no driver can deliver, and the environment
+check is red.
 
 **On this machine the picture is the same.** `scripts/src/running/front.ts` stands where CloudFront and the
 HTTP API stand, so the app the walks picture is the app that deploys.
