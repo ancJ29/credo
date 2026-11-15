@@ -2908,7 +2908,7 @@ case $cmd in
   *"cat /etc/c-storage/bff.env"*)
     if [ -f "$S/box/bff.env" ]; then cat "$S/box/bff.env"; else printf 'SERVICE_CODE=bff\nSERVICE_ACCESS_KEY=%s\n' "$FAKE_SKEY"; fi ;;
   *"cat /etc/audit-backbone/keys.env"*) if [ -n "${FAKE_NO_AUDIT_KEY:-}" ]; then exit 1; fi; printf 'ACTIVITY_WRITE_KEY=%s\n' "$FAKE_UKEY" ;;
-  *"test -e /etc/c-storage/photo-store.env"*) [ -n "${FAKE_PHOTO_STORE:-}" ] ;;
+  *"test -e /etc/c-storage/photo-store.env"*) if [ -n "${FAKE_PHOTO_SSH_FAIL:-}" ]; then exit 255; fi; [ -n "${FAKE_PHOTO_STORE:-}" ] ;;
   *"cat /etc/c-storage/photo-store.env"*)
     printf 'PHOTO_STORE_URL=%s\nPHOTO_STORE_KEY_ID=%s\n' "$FAKE_PURL" "$FAKE_PKID"
     if [ -z "${FAKE_PHOTO_PARTIAL:-}" ]; then printf 'PHOTO_STORE_KEY_SECRET=%s\n' "$FAKE_PSEC"; fi ;;
@@ -3380,7 +3380,7 @@ export FAKE_AUDIT_SHA=$chk_sha
 rules "$ssh_rule" "$(tcp "$BOX_PORT" "$none" sg-0bff)" "$(tcp "$AUDIT_PORT" "$none" sg-0bff)" >"$CHK/box-rules.json"
 jq -n --argjson e "$(rules "$(tcp "$BOX_PORT" "$none" sg-0box)" "$(tcp "$AUDIT_PORT" "$none" sg-0box)")" '{SecurityGroups: [{IpPermissionsEgress: $e, IpPermissions: []}]}' >"$CHK/bff-sg.json"
 jq -c --arg sha "$chk_sha" --arg app "$FAKE_APP" --arg url "http://10.20.30.40:$BOX_PORT" \
-  '.VpcConfig = {SubnetIds: ["subnet-test"], SecurityGroupIds: ["sg-0bff"]} | .Description = $sha | .AppOrigin = $app | .Url = $url' <<<"$fn" >"$CHK/fn.json"
+  '.VpcConfig = {SubnetIds: ["subnet-test"], SecurityGroupIds: ["sg-0bff"]} | .Description = $sha | .AppOrigin = $app | .Url = $url | .Names += ["PHOTO_STORE_URL", "PHOTO_STORE_KEY_ID", "PHOTO_STORE_KEY_SECRET"]' <<<"$fn" >"$CHK/fn.json"
 echo "$pab" >"$CHK/pab.json"
 # the copy: a status and a bucket listing that are sound by the stand-ins' clock (a run that wants them red rewrites them)
 chk_stamp=$(date -u +%Y-%m-%dT%H:%M:%SZ)
@@ -3519,6 +3519,13 @@ check "  and still runs the six reads that need no client, each green" 6 "$(six_
 check "  and layer four's reads and the commit agreement are made" "1 1" \
   "$(chk_has '^ok   /health, the function.s description and index.html.s metadata name one commit: yes' "$S/out") $(chk_has '^ok   the UI.s bucket blocks all public access' "$S/out")"
 
+# the photo is mandatory: a function holding the eight alone is red, and the red names the box's file
+cp "$CHK/fn.json" "$CHK/fn.eleven"
+jq -c '.Names -= ["PHOTO_STORE_URL", "PHOTO_STORE_KEY_ID", "PHOTO_STORE_KEY_SECRET"]' "$CHK/fn.eleven" >"$CHK/fn.json"
+chk_run photoless check.sh ridge --reads-only
+check "13 of the delivery photos plan: a function with the eight variables and no photo store is red, naming the box's photo-store.env and that no driver can deliver" "1 1 1" \
+  "$RC $(chk_has "RED  the function holds the photo store's three settings.*photo-store.env" "$S/out") $(chk_has "^RED .*no driver can deliver" "$S/out")"
+cp "$CHK/fn.eleven" "$CHK/fn.json"
 chk_run flag check.sh ridge --reads-only
 check "case 9: --reads-only on ridge gives the same run: green, no key, no collection, no client" "0 1 0 gone gone 6" \
   "$RC $(chk_has '^== green' "$S/out") $(chk_has 'c-storage/keys.env' "$S/ssh.calls") $(file_state "$S/bru.calls") $(file_state "$S/ridge.calls") $(six_reads "$S/out")"
@@ -3742,8 +3749,8 @@ check "  the log's key is masked first, and is in no log and nowhere on the term
   "$(grep -cE "^::add-mask::$FAKE_UKEY\$" "$S/out" || true) $(cat "$OPS_LOG_DIR"/*.log | grep -cF "$FAKE_UKEY" || true) $(grep -v '^::add-mask::' "$S/out" | grep -cF "$FAKE_UKEY" || true)"
 
 # case 15 of docs/plans/2026-11-11-delivery-photos.md: a box with no photo-store.env sends the function none of the three settings
-check "15: with no photo-store.env the deploy prints that photos are off and the function's environment holds none of the three" "1 0" \
-  "$(grep -c '^photo-store.env: absent, photos off$' "$S/out" || true) $(jq -r '.Variables | keys | map(select(startswith("PHOTO_STORE_"))) | length' "$S/envfile.seen")"
+check "15: with no photo-store.env the deploy prints that photos are off, and that no driver can deliver, and the function's environment holds none of the three" "1 0" \
+  "$(grep -c '^photo-store.env: absent, photos off: no driver can deliver until the file is written' "$S/out" || true) $(jq -r '.Variables | keys | map(select(startswith("PHOTO_STORE_"))) | length' "$S/envfile.seen")"
 
 # a second run: the service is present; the first run's bff.env is left as it is
 GITHUB_ACTIONS='' e2e_run app.sh ridge
@@ -3863,6 +3870,16 @@ e2e_fresh app-photos-partial
 FAKE_PHOTO_STORE=1 FAKE_PHOTO_PARTIAL=1 e2e_run app.sh ridge
 check "  a file holding two of the three is refused by name, before the function is touched" "1 1 0" \
   "$RC $(grep -c "photo-store.env holds not all three" "$S/out" || true) $(grep -c 'lambda update-function' "$S/aws.calls" || true)"
+
+e2e_fresh app-photos-sshfail
+FAKE_PHOTO_SSH_FAIL=1 e2e_run app.sh ridge
+check "  a box that cannot be asked about photo-store.env (ssh's 255) stops the deploy by name, before the function is touched, never as an absent file" "1 1 0 0" \
+  "$RC $(grep -c 'could not be asked whether photo-store.env is there (exit 255)' "$S/out" || true) $(grep -c 'lambda update-function' "$S/aws.calls" || true) $(grep -c 'photos off' "$S/out" || true)"
+check "  bff_settings_set refuses a call that never ran photo_store_read, as it refuses one that never ran audit_read" 1 \
+  "$(bash -c '. "$1/lib.sh"; AUDIT_KEY=k; bff_settings_set door' _ "$OPS_DIR" 2>&1 | grep -c 'bff_settings_set: photo_store_read first' || true)"
+# M2: bash 3.2 writes a here-string to a temp file, so none may carry a key's value
+check "  ops/lib.sh holds no here-string that carries a key's value (a secret reaches a command on a pipe)" 0 \
+  "$(grep -cE '<<<.*(kv|SECRET|STORAGE_BOXES_JSON|pass)' "$OPS_DIR/lib.sh" || true)"
 
 echo "== ops/release.sh ends the deploy job's later steps when superseded"
 e2e_fresh release-superseded

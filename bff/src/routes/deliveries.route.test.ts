@@ -569,7 +569,7 @@ describe('Cases 6 to 11 and 13: the photo’s address', () => {
     ).toBe(404);
   });
 
-  it('Case 13: with no photo store set, asking an address is a 503 and nothing is written, a read address is a 503 and every other route runs', async () => {
+  it('Case 13: with no photo store set, asking an address is a 503 and nothing is written, so no driver can deliver (the delivered mark is a 400), a read address is a 503 and every other route runs', async () => {
     const d = await deliveryTenant({ photoStore: null });
     const todo = await d.sentTo();
     const id = todo.request.request.id;
@@ -578,6 +578,8 @@ describe('Cases 6 to 11 and 13: the photo’s address', () => {
     expect((await d.w.t.client.getRecord(d.w.t.keys.deliveryPhoto(DAY, id))) === null).toBe(true);
     expect((await d.tung.call.get(deliveryRoutes.one(DAY, id))).statusCode).toBe(200);
     expect((await d.w.office.call.get(orderRoutes.list(DAY, DAY))).statusCode).toBe(200);
+    // no address could be asked for, so the photo is missing and delivering is refused: no driver can deliver
+    expect((await d.deliver(d.tung, id, todo.request.version, false)).statusCode).toBe(400);
     // a delivered request's photo reads as none address: the record is there, the store is not
     await d.w.t.client.putRecord(
       d.w.t.keys.deliveryPhoto(DAY, id),

@@ -1878,3 +1878,16 @@ The function's `APP_ORIGIN` is written only by `bff_settings_set`, which only `o
 ## 480. The photo probe's second and fifth lines expect what R2 has not been read to do, and it leaves one object a run — the machine; `[OPEN]` (the delivery photos' step 6, 2026-11-15, Low)
 
 `one-off/photo-store-probe.sh` (outside git) expects R2 to refuse a PUT longer than the length it signed with a 403, and the preflight from a company's own address (`<code>.<Domain>`) to be allowed; neither is read from R2's documentation, both are the probe's to find out at step 7, and a red line there is a finding, not a script fault (whether R2's rule takes a wildcard origin is the fifth line). The probe puts one object, `probe/<stamp>.jpg`, in the bucket each run and nothing deletes it (the product has no delete); the human may empty the `probe/` folder from the dashboard.
+
+## 481. Case 2's send half is untested: the cross-company test reads only (the review of the delivery photos, 2026-11-15, Low) — the machine; `[DEFERRED]`
+
+`bff/src/routes/cross-tenant.route.test.ts#L219-L231` shows company beta reading company alpha's photo as a 404, but no test has beta's driver ask for an address on alpha's request. It needs the second company's driver in `twoCompanies`.
+
+## 482. In both photo one-offs a `die` inside an `ops/lib.sh` helper ends the run with "== done" and no verdict line (the review of the delivery photos, 2026-11-15, Low) — the machine; `[DEFERRED]`
+
+`die` prints to the terminal's error stream and exits 1, so the one-offs' own log (outside git, `one-off/`) ends on "== done" with no `== verdict` line; the human reads the terminal, the log does not say red. Fix by a `die` wrapper in each one-off that writes the verdict line first.
+
+## 486. The route's JPEG-only rule has two homes, and the photo record is read and written in the route module (the review of the delivery photos, 2026-11-15, Low) — the machine; `[DEFERRED]`
+
+`bff/src/routes/delivery-photo.ts#L44-L46` refuses any type but `image/jpeg` while `shared/src/photo.ts#L31` lists three types (`PROOF_TYPES`); and the photo record's read and write sit in the route module. Move the rule to one home and the record's access beside the other records' helpers.
+

@@ -132,11 +132,11 @@ on_exit() {
     local i=1 label
     while IFS= read -r s; do
       if [ -n "$s" ] && grep -qF -- "$s" "$LOG"; then
-        label=$(sed -n "${i}p" <<<"$SECRET_LABELS")
+        label=$(printf '%s\n' "$SECRET_LABELS" | sed -n "${i}p")
         if [ -n "$label" ]; then leaked_what=$label; else leaked_key=1; fi
       fi
       i=$((i + 1))
-    done <<<"$SECRETS"
+    done < <(printf '%s\n' "$SECRETS")
     if [ "$leaked_key" = 1 ]; then
       final "RED  a key is in this log: delete it and replace the key (docs/plans/2026-10-28-ridge.md#deploys-from-github-actions)"
       rc=1
@@ -174,7 +174,7 @@ mask() {
     fi
     SECRETS="${SECRETS}${line}"$'\n'
     SECRET_LABELS="${SECRET_LABELS}${2:-}"$'\n'
-  done <<<"$1"
+  done < <(printf '%s\n' "$1")
 }
 
 # repository → owner/name, from the origin remote; never written in a committed file
@@ -908,8 +908,8 @@ ADMIN_KEY=''
 read_keys() {
   local kv
   kv=$(box sudo cat /etc/c-storage/keys.env)
-  INTERNAL_KEY=$(sed -n 's/^INTERNAL_ACCESS_KEY=//p' <<<"$kv")
-  ADMIN_KEY=$(sed -n 's/^X_SUPER_ADMIN_KEY=//p' <<<"$kv")
+  INTERNAL_KEY=$(printf '%s\n' "$kv" | sed -n 's/^INTERNAL_ACCESS_KEY=//p')
+  ADMIN_KEY=$(printf '%s\n' "$kv" | sed -n 's/^X_SUPER_ADMIN_KEY=//p')
   [ -n "$INTERNAL_KEY" ] && [ -n "$ADMIN_KEY" ] || die "the box's keys file holds no keys"
   mask "$INTERNAL_KEY"
   mask "$ADMIN_KEY"
@@ -1141,8 +1141,8 @@ SERVICE_ACCESS_KEY=''
 bff_env_read() {
   local kv
   kv=$(box sudo cat /etc/c-storage/bff.env)
-  SERVICE_CODE=$(sed -n 's/^SERVICE_CODE=//p' <<<"$kv")
-  SERVICE_ACCESS_KEY=$(sed -n 's/^SERVICE_ACCESS_KEY=//p' <<<"$kv")
+  SERVICE_CODE=$(printf '%s\n' "$kv" | sed -n 's/^SERVICE_CODE=//p')
+  SERVICE_ACCESS_KEY=$(printf '%s\n' "$kv" | sed -n 's/^SERVICE_ACCESS_KEY=//p')
   [ -n "$SERVICE_CODE" ] && [ -n "$SERVICE_ACCESS_KEY" ] || die "the box's bff.env holds no service"
   mask "$SERVICE_ACCESS_KEY"
 }
@@ -1171,7 +1171,7 @@ other_boxes_read() {
       C_STORAGE_URL=http://127.0.0.1:$port ridge_cli register) || die "the BFF's service could not be made sure of on box $name"
     echo "box $name: $registered"
     STORAGE_BOXES_JSON=$(NAME=$name URL=http://$BOX_LISTEN_ADDR:$BOX_PORT IK=$INTERNAL_KEY SK=$SERVICE_ACCESS_KEY \
-      jq -c '. + {(env.NAME): {url: env.URL, internalKey: env.IK, serviceKey: env.SK}}' <<<"${STORAGE_BOXES_JSON:-$none}")
+      jq -c '. + {(env.NAME): {url: env.URL, internalKey: env.IK, serviceKey: env.SK}}' < <(printf '%s\n' "${STORAGE_BOXES_JSON:-$none}"))
   done <<<"$(stack_boxes)"
   box_close
   BOX_NAME=home
@@ -1203,7 +1203,7 @@ audit_read() {
   local audit_kv
   AUDIT_URL=http://$BOX_LISTEN_ADDR:$AUDIT_PORT
   audit_kv=$(box sudo cat /etc/audit-backbone/keys.env) || die "the box holds no /etc/audit-backbone/keys.env: ops/release.sh $ENVNAME ships the activity log and makes its key; run it first"
-  AUDIT_KEY=$(sed -n 's/^ACTIVITY_WRITE_KEY=//p' <<<"$audit_kv")
+  AUDIT_KEY=$(printf '%s\n' "$audit_kv" | sed -n 's/^ACTIVITY_WRITE_KEY=//p')
   [ -n "$AUDIT_KEY" ] || die "the box's /etc/audit-backbone/keys.env holds no ACTIVITY_WRITE_KEY: ops/release.sh $ENVNAME makes it"
   mask "$AUDIT_KEY"
 }
@@ -1215,19 +1215,25 @@ audit_read() {
 PHOTO_STORE_URL=''
 PHOTO_STORE_KEY_ID=''
 PHOTO_STORE_KEY_SECRET=''
+PHOTO_STORE_READ=''
 photo_store_read() {
-  local kv
+  local kv rc=0
   PHOTO_STORE_URL=''
   PHOTO_STORE_KEY_ID=''
   PHOTO_STORE_KEY_SECRET=''
-  if ! box sudo test -e /etc/c-storage/photo-store.env; then
-    echo "photo-store.env: absent, photos off"
+  PHOTO_STORE_READ=1
+  # test -e ends 0 when the file is there and 1 when it is not; anything else (ssh's 255, sudo's refusal) is a read that
+  # failed, and a deploy that went on would send the function none of the three and wipe them.
+  box sudo test -e /etc/c-storage/photo-store.env || rc=$?
+  if [ "$rc" = 1 ]; then
+    echo "photo-store.env: absent, photos off: no driver can deliver until the file is written (the photo-store-env-write one-off)"
     return 0
   fi
+  [ "$rc" = 0 ] || die "the box could not be asked whether photo-store.env is there (exit $rc): nothing was changed, so the function keeps its three settings"
   kv=$(box sudo cat /etc/c-storage/photo-store.env) || die "the box's photo-store.env could not be read"
-  PHOTO_STORE_URL=$(sed -n 's/^PHOTO_STORE_URL=//p' <<<"$kv")
-  PHOTO_STORE_KEY_ID=$(sed -n 's/^PHOTO_STORE_KEY_ID=//p' <<<"$kv")
-  PHOTO_STORE_KEY_SECRET=$(sed -n 's/^PHOTO_STORE_KEY_SECRET=//p' <<<"$kv")
+  PHOTO_STORE_URL=$(printf '%s\n' "$kv" | sed -n 's/^PHOTO_STORE_URL=//p')
+  PHOTO_STORE_KEY_ID=$(printf '%s\n' "$kv" | sed -n 's/^PHOTO_STORE_KEY_ID=//p')
+  PHOTO_STORE_KEY_SECRET=$(printf '%s\n' "$kv" | sed -n 's/^PHOTO_STORE_KEY_SECRET=//p')
   [ -n "$PHOTO_STORE_URL" ] && [ -n "$PHOTO_STORE_KEY_ID" ] && [ -n "$PHOTO_STORE_KEY_SECRET" ] ||
     die "the box's photo-store.env holds not all three of PHOTO_STORE_URL, PHOTO_STORE_KEY_ID and PHOTO_STORE_KEY_SECRET: the one-off writes all three"
   mask "$PHOTO_STORE_URL"
@@ -1251,6 +1257,8 @@ bff_vpc() {
 bff_settings_set() {
   # a settings call replaces the whole environment, so the log's address and key go in each time: the caller read them first
   [ -n "$AUDIT_KEY" ] || die "bff_settings_set: audit_read first"
+  # and the photo store's three, or a call that never read them would wipe them
+  [ -n "$PHOTO_STORE_READ" ] || die "bff_settings_set: photo_store_read first"
   (
     umask 077
     # STORAGE_BOXES goes in only when the stack holds boxes beyond the home box (other_boxes_read made it); without
@@ -1400,7 +1408,8 @@ function_network_verdict() {
 # BFF_ENV_NAMES: the eight variables the function holds, sorted, and no other (never the super-admin key)
 # shellcheck disable=SC2034 # check.sh reads it
 BFF_ENV_NAMES=APP_ORIGIN,AUDIT_KEY,AUDIT_URL,C_STORAGE_URL,FRONT_DOOR_KEYS,INTERNAL_ACCESS_KEY,SERVICE_ACCESS_KEY,SERVICE_CODE
-# BFF_ENV_NAMES_PHOTOS: the same eight and the photo store's three, when the box holds photo-store.env; check.sh takes either, no other
+# BFF_ENV_NAMES_PHOTOS: the same eight and the photo store's three, which check.sh wants: the photo is mandatory (with no store
+# no driver can deliver), so the eight alone are red
 # shellcheck disable=SC2034 # check.sh reads it
 BFF_ENV_NAMES_PHOTOS=APP_ORIGIN,AUDIT_KEY,AUDIT_URL,C_STORAGE_URL,FRONT_DOOR_KEYS,INTERNAL_ACCESS_KEY,PHOTO_STORE_KEY_ID,PHOTO_STORE_KEY_SECRET,PHOTO_STORE_URL,SERVICE_ACCESS_KEY,SERVICE_CODE
 # function_env_names <the function, read by BFF_FN_QUERY> → the names of its variables, sorted and
@@ -1525,7 +1534,7 @@ edge_reads_client() {
   edge GET /api/config -H "x-client-code: $code"
   expect "  a second read, too" "no" "$(grep -qE '^(age:|x-cache: hit)' <<<"$EDGE_HEADERS" && echo yes || echo no)"
   timed=$(date +%s)
-  edge POST /api/auth/sign-in -H "x-client-code: $code" -H "x-device-id: $device" -H 'content-type: application/json' --data-binary @- <<<"$(P=$pass jq -nc '{name: "root", password: env.P}')"
+  edge POST /api/auth/sign-in -H "x-client-code: $code" -H "x-device-id: $device" -H 'content-type: application/json' --data-binary @- < <(P=$pass jq -nc '{name: "root", password: env.P}')
   expect "the root signs in through the edge" 200 "$EDGE_STATUS"
   echo "sign-in took $(($(date +%s) - timed)) s"
   auth=$(jq -r '.authId // empty' <<<"$EDGE_BODY" 2>/dev/null)

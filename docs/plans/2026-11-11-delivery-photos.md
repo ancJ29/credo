@@ -93,9 +93,9 @@ out of the network. The check the back end can make is that an address was asked
 | 10 | An ask for a picture that is not a JPEG, or is over 200 KB, is a 400; the address signs the type and the exact length | BFF route |
 | 11 | A second ask for one request signs the same name, so a retry overwrites and never leaves a second object | BFF route |
 | 12 | The signer gives AWS's published example signature exactly, with every outbound call refused | unit, `bff/src/photo-store.test.ts` |
-| 13 | With no photo store set, asking an address is a 503 and nothing is written; every other route runs | BFF route |
+| 13 | With no photo store set, asking an address is a 503 and nothing is written, so no driver can deliver (the delivered mark, with no address asked for, is a 400); every other route runs, and the environment check is red until the box's `photo-store.env` is written | BFF route; `bash ops/test.sh` |
 | 14 | The stand-in refuses an expired address, a wrong signature and a longer body than signed | unit, `scripts/src/running/photo-store.test.ts` |
-| 15 | A deploy writes the photo store's three settings into the function from the box's file, and with no file prints that photos are off and sends none | `bash ops/test.sh` |
+| 15 | A deploy writes the photo store's three settings into the function from the box's file, and with no file prints that photos are off and that no driver can deliver, and sends none; a box that cannot be asked stops the deploy | `bash ops/test.sh` |
 
 ## The steps
 
@@ -215,8 +215,8 @@ minutes a part.
   settings under their own names (`PHOTO_STORE_URL` is the bucket's address with its name, by path); `lib.sh`'s
   `photo_store_read` reads and masks it (all three or none: a file with some is refused by name before the function
   is touched), and `bff_settings_set` adds the three when it holds them. The key run (`ops/keys.sh`) reads it too, or
-  its settings call would wipe the three. The check takes the function's eleven names beside the eight
-  (`BFF_ENV_NAMES_PHOTOS`), or it would go red on ridge once the file exists. The line citation `#L131-L132` had
+  its settings call would wipe the three. The check wants the function's eleven names
+  (`BFF_ENV_NAMES_PHOTOS`) and is red on the eight, naming the file (see the fix pass below). The line citation `#L131-L132` had
   moved with the company address and the activity log: the environment is now written in `lib.sh`, not in `app.sh`.
   Case 15 is five checks in `ops/test.sh` (no file: "photos off" and none of the three; a file: the three as the file
   has them, the eleven names, each masked and in no log; a file with two of the three refused), seen red by two
@@ -229,11 +229,25 @@ minutes a part.
   `<company>.<the stack's Domain>`, the company an optional argument). The probe's reads ran once against a stand-in
   on this machine; the box, the stack and R2 were not run here, and R2's cross-origin wildcard rule is the probe's
   fifth line, not a guess in the script. Item 480.
+  *Fix pass 2026-11-15 (the review of `34dd2770..11b4c817`):* (1) the signer put a blank line between the signed headers
+  of a PUT (`...names.map(...)` spread into the array joined on `\n`), which R2 would have refused with every upload;
+  `canonicalRequest` is now its own export, held by a test against AWS's GET Object example (four headers, the
+  request hashing to `7344ae5b...4946972`, taken from the example's published text and checked against the review's
+  fingerprint, AWS's page itself not being readable from here), seen red on the old line, then the one `.join('')`.
+  (2) With no photo store no driver can deliver, so the check is red on the eight names, naming the file; a box
+  that cannot be asked (ssh's 255) stops the deploy and never reads as an absent file; `bff_settings_set` refuses a
+  call that never ran `photo_store_read`; case 13's row and its test say what is true; step 6's own checks gained
+  the check's red on eight names. (3) No key's value goes through a here-string in `ops/lib.sh` (a guard in
+  `ops/test.sh` refuses one), since bash 3.2 writes a here-string to a temp file. (4) Act 2 above carries both origins.
+  (5) The one-offs default to `main`'s `ops/`. Items 481, 482 and 486 are deferred.
 - [ ] **Step 7. The human's acts, in order** (theirs; the machine's minutes are step 6's).
   1. Make ridge's bucket: Cloudflare's dashboard, R2, Create bucket, a name of their choosing, the
      location automatic. They will see it listed, empty.
-  2. Its cross-origin rule: the bucket, Settings, CORS policy, Add, allowing ridge's app address,
-     methods PUT and GET, header `content-type`. They will see the rule listed.
+  2. Its cross-origin rule: the bucket, Settings, CORS policy, Add, allowing two origins:
+     ridge's app address spelled out, and `https://*.ridge.<domain>` for each company's own address (R2 takes one
+     `*` in an origin and it spans periods, so the pattern matches every company but not the bare `ridge.<domain>`,
+     which is why the app address is its own entry), methods PUT and GET, header `content-type`. They will see the
+     rule listed with both origins.
   3. Its key: R2, Manage API tokens, Create, Object Read & Write, this bucket only. The page shows the
      key's id, its secret and the S3 address once; it stays open for the next act.
   4. The first one-off, which puts the key on ridge's box. It prints "photo-store.env: written, mode
