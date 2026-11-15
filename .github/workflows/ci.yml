@@ -178,8 +178,8 @@ jobs:
   # The app's own gate, one job a package, so the longest job is the slowest package (the scripts tests, about
   # 15 minutes on GitHub's runner) and not their sum (about 24 minutes, measured on 11-13): each job runs
   # `pnpm --filter @credo/<package> check`, that package's typecheck and tests at 100 % and the repository-wide
-  # eslint, prettier and knip, all through ops/gate.sh; the scripts package's is split in three kinds of job, below. Each is capped at 40 minutes, about 1.5 times the longest whole
-  # run measured (25.5 minutes). The job `app` below waits on all six and is the name the deploy waits on.
+  # eslint, prettier and knip, all through ops/gate.sh; the scripts package's is split in three kinds of job, below. Each is capped at three times its longest measured time, to a whole minute and never under 15: the shards at 28
+  # (9.2 minutes measured), every other package job at 15 (none over 4.6), `ops` at 19 (6.2 measured). The job `app` below waits on all six and is the name the deploy waits on.
   # Go is set up in the BFF's job and the scripts' alone: the one `go build` the tests make is bff/tests/build.ts, reached
   # by the BFF's route tests and the scripts' stack tests. `--fail-if-no-match` makes a package name that matches nothing a red, not a green no-op.
   # The BFF's tests build the real c-storage, hence Go. The Lambda bundle's test runs the bundle in
@@ -187,7 +187,7 @@ jobs:
   # there alone (docs/plans/2026-10-28-ridge-app.md#hazards-no-gate-catches); only the BFF's job sets it.
   app-bff:
     runs-on: ubuntu-24.04
-    timeout-minutes: 40
+    timeout-minutes: 15
     permissions:
       contents: read
     steps:
@@ -252,7 +252,7 @@ jobs:
   # Go is set up in the shards alone: the stack tests build c-storage.
   scripts-shard:
     runs-on: ubuntu-24.04
-    timeout-minutes: 40
+    timeout-minutes: 28
     permissions:
       contents: read
     strategy:
@@ -319,7 +319,7 @@ jobs:
   # The four stages of ops/gate.sh that are not the test, each run whatever the one before did, as the gate does.
   scripts-stages:
     runs-on: ubuntu-24.04
-    timeout-minutes: 40
+    timeout-minutes: 15
     permissions:
       contents: read
     steps:
@@ -373,7 +373,7 @@ jobs:
   app-scripts:
     needs: [scripts-shard, scripts-stages]
     runs-on: ubuntu-24.04
-    timeout-minutes: 40
+    timeout-minutes: 15
     permissions:
       contents: read
     steps:
@@ -423,7 +423,7 @@ jobs:
 
   app-shared:
     runs-on: ubuntu-24.04
-    timeout-minutes: 40
+    timeout-minutes: 15
     permissions:
       contents: read
     steps:
@@ -466,7 +466,7 @@ jobs:
 
   app-ui:
     runs-on: ubuntu-24.04
-    timeout-minutes: 40
+    timeout-minutes: 15
     permissions:
       contents: read
     steps:
@@ -509,7 +509,7 @@ jobs:
 
   app-visual:
     runs-on: ubuntu-24.04
-    timeout-minutes: 40
+    timeout-minutes: 15
     permissions:
       contents: read
     steps:
@@ -552,7 +552,7 @@ jobs:
 
   app-walk:
     runs-on: ubuntu-24.04
-    timeout-minutes: 40
+    timeout-minutes: 15
     permissions:
       contents: read
     steps:
@@ -611,7 +611,7 @@ jobs:
   # Nothing here touches AWS.
   ops:
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 19
     permissions:
       contents: read
     steps:

@@ -1889,6 +1889,14 @@ The function's `APP_ORIGIN` is written only by `bff_settings_set`, which only `o
 
 `die` prints to the terminal's error stream and exits 1, so the one-offs' own log (outside git, `one-off/`) ends on "== done" with no `== verdict` line; the human reads the terminal, the log does not say red. Fix by a `die` wrapper in each one-off that writes the verdict line first.
 
+## 483. The `ops` job's guards step does nearly all the job's work and holds a 5-minute limit of its own, under the job's 19 — the machine; `[DEFERRED]` until one `ops` job's step times are read from a GitHub run (the reread of the jobs' limits, 2026-11-15, Medium)
+
+In `.github/workflows/ci.yml`, the `ops` job's step "The guards" runs `bash ops/test.sh` under `timeout-minutes: 5`, and that script is nearly all of the job's minutes. As `ops/test.sh` grows, the step's 5 minutes cut before the job's 19 does. The step's own time on GitHub is unmeasured: no `ops` job log is saved, every `ops` run was green so the step took under 5 there, and the whole `ops/test.sh` took 5.7 minutes on the developer's Mac. *Fix:* read one `ops` job's step times from a GitHub run, set the step's limit by the rule (three times its longest, never under 15), and pin it in `ops/test.sh`'s guards.
+
+## 484. The `ops` limit's pin sits inside the scripts' guard, so a red names the wrong gate — the machine; `[DEFERRED]` (the reread of the jobs' limits, 2026-11-15, Low)
+
+In `ops/test.sh`, `scripts_guards` holds the `ops` job's 19-minute pin, so a red reads "the scripts' gate lacks: [ops: a 19-minute cap]", and the passes row after the function names only the scripts' gate. *Fix:* give the pin its own guard named for `ops`, or retitle the row to cover both.
+
 ## 486. The route's JPEG-only rule has two homes, and the photo record is read and written in the route module (the review of the delivery photos, 2026-11-15, Low) — the machine; `[DEFERRED]`
 
 `bff/src/routes/delivery-photo.ts#L44-L46` refuses any type but `image/jpeg` while `shared/src/photo.ts#L31` lists three types (`PROOF_TYPES`); and the photo record's read and write sit in the route module. Move the rule to one home and the record's access beside the other records' helpers.
