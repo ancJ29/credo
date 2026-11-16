@@ -1973,9 +1973,9 @@ The rule of three is written at the `components/` note and again in the levels' 
 
 `ui/src/design-system/theme.ts#L18-L21` carries the dialog's centring and title but not the header's padding of the legacy's `theme/index.ts#L89-L91`, and the gallery shows neither a dialog nor a table row under the pointer, so the two entries of case 1 are held by the test alone and cannot be judged by eye. Add the padding with the first screen that opens a dialog, and a dialog and a table to the gallery.
 
-## 508. `tokens.ts` repeats values `ui/src/theme.ts` holds (the same review, Low) — the machine; `[DEFERRED]`
+## 508. `tokens.ts` repeats values `ui/src/design-system/appTheme.ts` holds (the same review, Low) — the machine; `[DEFERRED]`
 
-`ui/src/design-system/tokens.ts#L9` and `#L19` write the badge's corners (4 px) and the card's padding (24 px) that `ui/src/theme.ts#L118-L119` already holds in its own entries (the radius `sm` and the spacing `lg`); two homes that drift with nothing red. Landing 2 moves `theme.ts` in; read one from the other then.
+`ui/src/design-system/tokens.ts#L9` and `#L19` write the badge's corners (4 px) and the card's padding (24 px) that `themeOf` in `ui/src/design-system/appTheme.ts` already holds in its own entries (the radius `sm` and the spacing `lg`); two homes that drift with nothing red. Landing 3's step 9 joins the two themes; read one from the other then.
 
 ## 509. A company too large to be compared in one press cannot switch from the page — the machine; `[DEFERRED]` (the move's plan, 2026-11-16, Low)
 
@@ -2037,3 +2037,11 @@ The comment "Runs first on every client route, before the body is read and befor
 ## 536. Two small wording points on the move page — the machine; `[DEFERRED]` (the move's reread, 2026-11-16, Info)
 
 In `ui/src/pages/operator/MoveClientPage.tsx` the box choice stays live while the passkey prompt and the first press run, so a click then changes the box later lines name. And `moveRefused` (`ui/src/i18n/en.ts`, `vi.ts`) says the move did not start when only its answer may have been lost; "may not have started" claims only what the page knows. Fix: lock the choice from the touch on, and reword the line. *Trigger:* the next change to the page's lines.
+
+## 539. The two literal checks miss some colours, flag some strings that are not one, and keep the pattern in two places — the machine; `[DEFERRED]` (the design system's review, 2026-11-16, Low)
+
+`ui/src/design-system/literals.test.ts` and the `no-restricted-syntax` block in `eslint.config.js` read a hex value or a lower-case `rgb(`, `rgba(`, `hsl(` or `hsla(`, so they miss `white`, an upper-case `RGB(`, `oklch(` and a hex built as `#${...}`; they flag a string such as `'Order #1234'` under the colour message; and the pattern is written in both. Fix: the `i` flag, the other colour functions and `white|black`, one home for the pattern, and what is left out named in case 7's row of the plan.
+
+## 541. Two dead branches after the light-only step — the machine; `[DEFERRED]` (the design system's review, 2026-11-16, Low)
+
+`GROUND` in `ui/src/pages/SignIn.tsx` keeps a `light-dark()` that can only resolve light, and the "narrows to one theme" row of `ui/src/mock/MockPage.test.tsx` clicks the only theme there is. Fix: the plain light value, and the row's click taken out with its count.

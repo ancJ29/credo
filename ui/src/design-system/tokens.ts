@@ -1,6 +1,6 @@
 /**
  * The legacy app's values that the new app's theme lacks, and the gallery reads. The greys, green,
- * red, font, gaps and shadows are `ui/src/theme.ts`'s already and are not copied here.
+ * red, font, gaps and shadows are `appTheme.ts`'s `themeOf` already and are not copied here.
  */
 export const TOKENS = {
   /** The main colour's depth: Mantine's default light shade, which the legacy draws. */
