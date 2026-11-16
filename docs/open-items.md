@@ -1988,3 +1988,19 @@ A walk opens an address on the front (`walk/playwright.config.ts#L25`) and `shot
 ## 516. The gallery's "Legacy" pane has no picture of a legacy part to show — the machine; *parked* until the legacy capture opens, when the partners name the screens to match (the design system's plan, landing 4, 2026-11-16, Low)
 
 `ops/legacy-capture.sh` takes whole screens (`walk/legacy-capture.ts#L496`) of the employee feature (`walk/legacy-screens/employees.screens#L6-L15`) into a folder outside git (`ops/legacy-capture.sh#L17-L18`), since they show a client's real people (`docs/recaps/2026-11-04-legacy-capture.md#L24`); the design system's plan reads the legacy's code, not pictures. A pane beside each part needs a picture of that part alone (an element's picture rather than the page's), taken on data with no real person so it can sit beside the gallery; the pane is drawn only for a part that has one.
+
+## 517. The delivery photos' card is not on the walks page, where partners already sign in (the check without code, 2026-11-16) — the machine; `[DEFERRED]`
+
+The card for checking a piece on ridge lives on the products page, which a person opens in the editor. Partners already sign in to the walks page and their answers arrive in the block the machine reads, so it is the right home once a partner checks a piece. The price is a code step in `visual/` with its tests, and a push to redeploy. Bring it in with the first piece a partner is to check on ridge.
+
+## 518. The photos' receipt is a one-off outside git, not an `ops/` script with its cases in `ops/test.sh` (the check without code, 2026-11-16) — the machine; `[DEFERRED]`
+
+The receipt that prints a card's calls from the access log was copied from the earlier access log read and kept outside git, with its four stand-in runs read by hand. Make it an `ops/` script with its cases in `ops/test.sh` when a second piece's card wants a receipt, when the copy would be the third.
+
+## 521. The copy rows that expect a sound copy capture neither stderr nor the exit code (the cross-model review of piece 144, 2026-11-16, Low) — the machine; `[DEFERRED]`
+
+`ops/test.sh#L1401-L1403` compare the output of `copy_eval` alone for a sound copy, so a `copy_problems` whose `jq` dies still prints nothing and passes. With the pipe at `ops/lib.sh#L718` deleted, those rows stayed ok while the fault rows went red. Capture the exit code and stderr in those rows with the next change to the copy's rows.
+
+## 522. `copy_problems` reads the first JSON document on stdin and ignores any after it (the same review, Low) — the machine; `[DEFERRED]`
+
+`input` at `ops/lib.sh#L721` takes the first document, where `--argjson` refused two. The AWS CLI's JSON output is one document, so the real path cannot meet a second. Make it refuse more than one document if the listing ever comes from another source.

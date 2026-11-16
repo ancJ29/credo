@@ -1,6 +1,6 @@
 # Ridge guide: the shared pre-production environment, by hand
 
-Ridge is the one shared environment on AWS where somebody can check a piece without reading its code.
+Ridge is the one shared environment on AWS where somebody can check a piece without reading its code; a piece's card is in [Check a piece on ridge, without code](products.md#check-a-piece-on-ridge-without-code).
 It can be taken down on a Friday night and brought back on a Monday morning. When it is down, its records are
 gone and the demo copies with them.
 

@@ -10,6 +10,9 @@ The page stays true at each piece's recap: the recap's commit adds or changes th
 ([documentation](conventions/documentation.md#where-progress-lives-three-files-one-job-each)), never
 on a calendar.
 
+To check a piece on ridge without reading code, open the section
+[Check a piece on ridge, without code](#check-a-piece-on-ridge-without-code) below and read the piece's card.
+
 ## 1. The app (UI, then BFF, then c-storage); a client's people
 
 All pages exist in Vietnamese and English, on phone, tablet and PC. The menu shows a person only the
@@ -24,7 +27,7 @@ pages their permissions allow ([`ui/src/nav.ts#L27`](../ui/src/nav.ts#L27)).
 | Settings | Whoever may edit settings changes the company's name and logo (logo under 200 KB), and its colour: one of the old app's nine palettes by name, or any colour typed; three switches, off until on, turn the header white, the menu white, and the hidden menu to a strip of icons. | local, ridge | in `main` (the nine palettes 11-04; the white header, white menu and hidden menu's icon strip 11-05: look yes, full run green) | menu: Settings | [`recaps/2026-10-28-app-frame.md`](recaps/2026-10-28-app-frame.md), [`recaps/2026-11-04-palettes.md`](recaps/2026-11-04-palettes.md), [`recaps/2026-11-05-white-frame.md`](recaps/2026-11-05-white-frame.md) |
 | Customers and Products | The root reads each list from an Excel template (vi or en), sees every row checked, then adds. A customer's or a product's name opens a page in the old app's cards: two columns on a PC, one on a phone, one full-width column when there is no note. The product's page shows code, name, unit, price and stock, and the note when it has one; whoever may take and edit orders corrects all but the code there, with the same conflict notice. Whoever may take and edit orders also adds a customer or a product from the list's Add button; the product's stock switch starts on, as a blank cell in an import reads. The customer's page is editable by whoever may take and edit orders: the name, phone, address and note are corrected there and saved, and if someone else saved first the page says so, shows what they saved and keeps what was typed; the code is not editable. | local, ridge | in `main` (the customer's page 11-05: look yes, full run green; the product's page 11-06: look yes, full run green; the customer's editing 11-07: look yes, full run green; the product's editing 11-07: look yes on all four screens, full run green; the adds 11-08: look yes on the four screens and again on the stock switch's screen, full run green; the one body for the four screens 11-10: no screen moved, picture run green) | menu: Customers, Products | [`recaps/2026-10-31-customers-products.md`](recaps/2026-10-31-customers-products.md), [`recaps/2026-11-05-customer-cards.md`](recaps/2026-11-05-customer-cards.md), [`recaps/2026-11-06-products-cards.md`](recaps/2026-11-06-products-cards.md), [`recaps/2026-11-07-edit-customer.md`](recaps/2026-11-07-edit-customer.md), [`recaps/2026-11-07-edit-product.md`](recaps/2026-11-07-edit-product.md), [`recaps/2026-11-08-add-records.md`](recaps/2026-11-08-add-records.md), [`recaps/2026-11-10-ui-shape.md`](recaps/2026-11-10-ui-shape.md) |
 | Orders and Delivery requests | Office people make a priced order, confirm it with a driver and a day, and see a day's requests by driver. The order's page reads in the same two columns of cards as the other detail pages (full run green). An order that is still a draft is corrected on its page, its customer and lines; the draft shows the prices it was agreed at, marks a line whose price has moved, and a save reprices it, so the page's total and the driver's cannot differ. | local, ridge | in `main` (the order's editing 11-07: look yes on all three screens, full run green) | menu: Orders, Delivery requests | [`recaps/2026-11-01-orders-delivery.md`](recaps/2026-11-01-orders-delivery.md), [`recaps/2026-11-06-orders-cards.md`](recaps/2026-11-06-orders-cards.md), [`recaps/2026-11-07-edit-order.md`](recaps/2026-11-07-edit-order.md) |
-| My deliveries (driver's phone) | A driver scans a QR code, sees today's requests, calls the customer and sends Delivered with a photo, which goes to the photo store (R2) before the order becomes Fulfilled; the office opens the delivery and sees it, or reads that it did not arrive. | local, ridge | on `pre-merge` (the photo store: local only, ridge open; reaches `main` after the next whole check) | menu: My deliveries (drivers only) | [`recaps/2026-11-01-driver-phone.md`](recaps/2026-11-01-driver-phone.md), [`recaps/2026-11-15-delivery-photos.md`](recaps/2026-11-15-delivery-photos.md) |
+| My deliveries (driver's phone) | A driver scans a QR code, sees today's requests, calls the customer and sends Delivered with a photo, which goes to the photo store (R2) before the order becomes Fulfilled; the office opens the delivery and sees it, or reads that it did not arrive. | local, ridge | in `main`; on ridge 11-15, your photo from a phone showed on the office's request | menu: My deliveries (drivers only); [the check on ridge, step by step](#the-delivery-photos-card) | [`recaps/2026-11-01-driver-phone.md`](recaps/2026-11-01-driver-phone.md), [`recaps/2026-11-15-delivery-photos.md`](recaps/2026-11-15-delivery-photos.md) |
 | Đối soát | The office settles a driver's day against the cash handed in, sees the gap, then closes the day for good. A day closes once, so a second close cannot overwrite the first's cash, and it is recorded against the person who closed it; a person whose record goes mid-close is refused with nothing changed. | local, ridge | in `main` (the money fixes 11-08: no screen moved at all, full run green - a null proof, so there was no new screen to look at) | Delivery requests, a driver's group | [`recaps/2026-11-01-driver-reconcile.md`](recaps/2026-11-01-driver-reconcile.md), [`recaps/2026-11-08-money-defects.md`](recaps/2026-11-08-money-defects.md) |
 
 Not built: stock beyond a flag and goods receipts
@@ -34,7 +37,7 @@ Not built: stock beyond a flag and goods receipts
 
 | Product | What it does, for whom | Runs | State | Open or start | Recap or plan |
 | --- | --- | --- | --- | --- | --- |
-| Frame and Clients | An operator lists every client (newest first), adds one and copies its sign-in link; once the stack names a domain, the link is the company's own address, `https://<code>.<domain>/login`. | local, ridge | in `main`; the own address on `company-address`, not yet in `main` and not yet run on ridge | `/operator`, section Clients | [`recaps/2026-10-30-operator-dashboard.md`](recaps/2026-10-30-operator-dashboard.md), [`recaps/2026-11-14-company-address.md`](recaps/2026-11-14-company-address.md) |
+| Frame and Clients | An operator lists every client (newest first), adds one and copies its sign-in link; once the stack names a domain, the link is the company's own address, `https://<code>.<domain>/login`. | local, ridge | in `main`; the own address on ridge 11-14: your look yes, the first demo copy opened at its own address with its own sign-in page | `/operator`, section Clients | [`recaps/2026-10-30-operator-dashboard.md`](recaps/2026-10-30-operator-dashboard.md), [`recaps/2026-11-14-company-address.md`](recaps/2026-11-14-company-address.md) |
 | A, passkeys | An operator signs in by passkey, joins by a one-time link and keeps their own passkeys (Chrome only; Safari parked). | local, ridge | in `main` | `/operator`; link from `ops/operator.sh ridge` | [`plans/2026-10-29-operator-console.md`](plans/2026-10-29-operator-console.md) |
 | B1, operators | An operator lists the operators and adds one by a name; the join link is shown once. | local | in `main`, its look answered yes | `/operator/operators` | [`recaps/2026-11-03-console-operators.md`](recaps/2026-11-03-console-operators.md) |
 | B2, a lost passkey and delete | An operator gives another a new link for a lost passkey, shown once after a touch, and deletes another after a page and a touch, never oneself. | local | in `main` | Operators page, a row's "New link" and "Delete" | [`recaps/2026-11-03-console-operators-b2.md`](recaps/2026-11-03-console-operators-b2.md) |
@@ -72,7 +75,7 @@ typed, and the pasted block is what the machine reads; a No becomes a case
 | `pnpm demo` | The same stack plus a demo copy per partner, filled as of four days ago and run forward; each copy's link and root password print once. | local | in `main` | `pnpm demo` | [`recaps/2026-11-01-demo-seed.md`](recaps/2026-11-01-demo-seed.md) |
 | `pnpm demo-files` | Eight Excel files (10 rows each, one code already there, one refused) for the presenter's import step, written outside git. | local | in `main` | `pnpm demo-files` | [`recaps/2026-10-31-customers-products.md`](recaps/2026-10-31-customers-products.md) |
 | The seed, on demand (`seed.yml`, `ops/seed.sh`) | Brings every demo copy on ridge up to yesterday, at most 2 days a copy a run, when somebody runs it (no schedule since 2026-11-08, so ridge's data is as fresh as the last run, and a run asked once a week cannot keep up: it takes off two days while seven go by); a closed driver day is skipped. | ridge | in `main` | `seed.yml` (or `ops/seed.sh ridge` by hand), after `ops/demo-remake.sh ridge` has made the copies | [`recaps/2026-11-02-seed-demo-safe.md`](recaps/2026-11-02-seed-demo-safe.md), [`recaps/2026-11-08-seed-timeout.md`](recaps/2026-11-08-seed-timeout.md) |
-| Ridge's demo copies | Two invented companies (S1 building materials, S2 drinks) with three copies each; the `-1` copy is `p1`'s, the `-2` copy is `p2`'s, the `-3` copy the human's. | ridge | made by `ops/demo-remake.sh ridge` (about 2.6 hours, one password a partner); gone with the old ridge's disk; on the branch `long-runs`, the remake fills the six on this Mac and copies each to ridge whole on one tunnel, aimed at about 10 minutes, with `--go-on` copying again only what differs after a stop (0.8 minutes between two stores on this Mac, not yet run on ridge) | `ops/demo-remake.sh ridge`; the copy's link; a root password later by `ops/root-password.sh ridge <code>` | [`recaps/2026-11-01-demo-seed.md`](recaps/2026-11-01-demo-seed.md), [`recaps/2026-11-13-long-runs.md`](recaps/2026-11-13-long-runs.md) |
+| Ridge's demo copies | Two invented companies (S1 building materials, S2 drinks) with three copies each; the `-1` copy is `p1`'s, the `-2` copy is `p2`'s, the `-3` copy the human's. | ridge | made by `ops/demo-remake.sh ridge` (about 2.6 hours, one password a partner); gone with the old ridge's disk; on the branch `long-runs`, the remake fills the six on this Mac and copies each to ridge whole on one tunnel, aimed at about 10 minutes, with `--go-on` copying again only what differs after a stop (0.8 minutes between two stores on this Mac, 2.3 minutes on ridge) | `ops/demo-remake.sh ridge`; the copy's link; a root password later by `ops/root-password.sh ridge <code>` | [`recaps/2026-11-01-demo-seed.md`](recaps/2026-11-01-demo-seed.md), [`recaps/2026-11-13-long-runs.md`](recaps/2026-11-13-long-runs.md) |
 
 ## 5. The machinery around them
 
@@ -91,6 +94,42 @@ typed, and the pasted block is what the machine reads; a No becomes a case
 | API access log | Every call to a client's API leaves one line in a 14-day log group (time, address, path, answer); a guard refuses a template that loses it. The address, measured once: three calls through the distribution on ridge (2026-11-08, 18:11) left three lines with one address, a public one outside AWS's published ranges and consistent with the caller's own, not an edge node; why is not established (item 157). Throttled calls (429) appear here only. | ridge (applied) | in `main` and live on ridge: the change set ran green there on 2026-11-08 at 17:10 (the project's logs folder, `logs/2026-11-08-171042-stack-ridge.log`, exit 0), and three lines were read back from the log group at 18:12, each carrying all ten fields of the stage's format (the project's logs folder, `logs/20261108-1809-ridge-access-log-read.log`) | `/aws/apigateway/credo-ridge` | [`recaps/2026-11-08-access-log.md`](recaps/2026-11-08-access-log.md) |
 | The watch (four alarms, a topic, Slack) | Four alarms on an environment (the app's calls failing, the back end's errors, the back end refusing work, the box failing its check), each alarm and its return to normal sent to one topic, which AWS's Slack app carries into one channel when the stack is given the two Slack IDs; for the human. | ridge (not applied) | written in `ops/env.yml` and guarded in `ops/test.sh`, in `main`; not applied to ridge, nothing forced yet | the Slack steps, then `ops/stack.sh env ridge` ([the watch](../ops/README.md#the-watch)) | [`recaps/2026-11-12-slack-alarm.md`](recaps/2026-11-12-slack-alarm.md) |
 
+## Check a piece on ridge, without code
+
+Ridge is where a person who reads no code checks a piece before anyone relies on it. Each piece that
+changes what ships has a card here: what to open, at most six steps, what one should see, and one
+question.
+
+- **Who can check:** anyone holding a demo copy's link and its root password. The `-1` copies are
+  `p1`'s, the `-2` copies `p2`'s and the `-3` copies the human's. The human sends a partner their link
+  and password by their own channel, as [the ridge guide](ridge-guide.md) asks of the remake.
+- **What a yes and a no each start:** a yes means the piece has passed the fourth stage, and the
+  human's page lists it as live on ridge with what was read. A no, with the step where it went wrong,
+  reopens the piece with those words.
+- **The receipt:** within two hours of the check, the human runs one command in their own terminal
+  that prints the card's calls from ridge's access log: time, method, path and answer, never an
+  address or a browser's name.
+
+A card makes its own records for the check, so it does not depend on how fresh the demo copies are.
+
+### The delivery photos' card
+
+Open a `-3` copy on a PC and sign in as its root. You need a PC and a phone.
+
+1. Under Orders, press "New order", then "Choose a customer", "Choose a product", set the "Quantity"
+   and press "Add line". Press "Save draft".
+2. Press "Confirm the order", choose a driver under "Choose a driver", keep today's day and press
+   "Confirm". The order is confirmed and a delivery request is made.
+3. Under Staff, open that driver and press "Show a QR code".
+4. Scan the code with the phone. It opens My deliveries as the driver. Open today's request, press
+   "Delivered", take a photo and press "Send".
+5. Back on the PC, under Delivery requests, open that delivery.
+
+You should see your own picture under "Proof of delivery", not "The photo did not arrive."
+
+**Question: did your photo show on the office's page?** Say yes or no; with a no, say the step
+number where it went wrong.
+
 ## Known gaps
 
 The numbers are [open items](open-items.md).
@@ -99,9 +138,10 @@ The numbers are [open items](open-items.md).
    doubling to 15 minutes, and a right one is refused during the wait. It is counted per name, not
    per address, so one guesser trying many names meets only the door's throttle, and each invented
    name leaves a small record (open item 256).
-2. Four alarms are written in `ops/env.yml` and reach no one until the Slack steps are done and ridge's
-   stack is updated with the two IDs ([the watch](../ops/README.md#the-watch), open item 1); the
-   continuous copy of the records and its restore are written and not yet run on ridge (item 6).
+2. Four alarms are written in `ops/env.yml` and have run on ridge: the Slack steps were done, the stack
+   was updated with the two IDs, and a forced alarm reached the channel, with its return to normal
+   ([the watch](../ops/README.md#the-watch), open item 1); the continuous copy of the records and its
+   restore have run on ridge, and the drill's restore read back (item 6).
 3. A client's own production stack (item 4) and the public address in front of ridge's c-storage
    (item 13) are not built.
 4. The console's passkeys are tested in Chrome only, and adding one in Safari may be refused
