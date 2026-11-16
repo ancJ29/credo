@@ -60,7 +60,8 @@ box beside c-storage, its first run there still to be read — the whole of that
 second dashed box is **built in the back end and not on ridge**: the further boxes of the pooled
 shape, each holding the tenants the operator puts on it, which [where a tenant's records
 live](#where-a-tenants-records-live) describes. The back end and the local stack reach a second box
-today; no command yet adds one to ridge's stack. The third dashed box is **built and not on ridge**: the
+today, and the operator can move a company from one to another; no command yet adds a box to ridge's
+stack, so the move has not run there. The third dashed box is **built and not on ridge**: the
 photo store, where a delivery's picture lives so that records hold only its object's name. The back end
 holds the bucket's key and signs, but the VPC has no way out to R2, so the phone and the office's page
 carry the picture themselves; the back end writes the photo's record and refuses to mark a request
@@ -191,9 +192,9 @@ and the account's GitHub provider are stacks of their own, for reasons that are 
 gave, under ten thousand calls and five hundred records a day each, one small box holds several, and
 its disk runs out before its requests, writes or memory do. So production is to stay one stack per
 environment, holding several boxes. This is the human's own shape, from 2026-11-10 and 2026-11-11.
-What is built is the back end's reach to a second box, the operator's choice of box and the local
-stack with two boxes; a box added to ridge by one command, and moving a company between boxes, are
-not built yet.
+What is built is the back end's reach to a second box, the operator's choice of box, the local
+stack with two boxes, and the move of a company between boxes; a box added to ridge by one command
+is not built yet, and the move has not run on ridge.
 
 - **What is pooled.** The back end, the HTTP API and the distribution are shared by every tenant.
   The first box is the home box: it keeps the list of companies and the operator's records, and any
@@ -205,6 +206,15 @@ not built yet.
   at every call with no memory kept: the record names the company's id and its box, and the back end
   makes that company's client over the box. A record naming a box the back end was not handed
   answers 503, as a store that does not answer does.
+- **Moving a company.** The operator moves one from the clients list, a press at a time, and the
+  company is closed (its calls answer 503, so its people are told to try again) for two waits of 15
+  seconds and the copy between: the line is marked, the company's records are copied to the new box
+  and compared at no difference, the line is switched to the new box, and after a wait the old
+  box's copy is swept away. A stop before the switch leaves the company whole on its old box. While
+  it is marked, the operator's delete and the terminal's acts on the company are refused. The
+  activity entries and the photos stay where they are, since each is under the company's id and one
+  log and one bucket serve every box (`bff/src/env.ts`'s `auditShape` and `photoStoreShape`). The steps, with the files they rest on, are
+  [the detail page's](architecture-detail.md#pooled-on-boxes-in-the-same-one-stack-what-is-built-and-what-is-not).
 - **Where the one config lives.** The line names a box and never a key: the keys of the other boxes
   are in the back end's own environment (`STORAGE_BOXES`), set at each deploy. It is not a file,
   because a file in the bucket can be read by anyone and a file in the build is public with the

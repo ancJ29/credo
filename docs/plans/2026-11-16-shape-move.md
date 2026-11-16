@@ -184,10 +184,11 @@ stage 3 point 1, stage 4 the sitting.
   277 closed in `docs/open-items.md` with their reasons, and item 509 filed. *Size:* at least 33
   (every act on the company's box through the line, and the scripts' refusal of another box, row 665).
   _Done 2026-11-16: `pnpm check` ended `== exit 0` at 100 %; cases 1 to 13 each red once on a named mutation and put back; new test files only, bar the route list's two counts, the operator route tree and three list expectations that gain `box`; items 440 and 277 closed, item 509 filed. The mark carries one field beyond decision 1, `closed`, to tell a switch (503 until `sweepAt`) from a stop (open at once). The human's ask after step 1's look: the list sends `box` for every company, the home box included, and the clients page has a Box column (the wire field stays optional; the fake sends it for every company)._
-- [ ] **3. The pages true.** `docs/architecture-detail.md#L126-L130`, `#L164-L167` and
+- [x] **3. The pages true.** `docs/architecture-detail.md#L126-L130`, `#L164-L167` and
   `#L208-L210` and the pooled section of `docs/architecture.md` say the move is built, and how;
   `docs/memo/bff.md`'s tenant section gains the helper's table. *Done when:* the citation test exits
   0 and `git grep -nE '/Users/|~/'` finds nothing new. *Size:* 26 (the pooled pages made true, row 675).
+  _Done 2026-11-16: `src/citations.test.ts` and `src/counts.test.ts` ended `== exit 0` (46 tests), and `git grep -nE '/Users/|~/'` finds nothing new; the detail page's lead note, "The record" and "Every client call reads it" lines are made true and gain a "Moving a company between boxes" part, `docs/architecture.md`'s dashed-box key, pooled paragraph and a "Moving a company" bullet say it is built and not run on ridge, and `docs/memo/bff.md`'s "company is resolved first" section gains the helper's table (the plan's "tenant section" is that one). The cited lines held up but for the record line's "not built: a mark", and the audit store's own box, which the move does not need._
 - [ ] **3r. Reviewed, fixed, recapped.** A model other than the author's, one fix pass, a reread, a
   recap. *Done when:* every finding tagged in the recap, the fix pass's gate `== exit 0`, the recap
   committed with `docs/products.md`'s row. *Size:* 14, 11, 2 and 2 (the first landing's review,
