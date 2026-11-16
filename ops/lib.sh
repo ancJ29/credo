@@ -712,12 +712,13 @@ REMOTE
 # each fault of the copy, nothing when it is sound: the records disk below its floor, no copy at all, the newest
 # copy behind the last write by over COPY_LAG_S, no full copy, the newest full copy older than COPY_FULL_MAX_S. The newest full copy is the one with the largest
 # key (the largest <min>-<max> name, which is TXID order, as Litestream's own restore picks); its age is that object's
-# LastModified, S3's time of the upload of that snapshot, which is when the full copy was made.
+# LastModified, S3's time of the upload of that snapshot, which is when the full copy was made. The listing goes to jq on
+# stdin: it grows with the bucket and one argument may not pass 128 KiB on Linux.
 copy_problems() {
-  jq -nr --argjson st "$1" --argjson ls "$2" --argjson now "$3" --argjson lag "$COPY_LAG_S" \
+  printf '%s' "$2" | jq -nr --argjson st "$1" --argjson now "$3" --argjson lag "$COPY_LAG_S" \
     --argjson fullmax "$COPY_FULL_MAX_S" --argjson floor "$((FLOOR_RECORDS_MB * 1048576))" --arg full "$COPY_FULL_PREFIX" '
     def epoch: sub("\\.[0-9]+"; "") | sub("\\+00:00$"; "Z") | fromdateiso8601;
-    ($ls // []) as $objs
+    (input // []) as $objs
     | ($objs | map(.LastModified | epoch) | max) as $newest
     | ($objs | map(select(.Key | startswith($full))) | sort_by(.Key) | last | if . == null then null else .LastModified | epoch end) as $fullest
     | ($st.lastWriteAt | if . == null then null else epoch end) as $write
