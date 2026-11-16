@@ -2,6 +2,7 @@ import {
   Badge,
   Button,
   Container,
+  Divider,
   Group,
   MantineProvider,
   Paper,
@@ -13,7 +14,7 @@ import {
 } from '@mantine/core';
 import { CREDO_COLOUR } from '@credo/shared';
 import type { ReactNode } from 'react';
-import { IconBuilding } from '@tabler/icons-react';
+import { IconBuilding, IconKeyboard, IconQrcode } from '@tabler/icons-react';
 import { FieldLabel } from '../components/atoms/FieldLabel';
 import { LogoTile } from '../components/atoms/LogoTile';
 import { StatusBadge } from '../components/atoms/StatusBadge';
@@ -71,6 +72,23 @@ const LEVELS: { level: string; heading: string; entries: Record<string, ReactNod
   },
 ];
 
+/** A part drawn, and beside it the legacy's picture of it under "Legacy" when there is one. */
+function Beside({ name, children }: { name: string; children: ReactNode }) {
+  return (
+    <Group align="flex-start" gap="xl">
+      {children}
+      {LEGACY[name] && (
+        <Stack gap={4}>
+          <Text size="xs" c="dimmed">
+            Legacy
+          </Text>
+          <img src={LEGACY[name]} alt={`The legacy’s ${name}`} />
+        </Stack>
+      )}
+    </Group>
+  );
+}
+
 function Values() {
   const theme = useMantineTheme();
   return (
@@ -97,6 +115,28 @@ function Mantines() {
         <TextInput label="Name" placeholder="A field" />
         <Badge>A badge</Badge>
       </Group>
+      <Stack gap="xs">
+        <Title order={3}>Gradient button</Title>
+        <Beside name="Gradient button">
+          <Button variant="gradient" w={394} leftSection={<IconQrcode size={18} />}>
+            Quét mã QR
+          </Button>
+        </Beside>
+      </Stack>
+      <Stack gap="xs">
+        <Title order={3}>Default button</Title>
+        <Beside name="Default button">
+          <Button variant="default" w={394} leftSection={<IconKeyboard size={18} />}>
+            Nhập mã thủ công
+          </Button>
+        </Beside>
+      </Stack>
+      <Stack gap="xs">
+        <Title order={3}>Labelled divider</Title>
+        <Beside name="Labelled divider">
+          <Divider w={394} label="hoặc" />
+        </Beside>
+      </Stack>
     </Stack>
   );
 }
@@ -116,17 +156,7 @@ export function Gallery() {
               {Object.entries(entries).map(([name, node]) => (
                 <Stack key={name} gap="xs">
                   <Title order={3}>{name}</Title>
-                  <Group align="flex-start" gap="xl">
-                    {node}
-                    {LEGACY[name] && (
-                      <Stack gap={4}>
-                        <Text size="xs" c="dimmed">
-                          Legacy
-                        </Text>
-                        <img src={LEGACY[name]} alt={`The legacy’s ${name}`} />
-                      </Stack>
-                    )}
-                  </Group>
+                  <Beside name={name}>{node}</Beside>
                 </Stack>
               ))}
             </Stack>

@@ -25,6 +25,10 @@ export const TOKENS = {
     'linear-gradient(180deg, var(--mantine-color-brand-9) 0%, var(--mantine-color-brand-8) 100%)',
   /** The company logo's tile, in px: 44 square, corners of 10 (the legacy's card head). */
   logoTile: { size: 44, radius: 10 },
+  /** The brand's gradient button: from shade 7 to shade 9, at 135 degrees, as Mantine's gradient variant reads it. */
+  buttonGradient: { from: 'brand.7', to: 'brand.9', deg: 135 },
+  /** A labelled divider's word: small and dimmed. */
+  dividerLabel: { fontSize: 'var(--mantine-font-size-sm)', color: 'var(--mantine-color-dimmed)' },
   /** A section title's grey icon tile, in px. */
   iconTile: 24,
 } as const;

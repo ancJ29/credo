@@ -40,6 +40,16 @@ describe('Gallery', () => {
     expect(within(badge).queryByRole('img')).toBeNull();
   });
 
+  it('shows the gradient and default buttons and the divider each beside its legacy picture', () => {
+    render(<Gallery />);
+
+    for (const name of ['Gradient button', 'Default button', 'Labelled divider']) {
+      const section = screen.getByRole('heading', { name }).parentElement!;
+      expect(within(section).getByRole('img', { name: `The legacy’s ${name}` })).toBeDefined();
+    }
+    expect(screen.getByText('hoặc')).toBeDefined();
+  });
+
   it('shows the values, and Mantine’s button and field', () => {
     render(<Gallery />);
 

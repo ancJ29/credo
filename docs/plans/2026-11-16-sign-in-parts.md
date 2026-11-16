@@ -123,7 +123,7 @@ Each line is the machine's decision, with its reason, vetoed on sight.
 | 3 | A door heading draws its title as a heading, bold and centred, and a subtitle beneath only when given | `ui/src/components/atoms/DoorHeading.test.tsx` |
 | 4 | A back link goes where its caller says, its arrow before its words, in brand-7 | `ui/src/components/atoms/BackLink.test.tsx` |
 | 5 | A door card draws a 4-px bar in the brand's gradient across its top, the brand band, then what it holds | `ui/src/components/organisms/DoorCard.test.tsx` |
-| 6 | A gradient button draws the brand from shade 7 to shade 9 at 135°, with no colour of its own | `ui/src/design-system/theme.test.ts` |
+| 6 | A gradient button draws the brand from shade 7 to shade 9 at 135°, with no colour of its own | `ui/src/design-system/theme.test.tsx` |
 | 7 | A labelled divider draws its word centred, small and dimmed, and a divider given no word draws none | the same |
 | 8 | The gallery draws a part's legacy picture beside it under "Legacy", and none beside a part without one | `ui/src/design-system/Gallery.test.tsx` |
 | 9 | The gallery shows every component of the three folders under its level's heading, the five new ones included | the same, its first case |
@@ -146,11 +146,15 @@ system's step 1, a page, a part and its tests through the ui gate, 6 minutes; it
       _Done, 2026-11-16:_ `design-system` taken in (`f9f153af`); the tile's picture cut 44 by 44 from the PC sign-in capture
       with Playwright's PNG codec; case 8 seen red (pane's block off), case 1 seen red (failed-load check off);
       `pnpm --filter @credo/ui check` exit 0, the citation test exit 0, the serve probe (Vite on 5391, gallery and picture) exit 0. 14 min.
-- [ ] **2. The theme's two.** `defaultGradient` and the divider's label in `designThemeOf`
+- [x] **2. The theme's two.** `defaultGradient` and the divider's label in `designThemeOf`
       (cases 6 and 7); the gallery's Mantine group draws the gradient button and the default button
       each with an icon, and the divider worded "hoặc"; each beside its picture. _Done when:_ both
       checks exit 0, and `grep -c 'BRAND_GRADIENT' ui/src/pages/SignIn.tsx` still counts 3, no door
       touched. **4 min.**
+      _Done, 2026-11-16:_ cases 6 and 7 each seen red once (the `defaultGradient` line removed; the divider's label style
+      emptied); the gallery draws the gradient button, the default button and the "hoặc" divider, each beside
+      its picture cut from the link page's PC capture; the case's test file became `theme.test.tsx` (JSX); both
+      checks exit 0; `grep -c 'BRAND_GRADIENT' ui/src/pages/SignIn.tsx` counts 3, no door touched. 8 min.
 - [ ] **3. The heading, the back link and the band.** `DoorHeading`, `BackLink`, `BrandBand`, a
       test beside each (cases 2 to 4), each beside its picture. _Done when:_ both checks exit 0 and
       `ls ui/src/components/*/*.tsx | grep -vc test` counts 10. **4 min.**
