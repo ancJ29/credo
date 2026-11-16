@@ -1988,3 +1988,15 @@ The rule of three is written at the `components/` note and again in the levels' 
 ## 509. A company too large to be compared in one press cannot switch from the page — the machine; `[DEFERRED]` (the move's plan, 2026-11-16, Low)
 
 `compareCompany` (`bff/src/records/company-copy.ts`) walks the whole company on both boxes in one press, inside the function's 10 seconds (`bff/src/records/company-move.ts`'s `pressMove`). No copy rate was measured, so the size at which a compare passes the limit is unknown; past it every press ends in a failure after its copy is done and the move can only be stopped. Fix: a compare in presses, kept from a key on the line as the copy's is. *Trigger:* a move press near 10 seconds in the ridge sitting, or a company whose records pass the figure that sitting reads.
+
+## 532. `copy-company` checks only the target line's id, so a target line naming another box or moving gets records it never reads — the machine; `[DEFERRED]` (the move's review, 2026-11-16, Low)
+
+`runRidge`'s `copy-company` (`scripts/src/ridge.ts`) checks the target's line by its id alone, while `carryCompany` writes to the target's home box. A target line that names another box, or carries a move, is handed records its calls never read, and the run still reports "0 differ". Fix: refuse such a target line by name, writing nothing, as the source's line is refused. *Trigger:* the next use of `copy-company` over a target that holds a line.
+
+## 533. The activity line prints only "client moved" for the mark, the switch and the stop — the machine; `[DEFERRED]` (the move's review, 2026-11-16, Low)
+
+`entryLine` (`shared/src/activity.ts`) names the action and not the step: the entries `bff/src/routes/client-move.ts` enters for `mark`, `switch` and `stop` read the same, though each carries its step and both boxes in its detail. Fix: print the step and the boxes. *Trigger:* the first reading of a move's entries in the activity log's page.
+
+## 534. The move's route repeats `storeOfLine`'s refusal of a box not held — the machine; `[DEFERRED]` (the move's review, 2026-11-16, Low)
+
+`registerMoveClientRoutes` (`bff/src/routes/client-move.ts`) has its own `boxOf`, which logs "a company names a box this back end does not hold" and answers 503, as `storeOfLine` in `bff/src/app.ts` does. Fix: one held-box helper both call. *Trigger:* the next change to either's wording or status.

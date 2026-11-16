@@ -159,14 +159,19 @@ export const en = {
     moveNoBox: 'There is no other box to move this company to.',
     moveTouch: 'Moving asks for your passkey.',
     moveMake: 'Move the company',
-    moveWait:
-      'Closed while it moves: the next step comes in {{count}} seconds. Keep this page open.',
-    moveCopying: 'Copying… {{count}} changes are still to make. Keep this page open.',
-    moveSweeping: 'Clearing the old box… {{count}} records are still to go. Keep this page open.',
+    moveWait: 'Closed while it moves: the next step comes after {{count}} s. Keep this page open.',
+    moveSwitched:
+      'The company now works on {{works}}. It stays closed for {{count}} s more, then {{clearing}} is cleared. Keep this page open.',
+    moveStopped:
+      'The move is stopped. The company works on {{works}} again; clearing {{clearing}} starts after {{count}} s. Keep this page open.',
+    moveCopying: 'Copying… Keep this page open.',
+    moveSweeping: 'Clearing {{clearing}}… records left: {{count}}. Keep this page open.',
     moveFailed:
       'A step failed. The company is still whole on its old box. Go on to try the step again, or stop the move to put the company back and clear what was copied.',
     moveFailedAfter:
-      'A step failed after the company went to its new box. It works there. Go on to finish clearing the old box.',
+      'A step failed after the move ended. The company works on {{works}}. Go on to finish clearing {{clearing}}.',
+    moveRefused:
+      'The move did not start. The company may already be moving, or the other box may not answer. Open the clients list and try again.',
     moveGoOn: 'Go on',
     moveStop: 'Stop the move',
     moveUnder:

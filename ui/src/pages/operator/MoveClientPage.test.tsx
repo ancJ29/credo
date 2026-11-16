@@ -12,6 +12,9 @@ import { MoveClientPage } from './MoveClientPage';
 
 const words = DICTIONARIES.en.operator;
 const fill = (text: string, count: number) => text.replace('{{count}}', String(count));
+/** A line's boxes: the one the company works on, and the one being cleared. */
+const boxes = (text: string, works: string, clearing: string) =>
+  text.replace('{{works}}', works).replace('{{clearing}}', clearing);
 
 type Options = { cue?: string; code?: string; before?: (api: Spied) => void };
 
@@ -98,9 +101,11 @@ describe('the page that moves a company to another box', () => {
 
     await choose();
 
-    expect(await screen.findByText(fill(words.moveCopying, 60))).toBeTruthy();
+    expect(await screen.findByText(words.moveCopying)).toBeTruthy();
     held[0]();
-    expect(await screen.findByText(fill(words.moveSweeping, 30))).toBeTruthy();
+    expect(
+      await screen.findByText(fill(words.moveSweeping.replace('{{clearing}}', 'home'), 30)),
+    ).toBeTruthy();
     held[1]();
     expect(await back()).toBeTruthy();
     expect(api.operatorPasskeyConfirmOptions).toHaveBeenCalledExactlyOnceWith('move-client');
@@ -168,8 +173,27 @@ describe('the page that moves a company to another box', () => {
     ]);
     await choose();
 
-    expect((await screen.findByRole('alert')).textContent).toBe(words.moveFailedAfter);
+    expect((await screen.findByRole('alert')).textContent).toBe(
+      boxes(words.moveFailedAfter, 'b2', 'home'),
+    );
     expect(screen.getByRole('button', { name: words.moveGoOn })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: words.moveStop })).toBeNull();
+  });
+
+  it('C14: A press that fails after a stop says the company works on its old box and the new one is being cleared', async () => {
+    const { api } = page();
+    sequence(api, [
+      { phase: 'waiting', seconds: 1 },
+      new ApiError(503),
+      { phase: 'stopped', seconds: 1 },
+      new ApiError(503),
+    ]);
+    await choose();
+    await userEvent.click(await screen.findByRole('button', { name: words.moveStop }));
+
+    const alert = (await screen.findByRole('alert')).textContent;
+    expect(alert).toContain('works on home');
+    expect(alert).toBe(boxes(words.moveFailedAfter, 'home', 'b2'));
     expect(screen.queryByRole('button', { name: words.moveStop })).toBeNull();
   });
 
@@ -177,7 +201,7 @@ describe('the page that moves a company to another box', () => {
     const { api } = page({ cue: 'moveClient:503' });
     await choose();
 
-    expect((await screen.findByRole('alert')).textContent).toBe(words.moveFailed);
+    expect((await screen.findByRole('alert')).textContent).toBe(words.moveRefused);
     expect(screen.getByRole('button', { name: words.moveMake })).toBeTruthy();
     expect(api.moveClient).toHaveBeenCalledTimes(1);
   });
@@ -196,7 +220,7 @@ describe('the page that moves a company to another box', () => {
     });
     await choose();
 
-    expect((await screen.findByRole('alert')).textContent).toBe(words.moveFailed);
+    expect((await screen.findByRole('alert')).textContent).toBe(words.moveRefused);
     expect(api.moveClient).not.toHaveBeenCalled();
   });
 
@@ -294,7 +318,9 @@ describe('the page that moves a company to another box', () => {
       },
     });
 
-    expect((await screen.findByRole('alert')).textContent).toBe(words.moveFailedAfter);
+    expect((await screen.findByRole('alert')).textContent).toBe(
+      boxes(words.moveFailedAfter, 'b2', 'home'),
+    );
     expect(screen.queryByRole('button', { name: words.moveStop })).toBeNull();
     expect(screen.getByRole('button', { name: words.moveGoOn })).toBeTruthy();
   });

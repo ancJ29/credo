@@ -20,7 +20,7 @@ type Props = {
 
 const sleep = (ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms));
 
-type Problem = 'notGiven' | 'failed';
+type Problem = 'notGiven' | 'failed' | 'refused';
 
 /**
  * Moving a company to another box, at `/operator/clients/:code/move`: the page names the company
@@ -48,27 +48,41 @@ export function MoveClientPage({ api, passkeys, onSignedOut, wait = sleep }: Pro
   const [busy, setBusy] = useState(false);
   /** What the last press answered, while the page presses on. */
   const [reply, setReply] = useState<Exclude<MoveClientReply, { phase: 'done' }> | null>(null);
-  /** The switch or a stop was made: from then on the page offers no stop. */
-  const [switched, setSwitched] = useState(false);
+  /** How the copy ended, by the answer that said so: from then on the page offers no stop. */
+  const [ended, setEnded] = useState<'switched' | 'stopped' | null>(null);
   const sweepOn = client?.move?.form === 'sweeping';
-  const after = switched || sweepOn;
+  const after = ended !== null || sweepOn;
+  /** The box the copy goes to: the one picked, or the one a move found on the list carries. */
+  const target = picked !== '' ? picked : client?.move?.form === 'copying' ? client.move.box : '';
+  /** The box the company works on and the box being cleared, from the list for a sweep it carries
+   * (the line's box is where the company works, the mark's the box to clear), else from how this
+   * page's copy ended: a switch works on the new box, a stop on the old one. */
+  const boxes =
+    client?.move?.form === 'sweeping'
+      ? { works: here, clearing: client.move.box }
+      : ended === 'stopped'
+        ? { works: here, clearing: target }
+        : { works: target, clearing: here };
 
   /** Presses until the move is done; the caller has set the page busy. */
   async function press(first: MoveClientRequest) {
+    let began = 'to' in first;
     try {
       for (let request = first; ; request = {}) {
         const answer = await api.moveClient(code, request);
+        began = false;
         if (answer.phase === 'done') {
           void navigate('/operator/clients');
           return;
         }
         setReply(answer);
-        if (answer.phase !== 'waiting' && answer.phase !== 'copying') setSwitched(true);
+        if (answer.phase === 'switched' || answer.phase === 'stopped') setEnded(answer.phase);
         if ('seconds' in answer) await wait(answer.seconds * 1000);
       }
     } catch (error) {
       refusal(error, { onSignedOut });
-      setProblem('failed');
+      // A beginning that failed has no move this page knows to go on with or to stop.
+      setProblem(began ? 'refused' : 'failed');
     }
     setBusy(false);
   }
@@ -88,7 +102,7 @@ export function MoveClientPage({ api, passkeys, onSignedOut, wait = sleep }: Pro
       await press({ to, confirm });
     } catch (error) {
       refusal(error, { onSignedOut });
-      setProblem(error instanceof PasskeyNotGiven ? 'notGiven' : 'failed');
+      setProblem(error instanceof PasskeyNotGiven ? 'notGiven' : 'refused');
       setBusy(false);
     }
   }
@@ -116,11 +130,15 @@ export function MoveClientPage({ api, passkeys, onSignedOut, wait = sleep }: Pro
   const progress =
     reply === null
       ? null
-      : 'seconds' in reply
+      : reply.phase === 'waiting'
         ? t('operator.moveWait', { count: reply.seconds })
-        : reply.phase === 'copying'
-          ? t('operator.moveCopying', { count: reply.left })
-          : t('operator.moveSweeping', { count: reply.left });
+        : reply.phase === 'switched'
+          ? t('operator.moveSwitched', { ...boxes, count: reply.seconds })
+          : reply.phase === 'stopped'
+            ? t('operator.moveStopped', { ...boxes, count: reply.seconds })
+            : reply.phase === 'copying'
+              ? t('operator.moveCopying')
+              : t('operator.moveSweeping', { clearing: boxes.clearing, count: reply.left });
 
   return (
     <Loaded status={loaded.status} onRetry={loaded.reload}>
@@ -144,9 +162,11 @@ export function MoveClientPage({ api, passkeys, onSignedOut, wait = sleep }: Pro
             <Alert color="red" role="alert">
               {problem === 'notGiven'
                 ? t('passkey.notGiven')
-                : after
-                  ? t('operator.moveFailedAfter')
-                  : t('operator.moveFailed')}
+                : problem === 'refused'
+                  ? t('operator.moveRefused')
+                  : after
+                    ? t('operator.moveFailedAfter', boxes)
+                    : t('operator.moveFailed')}
             </Alert>
           )}
           {progress !== null && (

@@ -147,7 +147,6 @@ export const storedClientDeletionSchema = z.strictObject({
   /** The box the company's records sit on, when it is not the home box: a press that resumes the
    * deletion has no line to read it from. */
   box: boxNameSchema.optional(),
-  move: storedMoveSchema.optional(),
 });
 export type StoredClientDeletion = z.infer<typeof storedClientDeletionSchema>;
 
