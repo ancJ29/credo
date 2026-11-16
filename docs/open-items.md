@@ -2020,3 +2020,12 @@ The comment "Runs first on every client route, before the body is read and befor
 ## 534. The move's route repeats `storeOfLine`'s refusal of a box not held — the machine; `[DEFERRED]` (the move's review, 2026-11-16, Low)
 
 `registerMoveClientRoutes` (`bff/src/routes/client-move.ts`) has its own `boxOf`, which logs "a company names a box this back end does not hold" and answers 503, as `storeOfLine` in `bff/src/app.ts` does. Fix: one held-box helper both call. *Trigger:* the next change to either's wording or status.
+
+
+## 535. The move page names the wrong box when it never saw the ending answer — the machine; `[DEFERRED]` (the move's reread, 2026-11-16, Low)
+
+`ui/src/pages/operator/MoveClientPage.tsx`'s `boxes` assumes a switch when the page never saw the ending answer: opened mid-copy, its first answer `sweeping`, because another tab stopped the move or this page's stop answer was lost. The sweep line and a failed-press line then name the box the company lives on as the one being cleared; the server sweeps the right box. Fix: name no box when the ending is unknown, or reload the list once on such an answer. *Trigger:* the next change to the page's lines.
+
+## 536. Two small wording points on the move page — the machine; `[DEFERRED]` (the move's reread, 2026-11-16, Info)
+
+In `ui/src/pages/operator/MoveClientPage.tsx` the box choice stays live while the passkey prompt and the first press run, so a click then changes the box later lines name. And `moveRefused` (`ui/src/i18n/en.ts`, `vi.ts`) says the move did not start when only its answer may have been lost; "may not have started" claims only what the page knows. Fix: lock the choice from the touch on, and reword the line. *Trigger:* the next change to the page's lines.

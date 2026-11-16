@@ -189,10 +189,11 @@ stage 3 point 1, stage 4 the sitting.
   `docs/memo/bff.md`'s tenant section gains the helper's table. *Done when:* the citation test exits
   0 and `git grep -nE '/Users/|~/'` finds nothing new. *Size:* 26 (the pooled pages made true, row 675).
   _Done 2026-11-16: `src/citations.test.ts` and `src/counts.test.ts` ended `== exit 0` (46 tests), and `git grep -nE '/Users/|~/'` finds nothing new; the detail page's lead note, "The record" and "Every client call reads it" lines are made true and gain a "Moving a company between boxes" part, `docs/architecture.md`'s dashed-box key, pooled paragraph and a "Moving a company" bullet say it is built and not run on ridge, and `docs/memo/bff.md`'s "company is resolved first" section gains the helper's table (the plan's "tenant section" is that one). The cited lines held up but for the record line's "not built: a mark", and the audit store's own box, which the move does not need._
-- [ ] **3r. Reviewed, fixed, recapped.** A model other than the author's, one fix pass, a reread, a
+- [x] **3r. Reviewed, fixed, recapped.** A model other than the author's, one fix pass, a reread, a
   recap. *Done when:* every finding tagged in the recap, the fix pass's gate `== exit 0`, the recap
   committed with `docs/products.md`'s row. *Size:* 14, 11, 2 and 2 (the first landing's review,
   fix, reread and recap, rows 679, 681, 682 and 683).
+  _Done 2026-11-16: the review (Opus) found one Medium, fixed in `33a1bdac`, and Lows and Infos tagged one by one in the recap; the fix pass's second whole gate ended `== exit 0` after a first red (ui branch coverage, a scripts test timed out, green on the rerun unchanged); the reread said it may merge and filed items 535 and 536; the recap `docs/recaps/2026-11-16-shape-move.md` and its row G in `docs/products.md` are committed._
 - [ ] 👤 **On ridge, in its own sitting**, once the landing is in `main` and your push has deployed
   it: `b2` in the stack (`ops/stack.sh env ridge --more-boxes b2`, then `ops/release.sh ridge` and
   `ops/app.sh ridge`, if the last sitting removed it); `ops/check.sh ridge`; at `/operator` a company
