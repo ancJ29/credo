@@ -11,4 +11,8 @@ export const TOKENS = {
   rowHover: 'var(--mantine-color-brand-0)',
   /** A dialog's title: large, at 550. */
   dialogTitle: { fontSize: 'var(--mantine-font-size-lg)', fontWeight: 550 },
+  /** A section card's padding, in px. */
+  cardPadding: 24,
+  /** A section title's grey icon tile, in px. */
+  iconTile: 24,
 } as const;

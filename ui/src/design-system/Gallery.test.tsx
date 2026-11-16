@@ -29,17 +29,12 @@ describe('Gallery', () => {
     }
   });
 
-  it('shows the values, Mantine’s button and field, and says where a level has none', () => {
+  it('shows the values, and Mantine’s button and field', () => {
     render(<Gallery />);
 
     expect(screen.getByRole('heading', { name: 'Values' })).toBeDefined();
     expect(screen.getByRole('button', { name: 'Save' })).toBeDefined();
     expect(screen.getByRole('textbox', { name: 'Name' })).toBeDefined();
-    expect(
-      within(screen.getByRole('heading', { name: 'Molecules' }).parentElement!).getByText(
-        'Nothing yet.',
-      ),
-    ).toBeDefined();
   });
 
   it('is light whatever the device asks', () => {

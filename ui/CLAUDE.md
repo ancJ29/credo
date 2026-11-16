@@ -43,7 +43,13 @@ a directory of your own making is not on this list and is not a directory (vites
   stays the base: a piece joins when it is drawn a third time, never to wrap a Mantine part alone.
   Levels are `atoms/`, `molecules/` and `organisms/`; each is a directory of components, not of its own
   making. **`components/atoms/`**: a small part that holds no other component of ours
-  (`ui/src/components/atoms/StatusBadge.tsx`'s `StatusBadge`).
+  (`ui/src/components/atoms/StatusBadge.tsx`'s `StatusBadge`). **`components/molecules/`**: a few atoms
+  made one thing (`ui/src/components/molecules/DetailField.tsx`'s `DetailField`).
+  **`components/organisms/`**: a block of a page, made of molecules and atoms
+  (`ui/src/components/organisms/SectionCard.tsx`'s `SectionCard`). A component imports only from the
+  levels below its own, the tokens and packages; `eslint.config.js` holds it. The rule of three: a piece
+  joins `components/` at its third use in the app, with its gallery entry; its first two stay in their
+  screen or in `parts/`.
 - **`i18n/`**: the dictionary (`ui/src/i18n/en.ts`'s `en`).
 - **`mock/`**: the standalone harness that draws a screen on fake data
   (`ui/src/mock/MockPage.tsx`'s `MockPage`).

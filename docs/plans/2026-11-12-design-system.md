@@ -160,11 +160,12 @@ a review with its check about 20.
       both checks exit 0, and the serve probe exits 0: in one invocation, Vite's dev server up on a
       spare port, `curl -sf` of `/gallery.html` and `/src/design-system/main.tsx`, then stopped.
       **14 min.** _Done 2026-11-16: `pnpm --filter @credo/ui check` exit 0 (typecheck, eslint, prettier, test, knip all 0); the citations test exit 0 (32 passed); serve probe on port 5391, `curl -sf` of `/gallery.html` and `/src/design-system/main.tsx` both exit 0, server stopped in the same invocation; case 1 red on a planted shade 7 (exit 1), case 3 red with the badge's entry renamed (exit 1), both put back._
-- [ ] **2. The other samples, and the direction.** The five other samples, a test beside each
+- [x] **2. The other samples, and the direction.** The five other samples, a test beside each
       (case 2), the gallery showing them (case 3, red with one left out); `eslint.config.js`'s three
       blocks (case 4, each red on a planted upward import, put back); `ui/CLAUDE.md`'s `molecules/`,
       `organisms/` and the rule of three. _Done when:_ both checks exit 0, the four red receipts in
       the tick, and `ls ui/src/components/*/*.tsx | grep -vc test` counts 6. **14 min.**
+      _Done 2026-11-16: `pnpm --filter @credo/ui check` exit 0 (typecheck, eslint, prettier, test, knip all 0); the citations test exit 0 (32 passed); `ls ui/src/components/*/*.tsx | grep -vc test` prints 6; case 4 red on a planted upward import in each level (an atom importing `../molecules/DetailField`, a molecule `../organisms/PageHeader`, an organism `../../theme`, eslint exit 1 each), case 3 red with `PageHeader` left out of the gallery (exit 1), all put back (the tests are outside the lint block)._
 - [ ] **3. Review, the null proof, and landing.** Another model reads steps 1 and 2; one fix pass;
       case 6; the recap and the gallery's row in `docs/products.md`; the landing; point 1. _Done
       when:_ case 6's command prints `ui/CLAUDE.md` alone, and the branch merges. **20 min.**

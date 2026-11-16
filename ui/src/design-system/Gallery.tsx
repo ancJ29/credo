@@ -13,7 +13,13 @@ import {
 } from '@mantine/core';
 import { CREDO_COLOUR } from '@credo/shared';
 import type { ReactNode } from 'react';
+import { IconBuilding } from '@tabler/icons-react';
+import { FieldLabel } from '../components/atoms/FieldLabel';
 import { StatusBadge } from '../components/atoms/StatusBadge';
+import { DetailField } from '../components/molecules/DetailField';
+import { SectionTitle } from '../components/molecules/SectionTitle';
+import { PageHeader } from '../components/organisms/PageHeader';
+import { SectionCard } from '../components/organisms/SectionCard';
 import { designThemeOf } from './theme';
 
 /** Every component of `components/`, by level, drawn in its states. A level with none says so. */
@@ -22,6 +28,7 @@ const LEVELS: { level: string; heading: string; entries: Record<string, ReactNod
     level: 'atoms',
     heading: 'Atoms',
     entries: {
+      FieldLabel: <FieldLabel>Phone</FieldLabel>,
       StatusBadge: (
         <Group>
           <StatusBadge active label="Active" />
@@ -30,8 +37,31 @@ const LEVELS: { level: string; heading: string; entries: Record<string, ReactNod
       ),
     },
   },
-  { level: 'molecules', heading: 'Molecules', entries: {} },
-  { level: 'organisms', heading: 'Organisms', entries: {} },
+  {
+    level: 'molecules',
+    heading: 'Molecules',
+    entries: {
+      DetailField: (
+        <Group>
+          <DetailField label="Phone" value="0901 234 567" />
+          <DetailField label="Email" />
+        </Group>
+      ),
+      SectionTitle: <SectionTitle icon={<IconBuilding size={14} />} label="Basics" />,
+    },
+  },
+  {
+    level: 'organisms',
+    heading: 'Organisms',
+    entries: {
+      SectionCard: (
+        <SectionCard icon={<IconBuilding size={14} />} title="Basics">
+          <DetailField label="Name" value="A shop" />
+        </SectionCard>
+      ),
+      PageHeader: <PageHeader title="Staff" actions={<Button>Add</Button>} />,
+    },
+  },
 ];
 
 function Values() {
@@ -82,7 +112,6 @@ export function Gallery() {
                   {node}
                 </Stack>
               ))}
-              {Object.keys(entries).length === 0 && <Text c="dimmed">Nothing yet.</Text>}
             </Stack>
           ))}
         </Stack>
