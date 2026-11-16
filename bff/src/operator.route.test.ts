@@ -401,7 +401,8 @@ describe('The operator never reads or changes a client, never sees a root’s pa
         '├── /api/operator/me (GET, HEAD)',
         '├── /api/operator/clients (GET, HEAD, POST)',
         '│   └── /:code (DELETE)',
-        '│       └── /root-password (POST)',
+        '│       ├── /root-password (POST)',
+        '│       └── /move (POST)',
         '├── /api/operator/operators (GET, HEAD, POST)',
         '│   └── /:id (DELETE)',
         '│       └── /link (POST)',
@@ -473,6 +474,7 @@ describe('The operator is shown every client on the stack, newest first, from th
       name: 'Newer',
       madeAt: Date.UTC(2026, 9, 29, 9),
       link: '/login?client-code=newer',
+      box: 'home',
     });
     expect(clients.map((client) => client.madeAt)).toEqual([
       Date.UTC(2026, 9, 29, 9),
@@ -541,6 +543,7 @@ describe('The operator is shown every client on the stack, newest first, from th
         name: 'Acme Trading',
         madeAt: Date.UTC(2026, 9, 28, 9),
         link: '/login?client-code=acme',
+        box: 'home',
       },
     ]);
   });

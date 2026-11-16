@@ -102,6 +102,7 @@ export const vi: Dictionary = {
     add: 'Thêm khách hàng',
     colName: 'Tên khi tạo',
     colCode: 'Mã',
+    colBox: 'Máy chủ lưu trữ',
     colMade: 'Ngày tạo',
     colLink: 'Đường dẫn đăng nhập',
     copyLink: 'Sao chép đường dẫn',

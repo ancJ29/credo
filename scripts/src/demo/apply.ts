@@ -34,6 +34,7 @@ import {
   ROUTES,
   type StaffSetupDoc,
   HOME_BOX,
+  isMoving,
   storedClientSchema,
   storedUserSchema,
   tenantConfigSchema,
@@ -658,7 +659,11 @@ export async function applyCopy(
 
   const index = await storage.getRecord(recordKeys.client(copy.code));
   if (!index) return done('missing', 'not on this service, left');
-  const { id: tenantId, name, box = HOME_BOX } = storedClientSchema.parse(index.data);
+  const line = storedClientSchema.parse(index.data);
+  const { id: tenantId, name, box = HOME_BOX } = line;
+  if (isMoving(line)) {
+    return done('refused', 'it is moving to another box, left, nothing written');
+  }
   // The seed serves the home box alone (item 271): a copy moved off it is named and left, nothing
   // written, and no client over another box is made from here.
   if (box !== HOME_BOX) {

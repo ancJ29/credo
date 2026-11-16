@@ -14,6 +14,7 @@ import {
   normaliseSignInName,
   recordKeys,
   sameOperatorName,
+  isMoving,
   storedClientSchema,
 } from '@credo/shared';
 import { OPERATOR_NAME } from '@credo/shared/demo';
@@ -575,7 +576,12 @@ export async function runRidge(
       });
       const held = await source.getRecord(recordKeys.client(code));
       if (!held) throw new Refused(`the source holds no company with the code ${code}`);
-      const { id, box = HOME_BOX } = storedClientSchema.parse(held.data);
+      const line = storedClientSchema.parse(held.data);
+      const { id, box = HOME_BOX } = line;
+      if (isMoving(line))
+        throw new Refused(
+          `the source's line for ${code} is moving to another box: nothing was written`,
+        );
       // The copy reads the source's home box alone: a line naming another is refused by name, as the
       // seed refuses one, before anything is written.
       if (box !== HOME_BOX)
@@ -597,7 +603,10 @@ export async function runRidge(
       const store = client();
       const held = await store.getRecord(recordKeys.client(demoCopy(code)));
       if (!held) throw new Refused(`${code} is not on this service`);
-      const { id, box = HOME_BOX } = storedClientSchema.parse(held.data);
+      const line = storedClientSchema.parse(held.data);
+      const { id, box = HOME_BOX } = line;
+      if (isMoving(line))
+        throw new Refused(`${code}'s line is moving to another box: nothing was written`);
       if (box !== HOME_BOX)
         throw new Refused(`${code}'s line names box ${box}, and the drill serves the home box`);
       const company = tenantStorage(store, id);

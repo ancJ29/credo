@@ -6,7 +6,6 @@ import {
   type CStorageClient,
   type DeleteClientReply,
   deleteClientRequestSchema,
-  HOME_BOX,
   recordKeys,
   storedClientDeletionSchema,
   storedClientSchema,
@@ -15,12 +14,12 @@ import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { declare, operatorOf } from '../audit';
 import { deleteClient } from '../records/clients';
 import { HttpError, parse } from '../errors';
-import { tenantStorage } from '../records/records';
+import { type StoreOfLine, tenantStorage } from '../records/records';
 
 type Deps = {
   storage: CStorageClient;
-  /** The store of a box this back end holds, or none. */
-  boxStorage: (box: string) => CStorageClient | undefined;
+  /** The store the line's company stands on, or the refusal its state answers. */
+  storeOfLine: StoreOfLine;
   now: () => number;
   /** The operator's live session, or a 401. */
   operatorSignedIn: (request: FastifyRequest) => Promise<{ id: string; name: string }>;
@@ -42,7 +41,7 @@ type Deps = {
  */
 export function registerDeleteClientRoutes(
   app: FastifyInstance,
-  { storage, boxStorage, now, operatorSignedIn, confirmed }: Deps,
+  { storage, storeOfLine, now, operatorSignedIn, confirmed }: Deps,
 ) {
   app.delete<{ Params: { code: string } }>(
     clientDeleteRoute(':code'),
@@ -61,15 +60,14 @@ export function registerDeleteClientRoutes(
         index?.id ?? (resuming ? storedClientDeletionSchema.parse(resuming.data).id : null);
       const entry = id ? declare(request, operatorOf(operator), id, id) : null;
       if (!entry) request.audit = []; // declared on purpose: no client to name
-      const box =
-        index?.box ??
-        (resuming ? storedClientDeletionSchema.parse(resuming.data).box : undefined) ??
-        HOME_BOX;
-      const onBox = boxStorage(box);
-      if (!onBox) {
-        request.log.error({ box }, 'a company names a box this back end does not hold');
-        throw new HttpError(503, 'Service unavailable');
-      }
+      // A resumed deletion has no line: the box is the deletion record's.
+      const onBox = storeOfLine(
+        index ?? {
+          box: resuming ? storedClientDeletionSchema.parse(resuming.data).box : undefined,
+        },
+        'act',
+        request.log,
+      );
       if (index) {
         const body = parse(deleteClientRequestSchema, request.body);
         // A line naming a box that holds no settings of the company is a wrong line: a delete would

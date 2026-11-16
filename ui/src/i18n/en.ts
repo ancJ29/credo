@@ -102,6 +102,7 @@ export const en = {
     add: 'Add a client',
     colName: 'Name when made',
     colCode: 'Code',
+    colBox: 'Box',
     colMade: 'Made on',
     colLink: 'Sign-in link',
     copyLink: 'Copy the link',

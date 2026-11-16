@@ -308,7 +308,8 @@ describe('the operator’s page', () => {
 
     const cells = await screen.findAllByRole('cell');
     expect(cells[0]?.textContent).toBe('Minh Phát');
-    expect(cells[2]?.textContent).toBe('29 Oct 2026');
+    expect(cells[2]?.textContent).toBe('home');
+    expect(cells[3]?.textContent).toBe('29 Oct 2026');
     expect(document.body.innerHTML).not.toContain(made.password);
   });
 

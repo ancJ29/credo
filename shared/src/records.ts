@@ -97,6 +97,28 @@ export const KEPT_CODES: readonly string[] = ['operator', 'www'];
 
 export const normaliseClientCode = (raw: string) => raw.trim().toLowerCase();
 
+/** A move the line carries, in one of two forms. *Copying:* the box the company goes to, when it
+ * was marked (milliseconds since the epoch) and the key the last press passed (never sent to a
+ * page: a key may hold a sign-in name); the line's `box` is still the old box. *Sweeping:* after a
+ * switch or a stop, the box whose copy is to go, and `sweepAt`, 15 seconds after that write, before
+ * which nothing is swept and no call reaches the new box. `closed` is true after a switch (the
+ * company answers 503 until `sweepAt`) and false after a stop (it is open on its old box at once). */
+export const storedMoveSchema = z.discriminatedUnion('form', [
+  z.strictObject({
+    form: z.literal('copying'),
+    to: boxNameSchema,
+    markedAt: z.number(),
+    after: z.string().optional(),
+  }),
+  z.strictObject({
+    form: z.literal('sweeping'),
+    box: boxNameSchema,
+    sweepAt: z.number(),
+    closed: z.boolean(),
+  }),
+]);
+export type StoredMove = z.infer<typeof storedMoveSchema>;
+
 /** The index record: the tenant's minted id, the name as made for the reader, and the time it was
  * made, in milliseconds since the epoch. An index written before the time was kept has none, and
  * reads as none; nothing rewrites it. `box` names the box the company's records sit on; a line with
@@ -106,8 +128,13 @@ export const storedClientSchema = z.strictObject({
   name: z.string(),
   madeAt: z.number().optional(),
   box: boxNameSchema.optional(),
+  move: storedMoveSchema.optional(),
 });
 export type StoredClient = z.infer<typeof storedClientSchema>;
+
+/** Whether a line carries a move, in either form: the one predicate the helper that answers a
+ * line's store reads, and the terminal's acts, which refuse such a company by name. */
+export const isMoving = (line: { move?: StoredMove | undefined }) => line.move !== undefined;
 
 /** A client's deletion in progress: the tenant's id and name from the index that has gone, the
  * operator who began it and when, in milliseconds since the epoch. It is the only trace of the
@@ -120,6 +147,7 @@ export const storedClientDeletionSchema = z.strictObject({
   /** The box the company's records sit on, when it is not the home box: a press that resumes the
    * deletion has no line to read it from. */
   box: boxNameSchema.optional(),
+  move: storedMoveSchema.optional(),
 });
 export type StoredClientDeletion = z.infer<typeof storedClientDeletionSchema>;
 

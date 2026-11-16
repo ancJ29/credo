@@ -1408,7 +1408,7 @@ export function createFakeApi({
             const move = moves.get(client.code);
             return {
               ...client,
-              ...(boxOf.has(client.code) ? { box: boxOf.get(client.code) } : {}),
+              box: boxOf.get(client.code) ?? HOME_BOX,
               ...(move ? { move: { form: move.mark, box: move.swept } } : {}),
             };
           })

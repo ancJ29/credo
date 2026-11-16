@@ -111,7 +111,7 @@ export const RULES: Rules = {
   ],
   forms: {
     files: ui(
-      'pages/operator/AddOperatorPage pages/client/AddPersonPage parts/CustomerForm pages/operator/DeleteClientPage parts/NewClient parts/OrderParts pages/client/PersonPage pages/client/OwnPasswordPage parts/ProductForm pages/operator/RootPasswordPage parts/Settings pages/SignIn parts/SignInPanels',
+      'pages/operator/AddOperatorPage pages/client/AddPersonPage parts/CustomerForm pages/operator/DeleteClientPage pages/operator/MoveClientPage parts/NewClient parts/OrderParts pages/client/PersonPage pages/client/OwnPasswordPage parts/ProductForm pages/operator/RootPasswordPage parts/Settings pages/SignIn parts/SignInPanels',
     ),
     fieldError: /\berror=\{/,
     marker: /<form\b|component="form"/,

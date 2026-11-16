@@ -37,6 +37,7 @@ export const ACTIONS = {
   'client.create': 'client made',
   'client.delete': 'client deleted',
   'client.rootPassword': 'root password set',
+  'client.move': 'client moved',
 } as const;
 export type ActionId = keyof typeof ACTIONS;
 

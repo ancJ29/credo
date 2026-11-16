@@ -177,12 +177,13 @@ stage 3 point 1, stage 4 the sitting.
   names new files, or an old test gaining a stub line for the new call alone. *Size:* at least 13
   (the form's list on the fake, row 668). Then 👤 point 1.
   _Done 2026-11-16: the `shared` and `ui` gates each ended `== exit 0`; case 14 red once with the page's loop re-sending the beginning on every press, case 15 red once with the list offering the move on one box, both put back; the diff against `pre-merge` names new test files, and old tests gain only a `moveClient` stub line or a name in the fake's call list._
-- [ ] **2. The move in the back end and the terminal.** Decisions 1 to 10 and decision 11's list:
+- [x] **2. The move in the back end and the terminal.** Decisions 1 to 10 and decision 11's list:
   the mark and its predicate, the helper, the press, the sweep's function, the route and its entry,
   the terminal's refusals. *Done when:* `pnpm check` ends `== exit 0` at 100 %; cases 1 to 13 red
   once; new test files alone, the delete's and the root password's tests unchanged; items 440 and
   277 closed in `docs/open-items.md` with their reasons, and item 509 filed. *Size:* at least 33
   (every act on the company's box through the line, and the scripts' refusal of another box, row 665).
+  _Done 2026-11-16: `pnpm check` ended `== exit 0` at 100 %; cases 1 to 13 each red once on a named mutation and put back; new test files only, bar the route list's two counts, the operator route tree and three list expectations that gain `box`; items 440 and 277 closed, item 509 filed. The mark carries one field beyond decision 1, `closed`, to tell a switch (503 until `sweepAt`) from a stop (open at once). The human's ask after step 1's look: the list sends `box` for every company, the home box included, and the clients page has a Box column (the wire field stays optional; the fake sends it for every company)._
 - [ ] **3. The pages true.** `docs/architecture-detail.md#L126-L130`, `#L164-L167` and
   `#L208-L210` and the pooled section of `docs/architecture.md` say the move is built, and how;
   `docs/memo/bff.md`'s tenant section gains the helper's table. *Done when:* the citation test exits

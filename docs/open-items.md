@@ -1427,9 +1427,11 @@ The services page (`ui/src/pages/operator/ServicesPage.tsx`) reads `shared/src/w
 
 After `docs/plans/2026-11-11-store-pages-copy.md` the store answers in pages and the back end's `every` (`bff/src/records/records.ts`) reads them all, so a customer, product or staff list past 1,000 comes back whole, in one answer, and the order page still loads both whole lists for its pickers (`ui/src/pages/client/OrderPage.tsx`'s `api.listCustomers()` and `api.listProducts()`). Nothing on screen asks for a part today, and the lists of the human's companies are far under any size a phone cannot draw. Fix: a list screen that asks for a page or a search, and pickers that search the back end. *Trigger:* the first company whose list a phone draws slowly, or whose answer nears the back end's answer limit, which that plan did not read.
 
-## 277. The copy tool carries a company's records and not its activity entries — the pooled shape's move; waits on the activity log running beside the store (the store's pages and copy plan, 2026-11-11, Medium)
+## 277. The copy tool carries a company's records and not its activity entries — the pooled shape's move; waits on the activity log running beside the store (the store's pages and copy plan, 2026-11-11, Medium) — `[FIXED]` in the move's step 2, 2026-11-16: refuted, nothing needs to move
 
 The copy tool of `docs/plans/2026-11-11-store-pages-copy.md` copies every record under a company's prefix in c-storage and nothing else. The activity log keeps each company's entries in its own service and file (`services/audit-backbone/internal/activity/store.go`'s `ByActor` and `ByTarget` take the company's id), so a company moved to another box would leave its history on the old one. A one-company restore is not touched by this: history records what happened, and stays. Fix: the move carries the company's entries too, or the back end reads a moved company's history where it was written. *Trigger:* the activity log's milestone, which ships it beside the store, and the shape's move, whichever plan comes second.
+
+**Closed (the move's step 2, 2026-11-16).** The premise was a log per box; there is one activity log (`bff/src/env.ts`), its address read off the home box, each entry kept under the company's id (`bff/src/app.ts`'s onSend hook), which a move keeps. A moved company's history is where it was written, and the photos sit in one bucket per back end, so neither moves. See `docs/plans/2026-11-16-shape-move.md`, "What the code says".
 
 ## 246. The terminal scripts reach a company's records with the whole store, so the pooled shape must route them too — the machine; `[FIXED]` in the pooled shape's first landing, 2026-11-14 (the one-company storage client's plan, 2026-11-11, Medium)
 
@@ -1793,9 +1795,11 @@ The e2e job's cache holds the Node prefix, and `npm install -g @usebruno/cli@4.2
 
 The app's row is the commit compiled into the scripts the tab loaded (`ui/src/main.tsx#L32`), while the BFF's and c-storage's are asked each minute (`ui/src/pages/operator/ServicesPage.tsx#L84-L99`). After a deploy, a tab opened before it marks the app's page "Different build", and the sentence above the rows (`ui/src/i18n/en.ts#L260-L261`) says c-storage is updated first, then the BFF and the app, which reads as "wait" when a reload is the whole remedy: `index.html` is served `no-cache` (`ops/app.sh#L156-L157`), so a reload shows the new build. It bites at a deploy's look and in the rehearsal of the way back, both read on this page. *Fix:* the sentence also says "or this page was opened before it: reload it", in both languages, which moves the services walk's half-done screen. *Trigger:* the next change to the Services page, or a no at the build version plan's look.
 
-## 440. The box's resolution is written out three times, so step 7's moving mark must be added to each copy — the machine; `[DEFERRED]` (the review of the pooled shape's first landing, 2026-11-14, Low)
+## 440. The box's resolution is written out three times, so step 7's moving mark must be added to each copy — the machine; `[FIXED]` in the move's step 2, 2026-11-16 (the review of the pooled shape's first landing, 2026-11-14, Low)
 
 `bff/src/app.ts` (`resolveTenant`), `bff/src/routes/clients-delete.ts` and `bff/src/routes/root-password.ts` each read the line's box (none is home), look for the store, and on a miss log the box and answer 503 (code convention C1). A copy missed by the move's mark would answer a moving company's call. *Fix, if taken:* one helper, for example `boxStorage` throwing the logged 503 itself, or a `companyOf(line)` answering the id and the store. *Trigger:* the move's step (step 7), which adds a mark to each copy.
+
+**Fixed (the move's step 2, 2026-11-16).** One helper in `bff/src/app.ts`, `storeOfLine`, answers a line's store or its refusal by the line's state; `resolveTenant`, the delete's route and the root password's route all call it, so the moving mark is read in one place.
 
 ## 441. Four comments sit on the wrong declaration after the boxes' inserts — the machine; `[DEFERRED]` (the review of the pooled shape's first landing, 2026-11-14, Low)
 
@@ -1980,3 +1984,7 @@ The rule of three is written at the `components/` note and again in the levels' 
 ## 514. The detail field's empty value follows the memo, not the legacy's own field (the same reread, Low) — the machine; `[DEFERRED]`
 
 `ui/src/components/molecules/DetailField.tsx#L9` draws an em dash for a missing value, as the legacy's design memo says; the legacy's own `DetailField` draws a hyphen, and the memo's empty value is dimmed and italic, which the sample is not. Settle the dash and the dimming with the first screen that shows an empty value.
+
+## 509. A company too large to be compared in one press cannot switch from the page — the machine; `[DEFERRED]` (the move's plan, 2026-11-16, Low)
+
+`compareCompany` (`bff/src/records/company-copy.ts`) walks the whole company on both boxes in one press, inside the function's 10 seconds (`bff/src/records/company-move.ts`'s `pressMove`). No copy rate was measured, so the size at which a compare passes the limit is unknown; past it every press ends in a failure after its copy is done and the move can only be stopped. Fix: a compare in presses, kept from a key on the line as the copy's is. *Trigger:* a move press near 10 seconds in the ridge sitting, or a company whose records pass the figure that sitting reads.

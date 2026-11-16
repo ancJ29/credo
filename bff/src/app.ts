@@ -38,7 +38,7 @@ import {
 } from '@credo/shared';
 import Fastify, { type FastifyRequest, type RouteOptions } from 'fastify';
 import { companiesByBox, createClient, listClients, ROOT_NAME } from './records/clients';
-import { type TenantStorage, tenantStorage } from './records/records';
+import { type StoreOfLine, type TenantStorage, tenantStorage } from './records/records';
 import { clearWait, countTry, waitKeyFrom } from './records/sign-in-wait';
 import { HttpError, parse, replyFor } from './errors';
 import { type Declared, declare, exempt, operatorOf, personOf } from './audit';
@@ -62,6 +62,7 @@ import type { PhotoStore } from './photo-store';
 import { registerReconciliationRoutes } from './routes/reconciliations';
 import { registerOperatorTeamRoutes } from './routes/operator-team';
 import { registerDeleteClientRoutes } from './routes/clients-delete';
+import { registerMoveClientRoutes } from './routes/client-move';
 import { registerRootPasswordRoutes } from './routes/root-password';
 import { registerStaffRoutes } from './routes/staff';
 
@@ -183,21 +184,40 @@ export function buildApp({
   const boxStorage = (box: string) =>
     box === HOME_BOX ? storage : new Map(Object.entries(boxes)).get(box);
 
+  /**
+   * The one answer to "which store does this line's company stand on": the box the line names, by
+   * the move it carries. A company's own calls get 503 (try again) from the mark to the switch and
+   * from the switch until `sweepAt`; the operator's acts and the terminal's get 409, whatever the
+   * state, while a move is on the line. A box not held is the logged 503, as it always was. Only
+   * the move's route reads past a mark.
+   */
+  function storeOfLine(...[line, caller, log]: Parameters<StoreOfLine>) {
+    const { box = HOME_BOX, move } = line;
+    if (move && caller === 'act') throw new HttpError(409, 'The client is moving');
+    if (
+      move?.form === 'copying' ||
+      (move?.form === 'sweeping' && move.closed && now() < move.sweepAt)
+    ) {
+      throw new HttpError(503, 'Service unavailable');
+    }
+    const held = boxStorage(box);
+    if (!held) {
+      // The line names a box this back end was not handed: a fault of the setting, like a store
+      // that does not answer, so the screens offer a retry. The log names the box, never a key.
+      log.error({ box }, 'a company names a box this back end does not hold');
+      throw new HttpError(503, 'Service unavailable');
+    }
+    return held;
+  }
+
   async function resolveTenant(request: FastifyRequest) {
     const code = clientCodeSchema.safeParse(request.headers[CLIENT_HEADER]);
     if (!code.success) throw new HttpError(400, 'Bad request', { details: CLIENT_HEADER });
     const found = await storage.getRecord(recordKeys.client(code.data));
     if (!found) throw new HttpError(404, 'Unknown client');
-    const { id, box = HOME_BOX } = storedClientSchema.parse(found.data);
-    const held = boxStorage(box);
-    if (!held) {
-      // The line names a box this back end was not handed: a fault of the setting, like a store
-      // that does not answer, so the screens offer a retry. The log names the box, never a key.
-      request.log.error({ box }, 'a company names a box this back end does not hold');
-      throw new HttpError(503, 'Service unavailable');
-    }
-    request.tenantId = id;
-    request.storage = tenantStorage(held, id);
+    const line = storedClientSchema.parse(found.data);
+    request.tenantId = line.id;
+    request.storage = tenantStorage(storeOfLine(line, 'company', request.log), line.id);
   }
   const forClient = { onRequest: resolveTenant };
 
@@ -502,8 +522,9 @@ export function buildApp({
     origin,
     serviceKey,
   });
-  registerRootPasswordRoutes(app, { storage, boxStorage, now, operatorSignedIn, confirmed });
-  registerDeleteClientRoutes(app, { storage, boxStorage, now, operatorSignedIn, confirmed });
+  registerRootPasswordRoutes(app, { storage, storeOfLine, now, operatorSignedIn, confirmed });
+  registerDeleteClientRoutes(app, { storage, storeOfLine, now, operatorSignedIn, confirmed });
+  registerMoveClientRoutes(app, { storage, boxStorage, now, operatorSignedIn, confirmed });
   registerOperatorTeamRoutes(app, { storage, now, operatorSignedIn, confirmed });
 
   app.get(ROUTES.operatorClients, async (request): Promise<ClientListReply> => {

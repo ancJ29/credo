@@ -1,4 +1,4 @@
-import { clientAddress, type Language } from '@credo/shared';
+import { clientAddress, HOME_BOX, type Language } from '@credo/shared';
 import { Button, Group, Stack, Table, Text, Title } from '@mantine/core';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -49,6 +49,7 @@ export function ClientsPage({ api, onSignedOut }: Props) {
                 <Table.Tr>
                   <Table.Th>{t('operator.colName')}</Table.Th>
                   <Table.Th>{t('operator.colCode')}</Table.Th>
+                  <Table.Th>{t('operator.colBox')}</Table.Th>
                   <Table.Th>{t('operator.colMade')}</Table.Th>
                   <Table.Th>{t('operator.colLink')}</Table.Th>
                   <Table.Th />
@@ -59,6 +60,7 @@ export function ClientsPage({ api, onSignedOut }: Props) {
                   <Table.Tr key={client.code}>
                     <Table.Td>{client.name}</Table.Td>
                     <Table.Td>{client.code}</Table.Td>
+                    <Table.Td>{client.box ?? HOME_BOX}</Table.Td>
                     <Table.Td>{dayOf(client.madeAt, i18n.language as Language)}</Table.Td>
                     <Table.Td>
                       <CopyText
