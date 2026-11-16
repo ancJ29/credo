@@ -123,9 +123,9 @@ it is the whole milestone.
   *Done when:* `grep -c "Check a piece on ridge, without code" docs/products.md` prints 2; `grep -n
   "local only, ridge open\|not yet run on ridge" docs/products.md` prints nothing; each quoted label
   is found in both word files (case 1); each new link's file exists (case 2); the citation test
-  exits 0. *Ran:* the first grep printed 2; the second printed the two other rows' own "not yet run on ridge" (the remake, the restore), none of the two stale rows; every label found in both word files; each link's target exists; the citation test exited 0. *Size 8:* rows `2026-11-13 08:27` (135, guide, 4) and `08:51` (135, guide-fix, 4), a
+  exits 0. *Ran:* the first grep printed 2; the second printed the two other rows' own "not yet run on ridge" (the demo copies' remake, the continuous copy's restore), none of the two stale rows (the grep was meant for the My deliveries and Frame and Clients rows only); step 3 then corrected those two other rows, which the recaps of 2026-11-13 (long-runs, "On ridge") and 2026-11-12 (continuous-copy, "On ridge") say ran on ridge, so the grep now prints nothing; every label found in both word files; each link's target exists; the citation test exited 0. *Size 8:* rows `2026-11-13 08:27` (135, guide, 4) and `08:51` (135, guide-fix, 4), a
   living page of acts read against the code and then linked.
-- [ ] **2. The receipt, a one-off outside git.** Copied from the access log read of 2026-11-08 with
+- [x] **2. The receipt, a one-off outside git.** Copied from the access log read of 2026-11-08 with
   its changes: no requests sent, no stack read; one optional argument, the minutes back (120 by
   default, a whole number from 1 to 1440, else refused); one read of `/aws/apigateway/credo-ridge`,
   parsed by the same `.events[].message | fromjson?` that read three real lines off ridge that day;
@@ -134,16 +134,16 @@ it is the whole milestone.
   reply is no longer kept, so the stand-in's reply is that parse's shape around `ops/env.yml#L633`. *Done when:* `bash -n` and ShellCheck print nothing; four stand-in runs read
   whole: green with the three calls (exit 0), red with the office's look left out (exit 1, naming
   it), a refusal when the stand-in fails (exit 2), and the address count red once with the address
-  field let through, then 0 (cases 4 to 8). *Size 10:* row `2026-11-16 13:56` (128,
+  field let through, then 0 (cases 4 to 8). *Ran:* `bash -n` and ShellCheck printed nothing (one `SC2329` disable on `cleanup`, which the EXIT trap calls); the four stand-in runs read whole: green with the three calls, exit 0; the office's look left out, exit 1 naming `photo`; the stand-in `aws` failing, exit 2, a refusal before any receipt line; the address field let through, count 3 and red, then the real script 0; the stand-in recorded only `logs filter-log-events` calls. A second read by another model may change the script; its tick holds whatever it fixes, since it names the cases. *Size 10:* row `2026-11-16 13:56` (128,
   restore-oneoff, 10), one script with green and red stand-in runs.
-- [ ] **3. The convention line.** In `docs/conventions/collaboration.md`, after "Stage 4 is stood up
+- [x] **3. The convention line.** In `docs/conventions/collaboration.md`, after "Stage 4 is stood up
   only for a piece that changes what ships" (`#L186`): where it is stood up, the piece's check is a
   card under the products page's "Check a piece on ridge, without code", and its receipt is the
   access log's lines for the card's calls, read in the human's terminal. In
   `docs/conventions/documentation.md#L169`, the recap's row: the recap's commit also adds the card
   where the piece stands up stage 4. It lands with the piece because the piece declares the stage
   standing, and without the line the next piece's check goes back to a chat. *Done when:* `git grep -n "Check a piece on ridge"
-  docs/conventions/` prints two lines, one in each file; the citation test exits 0. *Size 3:* row
+  docs/conventions/` prints two lines, one in each file; the citation test exits 0. *Ran:* the grep printed two lines, `collaboration.md#L188` and `documentation.md#L169`; the citation test exited 0; the two rows step 1 left were checked against the close-out recaps and both corrected. *Size 3:* row
   `2026-11-11 18:16` (120, step 3, 3), one rule in two conventions.
 - [ ] **4. 👤 Your check, then your command.** Your point below, then the receipt in your terminal;
   the orchestrator hands the command. *Done when:* your yes or no is in the piece's record, and the
