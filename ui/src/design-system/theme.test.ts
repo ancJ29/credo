@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { shadesOf } from '../theme';
+import { shadesOf } from './appTheme';
 import { designThemeOf } from './theme';
 
 const COLOUR = '#2f7d6d';

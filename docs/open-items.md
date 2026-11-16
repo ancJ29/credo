@@ -1973,9 +1973,13 @@ The rule of three is written at the `components/` note and again in the levels' 
 
 `ui/src/design-system/theme.ts#L18-L21` carries the dialog's centring and title but not the header's padding of the legacy's `theme/index.ts#L89-L91`, and the gallery shows neither a dialog nor a table row under the pointer, so the two entries of case 1 are held by the test alone and cannot be judged by eye. Add the padding with the first screen that opens a dialog, and a dialog and a table to the gallery.
 
-## 508. `tokens.ts` repeats values `ui/src/theme.ts` holds (the same review, Low) — the machine; `[DEFERRED]`
+## 508. `tokens.ts` repeats values `ui/src/design-system/appTheme.ts` holds (the same review, Low) — the machine; `[DEFERRED]`
 
-`ui/src/design-system/tokens.ts#L9` and `#L19` write the badge's corners (4 px) and the card's padding (24 px) that `ui/src/theme.ts#L118-L119` already holds in its own entries (the radius `sm` and the spacing `lg`); two homes that drift with nothing red. Landing 2 moves `theme.ts` in; read one from the other then.
+`ui/src/design-system/tokens.ts#L9` and `#L19` write the badge's corners (4 px) and the card's padding (24 px) that `themeOf` in `ui/src/design-system/appTheme.ts` already holds in its own entries (the radius `sm` and the spacing `lg`); two homes that drift with nothing red. Landing 3's step 9 joins the two themes; read one from the other then.
+
+## 509. A company too large to be compared in one press cannot switch from the page — the machine; `[DEFERRED]` (the move's plan, 2026-11-16, Low)
+
+`compareCompany` (`bff/src/records/company-copy.ts`) walks the whole company on both boxes in one press, inside the function's 10 seconds (`bff/src/records/company-move.ts`'s `pressMove`). No copy rate was measured, so the size at which a compare passes the limit is unknown; past it every press ends in a failure after its copy is done and the move can only be stopped. Fix: a compare in presses, kept from a key on the line as the copy's is. *Trigger:* a move press near 10 seconds in the ridge sitting, or a company whose records pass the figure that sitting reads.
 
 ## 513. The label atom's test asserts the weight alone, so its letter spacing can drift green (the reread of the skeleton's fix pass, 2026-11-16, Low) — the machine; `[DEFERRED]`
 
@@ -1985,9 +1989,13 @@ The rule of three is written at the `components/` note and again in the levels' 
 
 `ui/src/components/molecules/DetailField.tsx#L9` draws an em dash for a missing value, as the legacy's design memo says; the legacy's own `DetailField` draws a hyphen, and the memo's empty value is dimmed and italic, which the sample is not. Settle the dash and the dimming with the first screen that shows an empty value.
 
-## 509. A company too large to be compared in one press cannot switch from the page — the machine; `[DEFERRED]` (the move's plan, 2026-11-16, Low)
+## 515. The picture run cannot take one picture per part of the gallery by its address — the machine; *parked* until the first change to a part that no walk's screen shows (the design system's plan, landing 4, 2026-11-16, Low)
 
-`compareCompany` (`bff/src/records/company-copy.ts`) walks the whole company on both boxes in one press, inside the function's 10 seconds (`bff/src/records/company-move.ts`'s `pressMove`). No copy rate was measured, so the size at which a compare passes the limit is unknown; past it every press ends in a failure after its copy is done and the move can only be stopped. Fix: a compare in presses, kept from a key on the line as the copy's is. *Trigger:* a move press near 10 seconds in the ridge sitting, or a company whose records pass the figure that sitting reads.
+A walk opens an address on the front (`walk/playwright.config.ts#L25`) and `shot` writes each picture by screen name (`walk/support.ts#L46`, `#L63`); `visual` takes no picture (`visual/src/capture.ts#L1-L4`). A `walk/specs/gallery.spec.ts` would open each part's address and call `walk/support.ts`'s `shot`. Four things stand in its way: both lanes' fronts serve a build of `index.html` alone (`scripts/src/fake.ts#L17`, `scripts/src/stack.ts#L35`, `ui/vite.config.ts#L13-L17`) and answer `/gallery.html` with the app (`scripts/src/running/front.ts#L98-L109`); every walk has a stack lane and is green only when the fake equals the stack (`walk/run.sh#L45-L58`); every `at` in a spec must be a screen of the walks page (`visual/src/walks.test.ts#L163-L171`), which draws the app's screens, not the gallery; and every spec shoots three widths in two languages (`#L204-L211`), where a part needs one picture.
+
+## 516. The gallery's "Legacy" pane has no picture of a legacy part to show — the machine; *parked* until the legacy capture opens, when the partners name the screens to match (the design system's plan, landing 4, 2026-11-16, Low)
+
+`ops/legacy-capture.sh` takes whole screens (`walk/legacy-capture.ts#L496`) of the employee feature (`walk/legacy-screens/employees.screens#L6-L15`) into a folder outside git (`ops/legacy-capture.sh#L17-L18`), since they show a client's real people (`docs/recaps/2026-11-04-legacy-capture.md#L24`); the design system's plan reads the legacy's code, not pictures. A pane beside each part needs a picture of that part alone (an element's picture rather than the page's), taken on data with no real person so it can sit beside the gallery; the pane is drawn only for a part that has one.
 
 ## 517. The delivery photos' card is not on the walks page, where partners already sign in (the check without code, 2026-11-16) — the machine; `[DEFERRED]`
 
@@ -2029,6 +2037,14 @@ The comment "Runs first on every client route, before the body is read and befor
 ## 536. Two small wording points on the move page — the machine; `[DEFERRED]` (the move's reread, 2026-11-16, Info)
 
 In `ui/src/pages/operator/MoveClientPage.tsx` the box choice stays live while the passkey prompt and the first press run, so a click then changes the box later lines name. And `moveRefused` (`ui/src/i18n/en.ts`, `vi.ts`) says the move did not start when only its answer may have been lost; "may not have started" claims only what the page knows. Fix: lock the choice from the touch on, and reword the line. *Trigger:* the next change to the page's lines.
+
+## 539. The two literal checks miss some colours, flag some strings that are not one, and keep the pattern in two places — the machine; `[DEFERRED]` (the design system's review, 2026-11-16, Low)
+
+`ui/src/design-system/literals.test.ts` and the `no-restricted-syntax` block in `eslint.config.js` read a hex value or a lower-case `rgb(`, `rgba(`, `hsl(` or `hsla(`, so they miss `white`, an upper-case `RGB(`, `oklch(` and a hex built as `#${...}`; they flag a string such as `'Order #1234'` under the colour message; and the pattern is written in both. Fix: the `i` flag, the other colour functions and `white|black`, one home for the pattern, and what is left out named in case 7's row of the plan.
+
+## 541. Two dead branches after the light-only step — the machine; `[DEFERRED]` (the design system's review, 2026-11-16, Low)
+
+`GROUND` in `ui/src/pages/SignIn.tsx` keeps a `light-dark()` that can only resolve light, and the "narrows to one theme" row of `ui/src/mock/MockPage.test.tsx` clicks the only theme there is. Fix: the plain light value, and the row's click taken out with its count.
 
 ## 549. An English word changed by a partner reddens the `ui` tests that query it by its text — the machine; *parked* until the first returned file that changes an English word (the words file's plan, 2026-11-16, Low)
 

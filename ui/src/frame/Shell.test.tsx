@@ -58,8 +58,12 @@ describe('Shell', () => {
     expect(sideMenu().getAttribute('style')).toContain(
       'linear-gradient(180deg, var(--mantine-color-brand-9) 0%, var(--mantine-color-brand-8) 100%)',
     );
-    expect(header.style.color).toBe('rgb(255, 255, 255)');
-    expect(sideMenu().style.color).toBe('rgb(255, 255, 255)');
+    expect(header.style.color).toBe('var(--credo-white)');
+    expect(sideMenu().style.color).toBe('var(--credo-white)');
+    // the variable is white: the value the inline colour carried before it
+    expect(
+      [...document.querySelectorAll('style')].map((style) => style.textContent).join(''),
+    ).toContain('--credo-white: #fff;');
     // 250 pixels wide, 64 high for the phone's bar, as Mantine writes them: in rem.
     const rules = [...document.querySelectorAll('style')]
       .map((style) => style.textContent)
@@ -392,7 +396,6 @@ describe('Shell', () => {
     expect(white.getAttribute('style') ?? '').not.toContain('color');
     expect(white.className).toContain('brandName');
     expect(rule('.brandName')).toContain('var(--mantine-color-neutral-8)');
-    expect(rule("[data-mantine-color-scheme='dark'] .brandName")).toContain('#e9ecef');
     cleanup();
 
     looked({ whiteHeader: false, whiteMenu: true, menuIcons: false });
@@ -432,13 +435,5 @@ describe('Shell', () => {
     looked({ whiteHeader: false, whiteMenu: false, menuIcons: true }, true);
     expect(sideMenu().hasAttribute('data-strip')).toBe(false);
     expect(within(sideMenu()).getByRole('link', { name: 'Settings' }).textContent).toBe('Settings');
-  });
-
-  it('9: In dark, a white header or menu takes the dark surface', () => {
-    const dark = rule("[data-mantine-color-scheme='dark'] .header");
-    expect(dark).toContain('#2e2e2e');
-    expect(dark).toContain('#e9ecef');
-    expect(rule("[data-mantine-color-scheme='dark'] .menu")).toContain('#2e2e2e');
-    expect(rule("[data-mantine-color-scheme='dark'] .item")).toContain('#e9ecef');
   });
 });

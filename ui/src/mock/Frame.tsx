@@ -4,7 +4,7 @@ import { createPortal } from 'react-dom';
 import { MemoryRouter } from 'react-router';
 import { Providers } from '../frame/Providers';
 
-export type Scheme = 'light' | 'dark';
+export type Scheme = 'light';
 export type { Width };
 
 type StageProps = {

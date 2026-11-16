@@ -1,6 +1,6 @@
 /**
  * The legacy app's values that the new app's theme lacks, and the gallery reads. The greys, green,
- * red, font, gaps and shadows are `ui/src/theme.ts`'s already and are not copied here.
+ * red, font, gaps and shadows are `appTheme.ts`'s `themeOf` already and are not copied here.
  */
 export const TOKENS = {
   /** The main colour's depth: Mantine's default light shade, which the legacy draws. */
@@ -17,6 +17,26 @@ export const TOKENS = {
   sectionTitle: { fw: 700, lts: 0.5 },
   /** A section card's padding, in px. */
   cardPadding: 24,
+  /** The brand's own gradient, from its shade 7 to its shade 9: the primary button, the card's top bar. */
+  brandGradient:
+    'linear-gradient(135deg, var(--mantine-color-brand-7) 0%, var(--mantine-color-brand-9) 100%)',
+  /** The side menu's ground, from the brand's shade 9 down to its shade 8. */
+  menuGradient:
+    'linear-gradient(180deg, var(--mantine-color-brand-9) 0%, var(--mantine-color-brand-8) 100%)',
   /** A section title's grey icon tile, in px. */
   iconTile: 24,
+} as const;
+
+/** The colours the frame's stylesheets and the shell draw that Mantine has no slot for, written as
+ * `--credo-<name>` variables by the theme's resolver. */
+export const FRAME_COLOURS = {
+  white: '#fff',
+  'ink-04': 'rgba(0, 0, 0, 0.04)',
+  'white-05': 'rgba(255, 255, 255, 0.05)',
+  'white-10': 'rgba(255, 255, 255, 0.1)',
+  'white-12': 'rgba(255, 255, 255, 0.12)',
+  'white-18': 'rgba(255, 255, 255, 0.18)',
+  'white-90': 'rgba(255, 255, 255, 0.9)',
+  'white-22': 'rgba(255, 255, 255, 0.22)',
+  'white-55': 'rgba(255, 255, 255, 0.55)',
 } as const;
