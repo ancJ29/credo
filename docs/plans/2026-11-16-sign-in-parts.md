@@ -174,14 +174,13 @@ system's step 1, a page, a part and its tests through the ui gate, 6 minutes; it
       `src/components/organisms/DoorCard.tsx` and both exited 0 (step 1's fetched a picture step 3b deleted). 12 min.
       Correction to 3b's line above: the test that the gallery draws no "Legacy" was not yet in step 3b's commit
       (the command that wrote it was refused); it and the tests for the three Mantine rows were written in this step.
-- [ ] **5. Review and landing.** Another model reads steps 1 to 4; one fix pass; `pre-merge` taken
+- [x] **5. Review and landing.** Another model reads steps 1 to 4; one fix pass; `pre-merge` taken
       in; case 11; the recap; `docs/memo/ui-code.md#L69` corrected, since four doors draw
       `SignInFrame`, not one; item 516 closed as moot; point 1. _Done
       when:_ case 11 counts 0, the checks exit 0 after the fix, and the branch merges. **26 min.**
       _Progress, 2026-11-16:_ the review (opus, at `99643cfd`) said may merge with eight Lows; the one fix pass
       fixed all eight; `pre-merge` taken in (`c9e7a711`, no conflict); case 11 counts 0; the memo's levels count
-      and its frame line corrected; item 516 closed as moot, 553 written for the doors' later piece. Open: the
-      recap and the landing.
+      and its frame line corrected; item 516 closed as moot, 553 written for the doors' later piece. Done: the review's verdict (may merge, at `99643cfd`) and the fix commit `1cbca5e2`; case 11 counts 0; after the fix pass the ui package's check and the visual package's check each exited 0; the recap is `docs/recaps/2026-11-16-sign-in-parts.md`. The landing on `pre-merge` follows; point 1 is still unasked.
 
 About 46 machine minutes, and one look.
 
