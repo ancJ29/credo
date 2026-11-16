@@ -377,12 +377,13 @@ milestone if the orchestrator wants one.
   *Ticked 2026-11-16:* red first on the old check: with `b2` in the stack, the whole check on a function holding
   the eleven names and `STORAGE_BOXES` read `RED` on its variables, as the sitting's did. The whole check with a
   box in the stack runs a second check of its own and leaves the stand-in's forward holding its port (the
-  later cases then died on a taken port), so the cases that stayed are the two lists the check compares: with
-  `b2` the eleven and `STORAGE_BOXES` is what is wanted and the eleven alone is not; with no box the eleven is
-  wanted and `STORAGE_BOXES` beside them is not; a text guard that `ops/check.sh` asks `stack_boxes` and no longer
-  passes the eleven alone (red on the old line, green on the new); and the whole check, no box in the stack, red on
-  a function holding `STORAGE_BOXES`. `bash ops/test.sh` ended `== exit 0` (`CHECK_LOCAL_PORT` moved off a
-  port two earlier runs' stand-ins still held), `bash -n` and `shellcheck -x ops/*.sh` exited 0.
+  later cases then died on a taken port, open item 495: the test stand-in's one master per state folder), so the
+  cases are the two lists the check compares: with `b2` the eleven and `STORAGE_BOXES` is what is wanted and the
+  eleven alone is not; with no box the eleven is wanted and `STORAGE_BOXES` beside them is not; the whole check with
+  `b2` in the stack under `FAKE_BOX2_DOWN=1` (the nested `--box b2` run then stops before it opens a forward), green on
+  its variables with the eleven and `STORAGE_BOXES` and red on them with the eleven alone (red once with the comparison
+  mutated back to the eleven alone); and the whole check, no box in the stack, red on a function holding
+  `STORAGE_BOXES`. The review's text guard on `ops/check.sh` is replaced by the two whole-check cases. RUNLINE
 
 **Third landing: the move** (after the store's copy tool is on `pre-merge`).
 
