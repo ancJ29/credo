@@ -385,16 +385,7 @@ milestone if the orchestrator wants one.
   mutated back to the eleven alone); and the whole check, no box in the stack, red on a function holding
   `STORAGE_BOXES`. The review's text guard on `ops/check.sh` is replaced by the two whole-check cases. Ran: `bash ops/test.sh` whole, "all checks passed" and `== exit 0`, 6 minutes (13:52 to 13:58, the whole run's log kept outside git); `bash -n` on each `ops/*.sh` exit 0; `shellcheck -x ops/*.sh` exit 0.
 
-**Third landing: the move** (after the store's copy tool is on `pre-merge`).
-
-- [ ] **7. The move.** Decision 11: the mark, the wait, the switch, the sweep, and the operator's
-  page. Two parts, *size* 10 and 8, the shapes of steps 1 and 3. *Done when:* `pnpm check` ends `==
-  exit 0`; cases 16 and 17 red once.
-- [ ] **7r. Reviewed, fixed, recapped**, done and sized as 5r: 14 and 3.
-- [ ] 👤 **On ridge, in its own sitting:** `b2` added again (`ops/stack.sh env ridge --more-boxes b2`),
-  a company added on `b2` at `/operator`, signed into, then moved to the home box: point 3. Then `b2`
-  taken out of the list and its retained box removed by the runbook's "A retained box", since ridge
-  runs one box and a second one is a fixed charge with no need after the rehearsal.
+**Third landing: the move** is planned on its own page, `docs/plans/2026-11-16-shape-move.md`, which takes decision 11, cases 16 and 17 and point 3 from here.
 
 ## The case table
 
