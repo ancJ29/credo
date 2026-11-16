@@ -43,8 +43,11 @@ func Build(internalKey, superAdminKey string, st *store.Store) *Server {
 	s.handle("POST /api/records/{serviceCode}", s.withAccessKey(s.pushRecord))
 	s.handle("DELETE /api/records/{serviceCode}/{key}", s.withAccessKey(s.removeRecord))
 
+	s.handle("GET /api/status", http.HandlerFunc(s.status))
+
 	admin := auth.New(auth.SuperAdminHeader, superAdminKey)
 	s.handle("POST /api/services/register", admin.Require(unconditional(s.registerService)))
+	s.handle("POST /api/services/rekey", admin.Require(unconditional(s.rekeyService)))
 	return s
 }
 

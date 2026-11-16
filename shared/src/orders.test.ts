@@ -211,6 +211,9 @@ describe('the lists and the routes', () => {
     expect(deliveryRoutes.cancel('2026-11-04', 'b')).toBe('/api/deliveries/2026-11-04/b/cancel');
     expect(deliveryRoutes.deliver('2026-11-04', 'b')).toBe('/api/deliveries/2026-11-04/b/deliver');
     expect(deliveryRoutes.photo('2026-11-04', 'b')).toBe('/api/deliveries/2026-11-04/b/photo');
+    expect(deliveryRoutes.photoAddress('2026-11-04', 'b')).toBe(
+      '/api/deliveries/2026-11-04/b/photo-address',
+    );
     expect(deliveryRoutes.mine('2026-11-04')).toBe('/api/my-deliveries?day=2026-11-04');
   });
 

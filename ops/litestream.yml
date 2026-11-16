@@ -1,0 +1,21 @@
+# The copy of c-storage's records: Litestream replicates the file to the box's own path in the
+# copy's bucket. The unit starts it with c-storage as its child (replicate -exec), so the file's
+# owner, the dynamic user, is the one that reads it. The credentials are the box's role, not a key.
+# ${COPY_URL} is the bucket path, s3://<bucket>/<box>/records, filled at release; the rehearsal
+# (step 1 of the plan) swaps the replica for a folder and nothing else.
+
+# Litestream deletes nothing in the bucket: the box's role holds no delete, and the bucket's own
+# rule expires copies after seven days.
+retention:
+  enabled: false
+
+# A full copy a day while the file is written. On an idle file Litestream makes none (the rehearsal,
+# step 1 of the plan), so the check's six-day limit on the newest full copy is what catches it.
+snapshot:
+  interval: 24h
+
+dbs:
+  - path: /var/lib/c-storage/c-storage.db
+    replica:
+      url: ${COPY_URL}
+      sync-interval: 1s

@@ -1,0 +1,38 @@
+info:
+  name: Rekey without the super-admin key
+  type: http
+  seq: 4
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/services/rekey"
+  headers:
+    - name: Content-Type
+      value: application/json
+    - name: X-Internal-Access-Key
+      value: "{{internalAccessKey}}"
+  body:
+    type: json
+    data: |-
+      {
+        "code": "{{serviceCode}}",
+        "accessKey": "{{accessKey}}"
+      }
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("401", function() {
+          expect(res.getStatus()).to.equal(401);
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: |-
+  Rekey with no `X-Super-Admin-Key`. **Expected: 401**, and the service keeps its key.

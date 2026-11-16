@@ -1,4 +1,4 @@
-import type { DeliveryDoc, Language } from '@credo/shared';
+import { type DeliveryDoc, type Language, photoAddressRequestOf } from '@credo/shared';
 import { Alert, Anchor, Button, Group, Image, Paper, Stack, Text, Title } from '@mantine/core';
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -64,7 +64,14 @@ export function MyDeliveryPage(page: PageProps) {
     setBusy(true);
     setProblem(null);
     try {
-      const result = await api.deliver(day, id, { version, photo: photo! });
+      // The photo first: an address is asked for, the picture goes to it, then the request is marked
+      // delivered. A stop between leaves the request waiting, and Send again asks afresh.
+      const asked = await api.askPhotoAddress(day, id, photoAddressRequestOf(photo!));
+      let result;
+      if (asked.kind === 'address') {
+        await api.putPhoto(asked.url, photo!);
+        result = await api.deliver(day, id, { version });
+      } else result = asked;
       if (result.kind === 'done') setWritten(result.doc);
       else if (result.current) setWritten(result.current);
       else loaded.reload();

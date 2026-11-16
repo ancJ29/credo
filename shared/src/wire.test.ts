@@ -13,8 +13,10 @@ import {
   operatorRoutes,
   bffErrorSchema,
   type ClientListItem,
+  clientAddress,
   clientLinkPath,
   clientListReplySchema,
+  companyOfAddress,
   conflictReplySchema,
   configDocSchema,
   createClientReplySchema,
@@ -158,6 +160,40 @@ describe('what a sign-in answers', () => {
       meReplySchema.safeParse({ user: { ...held, permissions: { 'staff.canFire': true } } })
         .success,
     ).toBe(false);
+  });
+});
+
+describe('a company’s own address', () => {
+  it('A name of three parts or more names the company of its first part; a shorter name, an IP, a kept-back code and CloudFront’s own name name none', () => {
+    expect(companyOfAddress('acme.ridge.example.test')).toBe('acme');
+    expect(companyOfAddress('Minh-Phat.ridge.example.test')).toBe('minh-phat');
+    expect(companyOfAddress('acme.example')).toBeNull();
+    expect(companyOfAddress('localhost')).toBeNull();
+    expect(companyOfAddress('127.0.0.1')).toBeNull();
+    expect(companyOfAddress('10.1.2.3.4')).toBeNull();
+    expect(companyOfAddress('operator.ridge.example.test')).toBeNull();
+    expect(companyOfAddress('www.ridge.example.test')).toBeNull();
+    expect(companyOfAddress('ab.ridge.example.test')).toBeNull();
+    expect(companyOfAddress('d111111abcdef8.cloudfront.net')).toBeNull();
+    expect(companyOfAddress('acme.cloudfront.net')).toBeNull();
+  });
+
+  it('From the operator’s address a company’s address is its own name under the rest; from any other origin it is today’s link', () => {
+    expect(clientAddress('https://operator.ridge.example.test', 'acme')).toBe(
+      'https://acme.ridge.example.test/login',
+    );
+    expect(clientAddress('https://operator.ridge.example.test:8443', 'acme')).toBe(
+      'https://acme.ridge.example.test:8443/login',
+    );
+    expect(clientAddress('http://localhost:5173', 'acme')).toBe(
+      'http://localhost:5173/login?client-code=acme',
+    );
+    expect(clientAddress('https://d111111abcdef8.cloudfront.net', 'acme')).toBe(
+      'https://d111111abcdef8.cloudfront.net/login?client-code=acme',
+    );
+    expect(clientAddress('https://operator.example', 'acme')).toBe(
+      'https://operator.example/login?client-code=acme',
+    );
   });
 });
 

@@ -10,6 +10,7 @@
   "Would the person know to ask whoever sent the link?": "Người này có biết cần hỏi người đã gửi đường dẫn không?",
   "Do the name, the buttons and the menu read clearly on white?": "Tên, các nút và menu có đọc rõ trên nền trắng không?",
   "Would a person on a PC know which page each icon opens?": "Người dùng máy tính có biết mỗi biểu tượng mở trang nào không?",
+  "Would someone who mistyped their password know from it how long to wait before trying again?": "Người gõ sai mật khẩu có biết từ dòng này cần chờ bao lâu rồi mới thử lại không?",
   "Would you know this is our own door, not a client’s?": "Bạn có biết đây là cửa của chính chúng ta, không phải của khách hàng không?",
   "Is this all you need to start a client?": "Đây có phải là tất cả những gì bạn cần để tạo một khách hàng không?",
   "Would you know what to send the client, and that the password is not shown again?": "Bạn có biết cần gửi gì cho khách hàng, và mật khẩu sẽ không hiện lại không?",
@@ -76,6 +77,7 @@
   "Would the office take this photo as proof of delivery?": "Văn phòng có nhận ảnh này làm bằng chứng giao hàng không?",
   "Would the office see which line’s price has moved, and what saving would make it?": "Văn phòng có thấy dòng nào đã đổi giá, và lưu sẽ thành bao nhiêu không?",
   "Would the office know the saved draft now carries today’s price and total?": "Văn phòng có biết bản nháp đã lưu giờ mang giá và tổng tiền hôm nay không?",
+  "Does this line tell the office enough to ask the driver for the photo?": "Dòng này có đủ để văn phòng biết mà hỏi tài xế về ảnh không?",
   "Would the driver know what to deliver today, and where?": "Tài xế có biết hôm nay cần giao gì, và giao ở đâu không?",
   "Would the driver know what to hand over and what to collect?": "Tài xế có biết cần trao gì và cần thu gì không?",
   "Would the driver know to send it, or to take it again?": "Tài xế có biết cần gửi ảnh, hay chụp lại không?",
@@ -113,5 +115,6 @@
   "Would the office know to type the code and the name of a new customer here?": "Văn phòng có biết gõ mã và tên của khách hàng mới vào đây không?",
   "Would the office know the code is in use, and that nothing typed was lost?": "Văn phòng có biết mã này đã có người dùng, và những gì đã gõ không bị mất không?",
   "Would the office know what a new product needs before it can be added?": "Văn phòng có biết một sản phẩm mới cần những gì trước khi thêm được không?",
-  "Would the office know the customer is now in the list?": "Văn phòng có biết khách hàng giờ đã có trong danh sách không?"
+  "Would the office know the customer is now in the list?": "Văn phòng có biết khách hàng giờ đã có trong danh sách không?",
+  "Would you know which box the company will live on, and how much room each box has left?": "Bạn có biết công ty sẽ nằm trên máy chủ nào, và mỗi máy chủ còn bao nhiêu chỗ không?"
 }

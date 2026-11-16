@@ -1,10 +1,14 @@
 #!/usr/bin/env bash
-# ops/stack.sh network | github | env <name> [--plan] [--take <LogicalId>]...
+# ops/stack.sh network | github | env <name> [--plan] [--take <LogicalId>]... [--more-boxes <list>]
 # Makes or changes one stack through a change set built from the template in origin/main, so only a
 # reviewed template reaches AWS. A change set that removes or replaces anything is deleted and
 # named, unless the plan's step names that logical id with --take. --plan builds and reads the
 # change set, deletes it, and changes nothing: for a first creation it also deletes the empty stack
 # that CloudFormation keeps for the change set (REVIEW_IN_PROGRESS), so the next run is a creation too.
+# --more-boxes b2,b3 (env only) is the names of the boxes added to the home box, one block each in the template
+# (the loop over MoreBoxes); a blank value is the word none, which the template reads as no box. Without the flag the stack keeps the list it has: a box is
+# added or taken out by naming the whole list. A box taken out is a removal, which the guard refuses unless it is
+# named with --take (its instance, its records disk, its attachment, its role and its profile).
 # Run by the human, from a worktree at main, in a terminal holding an AWS session. Never by CI.
 # Expected length: about 5 minutes for network and env (the endpoint and the box take the time),
 # about a minute for github.
@@ -18,7 +22,7 @@ GITHUB_STACK=credo-github
 GITHUB_ISSUER=token.actions.githubusercontent.com
 
 usage() {
-  echo "usage: ops/stack.sh network | github | env <name> [--plan] [--take <LogicalId>]..." >&2
+  echo "usage: ops/stack.sh network | github | env <name> [--plan] [--take <LogicalId>]... [--more-boxes <list>]" >&2
   exit 2
 }
 
@@ -37,6 +41,8 @@ case "$KIND" in
 esac
 PLAN_ONLY=0
 TAKE='[]'
+MORE_BOXES=''
+MORE_BOXES_GIVEN=0
 while [ $# -gt 0 ]; do
   case "$1" in
     --plan) PLAN_ONLY=1 ;;
@@ -46,10 +52,23 @@ while [ $# -gt 0 ]; do
       TAKE=$(jq -c --arg id "$2" '. + [$id]' <<<"$TAKE")
       shift
       ;;
+    --more-boxes)
+      [ $# -ge 2 ] || usage
+      [ "$KIND" = env ] || usage
+      [ "$MORE_BOXES_GIVEN" = 0 ] || usage
+      MORE_BOXES=$2
+      MORE_BOXES_GIVEN=1
+      shift
+      ;;
     *) usage ;;
   esac
   shift
 done
+# A list is never blank: AWS reads a blank CommaDelimitedList as one empty name, so no box is the word none (env.yml's HasMoreBoxes).
+if [ "$MORE_BOXES_GIVEN" = 1 ]; then
+  boxes_list_refusal "$MORE_BOXES" || exit 1
+  [ -n "$MORE_BOXES" ] || MORE_BOXES=none
+fi
 
 case "$KIND" in
   network)
@@ -68,13 +87,17 @@ case "$KIND" in
     [[ "$ENVNAME" =~ ^[a-z][a-z0-9-]{1,20}$ ]] || die "'$ENVNAME' is not an environment name (a-z, 0-9, -)"
     STACK=$ENVNAME
     TEMPLATE=env.yml
-    CAPS=CAPABILITY_IAM
+    # CAPABILITY_AUTO_EXPAND beside it for the loop's transform: AWS says it has no effect on a change set (docs/plans/2026-11-11-pooled-shape.md, step 6)
+    CAPS='CAPABILITY_IAM CAPABILITY_AUTO_EXPAND'
     STEPS=8
+    # A key run (ops/keys.sh front-door) ends at the outputs: it opens no box and writes nothing to GitHub.
+    [ -z "${FRONT_DOOR_KEY_FILE:-}" ] || STEPS=6
     ;;
 esac
 
 log_start stack "${ENVNAME:-$KIND}"
 mkwork
+real_ok "${ENVNAME:-$KIND}" "a change set is shown first, and a removal or replacement is refused unless named; the network and GitHub stacks sit under every environment"
 main_synced
 
 CS=''
@@ -92,6 +115,32 @@ cleanup_extra() {
       aws cloudformation wait stack-delete-complete --stack-name "$STACK" >/dev/null 2>&1 || true
     fi
   fi
+}
+
+# front_door_key_param: appends FrontDoorKey to PARAMS, the secret the distribution adds to every call
+# it passes to the API. Made here (32 random bytes, as the release makes the store's keys) on a creation
+# and once for a stack made before the parameter; kept on every other run; or, for a key run, taken from
+# the 0600 file FRONT_DOOR_KEY_FILE names. It is masked, so the end-of-run search reads the log for it, and
+# never printed: it reaches aws in a file in WORK (0700), not on a command line.
+front_door_key_param() {
+  local key f mode
+  f=${FRONT_DOOR_KEY_FILE:-}
+  if [ -n "$f" ]; then
+    [ -f "$f" ] || die "FRONT_DOOR_KEY_FILE names no file"
+    mode=$(stat -c %a "$f" 2>/dev/null || stat -f %Lp "$f")
+    [ "$mode" = 600 ] || die "the key file's mode is $mode: it must be 0600"
+    key=$(tr -d '\n' <"$f")
+    [[ "$key" =~ ^[0-9a-f]{64}$ ]] || die "the key file does not hold one key of 64 hex characters"
+  elif [ "$CS_TYPE" = CREATE ] || [ -z "$(stack_param FrontDoorKey)" ]; then
+    key=$(head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n')
+  else
+    add_param FrontDoorKey
+    return 0
+  fi
+  mask "$key"
+  # The key reaches jq on a pipe, never as an --arg (add_param's form), which is a command line any user's ps reads.
+  # PARAMS holds no key before this line: this is the last parameter in both branches of the caller.
+  PARAMS=$(printf '%s' "$key" | jq -Rsc --argjson p "$PARAMS" '$p + [{ParameterKey: "FrontDoorKey", ParameterValue: .}]')
 }
 
 # stack_events: what failed, from the stack's events
@@ -163,8 +212,17 @@ case "$KIND" in
     net=$(aws cloudformation describe-stacks --stack-name "$NETWORK_STACK" --output json 2>/dev/null) ||
       die "$NETWORK_STACK does not exist: ops/stack.sh network first"
     add_param Env "$ENVNAME"
-    # c-storage's port, from the unit that sets it: the template has no default, so a run without it fails
+    # c-storage's and the activity log's ports, each from the unit that sets it: the template has no default, so a run without either fails
     add_param BoxPort "$BOX_PORT"
+    add_param AuditPort "$AUDIT_PORT"
+    # The Slack alarm's two IDs, from the environment: both or neither, the stack's own kept on an update
+    add_slack_params
+    # The boxes added: the list given, else the stack's own kept (a stack made before the parameter has none to keep)
+    if [ "$MORE_BOXES_GIVEN" = 1 ]; then
+      add_param MoreBoxes "$MORE_BOXES"
+    elif [ "$CS_TYPE" = UPDATE ] && stack_has_param MoreBoxes; then
+      add_param MoreBoxes
+    fi
     if [ "$CS_TYPE" = CREATE ]; then
       repo=$(repository)
       add_param Repository "$repo"
@@ -180,6 +238,7 @@ case "$KIND" in
       echo "subnet: $cidr; image: $image"
       add_param SubnetCidr "$cidr"
       add_param ImageId "$image"
+      front_door_key_param
     else
       # The deploy role trusts this repository: a fork's clone must not move it.
       repo=$(repository)
@@ -192,18 +251,39 @@ case "$KIND" in
       add_subject_param "$prefix"
       add_param SubnetCidr
       add_param ImageId
+      front_door_key_param
+    fi
+    # The domain and its certificate (CREDO_DOMAIN, CREDO_CERTIFICATE_ARN): both on the run that sets them,
+    # kept as the stack holds them on every other run, never one without the other. They are never in git
+    # and the parameters' print hides them (the certificate's ARN holds the account's id); both default to empty in the template, which is today's distribution.
+    domain=${CREDO_DOMAIN:-}
+    cert=${CREDO_CERTIFICATE_ARN:-}
+    if [ -n "$domain" ] || [ -n "$cert" ]; then
+      [ -n "$domain" ] && [ -n "$cert" ] || die "CREDO_DOMAIN and CREDO_CERTIFICATE_ARN are set together or not at all"
+      [[ "$domain" =~ ^[a-z0-9][a-z0-9-]*(\.[a-z0-9][a-z0-9-]*)+$ ]] || die "CREDO_DOMAIN is not a domain of two parts or more (lower case, a-z, 0-9, -)"
+      [[ "$cert" =~ ^arn:aws:acm:us-east-1:[0-9]{12}:certificate/[0-9a-f-]{36}$ ]] ||
+        die "CREDO_CERTIFICATE_ARN is not a certificate in us-east-1, the only Region CloudFront takes certificates from"
+      add_param Domain "$domain"
+      add_param CertificateArn "$cert"
+    elif [ -n "$(stack_param Domain)" ]; then
+      add_param Domain
+      add_param CertificateArn
     fi
     ;;
 esac
-echo "$PARAMS" | jq -r '.[] | "  \(.ParameterKey)=\(.ParameterValue // "(previous)")"'
+echo "$PARAMS" | jq -r '.[] | "  \(.ParameterKey)=\(if .ParameterKey == "FrontDoorKey" then "(not printed)" elif (.ParameterKey | IN("Domain", "CertificateArn")) and .ParameterValue then "(set, not printed)" else (.ParameterValue // "(previous)") end)"'
 
 step "the change set"
 CS="ops-$(date -u +%Y%m%d-%H%M%S)"
 caps=()
-if [ -n "$CAPS" ]; then caps=(--capabilities "$CAPS"); fi
+if [ -n "$CAPS" ]; then
+  read -ra cap_list <<<"$CAPS"
+  caps=(--capabilities "${cap_list[@]}")
+fi
 CS_OPEN=1
+printf '%s\n' "$PARAMS" >"$WORK/params.json"
 aws cloudformation create-change-set --stack-name "$STACK" --change-set-name "$CS" --change-set-type "$CS_TYPE" \
-  --template-body "file://$WORK/template.yml" --parameters "$PARAMS" ${caps[@]+"${caps[@]}"} \
+  --template-body "file://$WORK/template.yml" --parameters "file://$WORK/params.json" ${caps[@]+"${caps[@]}"} \
   >/dev/null
 no_changes=0
 if ! aws cloudformation wait change-set-create-complete --stack-name "$STACK" --change-set-name "$CS" 2>/dev/null; then
@@ -223,7 +303,7 @@ else
   aws cloudformation describe-change-set --stack-name "$STACK" --change-set-name "$CS" --output json >"$WORK/changes.json"
   # Each change, then one line per detail naming the property that carried it: the change set is deleted
   # on the way out, so this print is the only record of a refusal's cause.
-  jq -r '.Changes[]?.ResourceChange | "  \(.Action) \(.LogicalResourceId) (\(.ResourceType)) replacement=\(.Replacement // "none")", (.Details[]? | "      \(.Target.Attribute // "-") \(.Target.Name // "-") requires-recreation=\(.Target.RequiresRecreation // "-") evaluation=\(.Evaluation // "-")")' "$WORK/changes.json"
+  jq -r '.Changes[]?.ResourceChange | "  \(.Action) \(.LogicalResourceId) (\(.ResourceType)) replacement=\(.Replacement // "none")", (.Details[]? | "      \(.Target.Attribute // "-") \(.Target.Name // "-") requires-recreation=\(.Target.RequiresRecreation // "-") evaluation=\(.Evaluation // "-") source=\(.ChangeSource // "-") cause=\(.CausingEntity // "-")")' "$WORK/changes.json"
 
   step "the guard: nothing removed or replaced"
   unsafe=$(jq -r --argjson take "$TAKE" -f "$OPS_DIR/unsafe-changes.jq" "$WORK/changes.json")
@@ -233,6 +313,19 @@ else
     echo "The change set is deleted and nothing changed. A change meant on purpose is named in its"
     echo "plan step, and taken with --take <LogicalId>."
     exit 1
+  fi
+  # A key run (FRONT_DOOR_KEY_FILE) changes the distribution's header and nothing else: a change set that
+  # touches another resource, does more to the distribution than modify it, or modifies it for any cause but the
+  # FrontDoorKey parameter (a detail the documented parameter change does not explain, ops/key-run-changes.jq) is refused before it runs.
+  if [ -n "${FRONT_DOOR_KEY_FILE:-}" ]; then
+    others=$(jq -r -f "$OPS_DIR/key-run-changes.jq" "$WORK/changes.json")
+    if [ -n "$others" ]; then
+      echo "REFUSED: a key run changes the distribution alone, and this change set also holds:"
+      while IFS= read -r line; do echo "  $line"; done <<<"$others"
+      echo "The change set is deleted and nothing changed. Run ops/stack.sh env $ENVNAME for those changes first."
+      exit 1
+    fi
+    ok "the key run changes the distribution alone"
   fi
   if [ "$TAKE" = '[]' ]; then
     ok "no removal and no replacement"
@@ -269,7 +362,7 @@ if [ "$KIND" = network ]; then
   echo "zone: $(out Zone)"
 fi
 
-if [ "$KIND" = env ]; then
+if [ "$KIND" = env ] && [ -z "${FRONT_DOOR_KEY_FILE:-}" ]; then
   step "the box over the tunnel"
   # The instance may still be starting its first boot; the key and the tunnel are tried again.
   opened=0

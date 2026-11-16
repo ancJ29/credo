@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { chmod, mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises';
 import { createServer as createHttpServer, type Server } from 'node:http';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -26,6 +26,20 @@ import {
 import { freePort, type Started, startProcess } from './running/processes';
 import { seedDemo } from './generator';
 import type { StartedStack } from './stack';
+
+// Root ignores a folder's permission bits (act runs as root), so a removal that must fail is refused
+// here, at the one path the case names, and passes through for every other.
+const refusedRemoval = vi.hoisted(() => ({ path: null as string | null }));
+vi.mock('node:fs/promises', async (importOriginal) => {
+  const real = await importOriginal<typeof import('node:fs/promises')>();
+  return {
+    ...real,
+    rm: (path: Parameters<typeof real.rm>[0], options?: Parameters<typeof real.rm>[1]) =>
+      path === refusedRemoval.path
+        ? Promise.reject(new Error(`EACCES: permission denied, rm '${String(path)}'`))
+        : real.rm(path, options),
+  };
+});
 
 let root: string;
 let paths: LocalPaths;
@@ -76,6 +90,7 @@ function memoryStorage() {
       return Promise.resolve('removed');
     },
     health: () => Promise.resolve({ buildVersion: 'dev' }),
+    status: () => Promise.resolve({ freeBytes: 1, lastWriteAt: null }),
   };
   return { records, storage };
 }
@@ -282,7 +297,8 @@ describe('local status', () => {
     }
     return () => Promise.all(servers.map((s) => new Promise((resolve) => s.close(resolve))));
   };
-  const own = (part: string) => (part === 'seedDoor' ? 404 : 200);
+  // The BFF's own answer to a call without the front door's key is a refusal.
+  const own = (part: string) => (part === 'seedDoor' ? 404 : part === 'bff' ? 403 : 200);
   const written = () =>
     writeHandle(
       paths,
@@ -351,6 +367,21 @@ describe('local status', () => {
     }
 
     expect(said.out.every((line) => line.includes('DOWN'))).toBe(true);
+  });
+
+  it('calls the BFF down when it answers a call without the front door’s key, since its door is open', async () => {
+    const said = lines();
+    await written();
+    const close = await serve((part) => (part === 'bff' ? 200 : own(part)));
+    try {
+      expect(await runLocal(['status'], baseIo(said))).toBe(1);
+    } finally {
+      await close();
+    }
+
+    expect(said.out.filter((line) => line.includes('DOWN'))).toEqual([
+      `the BFF: DOWN on port ${ports.bff}`,
+    ]);
   });
 
   it('calls a part down when it answers but the process the handle names is gone', async () => {
@@ -644,6 +675,22 @@ describe('local seed', () => {
     expect(said.out[0]).toBe(
       'ridge-one (ridge-one): https://ridge.example.com/login?client-code=ridge-one',
     );
+  });
+
+  it('seed prints the company’s own address when the origin is the operator’s', async () => {
+    const said = lines();
+    const { storage } = memoryStorage();
+    await writeHandle(paths, handleOf({ ports }));
+    const connect = vi.fn(() => storage);
+    const env = envOf(9);
+
+    const status = await runLocal(
+      ['seed', 'ridge-one'],
+      baseIo(said, { connect, env: { ...env, APP_ORIGIN: 'https://operator.ridge.example.test' } }),
+    );
+
+    expect(status).toBe(0);
+    expect(said.out[0]).toBe('ridge-one (ridge-one): https://ridge-one.ridge.example.test/login');
   });
 
   it('refuses before writing when the environment names a target badly, or names none and there is no handle', async () => {
@@ -999,13 +1046,11 @@ describe('local down', () => {
   it('ends red and names the folder when it is still there after the removal', async () => {
     const said = lines();
     const world = await standing();
-    await mkdir(join(paths.data, 'locked'));
-    await writeFile(join(paths.data, 'locked', 'file'), 'x');
-    await chmod(join(paths.data, 'locked'), 0o500);
+    refusedRemoval.path = paths.dir;
     try {
       expect(await runLocal(['down'], world.io(said))).toBe(1);
     } finally {
-      await chmod(join(paths.data, 'locked'), 0o700);
+      refusedRemoval.path = null;
     }
 
     expect(said.out).toContain(`  data folder and its database: FOUND at ${paths.data}`);

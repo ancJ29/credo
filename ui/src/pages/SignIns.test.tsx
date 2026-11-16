@@ -375,6 +375,24 @@ describe('one’s own password', () => {
     expect(device.authId()).toBe(`fake.session.${person('EMP-0001').id}`);
   });
 
+  it('18: A wait on the current password is drawn in the same words, and what was typed stays', async () => {
+    openApp('/password', {
+      as: 'EMP-0001',
+      override: (api) => {
+        api.changePassword.mockResolvedValue({ kind: 'wait', seconds: 30 });
+      },
+    });
+    await typeAll('Wrong-password-1!', NEW);
+    await submit();
+
+    expect((await screen.findByRole('alert')).textContent).toBe(
+      'Too many wrong tries. Try again in 30 seconds.',
+    );
+    expect(screen.getByLabelText<HTMLInputElement>('Current password').value).toBe(
+      'Wrong-password-1!',
+    );
+  });
+
   it('C: A new password off the rule, two that differ and no current password are said before anything is sent', async () => {
     const { api } = openApp('/password', { as: 'EMP-0001' });
     await typeAll(OLD, 'weak');

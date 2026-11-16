@@ -1,4 +1,5 @@
 import {
+  type CStorageClient,
   deliveryDocSchema,
   deliveryListReplySchema,
   deliveryRoutes,
@@ -10,7 +11,7 @@ import {
 } from '@credo/shared';
 import { afterAll, beforeAll, describe, expect, inject, it } from 'vitest';
 import { type RunningCStorage, startCStorage } from '../../tests/c-storage';
-import { DAY, ordersTenant } from '../../tests/orders';
+import { DAY, deliverWithPhoto, ordersTenant } from '../../tests/orders';
 
 let cs: RunningCStorage;
 beforeAll(async () => {
@@ -584,14 +585,7 @@ describe('Edit row 4: only a draft is saved; a confirmed, a fulfilled and a canc
     const confirmed = await w.confirmed(await w.made());
     const toDeliver = await w.confirmed(await w.made(), driver);
     const request = await w.requestDoc(DAY, toDeliver.order.request!.id, driver.call);
-    const delivered = await driver.call.send(
-      'POST',
-      deliveryRoutes.deliver(DAY, request.request.id),
-      {
-        version: request.version,
-        photo: `data:image/png;base64,${Buffer.alloc(10, 1).toString('base64')}`,
-      },
-    );
+    const delivered = await deliverWithPhoto(driver.call, request.request.id, request.version);
     expect(delivered.statusCode).toBe(200);
     const fulfilled = await w.read(DAY, toDeliver.order.id);
     const cancelled = await w.cancelled(await w.made());
@@ -683,5 +677,48 @@ describe('Edit row 7: a save reprices every line at the products’ prices as th
     ]);
     expect(saved.order.total).toBe(1_640_000);
     expect((await w.read(DAY, draft.order.id)).order.total).toBe(1_640_000);
+  });
+});
+
+describe('Row 3 and 4, by key: a save reads only the customer and the products it names', () => {
+  it('gets the customer and each product once by its key, lists nothing, and refuses one the company lacks, 400', async () => {
+    const reads: string[] = [];
+    const w = await ordersTenant(cs, {
+      wrap: (client): CStorageClient => ({
+        ...client,
+        getRecord: (key) => (reads.push(`get ${key}`), client.getRecord(key)),
+        listRecords: (prefix, after) => (
+          reads.push(`list ${prefix}`),
+          client.listRecords(prefix, after)
+        ),
+      }),
+    });
+    const unknown = '00000000-0000-4000-8000-000000000000';
+    reads.length = 0;
+
+    await w.made({
+      lines: [
+        { productId: w.ids.sand, quantity: 2 },
+        { productId: w.ids.fee, quantity: 1 },
+      ],
+    });
+    const own = w.t.keys;
+    const priced = reads.filter(
+      (read) => read.includes('.customer.') || read.includes('.product.'),
+    );
+    expect(priced.sort()).toEqual(
+      [
+        `get ${own.customer(w.ids.anh)}`,
+        `get ${own.product(w.ids.sand)}`,
+        `get ${own.product(w.ids.fee)}`,
+      ].sort(),
+    );
+
+    const replies = await Promise.all(
+      [{ customerId: unknown }, { lines: [{ productId: unknown, quantity: 1 }] }].map((over) =>
+        w.office.call.send('POST', ROUTES.orders, w.body(over)),
+      ),
+    );
+    expect(replies.map((reply) => reply.statusCode)).toEqual([400, 400]);
   });
 });

@@ -1,6 +1,7 @@
 import { isDeepStrictEqual } from 'node:util';
 import { buildApp } from '@credo/bff';
 import { createClient, ROOT_NAME, startingConfig } from '@credo/bff/clients';
+import { tenantStorage } from '@credo/bff/company-copy';
 import { createSessions } from '@credo/bff/sessions';
 import {
   type AddEmployeeReply,
@@ -13,6 +14,7 @@ import {
   DEVICE_HEADER,
   deliveryRoutes,
   type DeliveryDoc,
+  type PhotoAddressReply,
   type DeliveryRequest,
   type Driver as Deliverer,
   driverDay,
@@ -31,6 +33,7 @@ import {
   recordKeys,
   ROUTES,
   type StaffSetupDoc,
+  HOME_BOX,
   storedClientSchema,
   storedUserSchema,
   tenantConfigSchema,
@@ -40,14 +43,15 @@ import { companyConfig, staffSetupOf } from './company';
 import { addDays, atMinute, daysBetween } from './days';
 import { customersOf, productsOf } from './lists';
 import { type Ledger, readLedger, SEED_BLOCKS, type SeedBlock, writeLedger } from './ledger';
+import { FORGETTING_SINK, type PhotoSink, sendPicture } from '../running/photo-store';
 import { allCopies, assertLedgerScenario, type MappedCopy } from './mapping';
 import { plannedDeliveries, plannedOrders } from './orders';
 import { closeOf } from './reconcile';
 import { MANAGER, SCENARIOS } from './scenarios';
 import { ANCHOR, dayEvents, type Person, staffAsOf, type StaffEvent } from './staff';
 
-/** A first fill holds the last week: this many days, the last of them yesterday. */
-export const HISTORY_DAYS = 7;
+/** A first fill holds the last three weeks: this many days, the last of them yesterday. */
+export const HISTORY_DAYS = 21;
 /**
  * The days one run applies to a copy, the rest left for the next run somebody asks for, however far behind
  * the copy is: there is no backlog a copy is refused for, because a refusal nobody can clear would be a
@@ -84,11 +88,16 @@ const NO_OPERATOR = { origin: 'http://localhost', serviceKey: 'the demo seed' };
 /** The BFF's own code in this process, signed in as the copy's root by a session the BFF's
  * `createSessions` issues, its clock set by the caller to each event's time. No password is read,
  * made or shown for it. */
-function driverFor(storage: CStorageClient, tenantId: string, code: string) {
+function driverFor(storage: CStorageClient, tenantId: string, code: string, photos: PhotoSink) {
   let clock = 0;
   const now = () => clock;
-  const app = buildApp({ storage, now, ...NO_OPERATOR, logger: false });
-  const sessions = createSessions({ storage, now, keyOf: recordKeys.tenant(tenantId).session });
+  const app = buildApp({ storage, now, ...NO_OPERATOR, photoStore: photos.store, logger: false });
+  const company = tenantStorage(storage, tenantId);
+  const sessions = createSessions({
+    storage: company,
+    now,
+    keyOf: recordKeys.tenant(tenantId).session,
+  });
   let authId = '';
   /** The sessions issued to people of the copy during the day, by their sign-in name. */
   const people = new Map<string, string>();
@@ -121,13 +130,14 @@ function driverFor(storage: CStorageClient, tenantId: string, code: string) {
     return reply.json() as T;
   }
   return {
+    photos,
     at: (ms: number) => void (clock = ms),
     send,
     must,
     async open(ms: number) {
       clock = ms;
       const root = storedUserSchema.parse(
-        (await storage.getRecord(recordKeys.tenant(tenantId).user(ROOT_NAME)))!.data,
+        (await company.getRecord(recordKeys.tenant(tenantId).user(ROOT_NAME)))!.data,
       );
       authId = (await sessions.issue(DEVICE, ROOT_NAME, root.generation)).authId;
     },
@@ -137,7 +147,7 @@ function driverFor(storage: CStorageClient, tenantId: string, code: string) {
     async sessionOf(name: string) {
       const held = people.get(name);
       if (held) return held;
-      const found = await storage.getRecord(recordKeys.tenant(tenantId).user(name));
+      const found = await company.getRecord(recordKeys.tenant(tenantId).user(name));
       if (!found) return null;
       const user = storedUserSchema.parse(found.data);
       const issued = await sessions.issue(DEVICE, name, user.generation);
@@ -155,8 +165,13 @@ type Driver = ReturnType<typeof driverFor>;
 
 /** Whether a client holds what the operator's create leaves and nothing else: its root, its
  * settings as `createClient` writes them (`startingConfig` under the index's name, whole), and
- * sessions, which a root signing in leaves and nothing sweeps. */
-async function isFresh(storage: CStorageClient, tenantId: string, name: string) {
+ * sessions, which a root signing in leaves and nothing sweeps, and sign-in waits, which one wrong
+ * name typed leaves. */
+async function isFresh(
+  storage: Pick<CStorageClient, 'listRecords'>,
+  tenantId: string,
+  name: string,
+) {
   const keys = recordKeys.tenant(tenantId);
   const listed = await storage.listRecords(keys.all);
   const asMade = (data: unknown) => {
@@ -169,6 +184,7 @@ async function isFresh(storage: CStorageClient, tenantId: string, name: string) 
       ({ key, data }) =>
         key === keys.user(ROOT_NAME) ||
         key.startsWith(keys.session('')) ||
+        key.startsWith(keys.signInWait('')) ||
         (key === keys.config && asMade(data)),
     )
   );
@@ -509,13 +525,18 @@ async function dayDeliveries(
     const photo = photos[Math.floor(plan.photoDraw * photos.length)];
     const url = deliveryRoutes.one(day, request.id);
     const read = await driver.must<DeliveryDoc>('GET', url, undefined, as);
-    const done = await unlessChanged<DeliveryDoc>(
-      driver.send(
+    // The phone's order: ask where to send the picture, send it, then mark delivered.
+    await sendPicture(driver.photos, photo, async (body) => {
+      const asked = await driver.must<PhotoAddressReply>(
         'POST',
-        deliveryRoutes.deliver(day, request.id),
-        { version: read.version, photo },
+        deliveryRoutes.photoAddress(day, request.id),
+        body,
         as,
-      ),
+      );
+      return asked.url;
+    });
+    const done = await unlessChanged<DeliveryDoc>(
+      driver.send('POST', deliveryRoutes.deliver(day, request.id), { version: read.version }, as),
       `POST ${deliveryRoutes.deliver(day, request.id)}`,
     );
     if (done === null) {
@@ -623,6 +644,7 @@ export async function applyCopy(
   today: string,
   log: Log = () => undefined,
   limit: number = Infinity,
+  photos: PhotoSink = FORGETTING_SINK,
 ): Promise<Report> {
   const through = addDays(today, -1);
   const skipped: string[] = [];
@@ -636,11 +658,17 @@ export async function applyCopy(
 
   const index = await storage.getRecord(recordKeys.client(copy.code));
   if (!index) return done('missing', 'not on this service, left');
-  const { id: tenantId, name } = storedClientSchema.parse(index.data);
+  const { id: tenantId, name, box = HOME_BOX } = storedClientSchema.parse(index.data);
+  // The seed serves the home box alone (item 271): a copy moved off it is named and left, nothing
+  // written, and no client over another box is made from here.
+  if (box !== HOME_BOX) {
+    return done('refused', `its line names box ${box}, and the seed serves the home box, left`);
+  }
+  const company = tenantStorage(storage, tenantId);
 
-  let current = await readLedger(storage, tenantId);
+  let current = await readLedger(company, tenantId);
   if (!current) {
-    if (!(await isFresh(storage, tenantId, name))) {
+    if (!(await isFresh(company, tenantId, name))) {
       return done('refused', 'holds more than a new client does, left');
     }
     const firstDay = addDays(through, -(HISTORY_DAYS - 1));
@@ -652,7 +680,7 @@ export async function applyCopy(
       filled: false,
       blocks: SEED_BLOCKS,
     };
-    const tag = await writeLedger(storage, tenantId, first, null);
+    const tag = await writeLedger(company, tenantId, first, null);
     if (tag === null) return done('refused', 'another run holds it, left');
     current = { ledger: first, tag };
   }
@@ -671,7 +699,7 @@ export async function applyCopy(
   const todo = missed.slice(0, limit);
   remaining = missed.length - todo.length;
 
-  const driver = driverFor(storage, tenantId, copy.code);
+  const driver = driverFor(storage, tenantId, copy.code, photos);
   if (!ledger.filled) {
     await driver.open(atMinute(ledger.firstDay, OPENING_MINUTE));
     try {
@@ -680,7 +708,7 @@ export async function applyCopy(
       await driver.close();
     }
     ledger = { ...ledger, filled: true };
-    const next = await writeLedger(storage, tenantId, ledger, tag);
+    const next = await writeLedger(company, tenantId, ledger, tag);
     if (next === null) return done('refused', 'the ledger moved under the run, stopped');
     tag = next;
     filled = true;
@@ -722,7 +750,7 @@ export async function applyCopy(
       await driver.close();
     }
     ledger = { ...ledger, lastDay: day };
-    const next = await writeLedger(storage, tenantId, ledger, tag);
+    const next = await writeLedger(company, tenantId, ledger, tag);
     if (next === null) return done('refused', 'the ledger moved under the run, stopped');
     tag = next;
     days.push(day);
@@ -749,12 +777,13 @@ export async function applyAll(
   log: Log,
   partner?: string,
   limit?: number,
+  photos?: PhotoSink,
 ) {
   return await Promise.all(
     allCopies()
       .filter((copy) => partner === undefined || copy.partner === partner)
       .map((copy) =>
-        applyCopy(storage, copy, today, log, limit).catch((error: unknown) => {
+        applyCopy(storage, copy, today, log, limit, photos).catch((error: unknown) => {
           throw new Error(`${copy.code}: ${(error as Error).message}`, { cause: error });
         }),
       ),
@@ -772,6 +801,7 @@ export async function startDemo(
   storage: CStorageClient,
   today: string,
   partner?: string,
+  photos?: PhotoSink,
 ): Promise<DemoCopy[]> {
   const chosen = allCopies().filter((copy) => partner === undefined || copy.partner === partner);
   if (chosen.length === 0) throw new Error('no copy in the mapping for that partner');
@@ -784,7 +814,14 @@ export async function startDemo(
       });
       if (made === 'taken') throw new Error(`${copy.code}: the service already holds it`);
       for (const back of [3, 2, 1, 0]) {
-        const report = await applyCopy(storage, copy, addDays(today, -back));
+        const report = await applyCopy(
+          storage,
+          copy,
+          addDays(today, -back),
+          undefined,
+          undefined,
+          photos,
+        );
         if (report.status !== 'ok') throw new Error(`${copy.code}: ${report.note}`);
       }
       return { ...copy, rootPassword: made.password };

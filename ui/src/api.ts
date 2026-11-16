@@ -15,6 +15,8 @@ import {
   type OperatorLinkRequest,
   operatorRoutes,
   AUTH_HEADER,
+  type BoxItem,
+  boxesReplySchema,
   type ClientListItem,
   clientListReplySchema,
   CLIENT_HEADER,
@@ -26,12 +28,10 @@ import {
   customerDocSchema,
   customerListReplySchema,
   customerRoutes,
-  type DeliverRequest,
+  type DeliverSentRequest,
   type DeliveryDoc,
   deliveryDocSchema,
   deliveryListReplySchema,
-  type DeliveryPhotoReply,
-  deliveryPhotoReplySchema,
   deliveryRoutes,
   type DeliveryRequest,
   type Driver,
@@ -66,6 +66,10 @@ import {
   type JoinOptionsReply,
   joinOptionsReplySchema,
   type JoinRequest,
+  type PhotoAddressReply,
+  photoAddressReplySchema,
+  type PhotoAddressRequest,
+  photoAddressRequestOf,
   type PhotoReply,
   photoReplySchema,
   type Product,
@@ -119,6 +123,7 @@ import {
   type StaffSetupDoc,
   staffSetupDocSchema,
   type TenantConfig,
+  waitReplySchema,
 } from '@credo/shared';
 
 /** A call that did not give the answer its route promises. `status` is the HTTP status, or null
@@ -130,6 +135,8 @@ export class ApiError extends Error {
   constructor(
     readonly status: number | null,
     readonly bff = false,
+    /** The seconds a 429 in the back end's wait shape asks to wait; null for every other answer. */
+    readonly waitSeconds: number | null = null,
   ) {
     super(status === null ? 'no usable answer' : `answered ${status}`);
     this.name = 'ApiError';
@@ -173,7 +180,10 @@ export type SetEmailResult =
   { kind: 'set'; doc: EmployeeDoc } | { kind: 'taken' } | { kind: 'conflict' };
 
 /** One's own password changed, with the session that replaces every other; or the current one wrong. */
-export type ChangePasswordResult = { kind: 'changed'; session: SessionReply } | { kind: 'wrong' };
+export type ChangePasswordResult =
+  | { kind: 'changed'; session: SessionReply }
+  | { kind: 'wrong' }
+  | { kind: 'wait'; seconds: number };
 
 /** A photo saved, or the version moved. */
 /** A conflict carries the photo as it is now, when the answer held one the shared schema reads. */
@@ -188,6 +198,13 @@ export type OrderResult =
 /** A request cancelled or delivered, or the version moved (or a step its state does not allow). */
 export type DeliveryResult =
   { kind: 'done'; doc: DeliveryDoc } | { kind: 'conflict'; current: DeliveryDoc | null };
+
+/** An address to send a delivery's photo to, or the request no longer waiting (a 409), as it is now
+ * when the answer held it. */
+export type PhotoAddressResult =
+  { kind: 'address'; url: string } | Extract<DeliveryResult, { kind: 'conflict' }>;
+/** How long the picture's one try to its address may take, in milliseconds. */
+const PHOTO_SEND_MS = 20_000;
 
 /** A driver's day closed, or the day moved under the page (another set of requests, or closed
  * already): a 409 is a result, and the page reads the day again. */
@@ -264,6 +281,12 @@ export function createApi({
     return new ApiError(response.status, bffErrorSchema.safeParse(body).success);
   }
 
+  /** A 429 as the back end shapes it: the wait it asks, or null for any other answer. */
+  async function waitOf(response: Response) {
+    const parsed = waitReplySchema.safeParse(await response.json().catch(() => null));
+    return parsed.success ? parsed.data.waitSeconds : null;
+  }
+
   async function read<T>(response: Response, schema: Schema<T>) {
     const parsed = schema.safeParse(await response.json().catch(() => null));
     if (!parsed.success) throw new ApiError(null);
@@ -296,6 +319,7 @@ export function createApi({
 
     async signIn(name: string, password: string): Promise<SessionReply> {
       const response = await send('POST', ROUTES.signIn, { name, password });
+      if (response.status === 429) throw new ApiError(429, false, await waitOf(response));
       if (!response.ok) throw new ApiError(response.status);
       return await read(response, sessionReplySchema);
     },
@@ -376,6 +400,13 @@ export function createApi({
       return { ...reply, bffMs: ended - began, checkedAt: ended };
     },
 
+    /** Every box a company may be put on, with its companies and its free disk. */
+    async operatorBoxes(): Promise<BoxItem[]> {
+      const response = await send('GET', ROUTES.operatorBoxes, undefined, 'operator');
+      if (!response.ok) throw new ApiError(response.status);
+      return (await read(response, boxesReplySchema)).boxes;
+    },
+
     /** The signed-in operator's own passkeys. */
     async operatorPasskeys(): Promise<PasskeyItem[]> {
       const response = await send('GET', ROUTES.operatorPasskeys, undefined, 'operator');
@@ -417,8 +448,9 @@ export function createApi({
     },
 
     /** A code already taken is a result, not an error: the form says so and keeps what was typed. */
-    async makeClient(code: string, name: string): Promise<MakeResult> {
-      const response = await send('POST', ROUTES.operatorClients, { code, name }, 'operator');
+    async makeClient(code: string, name: string, box?: string): Promise<MakeResult> {
+      const body = box === undefined ? { code, name } : { code, name, box };
+      const response = await send('POST', ROUTES.operatorClients, body, 'operator');
       if (response.status === 409) return { kind: 'taken' };
       if (!response.ok) throw new ApiError(response.status);
       return { kind: 'made', client: await read(response, createClientReplySchema) };
@@ -689,8 +721,9 @@ export function createApi({
       return (await read(response, deliveryListReplySchema)).deliveries;
     },
 
-    /** A request marked delivered with its photo, by its own driver; a 409 carries it as it is now. */
-    async deliver(day: string, id: string, request: DeliverRequest): Promise<DeliveryResult> {
+    /** A request marked delivered once its photo was sent, by its own driver; a 409 carries it as
+     * it is now. */
+    async deliver(day: string, id: string, request: DeliverSentRequest): Promise<DeliveryResult> {
       const response = await send('POST', deliveryRoutes.deliver(day, id), request);
       if (response.status === 409) {
         return { kind: 'conflict', current: await currentOf(response, deliveryDocSchema) };
@@ -699,11 +732,45 @@ export function createApi({
       return { kind: 'done', doc: await read(response, deliveryDocSchema) };
     },
 
-    /** A delivered request's photo. */
-    async getDeliveryPhoto(day: string, id: string): Promise<DeliveryPhotoReply> {
+    /** Where the photo of a waiting request may be sent; a 409 carries the request as it is now. */
+    async askPhotoAddress(
+      day: string,
+      id: string,
+      request: PhotoAddressRequest,
+    ): Promise<PhotoAddressResult> {
+      const response = await send('POST', deliveryRoutes.photoAddress(day, id), request);
+      if (response.status === 409) {
+        return { kind: 'conflict', current: await currentOf(response, deliveryDocSchema) };
+      }
+      if (!response.ok) throw new ApiError(response.status);
+      return { kind: 'address', url: (await read(response, photoAddressReplySchema)).url };
+    },
+
+    /** The picture itself to its address, in one try of `PHOTO_SEND_MS`. It goes to the photo store
+     * and not to the back end, so it carries no handle. */
+    async putPhoto(url: string, photo: string): Promise<void> {
+      const bytes = Uint8Array.from(atob(photo.slice(photo.indexOf(',') + 1)), (c) =>
+        c.charCodeAt(0),
+      );
+      let response: Response;
+      try {
+        response = await call(url, {
+          method: 'PUT',
+          headers: { 'content-type': photoAddressRequestOf(photo).type },
+          body: bytes,
+          signal: AbortSignal.timeout(PHOTO_SEND_MS),
+        });
+      } catch {
+        throw new ApiError(null);
+      }
+      if (!response.ok) throw new ApiError(response.status);
+    },
+
+    /** The address a delivered request's photo is read from. */
+    async getDeliveryPhoto(day: string, id: string): Promise<PhotoAddressReply> {
       const response = await send('GET', deliveryRoutes.photo(day, id));
       if (!response.ok) throw new ApiError(response.status);
-      return await read(response, deliveryPhotoReplySchema);
+      return await read(response, photoAddressReplySchema);
     },
 
     /** The drivers' days closed on one day. */
@@ -789,6 +856,11 @@ export function createApi({
     async changePassword(current: string, password: string): Promise<ChangePasswordResult> {
       const response = await send('PUT', signInRoutes.password, { current, password });
       if (response.status === 403) return { kind: 'wrong' };
+      if (response.status === 429) {
+        const seconds = await waitOf(response);
+        if (seconds === null) throw new ApiError(429);
+        return { kind: 'wait', seconds };
+      }
       if (!response.ok) throw new ApiError(response.status);
       return { kind: 'changed', session: await read(response, sessionReplySchema) };
     },

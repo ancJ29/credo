@@ -202,6 +202,7 @@ export const runDemo = (
             stack.storage,
             vietnamToday((settings.now ?? Date.now)()),
             settings.partner,
+            stack.photos,
           );
           return await use({ ...stack, copies });
         }),

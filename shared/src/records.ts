@@ -39,7 +39,7 @@ export const recordKeys = {
     product: (productId: string) => `tenant.${id}.product.${productId}`,
     productPrefix: `tenant.${id}.product.`,
     /** An order and a delivery request, each by its day and minted id: a list reads one day's prefix,
-     * since c-storage answers at most 1,000 records a read. */
+     * which keeps it to a page however long the company has traded. */
     order: (day: string, orderId: string) => `tenant.${id}.order.${day}.${orderId}`,
     orderDayPrefix: (day: string) => `tenant.${id}.order.${day}.`,
     delivery: (day: string, requestId: string) => `tenant.${id}.delivery.${day}.${requestId}`,
@@ -48,6 +48,9 @@ export const recordKeys = {
      * `deliveryDayPrefix`, so a day's list never reads a photo. */
     deliveryPhoto: (day: string, requestId: string) =>
       `tenant.${id}.delivery-photo.${day}.${requestId}`,
+    /** The name of the object a delivery's photo is kept under: built here from the company's minted
+     * id, the day and the request's id, and nothing the phone sends names it. */
+    deliveryPhotoObject: (day: string, requestId: string) => `${id}/${day}/${requestId}.jpg`,
     /** A driver's closed day, by the day and the driver's minted id: written once, and a day's are one
      * prefix read. */
     reconciliation: (day: string, driverId: string) =>
@@ -69,23 +72,40 @@ export const recordKeys = {
     signInEmail: (email: string) => `tenant.${id}.signin-email.${email}`,
     /** A person's one QR code, by their minted id: a new code replaces it, spending removes it. */
     signInQr: (employeeId: string) => `tenant.${id}.signin-qr.${employeeId}`,
+    /** A name's wrong tries and wait, by the name's HMAC-SHA-256 hex under a key the BFF derives from
+     * its service key (`bff/src/records/sign-in-wait.ts`'s `waitKeyFrom`): a name nobody holds is
+     * often a password typed into the wrong box, so the key never holds it, and a copy of the
+     * store's data without that key cannot reverse it by a dictionary run. */
+    signInWait: (nameHash: string) => `tenant.${id}.signin-wait.${nameHash}`,
   }),
 } as const;
 
 /** A client's code: 3 to 32 lowercase letters, digits and hyphens, a letter first and a letter
  * or digit last. The BFF takes this exact form alone. */
+/** The first box, which holds the list of companies and every company whose line names no box. */
+export const HOME_BOX = 'home';
+/** A box's name: a few lowercase letters and digits, as it is told to the back end and kept in a
+ * company's line. */
+export const boxNameSchema = z.string().regex(/^[a-z][a-z0-9]{0,15}$/);
+
 export const clientCodeSchema = z.string().regex(/^[a-z][a-z0-9-]{1,30}[a-z0-9]$/);
 
 /** A code as typed or linked, to the form the BFF takes: spaces around it go and capitals fall. */
+/** The codes kept back from companies, since each is a name of the app's own on the one domain:
+ * `operator` is the operator's address and `www` the one a visitor guesses. */
+export const KEPT_CODES: readonly string[] = ['operator', 'www'];
+
 export const normaliseClientCode = (raw: string) => raw.trim().toLowerCase();
 
 /** The index record: the tenant's minted id, the name as made for the reader, and the time it was
  * made, in milliseconds since the epoch. An index written before the time was kept has none, and
- * reads as none; nothing rewrites it. */
+ * reads as none; nothing rewrites it. `box` names the box the company's records sit on; a line with
+ * none is on the home box, so a company made before boxes were named reads as it did. */
 export const storedClientSchema = z.strictObject({
   id: z.uuid(),
   name: z.string(),
   madeAt: z.number().optional(),
+  box: boxNameSchema.optional(),
 });
 export type StoredClient = z.infer<typeof storedClientSchema>;
 
@@ -97,6 +117,9 @@ export const storedClientDeletionSchema = z.strictObject({
   name: z.string(),
   by: z.uuid(),
   startedAt: z.number(),
+  /** The box the company's records sit on, when it is not the home box: a press that resumes the
+   * deletion has no line to read it from. */
+  box: boxNameSchema.optional(),
 });
 export type StoredClientDeletion = z.infer<typeof storedClientDeletionSchema>;
 
@@ -181,6 +204,15 @@ export const storedUserSchema = z.strictObject({
   generation: z.string().default(''),
 });
 export type StoredUser = z.infer<typeof storedUserSchema>;
+
+/** A sign-in name's wrong tries in a row, and when its wait ends in milliseconds since the epoch
+ * (a time already past, or none yet, means no wait). A try is counted before its password is
+ * checked, and a right password removes the record. */
+export const storedSignInWaitSchema = z.strictObject({
+  wrong: z.number().int().positive(),
+  until: z.number(),
+});
+export type StoredSignInWait = z.infer<typeof storedSignInWaitSchema>;
 
 export const storedSessionSchema = z.strictObject({
   /** SHA-256 hex of the handle's secret; the secret itself is never stored. */

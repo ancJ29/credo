@@ -85,6 +85,10 @@ export const en = {
       '3 to 32 characters: lowercase letters, digits and hyphens, starting with a letter. It cannot be changed later.',
     companyName: 'Company name',
     make: 'Make the client',
+    box: 'Box',
+    boxHint: 'Where this company’s records are kept. It starts on the box chosen here.',
+    boxLine: '{{name}}: {{free}} GB free, {{companies}} companies',
+    boxDown: '{{name}}: not answering',
     failed: 'The client was not made. What you typed is still here: try again.',
     taken:
       'That code already belongs to another client, and nothing was changed. Choose a different code.',
@@ -501,6 +505,12 @@ export const en = {
     qrOnce: 'It works once, for 15 minutes. Showing a new code cancels this one.',
     qrFailed: 'No code was made: try again.',
   },
+  wait: {
+    second: 'Too many wrong tries. Try again in {{count}} second.',
+    seconds: 'Too many wrong tries. Try again in {{count}} seconds.',
+    minute: 'Too many wrong tries. Try again in {{count}} minute.',
+    minutes: 'Too many wrong tries. Try again in {{count}} minutes.',
+  },
   ownPassword: {
     title: 'Change your password',
     text: 'Give the one you use now, then the new one. Every other device you are signed in on is signed out.',
@@ -812,6 +822,7 @@ export const en = {
     cancelFailed: 'Nothing was cancelled. Try again.',
     proofTitle: 'Proof of delivery',
     proofAlt: 'The goods as the driver delivered them',
+    proofMissing: 'The photo did not arrive.',
   },
   myDeliveries: {
     forDay: 'Requests sent to you for {{day}}.',

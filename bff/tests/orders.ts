@@ -131,3 +131,19 @@ export async function ordersTenant(
     asDriver,
   };
 }
+
+/** A driver's delivery as the phone makes it: ask where to send the photo, then mark the request
+ * delivered. The picture goes nowhere (no store is on the network); the answer is the deliver's. */
+export async function deliverWithPhoto(
+  call: {
+    send: (method: 'POST', url: string, payload?: unknown) => Promise<{ statusCode: number }>;
+  },
+  id: string,
+  version: string,
+) {
+  await call.send('POST', deliveryRoutes.photoAddress(DAY, id), PHOTO_ASK);
+  return await call.send('POST', deliveryRoutes.deliver(DAY, id), { version });
+}
+
+/** The ask a phone makes for a photo of 10 bytes. */
+export const PHOTO_ASK = { type: 'image/jpeg', bytes: 10 };

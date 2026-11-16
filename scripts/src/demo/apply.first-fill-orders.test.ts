@@ -14,6 +14,7 @@ import {
   ROUTES,
 } from '@credo/shared';
 import { beforeAll, describe, expect, it } from 'vitest';
+import { FORGETTING_SINK } from '../running/photo-store';
 import { applyCopy, HISTORY_DAYS } from './apply';
 import { staffSetupOf } from './company';
 import { addDays, atMinute } from './days';
@@ -39,7 +40,7 @@ import {
 useCStorage();
 
 describe('the copy’s orders, deliveries and closed days, written with the first fill', () => {
-  const FIRST = '2026-10-22';
+  const FIRST = '2026-10-08';
   const PAST = Array.from({ length: HISTORY_DAYS }, (_, at) => addDays(FIRST, at));
   const read = async (root: Awaited<ReturnType<typeof asRoot>>, url: string) =>
     (await root('GET', url)).json<Record<string, unknown[]>>();
@@ -58,12 +59,17 @@ describe('the copy’s orders, deliveries and closed days, written with the firs
   let root: Awaited<ReturnType<typeof asRoot>>;
   let id: string;
   let lines: string[];
+  /** The pictures the seed sent, by the path of the address it asked. */
+  const kept = new Map<string, Buffer>();
   beforeAll(async () => {
     storage = await fresh();
     const made = await make(storage, A1);
     root = await asRoot(storage, A1.code, made.password);
     lines = [];
-    await applyCopy(storage, A1, TODAY, (line) => lines.push(line));
+    await applyCopy(storage, A1, TODAY, (line) => lines.push(line), Infinity, {
+      store: FORGETTING_SINK.store,
+      keep: (address, bytes) => void kept.set(new URL(address).pathname, bytes),
+    });
     id = await tenantOf(storage, A1.code);
   });
 
@@ -88,7 +94,7 @@ describe('the copy’s orders, deliveries and closed days, written with the firs
     expect(lines).toContain(`${A1.code}: 2026-10-25 applied, 0 events`);
     expect(
       lines.some((line) =>
-        /: 2026-10-22 orders: \d+ saved, \d+ sent, \d+ cancelled, \d+ left drafts$/.test(line),
+        /: 2026-10-08 orders: \d+ saved, \d+ sent, \d+ cancelled, \d+ left drafts$/.test(line),
       ),
     ).toBe(true);
   });
@@ -102,10 +108,11 @@ describe('the copy’s orders, deliveries and closed days, written with the firs
         expect(['delivered', 'cancelled']).toContain(request.state);
         if (request.state !== 'delivered') continue;
         delivered++;
-        const photo = (await storage.getRecord(keys.deliveryPhoto(day, request.id)))!.data as {
-          photo: string;
+        // the record names the object, and the object is the picture, sent under 10 KB
+        const { name } = (await storage.getRecord(keys.deliveryPhoto(day, request.id)))!.data as {
+          name: string;
         };
-        expect(photo.photo.length).toBeLessThan(14_000);
+        expect(kept.get(`/seed/${name}`)!.length).toBeLessThan(10_000);
         const order = (await storage.getRecord(keys.order(request.order.day, request.order.id)))!
           .data as { state: string };
         expect(order.state).toBe('fulfilled');
@@ -444,7 +451,7 @@ describe('the copy’s orders, deliveries and closed days, written with the firs
     expect(
       report.skipped.some((line) => /^DH-\d+: no driver who delivers, left a draft$/.test(line)),
     ).toBe(true);
-    const held = await ordersOf(noDriversRoot, '2026-10-22');
+    const held = await ordersOf(noDriversRoot, FIRST);
     expect(held.length).toBeGreaterThan(0);
     expect(held.every((one) => one.state === 'draft')).toBe(true);
 

@@ -30,6 +30,8 @@ type SceneOptions = {
   out?: boolean;
   /** No one is allowed to deliver yet. */
   noDrivers?: boolean;
+  /** A delivered request whose picture never arrived. */
+  photoLost?: boolean;
   language: Language;
 };
 
@@ -57,6 +59,7 @@ export function sceneParts({
   drift,
   out,
   noDrivers,
+  photoLost,
   language,
 }: SceneOptions) {
   const found = as === undefined ? null : DEMO_EMPLOYEES.find((person) => person.code === as);
@@ -71,7 +74,7 @@ export function sceneParts({
   );
   const parsed = parseCue(cue ?? null);
   return {
-    api: createFakeApi({ device, cue: parsed, signIns, drift, noDrivers }),
+    api: createFakeApi({ device, cue: parsed, signIns, drift, noDrivers, photoLost }),
     device,
     passkeys: createFakePasskeys({ cue: parsed }),
     /** The build the app says it was built from, as the data set holds it. */

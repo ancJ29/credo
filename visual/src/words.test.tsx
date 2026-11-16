@@ -263,6 +263,9 @@ const PROOF: Record<string, (w: (typeof DICTIONARIES)['en']) => string> = {
   'office-orders:orders-13-moved-price': (w) =>
     `heading: ${w.orders.orderTitle.replace('{{number}}', DRAFT_YESTERDAY.number)}`,
   'office-orders:orders-14-repriced': (w) => `alert: ${w.orders.done.saved}`,
+  // jsdom loads no picture, so the browser's error on the lost address, which draws the line
+  // `orders.proofMissing`, is held by `DeliveriesPages.test.tsx`; the page's own heading is here
+  'office-orders:orders-15-photo-missing': (w) => `heading: ${w.orders.proofTitle}`,
   'driver-deliveries:driver-1-today': (w) => `heading: ${w.nav.myDeliveries}`,
   'driver-deliveries:driver-2-request': (w) =>
     `heading: ${w.orders.requestTitle.replace('{{number}}', WAITING_OF_DRIVER.number)}`,

@@ -82,23 +82,23 @@ describe('the walks', () => {
     expect(() => resolveDrawn(lacking(99, 'empty'), SCREENS)).toThrow('"99 empty"');
   });
 
-  it('holds piece 1’s eight screens in the app frame’s numbers, screen 9 after them, and the white frame’s 10 and 11', () => {
+  it('holds piece 1’s eight screens in the app frame’s numbers, screen 9 after them, the white frame’s 10 and 11, and the sign-in wait’s 12', () => {
     const screens = WALKS[0].screens;
 
-    expect(screens.map((screen) => screen.number)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
+    expect(screens.map((screen) => screen.number)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12]);
     expect(screens.filter((screen) => screen.path === 'main').map((s) => s.number)).toEqual([
       1, 3, 4, 5, 10, 11,
     ]);
     expect(screens.filter((screen) => screen.path === 'wrong').map((s) => s.number)).toEqual([
-      2, 6, 7, 8, 9,
+      2, 6, 7, 8, 9, 12,
     ]);
   });
 
-  it('puts the operator’s walk after piece 1’s: nine screens, numbered 1 to 9, each a scene and none from the mock, the failures on the wrong path', () => {
+  it('puts the operator’s walk after piece 1’s: ten screens, numbered 1 to 10, each a scene and none from the mock, the failures on the wrong path', () => {
     const walk = WALKS[1];
 
     expect(walk.id).toBe('operator-setup');
-    expect(walk.screens.map((screen) => screen.number)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9]);
+    expect(walk.screens.map((screen) => screen.number)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
     expect(walk.screens.filter((s) => s.path === 'wrong').map((s) => s.id)).toEqual([
       'op-4-code-taken',
       'op-7-list-failed',
@@ -589,7 +589,7 @@ describe('the walks', () => {
       'EMP-0003',
       'EMP-0001',
       'EMP-0001',
-      ...Array<string>(14).fill('EMP-0001'),
+      ...Array<string>(15).fill('EMP-0001'),
       ...Array<string>(5).fill('EMP-0005'),
       ...Array<string>(8).fill('EMP-0001'),
     ]);
@@ -735,7 +735,7 @@ describe('the walks', () => {
     }
   });
 
-  it('puts an order sent to a driver in one walk of the office’s orders, fourteen screens, each a scene and none from the mock, the three failures on the wrong path', () => {
+  it('puts an order sent to a driver in one walk of the office’s orders, fifteen screens, each a scene and none from the mock, the four failures on the wrong path', () => {
     const walk = WALKS[9];
 
     expect(walk).toMatchObject({ id: 'office-orders', person: 'office', part: 'orders' });
@@ -754,10 +754,11 @@ describe('the walks', () => {
       ['orders-12-proof', 12, 'main'],
       ['orders-13-moved-price', 13, 'main'],
       ['orders-14-repriced', 14, 'main'],
+      ['orders-15-photo-missing', 15, 'wrong'],
     ]);
     expect(walk.screens.filter((screen) => screen.scene === undefined)).toEqual([]);
     // every screen is the office manager's, and the failures are cued or provoked as the spec does
-    expect(walk.screens.map((screen) => screen.scene!.as)).toEqual(Array(14).fill('EMP-0001'));
+    expect(walk.screens.map((screen) => screen.scene!.as)).toEqual(Array(15).fill('EMP-0001'));
     expect(walk.screens.map((screen) => screen.scene!.cue)).toEqual([
       undefined,
       undefined,
@@ -773,8 +774,10 @@ describe('the walks', () => {
       undefined,
       undefined,
       undefined,
+      undefined,
     ]);
     expect(walk.screens[9].scene!.noDrivers).toBe(true);
+    expect(walk.screens[14].scene).toMatchObject({ photoLost: true });
   });
 
   it('The driver’s walk: the phone’s six screens, the first from the QR link with nobody signed in, the rest the data set’s driver, the failures cued as the spec cues them and on the wrong path', () => {
@@ -836,12 +839,15 @@ describe('the walks', () => {
       before.set(parts[index], parts[index - 1]);
 
     for (const screen of WALKS[9].screens) {
-      const { cue, noDrivers } = screen.scene!;
+      const { cue, noDrivers, photoLost } = screen.scene!;
       const steps = before.get(screen.id)!;
       const opened = [...steps.matchAll(/(?:listed|open)\(([^)]*)\)/g)].at(-1)?.[1] ?? '';
       expect(opened.includes(`cue: '${cue}'`), `${screen.id}: cue`).toBe(cue !== undefined);
       expect(opened.includes('noDrivers: true'), `${screen.id}: noDrivers`).toBe(
         noDrivers === true,
+      );
+      expect(opened.includes('photoLost: true'), `${screen.id}: photoLost`).toBe(
+        photoLost === true,
       );
     }
     // the browser's clock is fixed before each opening, at the day the fake build and a scene take

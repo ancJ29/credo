@@ -10,6 +10,7 @@ import {
   deliveryRoutes,
   type Driver,
   type OrderDoc,
+  type PhotoAddressReply,
   orderRoutes,
   type Product,
   type ProductDoc,
@@ -54,6 +55,8 @@ import {
   OPERATOR_NAME,
 } from '@credo/shared/demo';
 
+import { FORGETTING_SINK, type PhotoSink, sendPicture } from './running/photo-store';
+
 export { ROOT_NAME };
 
 /** The id the colleague's adder had, an operator since deleted: no roster line holds it. */
@@ -92,6 +95,8 @@ export async function seedClient(
   madeAt: number = Date.now(),
   /** The company's name; the data set's own when none is given. */
   name: string = DEMO_CONFIG.name,
+  /** Where the delivered requests' pictures go; none keeps nowhere. */
+  photos: PhotoSink = FORGETTING_SINK,
 ): Promise<SeededClient> {
   const made = await createClient(storage, {
     code,
@@ -103,7 +108,13 @@ export async function seedClient(
 
   // The clock is the BFF's `madeAt` alone; the week's replay sets it at each record's own time.
   let clock: number | null = null;
-  const app = buildApp({ storage, now: () => clock ?? Date.now(), ...NO_OPERATOR, logger: false });
+  const app = buildApp({
+    storage,
+    now: () => clock ?? Date.now(),
+    ...NO_OPERATOR,
+    photoStore: photos.store,
+    logger: false,
+  });
   const call = async <T>(
     method: 'GET' | 'POST' | 'PUT',
     url: string,
@@ -217,6 +228,7 @@ export async function seedClient(
       clock = time;
     },
     (driverCode) => signIn(driverCode, people[driverCode]),
+    photos,
   );
   await closeWeek(call, signIn, people, (time) => {
     clock = time;
@@ -273,6 +285,7 @@ async function replayWeek(
   root: string,
   setClock: (time: number) => void,
   signInAs: (code: string) => Promise<string>,
+  photos: PhotoSink,
 ) {
   const customers = await call<{ customers: Customer[] }>('GET', ROUTES.customers, root);
   const products = await call<{ products: Product[] }>('GET', ROUTES.products, root);
@@ -336,9 +349,18 @@ async function replayWeek(
       setClock(request.deliveredAt!);
       const driver = await signInAs(request.driver.code);
       const sent = await call<DeliveryDoc>('GET', deliveryRoutes.one(request.day, id), driver);
+      // The phone's order: ask where to send the picture, send it, then mark delivered.
+      await sendPicture(photos, DEMO_DELIVERY_PHOTOS[request.id], async (body) => {
+        const asked = await call<PhotoAddressReply>(
+          'POST',
+          deliveryRoutes.photoAddress(request.day, id),
+          driver,
+          body,
+        );
+        return asked.url;
+      });
       await call<DeliveryDoc>('POST', deliveryRoutes.deliver(request.day, id), driver, {
         version: sent.version,
-        photo: DEMO_DELIVERY_PHOTOS[request.id],
       });
     } else if (request?.state === 'cancelled') {
       const { id } = doc.order.request!;
@@ -497,10 +519,20 @@ async function seedOperators(storage: CStorageClient, now: number) {
  * operator's link token and the operator's session handle, which the stack shows once as the first
  * password was.
  */
-export async function seedDemo(storage: CStorageClient, now: number = Date.now()) {
+export async function seedDemo(
+  storage: CStorageClient,
+  now: number = Date.now(),
+  photos: PhotoSink = FORGETTING_SINK,
+) {
   const { invitedToken, operatorHandle, operatorPasskey } = await seedOperators(storage, now);
   const demo = DEMO_CLIENTS.find((client) => client.code === DEMO_CODE)!;
-  const { rootPassword, people } = await seedClient(storage, demo.code, demo.madeAt);
+  const { rootPassword, people } = await seedClient(
+    storage,
+    demo.code,
+    demo.madeAt,
+    undefined,
+    photos,
+  );
   // The operator's list shows three clients: the other two are only made, with their fixed times.
   for (const { code, name, madeAt } of DEMO_CLIENTS.filter((client) => client !== demo)) {
     if ((await createClient(storage, { code, name, madeAt })) === 'taken') {

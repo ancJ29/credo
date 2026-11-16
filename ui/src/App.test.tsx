@@ -1,5 +1,5 @@
 import type { ConfigDoc, TenantConfig } from '@credo/shared';
-import { screen, waitFor, within } from '@testing-library/react';
+import { cleanup, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { drawApp } from '../tests/render';
@@ -42,6 +42,7 @@ function setup(
   overrides: Partial<Api> | ((device: DeviceStore) => Partial<Api>) = {},
   kept: Record<string, string | null> = {},
   path = '/',
+  address?: string,
 ) {
   const initial = Object.entries({ ...linked, ...kept }).flatMap(([key, value]) =>
     value === null ? [] : [[key, value] as const],
@@ -66,12 +67,13 @@ function setup(
     deleteClient: vi.fn(() => Promise.reject(new ApiError(null))),
     setRootPassword: vi.fn(() => Promise.reject(new ApiError(null))),
     operatorServices: vi.fn(() => Promise.reject(new ApiError(null))),
+    operatorBoxes: vi.fn(() => Promise.reject(new ApiError(null))),
     ...staffCalls,
     ...passkeyCalls,
     ...(typeof overrides === 'function' ? overrides(device) : overrides),
   } satisfies Api;
   const drawn = drawApp(
-    <App api={api} device={device} passkeys={noPasskeys} build="dev" test />,
+    <App api={api} device={device} passkeys={noPasskeys} build="dev" test address={address} />,
     path,
   );
   return { api, device, storage, ...drawn };
@@ -164,6 +166,24 @@ describe('the app', () => {
 
     await signInAs();
     expect((await screen.findByRole('alert')).textContent).toContain('Wrong username or password');
+
+    await userEvent.click(screen.getByRole('button', { name: 'Sign In' }));
+    expect((await screen.findByRole('alert')).textContent).toContain(
+      DICTIONARIES.vi.common.unavailable,
+    );
+  });
+
+  it('16: A sign-in made to wait says for how long, and a 429 of no wait’s shape says the service is unavailable', async () => {
+    const signIn = vi
+      .fn<Api['signIn']>()
+      .mockRejectedValueOnce(new ApiError(429, false, 30))
+      .mockRejectedValueOnce(new ApiError(429));
+    setup({ signIn });
+
+    await signInAs();
+    expect((await screen.findByRole('alert')).textContent).toBe(
+      'Too many wrong tries. Try again in 30 seconds.',
+    );
 
     await userEvent.click(screen.getByRole('button', { name: 'Sign In' }));
     expect((await screen.findByRole('alert')).textContent).toContain(
@@ -422,6 +442,57 @@ describe('the app', () => {
     expect(brandColour()).toBe('#2f7d6d');
     expect(seen).toEqual(['minh-phat']);
     expect(device.clientCode()).toBe('minh-phat');
+  });
+
+  it('On a company’s address that company opens, whatever the link or the device holds, and the device keeps it', async () => {
+    const seen: (string | null)[] = [];
+    const { device } = setup(
+      (device) => ({
+        getConfig: () => {
+          seen.push(device.clientCode());
+          return Promise.resolve(doc);
+        },
+      }),
+      { 'credo.client': 'other-co' },
+      '/login?client-code=third-co',
+      'minh-phat.ridge.example.test',
+    );
+
+    expect((await screen.findByRole('heading', { level: 1 })).textContent).toBe('Minh Phát');
+    expect(seen).toEqual(['minh-phat']);
+    expect(device.clientCode()).toBe('minh-phat');
+  });
+
+  it('Where the address names no company, the link and then the device decide, as before', async () => {
+    const seen: (string | null)[] = [];
+    const getConfig = (device: DeviceStore) => () => {
+      seen.push(device.clientCode());
+      return Promise.resolve(doc);
+    };
+    setup(
+      (device) => ({ getConfig: getConfig(device) }),
+      { 'credo.client': 'other-co' },
+      '/login?client-code=third-co',
+      'operator.ridge.example.test',
+    );
+    await screen.findByLabelText(/Username/);
+    cleanup();
+    setup(
+      (device) => ({ getConfig: getConfig(device) }),
+      { 'credo.client': 'other-co' },
+      '/',
+      'localhost',
+    );
+    await screen.findByLabelText(/Username/);
+
+    expect(seen).toEqual(['third-co', 'other-co']);
+  });
+
+  it('Drawn with no address given, the app reads the link alone', async () => {
+    const { device } = setup({}, { 'credo.client': 'other-co' }, '/login?client-code=third-co');
+
+    await screen.findByLabelText(/Username/);
+    expect(device.clientCode()).toBe('third-co');
   });
 
   it('A reload at another address keeps the client the device was linked to', async () => {

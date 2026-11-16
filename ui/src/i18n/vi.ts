@@ -86,6 +86,10 @@ export const vi: Dictionary = {
       'Từ 3 đến 32 ký tự: chữ thường, chữ số và dấu gạch ngang, bắt đầu bằng một chữ cái. Không đổi được về sau.',
     companyName: 'Tên công ty',
     make: 'Tạo khách hàng',
+    box: 'Máy chủ lưu trữ',
+    boxHint: 'Nơi lưu dữ liệu của công ty này. Công ty bắt đầu trên máy chủ được chọn ở đây.',
+    boxLine: '{{name}}: còn trống {{free}} GB, {{companies}} công ty',
+    boxDown: '{{name}}: không phản hồi',
     failed: 'Chưa tạo được khách hàng. Những gì bạn đã nhập vẫn còn đây: hãy thử lại.',
     taken: 'Mã này đã thuộc về một khách hàng khác và chưa có gì thay đổi. Hãy chọn mã khác.',
     madeTitle: 'Đã tạo khách hàng',
@@ -500,6 +504,12 @@ export const vi: Dictionary = {
     qrOnce: 'Mã dùng được một lần, trong 15 phút. Hiện mã mới sẽ hủy mã này.',
     qrFailed: 'Chưa tạo được mã: hãy thử lại.',
   },
+  wait: {
+    second: 'Nhập sai quá nhiều lần. Hãy thử lại sau {{count}} giây.',
+    seconds: 'Nhập sai quá nhiều lần. Hãy thử lại sau {{count}} giây.',
+    minute: 'Nhập sai quá nhiều lần. Hãy thử lại sau {{count}} phút.',
+    minutes: 'Nhập sai quá nhiều lần. Hãy thử lại sau {{count}} phút.',
+  },
   ownPassword: {
     title: 'Đổi mật khẩu của bạn',
     text: 'Nhập mật khẩu đang dùng, rồi mật khẩu mới. Mọi thiết bị khác đang đăng nhập sẽ bị đăng xuất.',
@@ -812,6 +822,7 @@ export const vi: Dictionary = {
     cancelFailed: 'Chưa hủy được. Hãy thử lại.',
     proofTitle: 'Bằng chứng giao hàng',
     proofAlt: 'Hàng hóa như tài xế đã giao',
+    proofMissing: 'Ảnh chưa được gửi tới.',
   },
   myDeliveries: {
     forDay: 'Các yêu cầu giao cho bạn ngày {{day}}.',

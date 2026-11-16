@@ -6,7 +6,7 @@ back, by person or by record, with a token the system gives it for an hour.
 
 Where it sits: the client's system → audit-backbone → one SQLite file, and the
 client's browser reads it through a second door of its own. credo's back end
-writes to it for every change, in the local copy. [credo's chart](../../README.md) shows both calls and what each
+writes to it for every change, in the local copy, and the release ships it to the box beside c-storage. [credo's chart](../../README.md) shows both calls and what each
 carries.
 
 ## Try it in 10 minutes
@@ -66,8 +66,9 @@ make dist BUILD_COMMIT=<sha>  # dist/credo-audit-backbone for the box; its /heal
 
 On a server, `PORT` is the keyed listener's port and `OPEN_PORT` the open
 one's; `ACTIVITY_WRITE_KEY` is the keyed listener's key, `DB_PATH` the SQLite
-file, and `LOG_LEVEL` is `info` unless set. Any mistake in them stops it at
-start-up. No ship path builds or verifies it in this repository yet.
+file, `LISTEN_ADDR` the one address the keyed listener binds (loopback unless set; never an
+unspecified or a named one; on ridge the box's private address), and `LOG_LEVEL` is `info` unless set. Any mistake in them stops it at
+start-up. `ops/release.sh` builds it by hand or takes the deploy job's binary and verifies its checksum on the box; it has not yet run on ridge.
 
 ## Why it is built this way
 

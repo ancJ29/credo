@@ -5,6 +5,8 @@ import {
   clientLinkPath,
   CStorageError,
   CREDO_COLOUR,
+  HOME_BOX,
+  KEPT_CODES,
   newestFirst,
   type CStorageClient,
   type StoredClient,
@@ -15,13 +17,13 @@ import {
   type TenantConfig,
 } from '@credo/shared';
 import { hashPassword, newPassword } from '../calling/password';
-import { recordTools } from './records';
+import { type RecordStore, recordTools, tenantStorage } from './records';
 
 export const ROOT_NAME = 'root';
 
 /** A write that must find nothing there. The id is fresh, so a record already under it is a fault
  * of the store and not a caller's to settle: it surfaces as an unavailable store. */
-export async function createRecord(storage: CStorageClient, key: string, data: unknown) {
+export async function createRecord(storage: RecordStore, key: string, data: unknown) {
   if ((await storage.putRecord(key, data, null)) === 'moved') {
     throw new CStorageError(412, 'a record already sat under a fresh id');
   }
@@ -51,7 +53,8 @@ export function startingConfig(name: string, settings: Partial<TenantConfig> = {
  * returned here and stored as its hash alone. `settings` replaces the starting settings, for the
  * local stack's demo client; the operator's route never passes any. `madeAt` is the time the
  * index records, from the caller's clock: the route's is the BFF's own, never a request's.
- * `'taken'` means the code names a client already, and nothing was written.
+ * `'taken'` means the code names a client already, or is one kept back for the app's own address
+ * (`KEPT_CODES`), and nothing was written.
  */
 export async function createClient(
   storage: CStorageClient,
@@ -60,14 +63,25 @@ export async function createClient(
     name,
     madeAt,
     settings = {},
-  }: { code: string; name: string; madeAt: number; settings?: Partial<TenantConfig> },
+    box,
+  }: {
+    code: string;
+    name: string;
+    madeAt: number;
+    settings?: Partial<TenantConfig>;
+    /** The box the company lives on: its settings and root are written there and its line names
+     * it. None, they sit in `storage` and the line names no box. */
+    box?: { name: string; storage: CStorageClient };
+  },
 ): Promise<{ id: string; password: string } | 'taken'> {
+  if (KEPT_CODES.includes(code)) return 'taken';
   if (await storage.getRecord(recordKeys.client(code))) return 'taken';
   // A deletion of an earlier client of this code still unfinished keeps the code, or its records
   // would be left with no way to finish them.
   if (await storage.getRecord(recordKeys.clientDeletion(code))) return 'taken';
   const id = randomUUID();
   const keys = recordKeys.tenant(id);
+  const company = tenantStorage(box?.storage ?? storage, id);
   const password = newPassword();
   const config = startingConfig(name, settings);
   const root: StoredUser = {
@@ -77,9 +91,9 @@ export async function createClient(
     passwordAt: 0,
     generation: '',
   };
-  await createRecord(storage, keys.config, config);
-  await createRecord(storage, keys.user(ROOT_NAME), root);
-  const index: StoredClient = { id, name, madeAt };
+  await createRecord(company, keys.config, config);
+  await createRecord(company, keys.user(ROOT_NAME), root);
+  const index: StoredClient = { id, name, madeAt, ...(box ? { box: box.name } : {}) };
   const saved = await storage.putRecord(recordKeys.client(code), index, null);
   return saved === 'saved' ? { id, password } : 'taken';
 }
@@ -111,11 +125,41 @@ export async function listClients(storage: CStorageClient): Promise<ClientListIt
     .sort(newestFirst);
 }
 
+/** How many companies each box holds, by the box their line names (none is the home box). Boxes
+ * with no company are absent; it reads the index alone, as `listClients` does. */
+export async function companiesByBox(storage: CStorageClient): Promise<Map<string, number>> {
+  const listed = await recordTools(storage).every(
+    recordKeys.clientPrefix,
+    storedClientSchema,
+    'client index',
+  );
+  const counts = new Map<string, number>();
+  for (const { record } of listed) {
+    const box = record.box ?? HOME_BOX;
+    counts.set(box, (counts.get(box) ?? 0) + 1);
+  }
+  return counts;
+}
+
 /** The most records one press of a deletion removes, so one request ends well inside the BFF's
  * time and the page presses again for the rest. */
 export const DELETE_BOUND = 200;
 /** How many of a press's removals run at once. */
 const DELETE_AT_ONCE = 20;
+
+/** A caller that hands no box sweeps `storage` alone, so a company named on another box is refused
+ * by name, before any write: its records would stay on that box, named by nothing. */
+function refuseOtherBox(
+  code: string,
+  named: string | undefined,
+  handed: CStorageClient | undefined,
+) {
+  if (!handed && named && named !== HOME_BOX) {
+    throw new Error(
+      `the company ${code} is on the box ${named}, not the one this was handed: nothing was deleted`,
+    );
+  }
+}
 
 /**
  * Deletes a client whole, as the mirror of `createClient`. With the client's index in hand (read
@@ -137,19 +181,31 @@ export async function deleteClient(
     index,
     by,
     now,
+    box,
   }: {
     code: string;
     index: (StoredClient & { tag: string }) | null;
     by: string;
     now: () => number;
+    /** The box the company sits on, as the caller read it from the line (or the deletion record):
+     * its store, which every record of the company is listed and removed in. None, `storage`, and
+     * a line or a deletion record naming another box is then refused (an Error), nothing written. */
+    box?: CStorageClient;
   },
 ): Promise<{ left: number } | 'unknown' | 'busy' | 'moved'> {
   const key = recordKeys.clientDeletion(code);
   let deletion;
   if (index) {
+    refuseOtherBox(code, index.box, box);
     const prior = await storage.getRecord(key);
     if (prior && storedClientDeletionSchema.parse(prior.data).id !== index.id) return 'busy';
-    deletion = { id: index.id, name: index.name, by, startedAt: now() };
+    deletion = {
+      id: index.id,
+      name: index.name,
+      by,
+      startedAt: now(),
+      ...(index.box && index.box !== HOME_BOX ? { box: index.box } : {}),
+    };
     if ((await storage.putRecord(key, deletion, prior?.tag ?? null)) === 'moved') return 'busy';
     if ((await storage.removeRecord(recordKeys.client(code), index.tag)) === 'moved') {
       if (!prior) await storage.removeRecord(key);
@@ -159,16 +215,18 @@ export async function deleteClient(
     const held = await storage.getRecord(key);
     if (!held) return 'unknown';
     deletion = storedClientDeletionSchema.parse(held.data);
+    refuseOtherBox(code, deletion.box, box);
   }
+  const company = tenantStorage(box ?? storage, deletion.id);
   const prefix = recordKeys.tenant(deletion.id).all;
-  const listed = await storage.listRecords(prefix);
+  const listed = await company.listRecords(prefix);
   const batch = listed.records.slice(0, DELETE_BOUND);
   for (let from = 0; from < batch.length; from += DELETE_AT_ONCE) {
     await Promise.all(
-      batch.slice(from, from + DELETE_AT_ONCE).map((record) => storage.removeRecord(record.key)),
+      batch.slice(from, from + DELETE_AT_ONCE).map((record) => company.removeRecord(record.key)),
     );
   }
-  const rest = await storage.listRecords(prefix);
+  const rest = await company.listRecords(prefix);
   if (rest.records.length === 0 && !rest.more) {
     await storage.removeRecord(key);
     return { left: 0 };

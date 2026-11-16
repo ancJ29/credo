@@ -50,9 +50,9 @@ describe('The route list: every route that changes data writes an entry or says 
     const exempt = changing.filter((one) => one.exempt);
     expect(declared.length + exempt.length).toBe(changing.length);
     expect({ declared: declared.length, exempt: exempt.length, total: changing.length }).toEqual({
-      declared: 30,
+      declared: 31,
       exempt: 15,
-      total: 45,
+      total: 46,
     });
   });
 

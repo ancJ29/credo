@@ -9,7 +9,15 @@ import { afterAll, beforeAll, describe, expect, inject, it } from 'vitest';
 import { recordingActivity } from '../../tests/audit';
 import { type RunningCStorage, startCStorage } from '../../tests/c-storage';
 import { joinedOperator, touchFor } from '../../tests/operator';
-import { bffOn, CODE, scoped, seedTenant, signIn, withAuth } from '../../tests/tenant';
+import {
+  bffOn,
+  CODE,
+  scoped,
+  seedSettings,
+  seedTenant,
+  signIn,
+  withAuth,
+} from '../../tests/tenant';
 import { DELETE_BOUND } from '../records/clients';
 
 let cs: RunningCStorage;
@@ -46,6 +54,7 @@ async function setup(options: Options = {}, wrapMore?: (client: CStorageClient) 
   const t = await bffOn(cs, { ...options, wrap });
   const op = await joinedOperator(t);
   const id = await seedTenant(t.client, CODE);
+  await seedSettings(t.client, id);
   const keys = recordKeys.tenant(id);
   const asRoot = scoped(t.app, CODE);
   const touch = () => touchFor(t, op.authId, op.authenticator, 'delete-client');
@@ -428,6 +437,7 @@ describe('Deleting a client needs the operator, the client’s code and the fres
     const t = await setup();
     const root = await signIn(t.asRoot);
     const before = await t.tenantRecords();
+    t.calls.removed.length = 0;
     const payload = { confirm: await t.touch() };
 
     for (const headers of [{}, withAuth('not-a-handle'), withAuth(root.body.authId)]) {

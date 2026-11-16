@@ -1,3 +1,4 @@
+import { photoAddressRequestOf } from '@credo/shared';
 import {
   DEMO_DELIVERIES,
   DEMO_DELIVERY_PHOTOS,
@@ -45,7 +46,7 @@ describe('the driver’s landing', () => {
         .getAllByRole('link')
         .map((link) => link.textContent),
     ).toEqual(['My deliveries']);
-    expect(drawn.api.myDeliveries).toHaveBeenCalledExactlyOnceWith(DEMO_TODAY);
+    await waitFor(() => expect(drawn.api.myDeliveries).toHaveBeenCalledExactlyOnceWith(DEMO_TODAY));
     drawn.unmount();
 
     // the root lands on orders and is refused the driver's pages by their addresses
@@ -227,9 +228,18 @@ describe('Delivered', () => {
 
     await userEvent.click(screen.getByRole('button', { name: 'Send' }));
 
+    // the photo first: an address is asked for, the picture goes to it, then the request is marked
+    expect(drawn.api.askPhotoAddress).toHaveBeenCalledExactlyOnceWith(
+      waiting.day,
+      waiting.id,
+      photoAddressRequestOf(DEMO_WALK_PROOF),
+    );
+    expect(drawn.api.putPhoto).toHaveBeenCalledExactlyOnceWith(
+      `https://photos.invalid/upload/${waiting.id}`,
+      DEMO_WALK_PROOF,
+    );
     expect(drawn.api.deliver).toHaveBeenCalledExactlyOnceWith(waiting.day, waiting.id, {
       version: 'g1',
-      photo: DEMO_WALK_PROOF,
     });
     expect((await screen.findByRole('alert')).textContent).toBe('Delivered. Thank you.');
     expect(screen.getByText('Delivered')).toBeTruthy();
@@ -291,9 +301,49 @@ describe('Delivered, when it goes wrong', () => {
     await waitFor(() => expect(drawn.api.deliver).toHaveBeenCalledTimes(2));
     expect(drawn.api.deliver).toHaveBeenLastCalledWith(waiting.day, waiting.id, {
       version: 'g1',
-      photo: DEMO_WALK_PROOF,
     });
     expect((await screen.findByRole('alert')).textContent).toBe('Delivered. Thank you.');
+  });
+
+  it('A photo that cannot be sent (no answer, or the store refused it) stays on the phone, says it was not sent, leaves the request waiting and marks nothing delivered, and Send again asks for a new address', async () => {
+    for (const cue of ['putPhoto:silent', 'putPhoto:503']) {
+      const drawn = openApp(at(waiting), { as: TUNG, cue });
+      await take();
+
+      await userEvent.click(screen.getByRole('button', { name: 'Send' }));
+
+      expect((await screen.findByRole('alert')).textContent, cue).toBe(
+        'Not sent. Your photo is kept here: tap Send to try again.',
+      );
+      expect(screen.getByRole('img', { name: 'The photo you took of the delivery' })).toBeTruthy();
+      expect(screen.getByText('Waiting')).toBeTruthy();
+      expect(drawn.api.deliver).not.toHaveBeenCalled();
+
+      await userEvent.click(screen.getByRole('button', { name: 'Send' }));
+
+      expect((await screen.findByRole('alert')).textContent).toBe('Delivered. Thank you.');
+      expect(drawn.api.askPhotoAddress).toHaveBeenCalledTimes(2);
+      expect(drawn.api.putPhoto).toHaveBeenCalledTimes(2);
+      expect(drawn.api.deliver).toHaveBeenCalledExactlyOnceWith(waiting.day, waiting.id, {
+        version: 'g1',
+      });
+      document.body.innerHTML = '';
+    }
+  });
+
+  it('A request that is no longer waiting gets no address: the page reads it again and nothing is sent', async () => {
+    const drawn = openApp(at(waiting), {
+      as: TUNG,
+      override: (spied) =>
+        spied.askPhotoAddress.mockResolvedValue({ kind: 'conflict', current: null }),
+    });
+    await take();
+
+    await userEvent.click(screen.getByRole('button', { name: 'Send' }));
+
+    await waitFor(() => expect(drawn.api.getDelivery).toHaveBeenCalledTimes(2));
+    expect(drawn.api.putPhoto).not.toHaveBeenCalled();
+    expect(drawn.api.deliver).not.toHaveBeenCalled();
   });
 
   it('A refusal with no newer request has the page read it again, the photo no longer needed', async () => {

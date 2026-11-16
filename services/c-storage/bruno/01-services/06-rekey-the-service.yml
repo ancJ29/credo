@@ -1,0 +1,42 @@
+info:
+  name: Rekey the service
+  type: http
+  seq: 6
+
+http:
+  method: POST
+  url: "{{baseUrl}}/api/services/rekey"
+  headers:
+    - name: Content-Type
+      value: application/json
+    - name: X-Internal-Access-Key
+      value: "{{internalAccessKey}}"
+    - name: X-Super-Admin-Key
+      value: "{{superAdminKey}}"
+  body:
+    type: json
+    data: |-
+      {
+        "code": "{{serviceCode}}",
+        "accessKey": "{{accessKey}}"
+      }
+
+runtime:
+  scripts:
+    - type: tests
+      code: |-
+        test("200, the code answered", function() {
+          expect(res.getStatus()).to.equal(200);
+        });
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: |-
+  Replace the service's key. **Expected: 200** with the code. This request sends the key the
+  service already holds, so the *Records* requests after it still pass; the old key being refused
+  and the records kept are held by the Go tests (`TestARekeyReplacesTheKeyAndKeepsTheRecords`).

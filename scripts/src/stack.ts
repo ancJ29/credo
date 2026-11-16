@@ -1,23 +1,23 @@
 import { randomBytes } from 'node:crypto';
-import { mkdtemp, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm } from 'node:fs/promises';
 import type { Server } from 'node:http';
 import type { AddressInfo } from 'node:net';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { buildAudit, buildCStorage } from '@credo/bff/tests/build';
-import { createCStorageClient, type CStorageClient, joinLinkPath } from '@credo/shared';
+import { type CStorageClient, joinLinkPath } from '@credo/shared';
 import { DEMO_CODE, OPERATOR_NAME } from '@credo/shared/demo';
 import { build } from 'vite';
 import { createFront } from './running/front';
+import { createPhotoStore, newPhotoKey, type PhotoSink } from './running/photo-store';
 import { ROOT_NAME, seedClient, seedDemo } from './generator';
+import { newKey, startStore } from './local-store';
 import { freePort, startProcess, waitUntilUp } from './running/processes';
-import { ensureService } from './register';
 import { createSeeding, logToStderr } from './seeding';
 
 const ROOT = fileURLToPath(new URL('../../', import.meta.url));
 const UI_DIR = join(ROOT, 'ui');
-const SERVICE_CODE = 'demo';
 
 export type Artifacts = { cStorage: string; audit: string; uiDir: string; dir: string };
 
@@ -71,15 +71,26 @@ export type RunningStack = {
   /** The BFF's own c-storage service, for `pnpm demo` to make its copies in this process. Never
    * handed to a command. */
   storage: CStorageClient;
+  /** Where the seed's pictures go: the photo stand-in's settings and its way in. Never handed to a
+   * command. */
+  photos: PhotoSink;
+  /** Each box beyond the home box, by name: the BFF's service on a store of its own, so a test or a
+   * command reads what the stack wrote there. Never handed to a command. */
+  boxes: Record<string, CStorageClient>;
 };
+
+/** The boxes `pnpm stack` runs besides the home box: one, `b2`, so the operator's form has a real second box. */
+export const STACK_BOXES = ['b2'];
 
 /** Listens on loopback alone, on a free port or the one given, and answers where it is bound. */
 export const listening = (server: Server, port = 0) =>
-  new Promise<AddressInfo>((resolve) => {
-    server.listen(port, '127.0.0.1', () => resolve(server.address() as AddressInfo));
+  new Promise<AddressInfo>((resolve, reject) => {
+    server.once('error', reject);
+    server.listen(port, '127.0.0.1', () => {
+      server.off('error', reject);
+      resolve(server.address() as AddressInfo);
+    });
   });
-
-const key = () => randomBytes(24).toString('hex');
 
 /** What a command needs to print one client's entries: the audit service's keyed and open
  * addresses and its key, and the c-storage that maps a client's code to its minted id. */
@@ -112,6 +123,12 @@ export function bffEnvironment(settings: {
   audit: { url: string; key: string };
   /** The address the operator opens: the front's, which every passkey is checked against. */
   appOrigin: string;
+  /** The key the front adds to each call; the BFF refuses a call without it. */
+  frontDoorKey: string;
+  /** The photo store's address and key, as the stand-in holds them; none leaves photos off. */
+  photoStore?: { url: string; keyId: string; keySecret: string };
+  /** The boxes beyond the home box, each with its address and keys; none by default. */
+  boxes?: Record<string, { url: string; internalKey: string; serviceKey: string }>;
 }) {
   return {
     PORT: String(settings.port),
@@ -123,6 +140,16 @@ export function bffEnvironment(settings: {
     AUDIT_URL: settings.audit.url,
     AUDIT_KEY: settings.audit.key,
     APP_ORIGIN: settings.appOrigin,
+    FRONT_DOOR_KEYS: settings.frontDoorKey,
+    // The home box's four variables are above; the others are handed in here, none by default.
+    STORAGE_BOXES: JSON.stringify(settings.boxes ?? {}),
+    ...(settings.photoStore
+      ? {
+          PHOTO_STORE_URL: settings.photoStore.url,
+          PHOTO_STORE_KEY_ID: settings.photoStore.keyId,
+          PHOTO_STORE_KEY_SECRET: settings.photoStore.keySecret,
+        }
+      : {}),
   };
 }
 
@@ -146,6 +173,10 @@ export type StartOptions = {
   ports?: Partial<StackFacts['ports']>;
   /** The audit service's two ports: the keyed one and the open one. */
   auditPorts?: { keyed: number; open: number };
+  /** The names of boxes to run besides the home box, each a c-storage of its own on a folder of its
+   * own under `dataDir`, the BFF's service registered on it. A stack started again on kept data
+   * (`resume`) runs none: its keys are not kept. */
+  moreBoxes?: string[];
   /** Stands the stack up again on data a stopped stack left: the keys that open it, kept from the
    * first start, and what the first start printed. The demo set is not made again, so the people
    * and the operator's session are not known to the resumed stack. */
@@ -178,31 +209,13 @@ export async function startStack(
   };
   try {
     const { resume } = options;
-    const internalAccessKey = resume?.internalAccessKey ?? key();
-    const superAdminKey = resume?.superAdminKey ?? key();
-    const service = resume?.service ?? { code: SERVICE_CODE, accessKey: key() };
-    const auditKey = resume?.auditKey ?? key();
-    const csPort = options.ports?.cStorage ?? (await freePort());
-    const cStorageUrl = `http://127.0.0.1:${csPort}`;
-    const cStorage = await startProcess(artifacts.cStorage, [], {
-      env: {
-        PORT: String(csPort),
-        DB_PATH: join(dataDir, 'records.db'),
-        INTERNAL_ACCESS_KEY: internalAccessKey,
-        X_SUPER_ADMIN_KEY: superAdminKey,
-      },
-      logFile: join(dataDir, 'c-storage.log'),
+    const store = await startStore(artifacts.cStorage, dataDir, stops, {
+      port: options.ports?.cStorage,
+      keys: resume,
     });
-    stops.unshift(cStorage.stop);
-    await waitUntilUp(`${cStorageUrl}/health`, cStorage, 'c-storage');
-
-    await ensureService({ baseUrl: cStorageUrl, internalAccessKey, superAdminKey }, service);
-    const storage = createCStorageClient({
-      baseUrl: cStorageUrl,
-      internalAccessKey,
-      serviceCode: service.code,
-      accessKey: service.accessKey,
-    });
+    const { internalAccessKey, superAdminKey, service, storage } = store;
+    const cStorageUrl = store.url;
+    const auditKey = resume?.auditKey ?? newKey();
     const auditPort = options.auditPorts?.keyed ?? (await freePort());
     const auditOpenPort = options.auditPorts?.open ?? (await freePort());
     const auditUrl = `http://127.0.0.1:${auditPort}`;
@@ -218,22 +231,55 @@ export async function startStack(
     stops.unshift(auditProcess.stop);
     await waitUntilUp(`${auditUrl}/health`, auditProcess, 'the audit service');
 
-    const seededDemo = resume ? null : await seedDemo(storage);
+    const boxes: Record<string, CStorageClient> = {};
+    const boxSettings: NonNullable<Parameters<typeof bffEnvironment>[0]['boxes']> = {};
+    for (const name of options.moreBoxes ?? []) {
+      const boxDir = join(dataDir, `box-${name}`);
+      await mkdir(boxDir, { recursive: true, mode: 0o700 });
+      const box = await startStore(artifacts.cStorage, boxDir, stops);
+      boxes[name] = box.storage;
+      boxSettings[name] = {
+        url: box.url,
+        internalKey: box.internalAccessKey,
+        serviceKey: box.service.accessKey,
+      };
+    }
+
+    // The stand-in for the photo bucket, with a key made for this stack and held by it and the BFF
+    // alone. It allows the app's address, which is known once the front binds, below.
+    let appOrigin = '';
+    const photoKey = newPhotoKey();
+    const photoStore = createPhotoStore({
+      keyId: photoKey.keyId,
+      secret: photoKey.secret,
+      allowedOrigin: () => appOrigin,
+    });
+    stops.unshift(() => new Promise((resolve) => photoStore.server.close(resolve)));
+    const { port: photoPort } = await listening(photoStore.server);
+    const photos: PhotoSink = { store: photoStore.settingsAt(photoPort), keep: photoStore.keep };
+
+    const seededDemo = resume ? null : await seedDemo(storage, undefined, photos);
     let seeded = 0;
     const seeding = createSeeding(
-      () => (options.seed ?? seedClient)(storage, `walk-${++seeded}`),
+      () => (options.seed ?? seedClient)(storage, `walk-${++seeded}`, undefined, undefined, photos),
       logToStderr,
     );
     stops.unshift(() => new Promise((resolve) => seeding.close(resolve)));
     const { port: seedPort } = await listening(seeding, options.ports?.seedDoor);
 
     // A passkey is bound to a name and no IP address has one: the operator opens `localhost`, on the
-    // front's port, which is picked before the BFF starts since the BFF checks every ceremony
-    // against it.
-    const frontPort = options.ports?.front ?? (await freePort());
-    const appOrigin = `http://localhost:${frontPort}`;
+    // front's port, which the BFF checks every ceremony against. The front binds first, so a port
+    // the stack picks (none given) is held from the pick; a port given was picked by the caller, and
+    // the bind fails at once if it is taken. The front's API answers 502 until the BFF is up; its
+    // pages are served from the start.
     const bffPort = options.ports?.bff ?? (await freePort());
     const bffUrl = `http://127.0.0.1:${bffPort}`;
+    // The door's key is made a run and held by the front and the BFF alone: it is not in the facts file.
+    const frontDoorKey = randomBytes(32).toString('hex');
+    const front = createFront({ staticDir: artifacts.uiDir, bffUrl, frontDoorKey });
+    stops.unshift(() => new Promise((resolve) => front.close(resolve)));
+    const { port: frontPort } = await listening(front, options.ports?.front);
+    appOrigin = `http://localhost:${frontPort}`;
     const bff = await startProcess(
       process.execPath,
       ['--import', import.meta.resolve('tsx'), join(ROOT, 'bff/src/main.ts')],
@@ -245,6 +291,9 @@ export async function startStack(
           service,
           audit: { url: auditUrl, key: auditKey },
           appOrigin,
+          frontDoorKey,
+          photoStore: photos.store,
+          boxes: boxSettings,
         }),
         logFile: join(dataDir, 'bff.log'),
       },
@@ -252,16 +301,13 @@ export async function startStack(
     stops.unshift(bff.stop);
     await waitUntilUp(`${bffUrl}/api/config`, bff, 'the BFF', undefined, {
       'x-client-code': DEMO_CODE,
+      'x-front-door-key': frontDoorKey,
     });
 
-    const front = createFront({ staticDir: artifacts.uiDir, bffUrl });
-    stops.unshift(() => new Promise((resolve) => front.close(resolve)));
-    await listening(front, frontPort);
-
     const facts: StackFacts = {
-      ports: { cStorage: csPort, front: frontPort, bff: bffPort, seedDoor: seedPort },
+      ports: { cStorage: store.port, front: frontPort, bff: bffPort, seedDoor: seedPort },
       // A child that has started has a pid: spawn answers none only for one that never ran.
-      pids: { cStorage: cStorage.child.pid!, audit: auditProcess.child.pid!, bff: bff.child.pid! },
+      pids: { cStorage: store.pid, audit: auditProcess.child.pid!, bff: bff.child.pid! },
       cStorage: { url: cStorageUrl, internalAccessKey, superAdminKey },
       service,
       audit: { url: auditUrl, readUrl: `http://127.0.0.1:${auditOpenPort}`, key: auditKey },
@@ -282,6 +328,8 @@ export async function startStack(
       dataDir,
       activityTarget: activityTargetOf(facts),
       storage,
+      photos,
+      boxes,
       facts,
       stop,
     };
@@ -292,7 +340,8 @@ export async function startStack(
 }
 
 /**
- * The local stack for the length of `use`, on a fresh data folder: `startStack`, and everything
+ * The local stack for the length of `use`, on a fresh data folder and with a second box, `b2`:
+ * `startStack`, and everything
  * goes down when `use` ends, however it ends, and the database with it.
  */
 export async function withStack<T>(
@@ -302,7 +351,7 @@ export async function withStack<T>(
 ): Promise<T> {
   const dataDir = await mkdtemp(join(tmpdir(), 'credo-stack-'));
   try {
-    const stack = await startStack(artifacts, { ...options, dataDir });
+    const stack = await startStack(artifacts, { ...options, moreBoxes: STACK_BOXES, dataDir });
     try {
       return await use(stack);
     } finally {

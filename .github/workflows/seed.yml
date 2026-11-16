@@ -1,7 +1,7 @@
 # Brings the demo copies on ridge up to yesterday, when somebody asks for it: "Run workflow" on main (or
 # `gh workflow run seed`). It has no schedule and nothing in it starts it, so nothing runs it unseen and
 # no run fails unseen; ridge's data is only as fresh as the last time somebody asked. The job runs
-# ops/seed.sh ridge, which fills a copy the human made at /operator and brings every mapped copy up to
+# ops/seed.sh ridge, which fills a copy that ops/demo-remake.sh made and brings every mapped copy up to
 # yesterday, through the BFF's own code over the tunnel, at most 2 days a copy a run (a run that meets a
 # longer backlog ends green and says STILL BEHIND; ask again). It writes nothing unless /health names this
 # commit, or an earlier one that differs from it in no path ci.yml deploys on, and the BFF's function names
@@ -48,7 +48,7 @@ jobs:
         if: ${{ !env.ACT }}
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: 26
+          node-version-file: .node-version
       # The install runs third-party code, so it runs before the role is taken, and the seed's code
       # runs without the role's credentials (ops/lib.sh's clean).
       - name: pnpm 12.10.1

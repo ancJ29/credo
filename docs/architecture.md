@@ -11,8 +11,8 @@ and the store only keeps what it is handed** — which is why the picture below 
 and why the walk under it is short.
 
 **Every tenant of an environment shares that back end and, today, that environment's one box.**
-The shape intended for production, and not built, keeps the one back end and pools the tenants on
-several boxes, about twenty a box, all in the environment's one stack;
+The shape for production, built in the back end and not yet on ridge, keeps the one back end and
+pools the tenants on several boxes, all in the environment's one stack;
 [where a tenant's records live](#where-a-tenants-records-live) says which part is which.
 
 **The system, and what passes between its parts.**
@@ -29,21 +29,24 @@ flowchart LR
     bff["the BFF<br/>[Lambda, arm64] bff/ with shared/ · every rule in the system"]
     subgraph box["the services · the environment's box, every tenant in it<br/>[EC2 t4g.nano]"]
       cs["c-storage<br/>[Go service, systemd] six routes, no rules"]
-      db[("the records<br/>[one SQLite file] the only copy there is · the backup is designed and waits for real records, and ridge holds only invented companies")]
+      db[("the records<br/>[one SQLite file] copied to its own bucket within a second · built, not yet run on an environment; ridge holds only invented companies")]
     end
-    more["more boxes, each holding a group of tenants, and one for the operator<br/>[EC2] the pooled shape · intended, not built"]
+    more["more boxes, each holding the tenants the operator puts on it<br/>[EC2] the pooled shape · the back end reaches them, none is added on ridge yet"]
   end
-  ab["audit-backbone<br/>[Go service, in the repo] the activity log · runs in the local copy, not yet on ridge"]
+  ab["audit-backbone<br/>[Go service, in the repo] the activity log · shipped to the box by the release, not yet run on ridge"]
+  r2[("the delivery photos<br/>[Cloudflare R2] a private bucket per environment, outside the VPC · built, not yet run on ridge")]
   browser -- "asks for a screen, then calls /api/*" --> cdn
   cdn -- "serves the UI's files, cached" --> s3
   cdn -- "forwards every /api/* call, never cached" --> api
   api -- "invokes, handing over the request as an event" --> bff
   bff -- "reads and writes records, under two keys" --> cs
   cs -- "stores each record under its key" --> db
-  bff -. "posts one activity entry for every change · local copy only" .-> ab
+  bff -. "posts one activity entry for every change · not yet run on ridge" .-> ab
   bff -. "intended: to the box the tenant's record names" .-> more
+  bff -. "signs a five-minute address for one picture; never calls R2" .-> r2
+  browser -. "sends or reads that picture at the signed address, past the edge" .-> r2
   classDef intended stroke-dasharray: 6 4
-  class ab,more intended
+  class ab,more,r2 intended
 ```
 
 **Key.** Each box names a thing that runs and, in square brackets, what it runs on. A rounded box is
@@ -51,12 +54,19 @@ a store. **A frame is a group of boxes that belong together, and where that grou
 what it holds runs inside it:** the edge is the three things `ops/` declares in front of the system,
 the VPC is a network with no way out of it, and the box is one small server carrying the services.
 **Every arrow is one way, from the caller to the thing it calls, and says what passes.** A **dashed**
-box and arrow are **built and not yet on ridge**: the back end writes an entry to
-`services/audit-backbone/` for every change a person makes, in the local copy, and where it will run
-on ridge is not decided — the whole of that is [`docs/activity-log.md`](activity-log.md). The
-second dashed box is **intended and not built**: the further boxes of the pooled shape, each holding
-the tenants the operator puts on it, which [where a tenant's records live](#where-a-tenants-records-live)
-describes.
+box and arrow are **built and not yet run on ridge**: the back end writes an entry to
+`services/audit-backbone/` for every change a person makes, in the local copy, and the release carries it to the
+box beside c-storage, its first run there still to be read — the whole of that is [`docs/activity-log.md`](activity-log.md). The
+second dashed box is **built in the back end and not on ridge**: the further boxes of the pooled
+shape, each holding the tenants the operator puts on it, which [where a tenant's records
+live](#where-a-tenants-records-live) describes. The back end and the local stack reach a second box
+today; no command yet adds one to ridge's stack. The third dashed box is **built and not on ridge**: the
+photo store, where a delivery's picture lives so that records hold only its object's name. The back end
+holds the bucket's key and signs, but the VPC has no way out to R2, so the phone and the office's page
+carry the picture themselves; the back end writes the photo's record and refuses to mark a request
+delivered without it (`bff/src/routes/delivery-photo.ts`, `bff/src/photo-store.ts`'s `photoAddress`).
+Where no photo store is set, asking an address is a 503, so no driver can deliver, and the environment
+check is red.
 
 **On this machine the picture is the same.** `scripts/src/running/front.ts` stands where CloudFront and the
 HTTP API stand, so the app the walks picture is the app that deploys.
@@ -78,9 +88,9 @@ record written at step 9 — never the shape.
    HTTP API invokes the BFF's one Lambda function.
 4. **The company.** The BFF's first hook reads the client's code from its header, finds the one index
    record that maps that code to the client's minted id, and puts the id on the request. **It scopes
-   and never authenticates.** Today that record names no box, because an environment has only one;
-   in the pooled shape, intended and not built, it also names the tenant's box, and the call goes
-   there ([below](#where-a-tenants-records-live)).
+   and never authenticates.** That record also names the tenant's box, none meaning the first
+   box, and the call goes there ([below](#where-a-tenants-records-live)); a record naming a box the
+   back end was not handed is a 503.
 5. **Who is calling.** The route asks for the signed-in person: the session handle is hashed, its
    record read, checked against the device it was issued to and against the sign-in's generation,
    then slid forward.
@@ -136,9 +146,10 @@ before (`shared/CLAUDE.md`'s rule SH1), and nothing in it needs a runtime beyond
 alike.
 
 **The store is `services/c-storage/`.** One Go binary, one SQLite file, one listener, six routes, and a
-record whose meaning is the BFF's and not its own. A list is one prefix read of at most 1,000
-records, and past that bound it is an error and never a short list, which is why orders and
-deliveries are filed by day. Its promises are a store's: a save over a record
+record whose meaning is the BFF's and not its own. A list is a prefix read in pages, each
+ending at 1,000 records or about 4 MiB with the next starting after its last key, and the back end
+reads every page, so a list is never short; orders and deliveries are still filed by day, which
+keeps a day's list to a page. Its promises are a store's: a save over a record
 changed since it was read is refused, one save happens at a time, and every path but the health
 check needs a key ([its memo](memo/c-storage.md), one section per decision). **Its one isolation
 unit is the service, not the client** — which is why tenant separation is a prefix the BFF builds
@@ -146,7 +157,7 @@ and nothing the store enforces, and why a box holds one tenant or twenty with no
 
 **The second service is `services/audit-backbone/`.** The activity log: a keyed writer and a token-gated
 reader over its own SQLite file, in this repository with a gate of its own, called by the back end
-on every change a person makes, in the local copy and not yet on ridge ([the activity log](activity-log.md)). The back end finds it by two settings, `AUDIT_URL` and `AUDIT_KEY`, both or neither.
+on every change a person makes, in the local copy, and shipped to the box by the release without yet having run on ridge ([the activity log](activity-log.md)). The back end finds it by two settings, `AUDIT_URL` and `AUDIT_KEY`, both or neither.
 
 **Running it on this Mac is `scripts/`, and reaching a machine is `ops/`.** A step belongs to
 `scripts/` when it must run the product's own code, so every product rule holds on the way through;
@@ -172,33 +183,37 @@ here is a ___" finishes in a word the product itself uses
 **Today an environment is one stack with one box, and every tenant of it lives in that box.**
 `ops/env.yml` makes everything an environment has in one stack: its box, the back end's function,
 the HTTP API, the bucket of screens, the distribution in front of them and the role its deploys
-take. The back end is given that one box's address and keys (`bff/src/env.ts`'s `storageShape`), so
-a call has to find its tenant and never its box: step 4 above. The network under every environment
+take. The back end is given that one box's address and keys (`bff/src/env.ts`'s `storageShape`) and,
+when the environment has more, the others in `STORAGE_BOXES`; on ridge there is the one. The network under every environment
 and the account's GitHub provider are stacks of their own, for reasons that are not about tenants.
 
-**Intended, and not built: the tenants pooled on boxes, about twenty a box, in the same one
-stack.** For companies of the size the human gave, under ten thousand calls and five hundred records
-a day each, one small box holds about twenty, and its disk runs out before its requests, writes or
-memory do. So production is to stay one stack per environment, holding several
-boxes. This is the human's own shape, from 2026-11-10 and 2026-11-11, and nothing in the repository
-implements it yet.
+**Built: the tenants pooled on boxes, in the same one stack.** For companies of the size the human
+gave, under ten thousand calls and five hundred records a day each, one small box holds several, and
+its disk runs out before its requests, writes or memory do. So production is to stay one stack per
+environment, holding several boxes. This is the human's own shape, from 2026-11-10 and 2026-11-11.
+What is built is the back end's reach to a second box, the operator's choice of box and the local
+stack with two boxes; a box added to ridge by one command, and moving a company between boxes, are
+not built yet.
 
-- **What is pooled.** The back end, the HTTP API and the distribution are shared by every tenant, as
-  they are today. The boxes are pooled in groups: the operator puts each new tenant on a box and can
-  move it later, and the code holds no rule for which. A tenant who pays for it is a group of one,
-  on a box of its own. The operator's own records, the tenant list among them, move to a box of
-  their own.
-- **How a call finds its box.** The way step 4 finds its tenant: the code, then the one record that
-  maps it, with that record now naming the tenant's box as well. The back end keeps what it read for
-  a minute, so the lookup costs a call almost nothing.
-- **Where the one config lives.** In that record, written by the operator's form and read by the
-  back end alone. It names a box and never a key: the keys stay in the back end's own environment,
-  set from the boxes at each deploy. It is not a file, because a file in the bucket can be read by
-  anyone and a file in the build is public with the repository. The screens read only their own
-  tenant's settings, through the back end, and a box reads nothing about tenants at all.
+- **What is pooled.** The back end, the HTTP API and the distribution are shared by every tenant.
+  The first box is the home box: it keeps the list of companies and the operator's records, and any
+  company with no box named is on it. The operator puts each new company on a box from the form,
+  which lists each box with its free disk and the companies it holds, and the code holds no rule
+  for which and no number of companies a box. A tenant who pays for it is a group of one, on a box
+  of its own.
+- **How a call finds its box.** The code, then the one record that maps it, read from the home box
+  at every call with no memory kept: the record names the company's id and its box, and the back end
+  makes that company's client over the box. A record naming a box the back end was not handed
+  answers 503, as a store that does not answer does.
+- **Where the one config lives.** The line names a box and never a key: the keys of the other boxes
+  are in the back end's own environment (`STORAGE_BOXES`), set at each deploy. It is not a file,
+  because a file in the bucket can be read by anyone and a file in the build is public with the
+  repository. The screens read only their own tenant's settings, through the back end, and a box
+  reads nothing about tenants at all.
 - **The address.** Each tenant at `<tenant-code>.<credo-domain>`, through the distribution that
   already serves the screens, under one wildcard certificate, and the operator at one name of its
-  own. The domain is a setting, never written into the code.
+  own (`operator.<credo-domain>`): built in the code and the template, to be run on ridge. The domain
+  is a setting of the stack, never written into the code.
 - **What it costs.** The one back end holds every box's key, and on a shared box the back end's own
   check is the only wall between that box's tenants: one box down stops all of them, and a restore
   rolls all of them back. A tenant whose contract needs its keys or its code kept apart takes a stack
@@ -216,12 +231,13 @@ breach.** Most are held by a reader of the diff, which is worth knowing before r
 
 | What is never there | What stops a breach |
 | --- | --- |
+| **No call reaches the back end but through the front door.** The API's own address answers a 403 to a call without the door's key | **a test.** The hook in `bff/src/server.ts`'s `buildBff` is the first on every route and on the not-found handler, and the case "refuses a call without the key, or with a wrong one" in `bff/src/server.test.ts` fails if a call without it is answered |
 | **No `fetch` in the back end.** It reaches storage only through the one client built for it | nothing. A reviewer reading the diff |
 | **No screen decides what a person may do.** The menu asks the permission question only to decide what to draw | nothing. The server asks the question again on every call, so a breach is a wrong screen, never a wrong act |
 | **No clock, no randomness and no runtime beyond the web's in `shared/`.** A day arrives as text and `fetch` as a parameter | nothing. A reviewer reading the diff |
-| **No second file builds a record key.** The layout has one home | nothing — and this is the one absence worth the most, because tenant separation is a string prefix and nothing else |
+| **No second file builds a record key.** The layout has one home | the company's client (`bff/src/records/records.ts`'s `tenantStorage`), which refuses any key outside the company's prefix before it is sent; no lint rule forces a key through `recordKeys`, and `buildApp` still holds the whole client for the code's index, the deletions' marks, the operator's records and `/health` |
 | **No concept of a tenant in c-storage.** Its one isolation unit is the *service*, and the BFF is a single service holding every client | nothing structural, and it is the design rather than a slip. Isolation itself is tested, at the route level, for the sign-in and settings routes (`bff/src/tenants.route.test.ts`), the two operator routes that reach one client only (`bff/src/routes/clients-delete.route.test.ts`, `bff/src/routes/operator-root-password.route.test.ts`), and, with two companies in one service, for the customer and product lists, orders, deliveries and their photo, people (read, save, archive, password set), the drivers list and closed days (`bff/src/routes/cross-tenant.route.test.ts`); `bff/src/routes/lists.route.test.ts` proves only that each company sees its own list, across services. The cross-company file covers some of the orders and deliveries routes; the rest are listed in open item 227 |
-| **No record itself carries who changed it, or what it held before** | nothing on the record. The history is in the activity log's own entries, written by the back end for every change in the local copy; on ridge they are not yet written ([the activity log](activity-log.md)) |
+| **No record itself carries who changed it, or what it held before** | nothing on the record. The history is in the activity log's own entries, written by the back end for every change in the local copy; on ridge they are written once the release has carried the log there, and none has yet ([the activity log](activity-log.md)) |
 | **No untested statement, branch, function or line** in the five TypeScript packages that have tests, nor outside the entry point of either Go service. `walk/` is typechecked and linted and runs no test of its own | **the gate.** Each of the five declares all four thresholds at 100 %, a step of `pnpm check`; each Go service's own `make check` holds its own |
 | **No citation in a living document naming a file that is not there** | **the gate.** The citation check greps the named file for the named symbol |
 | **No dependency that quietly needs cgo** | **the gate.** Both Go gates cross-compile for the box's `arm64`, so it fails here rather than at ship time |

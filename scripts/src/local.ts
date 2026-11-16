@@ -6,6 +6,7 @@ import { readAppOrigin, readStorageEnv } from '@credo/bff/env';
 import {
   ActivityError,
   type CStorageClient,
+  clientAddress,
   clientCodeSchema,
   createActivityClient,
   type createCStorageClient,
@@ -366,9 +367,9 @@ async function status(io: LocalIo) {
     [
       PART_NAMES.bff,
       ports.bff,
-      answers(`http://127.0.0.1:${ports.bff}/api/config`, 200, {
-        'x-client-code': handle.demo.clientCode,
-      }),
+      // Up means it answers and refuses a stranger: no key is sent, and a 200 would be a back end
+      // that answers a call that did not come through the front door.
+      answers(`http://127.0.0.1:${ports.bff}/api/config`, 403),
       pids.bff,
     ],
     [PART_NAMES.front, ports.front, answers(`${handle.url}/`, 200), handle.keeper],
@@ -442,7 +443,7 @@ async function seed(io: LocalIo, code: string | undefined, name: string | undefi
   try {
     const company = name ?? code!;
     const made = await seedClient(io.connect(target), code!, Date.now(), company);
-    io.out(`${made.code} (${company}): ${target.origin}/login?client-code=${made.code}`);
+    io.out(`${made.code} (${company}): ${clientAddress(target.origin, made.code)}`);
     io.out(`sign in as ${ROOT_NAME} with the password ${made.rootPassword}`);
     for (const [person, password] of Object.entries(made.people)) {
       io.out(`${person}: ${password}`);

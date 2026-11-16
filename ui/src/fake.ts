@@ -41,6 +41,7 @@ import {
   type PermissionId,
   type PhotoReply,
   priceLines,
+  photoAddressRequestSchema,
   proofIsValid,
   normaliseEmployeeCode,
   normaliseSignInName,
@@ -57,14 +58,17 @@ import {
   sameIds,
   type SaveOrderRequest,
   type SendOrderRequest,
+  HOME_BOX,
   sendableOn,
   setRootPasswordRequestSchema,
   staffConfig,
   type StaffSetup,
   type TenantConfig,
   type UserView,
+  waitAfter,
 } from '@credo/shared';
 import {
+  DEMO_BOXES,
   DEMO_CLIENTS,
   DEMO_CODE,
   DEMO_CONFIG,
@@ -96,6 +100,7 @@ import {
   type ChangePasswordResult,
   type CloseDayResult,
   type DeliveryResult,
+  type PhotoAddressResult,
   type OrderResult,
 } from './api';
 import { createDeviceStore } from './device';
@@ -110,6 +115,10 @@ const NOT_GIVEN = 'notGiven';
 
 /** What a call may be asked to do instead of an answer: nothing at all, as when the BFF is down. */
 const SILENT = 'silent';
+
+/** Where the fake's photo store would be: a name no one answers, so a picture that was not sent
+ * leads nowhere. The pictures that were sent are their own data URLs. */
+const PHOTO_STORE = 'https://photos.invalid';
 
 /** One call and the status it answers once: `?cue=saveConfig:409`. The authenticator's is
  * `passkey:notGiven`, and `operatorServices:silent` is a call nothing answers. */
@@ -193,6 +202,9 @@ type Options = {
   drift?: boolean;
   /** No one is allowed to deliver yet: the data set's drivers' departments lack the right. */
   noDrivers?: boolean;
+  /** The week's waiting request of the second driver was delivered without its picture: the driver
+   * asked where to send it and never sent, so its address leads nowhere. */
+  photoLost?: boolean;
 };
 
 /**
@@ -206,6 +218,7 @@ export function createFakeApi({
   signIns = false,
   drift = false,
   noDrivers = false,
+  photoLost = false,
 }: Options): Api {
   let config: TenantConfig = structuredClone(DEMO_CONFIG);
   let version = 1;
@@ -248,6 +261,16 @@ export function createFakeApi({
   const requestVersions = new Map(DEMO_DELIVERIES.map((one) => [one.id, 1]));
   /** Each delivered request's photo, by the request's id; the data set's, then any sent since. */
   const proofs = new Map(Object.entries(DEMO_DELIVERY_PHOTOS));
+  // The data set's last delivered request of a past day, not the first driver's, is the one whose
+  // picture never arrived: its address leads nowhere, as the office's page must show.
+  proofs.delete(
+    DEMO_DELIVERIES.filter(
+      (one) => one.state === 'delivered' && one.day < DEMO_TODAY && one.driver.code !== 'EMP-0005',
+    ).at(-1)!.id,
+  );
+  /** The requests whose photo's address was asked for, and the pictures sent to those addresses. */
+  const asked = new Set<string>();
+  const sent = new Map<string, string>();
   /** The drivers' days closed, by the day and the driver; the data set's past days, then any closed since. */
   const closed = new Map(
     DEMO_RECONCILIATIONS.map((one) => [
@@ -286,6 +309,9 @@ export function createFakeApi({
     }
     return await answer();
   }
+
+  /** The box each company made since the page loaded was put on; the data set's are on the home box. */
+  const boxOf = new Map<string, string>();
 
   /** Every client the operator's list shows: the data set's, then any made since the page loaded. */
   const clients = new Map<string, ClientListItem>(
@@ -390,9 +416,10 @@ export function createFakeApi({
     order.request = null;
     orderMoved(order);
   };
-  /** A waiting request marked delivered with its photo; its order is fulfilled with it. */
-  const deliverRequest = (found: DeliveryRequest, photo: string) => {
-    proofs.set(found.id, photo);
+  /** A waiting request marked delivered with the photo held for it, if any; its order is fulfilled
+   * with it. */
+  const deliverRequest = (found: DeliveryRequest, photo: string | null) => {
+    if (photo !== null) proofs.set(found.id, photo);
     found.state = 'delivered';
     found.deliveredAt = Date.now();
     requestMoved(found);
@@ -401,6 +428,13 @@ export function createFakeApi({
     order.state = 'fulfilled';
     orderMoved(order);
   };
+  // The walk's request delivered with no picture sent, as the stack's walk has its driver do.
+  if (photoLost) {
+    const lost = DEMO_DELIVERIES.find(
+      (one) => one.day === DEMO_TODAY && one.state === 'waiting' && one.driver.code === 'EMP-0006',
+    )!;
+    deliverRequest(requests.get(lost.id)!, null);
+  }
   /** A save's customer and lines as the BFF prices them: a customer or a product the lists lack
    * is a 400. */
   const priced = (request: SaveOrderRequest) => {
@@ -583,13 +617,21 @@ export function createFakeApi({
     return held ? { photo: held.photo, version: `p${held.version}` } : { photo: null, version: '' };
   };
 
+  /** Each sign-in name's wrong tries in a row and when its wait ends, as the back end will keep. */
+  const waits = new Map<string, { wrong: number; until: number }>();
+
   const fake: Api = {
     getConfig: () => call('getConfig', () => ({ config, version: `v${version}` })),
 
     signIn: (name) =>
       call('signIn', () => {
         const entered = normaliseSignInName(name);
+        const waiting = waits.get(entered);
+        if (waiting && waiting.until > Date.now()) {
+          throw new ApiError(429, true, Math.ceil((waiting.until - Date.now()) / 1000));
+        }
         if (entered === DEMO_ROOT_NAME) {
+          waits.delete(entered);
           return { authId: 'fake.session', expiresAt: Date.now() + WEEK, user: ROOT };
         }
         const staff = [...people.values()].find(
@@ -599,7 +641,14 @@ export function createFakeApi({
             !candidate.archived &&
             ready.has(candidate.id),
         );
-        if (!staff) throw signedOut();
+        if (!staff) {
+          // Counted and waiting like any name, held or not, so a wait says nothing of who exists.
+          const wrong = (waiting?.wrong ?? 0) + 1;
+          const seconds = waitAfter(wrong);
+          waits.set(entered, { wrong, until: Date.now() + seconds * 1000 });
+          throw seconds > 0 ? new ApiError(429, true, seconds) : signedOut();
+        }
+        waits.delete(entered);
         return {
           authId: `${STAFF_HANDLE}${staff.id}`,
           expiresAt: Date.now() + WEEK,
@@ -1085,14 +1134,15 @@ export function createFakeApi({
         'deliver',
         () => {
           const driver = mayDeliver();
-          if (!proofIsValid(request.photo)) throw new ApiError(400);
           const found = requestAt(day, id);
           if (found.driver.id !== driver.id) throw new ApiError(403);
           if (request.version !== `g${requestVersions.get(id)}` || found.state !== 'waiting') {
             return { kind: 'conflict', current: requestDoc(found) };
           }
+          // No address asked for: no photo was meant to be sent, so nothing is delivered.
+          if (!asked.has(id)) throw new ApiError(400);
           // The photo, then the request, then the order, as the BFF writes them.
-          deliverRequest(found, request.photo);
+          deliverRequest(found, sent.get(id) ?? null);
           return { kind: 'done', doc: requestDoc(found) };
         },
         // The office cancels the order, and so the request, before the driver's send arrives.
@@ -1103,12 +1153,31 @@ export function createFakeApi({
         },
       ),
 
+    askPhotoAddress: (day, id, request) =>
+      call<PhotoAddressResult>('askPhotoAddress', () => {
+        const driver = mayDeliver();
+        if (!photoAddressRequestSchema.safeParse(request).success) throw new ApiError(400);
+        const found = requestAt(day, id);
+        if (found.driver.id !== driver.id) throw new ApiError(403);
+        if (found.state !== 'waiting') return { kind: 'conflict', current: requestDoc(found) };
+        asked.add(id);
+        return { kind: 'address', url: `${PHOTO_STORE}/upload/${id}` };
+      }),
+
+    putPhoto: (url, photo) =>
+      call('putPhoto', () => {
+        const id = url.slice(`${PHOTO_STORE}/upload/`.length);
+        if (!url.startsWith(`${PHOTO_STORE}/upload/`) || !asked.has(id)) throw new ApiError(403);
+        if (!proofIsValid(photo)) throw new ApiError(400);
+        sent.set(id, photo);
+      }),
+
     getDeliveryPhoto: (day, id) =>
       call('getDeliveryPhoto', () => {
         const found = readable(day, id);
-        const photo = proofs.get(found.id);
-        if (found.state !== 'delivered' || photo === undefined) throw notFound();
-        return { photo };
+        if (found.state !== 'delivered') throw notFound();
+        // A picture that never arrived leaves an address that leads nowhere.
+        return { url: proofs.get(found.id) ?? `${PHOTO_STORE}/never-arrived/${found.id}` };
       }),
 
     cancelDelivery: (day, id, request: CancelRequest) =>
@@ -1412,11 +1481,26 @@ export function createFakeApi({
         return { made: parsed.data.password === null ? MADE_PASSWORD : null };
       }),
 
-    makeClient: (code, name) =>
+    operatorBoxes: () =>
+      call('operatorBoxes', () => {
+        if (!device.operatorAuthId()) throw signedOut();
+        const onBox = (name: string) =>
+          name === HOME_BOX
+            ? clients.size - boxOf.size
+            : [...boxOf.values()].filter((box) => box === name).length;
+        return DEMO_BOXES.map(({ name, freeBytes }) => ({
+          name,
+          companies: onBox(name),
+          freeBytes,
+        }));
+      }),
+
+    makeClient: (code, name, box) =>
       call(
         'makeClient',
         () => {
           if (clients.has(code)) return { kind: 'taken' as const };
+          if (box !== undefined && box !== HOME_BOX) boxOf.set(code, box);
           clients.set(code, { code, name, madeAt: Date.now(), link: clientLinkPath(code) });
           return {
             kind: 'made' as const,
@@ -1456,6 +1540,7 @@ export function fakeParts(search: string, storage: Parameters<typeof createDevic
       signIns: params.has('sign-ins'),
       drift: params.has('drift'),
       noDrivers: params.has('no-drivers'),
+      photoLost: params.has('photo-lost'),
     }),
     device,
     passkeys: createFakePasskeys({ cue }),

@@ -2,6 +2,7 @@ import {
   type ConfirmAct,
   type Confirmation,
   clientCodeSchema,
+  HOME_BOX,
   type CStorageClient,
   recordKeys,
   type RootPasswordReply,
@@ -14,10 +15,13 @@ import { declare, operatorOf } from '../audit';
 import { ROOT_NAME } from '../records/clients';
 import { HttpError, parse } from '../errors';
 import { hashPassword, madePassword } from '../calling/password';
+import { tenantStorage } from '../records/records';
 import { setSignInPassword } from '../records/staff-records';
 
 type Deps = {
   storage: CStorageClient;
+  /** The store of a box this back end holds, or none. */
+  boxStorage: (box: string) => CStorageClient | undefined;
   now: () => number;
   /** The operator's live session, or a 401. */
   operatorSignedIn: (request: FastifyRequest) => Promise<{ id: string; name: string }>;
@@ -34,7 +38,7 @@ type Deps = {
  */
 export function registerRootPasswordRoutes(
   app: FastifyInstance,
-  { storage, now, operatorSignedIn, confirmed }: Deps,
+  { storage, boxStorage, now, operatorSignedIn, confirmed }: Deps,
 ) {
   app.post<{ Params: { code: string } }>(
     rootPasswordRoute(':code'),
@@ -45,14 +49,19 @@ export function registerRootPasswordRoutes(
       if (!code.success) throw new HttpError(400, 'Bad request');
       const index = await storage.getRecord(recordKeys.client(code.data));
       if (!index) throw new HttpError(404, 'Unknown client');
-      const tenantId = storedClientSchema.parse(index.data).id;
-      const entry = declare(request, operatorOf(operator), tenantId, tenantId);
+      const { id, box = HOME_BOX } = storedClientSchema.parse(index.data);
+      const held = boxStorage(box);
+      if (!held) {
+        request.log.error({ box }, 'a company names a box this back end does not hold');
+        throw new HttpError(503, 'Service unavailable');
+      }
+      const entry = declare(request, operatorOf(operator), id, id);
       const body = parse(setRootPasswordRequestSchema, request.body);
       await confirmed(operator, 'root-password', body.confirm);
       const password = body.password ?? madePassword();
       const set = await setSignInPassword(
-        storage,
-        tenantId,
+        tenantStorage(held, id),
+        id,
         ROOT_NAME,
         (user) => user.root,
         await hashPassword(password),

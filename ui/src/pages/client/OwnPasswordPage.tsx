@@ -3,6 +3,7 @@ import { Alert, Button, Paper, PasswordInput, Stack, Text, Title } from '@mantin
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { type PageProps, refusal } from '../../page';
+import { waitWords } from '../waitWords';
 
 const OUTCOME_WORDS = {
   changed: 'ownPassword.changed',
@@ -21,7 +22,8 @@ type Props = PageProps & {
 export function OwnPasswordPage(props: Props) {
   const { t } = useTranslation();
   const [typed, setTyped] = useState({ current: '', next: '', again: '' });
-  const [outcome, setOutcome] = useState<keyof typeof OUTCOME_WORDS | null>(null);
+  const [outcome, setOutcome] = useState<keyof typeof OUTCOME_WORDS | 'wait' | null>(null);
+  const [waitSeconds, setWaitSeconds] = useState(0);
 
   async function change(event: FormEvent) {
     event.preventDefault();
@@ -32,6 +34,10 @@ export function OwnPasswordPage(props: Props) {
     try {
       const result = await props.api.changePassword(typed.current, typed.next);
       if (result.kind === 'wrong') return setOutcome('wrong');
+      if (result.kind === 'wait') {
+        setWaitSeconds(result.seconds);
+        return setOutcome('wait');
+      }
       setTyped({ current: '', next: '', again: '' });
       setOutcome('changed');
       props.onSession(result.session);
@@ -47,7 +53,7 @@ export function OwnPasswordPage(props: Props) {
       <Text c="dimmed">{t('ownPassword.text')}</Text>
       {outcome !== null && (
         <Alert color={outcome === 'changed' ? 'green' : 'red'} role="alert">
-          {t(OUTCOME_WORDS[outcome])}
+          {outcome === 'wait' ? waitWords(t, waitSeconds) : t(OUTCOME_WORDS[outcome])}
         </Alert>
       )}
       <Paper withBorder p="md">

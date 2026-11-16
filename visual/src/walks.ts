@@ -70,6 +70,8 @@ export type Scene = {
   out?: true;
   /** No one is allowed to deliver yet: the data set's drivers' departments lack the right. */
   noDrivers?: true;
+  /** A delivered request whose picture never arrived: the driver asked where to send it and delivered. */
+  photoLost?: true;
   steps?: Step[];
 };
 
@@ -452,6 +454,18 @@ export const WALKS: Walk[] = [
         },
         question: 'Would a person on a PC know which page each icon opens?',
       },
+      {
+        id: '12-sign-in-wait',
+        number: 12,
+        path: 'wrong',
+        mock: { screen: 12, state: 'failed' },
+        sentence: {
+          en: 'Sign-in after six wrong passwords',
+          vi: 'Đăng nhập sau sáu lần nhập sai mật khẩu',
+        },
+        question:
+          'Would someone who mistyped their password know from it how long to wait before trying again?',
+      },
     ],
   },
   {
@@ -583,6 +597,28 @@ export const WALKS: Walk[] = [
           vi: 'Chưa tạo được khách hàng, những gì đã nhập vẫn còn',
         },
         question: 'Would you know the client was not made, and that nothing typed is lost?',
+      },
+      {
+        id: 'op-10-box-chosen',
+        number: 10,
+        path: 'main',
+        scene: {
+          path: '/operator/clients/new',
+          operator: true,
+          steps: [
+            ...FILLED_CLIENT,
+            {
+              press: 'operator.boxLine',
+              with: { name: 'b2', free: '112', companies: '0' },
+            },
+          ],
+        },
+        sentence: {
+          en: 'The add form’s list of boxes, each with its free disk and its companies, the second one chosen',
+          vi: 'Danh sách máy chủ trong biểu mẫu tạo khách hàng, mỗi máy kèm chỗ trống và số công ty, máy thứ hai được chọn',
+        },
+        question:
+          'Would you know which box the company will live on, and how much room each box has left?',
       },
     ],
   },
@@ -1682,6 +1718,21 @@ export const WALKS: Walk[] = [
           vi: 'Bản nháp được lưu lại: dòng đã đổi giá được tính lại, và tổng tiền mới',
         },
         question: 'Would the office know the saved draft now carries today’s price and total?',
+      },
+      {
+        id: 'orders-15-photo-missing',
+        number: 15,
+        path: 'wrong',
+        scene: {
+          path: `/deliveries/${WAITING_TODAY.day}/${WAITING_TODAY.id}`,
+          as: 'EMP-0001',
+          photoLost: true,
+        },
+        sentence: {
+          en: 'A delivered request whose photo did not arrive, said where the photo would be',
+          vi: 'Một yêu cầu đã giao mà ảnh không đến: trang nói rõ ở chỗ lẽ ra có ảnh',
+        },
+        question: 'Does this line tell the office enough to ask the driver for the photo?',
       },
     ],
   },

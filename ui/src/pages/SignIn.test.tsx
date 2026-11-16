@@ -23,6 +23,26 @@ describe('SignIn', () => {
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Minh Phát');
   });
 
+  it('16: draws a wait as one red line, in seconds under a minute and in whole minutes from one, in both languages', () => {
+    const words = (seconds: number, language: 'en' | 'vi') => {
+      draw(
+        <Providers colour={CREDO_COLOUR} language={language} test>
+          <SignIn brand={brand} status="wait" waitSeconds={seconds} onSubmit={vi.fn()} />
+        </Providers>,
+      );
+      const text = screen.getByRole('alert').textContent;
+      cleanup();
+      return text;
+    };
+
+    expect(words(30, 'en')).toBe('Too many wrong tries. Try again in 30 seconds.');
+    expect(words(1, 'en')).toBe('Too many wrong tries. Try again in 1 second.');
+    expect(words(60, 'en')).toBe('Too many wrong tries. Try again in 1 minute.');
+    expect(words(840, 'en')).toBe('Too many wrong tries. Try again in 14 minutes.');
+    expect(words(30, 'vi')).toBe('Nhập sai quá nhiều lần. Hãy thử lại sau 30 giây.');
+    expect(words(900, 'vi')).toBe('Nhập sai quá nhiều lần. Hãy thử lại sau 15 phút.');
+  });
+
   it('sends what was typed', async () => {
     const onSubmit = vi.fn();
     draw(<SignIn brand={brand} status="idle" onSubmit={onSubmit} />);
