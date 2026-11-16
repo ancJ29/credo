@@ -2031,7 +2031,7 @@ scripts_guards() {
   [ "$(grep -cE '^      - if:|^        if:' <<<"$b")" = 3 ] || missing="${missing}[scripts-stages: no other step-level if] "
   grep -qxF -- "    timeout-minutes: 15" <<<"$b" || missing="${missing}[scripts-stages: a 15-minute cap] "
   b=$(job_block "$1" ops)
-  grep -qxF -- "    timeout-minutes: 19" <<<"$b" || missing="${missing}[ops: a 19-minute cap] "
+  grep -qxF -- "    timeout-minutes: 20" <<<"$b" || missing="${missing}[ops: a 20-minute cap] "
   [ -z "$missing" ] || die "the scripts' gate lacks: $missing"
 }
 passes "the scripts' gate is three shards, the four other stages once, and the merge that holds the thresholds (piece 140)" scripts_guards "$WORKFLOW"
@@ -2062,8 +2062,8 @@ awk '$0 == "  scripts-shard:" {f = 1} f && $0 == "    timeout-minutes: 28" {prin
 refuses "  a shard with another cap than 28 minutes is refused" "a shard's 28-minute cap" scripts_guards "$WORK/wf-shcap.yml"
 awk '$0 == "  scripts-stages:" {f = 1} f && $0 == "    timeout-minutes: 15" {print "    timeout-minutes: 40"; f = 0; next} 1' "$WORKFLOW" >"$WORK/wf-stcap.yml"
 refuses "  a stages job with another cap than 15 minutes is refused" "scripts-stages: a 15-minute cap" scripts_guards "$WORK/wf-stcap.yml"
-awk '$0 == "  ops:" {f = 1} f && $0 == "    timeout-minutes: 19" {print "    timeout-minutes: 10"; f = 0; next} 1' "$WORKFLOW" >"$WORK/wf-opscap.yml"
-refuses "  an ops job with another cap than 19 minutes is refused" "ops: a 19-minute cap" scripts_guards "$WORK/wf-opscap.yml"
+awk '$0 == "  ops:" {f = 1} f && $0 == "    timeout-minutes: 20" {print "    timeout-minutes: 10"; f = 0; next} 1' "$WORKFLOW" >"$WORK/wf-opscap.yml"
+refuses "  an ops job with another cap than 20 minutes is refused" "ops: a 20-minute cap" scripts_guards "$WORK/wf-opscap.yml"
 sed 's# --fail-if-no-match check$# check#' "$WORKFLOW" >"$WORK/wf-nofail.yml"
 refuses "  a package job without --fail-if-no-match is refused" "--fail-if-no-match check" app_guards "$WORK/wf-nofail.yml"
 check "no DEBUG timing step is left in the workflow" 0 "$(grep -c 'DEBUG' "$WORKFLOW" || true)"
