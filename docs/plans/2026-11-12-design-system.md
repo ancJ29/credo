@@ -4,8 +4,8 @@
 
 **Amended 2026-11-16, at the human's ask:** a first landing builds the skeleton (the legacy's values
 in a new folder, six sample components in three levels, a gallery page that shows them) and changes
-no screen. The two landings of 11-12 follow as landings 2 and 3, if the human says today's screens
-take the look in this piece.
+no screen. The two landings of 11-12 follow as landings 2 and 3 only after the human's yes at
+landing 1's look: "I think I should confirm the skeleton first".
 
 What it is for: the partners asked that the new app look like the legacy one. The look goes into one
 folder, `ui/src/design-system/`, its parts onto a page of their own, then the few values that still
@@ -14,10 +14,10 @@ differ onto every screen.
 ```mermaid
 flowchart LR
   skel["1. the skeleton<br/>tokens, samples, gallery"] --> look1["your look<br/>the gallery"]
-  look1 --> ask{"screens too?<br/>your answer"}
+  look1 --> ask{"your yes<br/>to the gallery?"}
   ask -- yes --> home["2. one home<br/>nothing moved"] --> run1["your run<br/>0 moved"]
   run1 --> values["3. the legacy's values<br/>every screen"] --> run2["your run<br/>the walks page"]
-  ask -- no --> stop["the piece ends<br/>at the gallery"]
+  ask -- no --> stop["the skeleton<br/>reopens"]
 ```
 
 The cheapest path is what exists: the theme already holds most of the legacy's values, and the
@@ -29,8 +29,8 @@ about 100 more and two of your picture runs; light only.
 One slice: the look in one home, from a gallery of its parts to every screen of both apps. It lands
 on `pre-merge` up to three times, each walkable: the gallery, no screen changed; the look moved into
 the home, nothing moved, so every pixel the third moves is a value's doing; the values with the
-screens they move, landed the day its run is read. **A no at point 2 ends the slice at landing 1**,
-and landings 2 and 3 become a plan of their own.
+screens they move, landed the day its run is read. **Landings 2 and 3 start only after the human's
+yes at point 1**: "thanks, plz wait for later / I think I should confirm the skeleton first".
 
 Light only (the human's answer of 2026-11-11 23:01); no company's own ten shades (2026-11-03 17:47);
 the side menu's labels at 14 px and 600 (2026-11-16, replacing the "more bold" of 11-03, built as 16
@@ -169,7 +169,8 @@ a review with its check about 20.
       case 6; the recap and the gallery's row in `docs/products.md`; the landing; point 1. _Done
       when:_ case 6's command prints `ui/CLAUDE.md` alone, and the branch merges. **20 min.**
 
-**Landing 2: one home, nothing moved** (waits on point 2).
+**Landing 2: one home, nothing moved** (after the human's yes at point 1: "I think I should
+confirm the skeleton first").
 
 - [ ] **4. The app's theme joins the home.** `ui/src/theme.ts`, `ui/src/palettes.ts` and
       `ui/src/theme.module.css` move in as above; every importer follows; `ui/CLAUDE.md`'s sentence
@@ -236,10 +237,10 @@ About 150 machine minutes: about 50 for landing 1, about 100 for landings 2 and 
    `pnpm exec vite --open /gallery.html`; Ctrl-C ends it): the colours and type, Mantine's button and
    field in the theme, then the six samples by level, in their states. Does the gallery read as the
    legacy app? A yes closes it; a no names the sample or value, and step 1 or 2 reopens.
-2. **The screens take the look (after point 1).** Landing 1 changes no screen. Should today's screens
-   take this look in this piece, through landings 2 and 3 (about 100 machine minutes, two of your
-   picture runs)? A yes starts landing 2; a no ends the piece at the gallery, with landings 2 and 3 a
-   later plan and the two homes for parts kept in open item 498.
+2. **The screens take the look: answered 2026-11-16.** "thanks, plz wait for later / I think I
+   should confirm the skeleton first": landings 2 and 3 start only after your yes at point 1, never
+   before it. On Storybook, "I personally think that storybook is over-kill", which the gallery of
+   landing 1 already holds.
 3. **Nothing moved (step 8).** You run the twelve walks once and read the verdict line. Green with
    every count 0 means every picture (786 on 11-16) is pixel for pixel what it was, while every
    colour now comes from one folder. A yes closes it; a no names the screen that moved, and the step
