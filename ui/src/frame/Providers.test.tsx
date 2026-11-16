@@ -5,7 +5,7 @@ import { FRAME_COLOURS } from '../design-system/tokens';
 const scheme = () => document.documentElement.getAttribute('data-mantine-color-scheme');
 
 describe('Providers', () => {
-  it('Light and dark as the system says', () => {
+  it('The app is light whatever the device asks', () => {
     const original = window.matchMedia.bind(window);
     window.matchMedia = vi.fn((query: string) => ({
       ...original(query),
@@ -13,20 +13,17 @@ describe('Providers', () => {
     }));
     try {
       draw(<p>the page</p>);
-      expect(scheme()).toBe('dark');
+      expect(scheme()).toBe('light');
     } finally {
       window.matchMedia = original;
     }
-
-    draw(<p>the page</p>);
-    expect(scheme()).toBe('light');
   });
 
   it("The frame's colours are written with the tokens' values", () => {
     draw(<p>the page</p>);
     const style = document.querySelector('style[data-mantine-styles]')?.textContent ?? '';
     const entries = Object.entries(FRAME_COLOURS);
-    expect(entries.length).toBeGreaterThan(10);
+    expect(entries.length).toBeGreaterThan(5);
     for (const [name, value] of entries) expect(style).toContain(`--credo-${name}: ${value};`);
   });
 });

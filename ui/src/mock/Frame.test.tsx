@@ -5,7 +5,7 @@ import { Frame } from './Frame';
 
 const frame = (language: 'vi' | 'en' = 'en') =>
   render(
-    <Frame title="a frame" colour="#2f7d6d" language={language} scheme="dark" width={390}>
+    <Frame title="a frame" colour="#2f7d6d" language={language} scheme="light" width={390}>
       <p>drawn inside</p>
     </Frame>,
   );
@@ -37,7 +37,7 @@ describe('Frame', () => {
     expect(inner.body.textContent).toContain('drawn inside');
     expect(document.body.textContent).not.toContain('drawn inside');
     expect(inner.documentElement.lang).toBe('vi');
-    expect(inner.documentElement.getAttribute('data-mantine-color-scheme')).toBe('dark');
+    expect(inner.documentElement.getAttribute('data-mantine-color-scheme')).toBe('light');
     expect(inner.head.querySelector('style')!.textContent).toContain('.x{color:red}');
   });
 

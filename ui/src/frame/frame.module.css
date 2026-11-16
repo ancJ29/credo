@@ -1,5 +1,5 @@
 /* The legacy app's frame: the header and the side menu wear the brand's colour with white text,
-   in the light scheme and the dark; the phone's bar stays on the page's own ground. */
+   in the light scheme; the phone's bar stays on the page's own ground. */
 
 .header {
   color: var(--credo-white);
@@ -128,20 +128,11 @@
   border-radius: 12px;
 }
 
-/* The open page on the brand's shade 1; in the dark scheme on its shade 9. */
+/* The open page on the brand's shade 1. */
 .barLink[aria-current='page'] .barIcon {
   background: var(--mantine-color-brand-1);
   color: var(--mantine-color-brand-7);
   box-shadow: 0 4px 12px color-mix(in srgb, var(--mantine-color-brand-7) 25%, transparent);
-}
-
-[data-mantine-color-scheme='dark'] .barLink {
-  color: var(--credo-grey-9a);
-}
-
-[data-mantine-color-scheme='dark'] .barLink[aria-current='page'] .barIcon {
-  background: var(--mantine-color-brand-9);
-  color: var(--mantine-color-brand-1);
 }
 
 .moreRow {

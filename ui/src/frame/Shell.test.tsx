@@ -392,9 +392,6 @@ describe('Shell', () => {
     expect(white.getAttribute('style') ?? '').not.toContain('color');
     expect(white.className).toContain('brandName');
     expect(rule('.brandName')).toContain('var(--mantine-color-neutral-8)');
-    expect(rule("[data-mantine-color-scheme='dark'] .brandName")).toContain(
-      'var(--credo-dark-text)',
-    );
     cleanup();
 
     looked({ whiteHeader: false, whiteMenu: true, menuIcons: false });
@@ -434,13 +431,5 @@ describe('Shell', () => {
     looked({ whiteHeader: false, whiteMenu: false, menuIcons: true }, true);
     expect(sideMenu().hasAttribute('data-strip')).toBe(false);
     expect(within(sideMenu()).getByRole('link', { name: 'Settings' }).textContent).toBe('Settings');
-  });
-
-  it('9: In dark, a white header or menu takes the dark surface', () => {
-    const dark = rule("[data-mantine-color-scheme='dark'] .header");
-    expect(dark).toContain('var(--credo-dark-surface)');
-    expect(dark).toContain('var(--credo-dark-text)');
-    expect(rule("[data-mantine-color-scheme='dark'] .menu")).toContain('var(--credo-dark-surface)');
-    expect(rule("[data-mantine-color-scheme='dark'] .item")).toContain('var(--credo-dark-text)');
   });
 });

@@ -20,12 +20,12 @@ vi.mock('./screens', async (importActual) => {
 const states = SCREENS.flatMap((screen) => screen.states).length;
 
 describe('MockPage', () => {
-  it('draws every state of every screen in both themes, all three widths and both languages', () => {
+  it('draws every state of every screen in light, all three widths and both languages', () => {
     const { container } = render(<MockPage />);
     const titles = [...container.querySelectorAll('iframe')].map((frame) => frame.title);
 
-    expect(titles).toHaveLength(states * 12);
-    expect(new Set(titles).size).toBe(states * 12);
+    expect(titles).toHaveLength(states * 6);
+    expect(new Set(titles).size).toBe(states * 6);
   });
 
   it('narrows to one language, one theme or one width, and back to all', () => {
@@ -34,10 +34,10 @@ describe('MockPage', () => {
     const titles = () => [...container.querySelectorAll('iframe')].map((frame) => frame.title);
 
     fireEvent.click(screen.getByRole('radio', { name: 'vi' }));
-    expect(titles()).toHaveLength(states * 6);
+    expect(titles()).toHaveLength(states * 3);
     expect(titles().every((title) => / · vi · /.test(title))).toBe(true);
 
-    fireEvent.click(screen.getByRole('radio', { name: 'dark' }));
+    fireEvent.click(screen.getByRole('radio', { name: 'light' }));
     expect(titles()).toHaveLength(states * 3);
 
     fireEvent.click(screen.getByRole('radio', { name: '390' }));

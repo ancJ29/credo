@@ -74,62 +74,6 @@
   border-right-color: var(--mantine-color-brand-7);
 }
 
-/* In dark, the dark surface in their place. */
-[data-mantine-color-scheme='dark'] .header {
-  background: var(--credo-dark-surface);
-  color: var(--credo-dark-text);
-  border-bottom-color: var(--credo-dark-edge);
-}
-
-[data-mantine-color-scheme='dark'] .brandName {
-  color: var(--credo-dark-text);
-}
-
-[data-mantine-color-scheme='dark'] .button {
-  color: var(--credo-dark-icon);
-}
-
-[data-mantine-color-scheme='dark'] .button:hover,
-[data-mantine-color-scheme='dark'] .user {
-  background: var(--credo-white-08);
-}
-
-[data-mantine-color-scheme='dark'] .avatar,
-[data-mantine-color-scheme='dark'] .badge {
-  background: var(--mantine-color-brand-9);
-  color: var(--mantine-color-brand-0);
-}
-
-[data-mantine-color-scheme='dark'] .menu {
-  background: var(--credo-dark-surface);
-  border-right-color: var(--credo-dark-edge);
-}
-
-[data-mantine-color-scheme='dark'] .item {
-  color: var(--credo-dark-text);
-}
-
-[data-mantine-color-scheme='dark'] .item svg {
-  color: var(--credo-dark-icon);
-}
-
-[data-mantine-color-scheme='dark'] .item:hover {
-  background: var(--credo-white-06);
-}
-
-[data-mantine-color-scheme='dark'] .item[aria-current='page'] {
-  background: var(--mantine-color-brand-9);
-  color: var(--mantine-color-brand-0);
-}
-
-[data-mantine-color-scheme='dark'] .item[aria-current='page'] svg {
-  color: var(--mantine-color-brand-3);
-}
-
-[data-mantine-color-scheme='dark'] .item[aria-current='page']::after {
-  border-right-color: var(--mantine-color-brand-3);
-}
-
 /* The hidden menu as a PC's strip of icons, 60 wide (Mantine's navbar width), each page's name in a
    tip on hover or keyboard focus. */
 .stripItem {

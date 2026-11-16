@@ -10,8 +10,8 @@ type Props = {
   /** The tenant's brand colour. */
   colour: string;
   language: Language;
-  /** Fixed by a mock; the app follows the system's. */
-  scheme?: 'light' | 'dark';
+  /** The app is light whatever the device asks. */
+  scheme?: 'light';
   /** The element that carries the colour scheme, where it is not the page's own. */
   root?: () => HTMLElement;
   /** Tests switch Mantine's transitions off. */
@@ -31,8 +31,7 @@ export function Providers({ colour, language, scheme, root, test, children }: Pr
     <MantineProvider
       theme={theme}
       cssVariablesResolver={credoVariables}
-      defaultColorScheme="auto"
-      forceColorScheme={scheme}
+      forceColorScheme={scheme ?? 'light'}
       getRootElement={root}
       env={test ? 'test' : 'default'}
     >
