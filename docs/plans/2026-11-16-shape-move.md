@@ -193,7 +193,8 @@ medians of three fix steps of another shape, so they are not this step's figure.
   added on `b2`, its root signed in, a customer added; the company moved to the home box, signed in
   again (point 2); `ops/check.sh ridge` again; then `b2` taken out and its retained box removed by
   the runbook's "A retained box". *Done when:* the machine reads both check logs whole, each ending
-  `== exit 0` and reading both boxes, and your yes.
+  `== exit 0` and reading both boxes, and your yes. *Size:* 15 to read (the second landing's
+  sitting, read in 15).
 
 ## The case table
 
