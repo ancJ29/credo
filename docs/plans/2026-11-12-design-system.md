@@ -231,7 +231,7 @@ confirm the skeleton first").
       in; the picture run (case 10); the landing; point 3. _Done when:_ your run of all twelve walks with no `--moved` and
       no `--write` reads `== verdict: green` with every count 0, and the branch merges. **20 min, and
       your run, about 16.**
-      _Done 2026-11-16: the review of steps 4 to 7 said fix first, its fix pass `7fc94042` and a reread said may merge; `pre-merge` taken in at `0f788579`; your run of all twelve walks with no `--moved` and no `--write` (log `20261116-1828-walk-piece-1-piece-2-admin-lists-office-orders-driver-deliveries-office-reconcile-operator-passkeys-services-root-password-team-delete-client.log`) read `== verdict: green: 35 comparisons, every raw count as asked`, every count 0, on `d03892b6`; the landing on `pre-merge` is the orchestrator's, after this tick._
+      _Done 2026-11-16: the review of steps 4 to 7 said fix first, its fix pass `7fc94042` and a reread said may merge; `pre-merge` taken in at `0f788579`; your run of all twelve walks with no `--moved` and no `--write` read `== verdict: green: 35 comparisons, every raw count as asked`, every count 0, on `d03892b6`; the landing on `pre-merge` is the orchestrator's, after this tick._
 
 **Landing 3: the legacy's values.**
 
