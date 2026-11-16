@@ -36,6 +36,9 @@ export function parseCsv(text: string, delimiter: string): string[][] {
   return rows;
 }
 
+/** A cell or a word as it is compared: no space around it, accents composed. */
+export const tidy = (text: string) => text.trim().normalize('NFC');
+
 const COLUMNS = ['key', 'English', 'Vietnamese'] as const;
 
 /**
@@ -66,8 +69,8 @@ export function readWords(bytes: Uint8Array, label: string): WordsRow[] {
     .filter((cells) => cells.some((cell) => cell.trim() !== ''))
     .map((cells) => ({
       key: cells[key]?.trim() ?? '',
-      en: cells[en] ?? '',
-      vi: cells[vi] ?? '',
+      en: tidy(cells[en] ?? ''),
+      vi: tidy(cells[vi] ?? ''),
       note: cells[note]?.trim() ?? '',
     }));
 }

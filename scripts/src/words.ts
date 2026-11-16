@@ -1,9 +1,9 @@
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile, rename, rm, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { DICTIONARIES } from '@credo/ui/words';
 import { Refused } from './root-password';
 import { findWords, formatWords, replaceWords, type FoundWord } from './words-files';
-import { readWords, type WordsRow } from './words-read';
+import { readWords, tidy, type WordsRow } from './words-read';
 
 export type WordsIo = {
   out: (line: string) => void;
@@ -62,9 +62,11 @@ const LANGUAGES = [
   { code: 'vi', name: 'Vietnamese' },
 ] as const;
 
-/** The placeholders of a word, `{{name}}` each, sorted and without repeats. */
+const PLACEHOLDER = /\{\{[^}]*\}\}/g;
+
+/** The placeholders of a word, `{{name}}` each, sorted, a repeated one repeated. */
 function placeholders(word: string): string[] {
-  return [...new Set(word.match(/\{\{[^}]*\}\}/g) ?? [])].sort();
+  return (word.match(PLACEHOLDER) ?? []).sort();
 }
 
 const listOf = (names: string[]) => (names.length > 0 ? names.join(' ') : 'none');
@@ -93,6 +95,8 @@ function problemsOf(returned: WordsRow[], sent: Map<string, WordsRow>): string[]
       if (row[code].trim() === '') problems.push(`${key}: the ${name} cell is empty`);
       else if (/[\r\n]/.test(row[code]))
         problems.push(`${key}: the ${name} cell holds a line break`);
+      else if (/[{}]/.test(row[code].replace(PLACEHOLDER, '')))
+        problems.push(`${key}: the ${name} word has a { or } outside a placeholder`);
       else if (placeholders(row[code]).join() !== placeholders(was[code]).join()) {
         problems.push(
           `${key}: the ${name} placeholders were ${listOf(placeholders(was[code]))}, now ${listOf(placeholders(row[code]))}`,
@@ -106,7 +110,8 @@ function problemsOf(returned: WordsRow[], sent: Map<string, WordsRow>): string[]
 /**
  * `words in <sent> <returned>`: reads the returned file against the one that was sent and against
  * the words now in `ui/src/i18n/en.ts` and `vi.ts`, and prints each change, clash, vanished key and
- * note. A file that would break the app is refused whole. Nothing is written.
+ * note. A file that would break the app is refused whole. After the question, when the answer is y,
+ * the changes go into the two word files; otherwise nothing is written.
  */
 async function wordsIn(
   sentPath: string,
@@ -142,8 +147,8 @@ async function wordsIn(
         if (row[code] === was[code]) continue;
         const app = found(row.key, code);
         const place = `${name} ${row.key} (${code}.ts line ${app.line})`;
-        if (app.text === row[code]) io.out(`already so ${place}`);
-        else if (app.text === was[code]) {
+        if (tidy(app.text) === row[code]) io.out(`already so ${place}`);
+        else if (tidy(app.text) === was[code]) {
           changes++;
           edits[code].set(row.key, row[code]);
           io.out(`change ${place}\n  now:    ${app.text}\n  theirs: ${row[code]}`);
@@ -178,7 +183,9 @@ type Formatter = (source: string, path: string) => Promise<string>;
 /**
  * Puts `edits` into the two word files in place, formats each and reads it back: every key in
  * `edits` must read its new word and every other key its old one, in both files, or neither file is
- * written. Exit 1 when the read-back differs.
+ * written. Only a file whose text changed is written: each goes to a temporary file beside it, and
+ * both are renamed over the originals once both are ready. Exit 1 when the read-back differs or a
+ * temporary file cannot be written.
  */
 async function writeEdits(
   edits: Record<'en' | 'vi', Map<string, string>>,
@@ -201,9 +208,20 @@ async function writeEdits(
       );
       return 1;
     }
-    done.push({ path, after, code });
+    if (after !== before) done.push({ path, after, code, temporary: `${path}.words-new` });
   }
-  for (const { path, after } of done) await writeFile(path, after);
+  const written: string[] = [];
+  try {
+    for (const { temporary, after } of done) {
+      await writeFile(temporary, after);
+      written.push(temporary);
+    }
+  } catch (error) {
+    for (const temporary of written) await rm(temporary, { force: true });
+    io.err(`nothing written: ${(error as Error).message}`);
+    return 1;
+  }
+  for (const { path, temporary } of done) await rename(temporary, path);
   io.out(`wrote ${done.map(({ code }) => `${code}.ts`).join(' and ')}`);
   return 0;
 }
@@ -216,8 +234,9 @@ async function writeEdits(
  * `words in <sent> <returned>` reads a returned file against the one sent and the words now, shows
  * what would change and, when the answer to the question is y, writes it into the two word files.
  *
- * Exit 0 done, 2 refused before anything was written (no file, an unknown verb, a file that
- * exists, a returned file that would break the app).
+ * Exit 0 done, 1 nothing written because a word file did not read back as intended or could not be
+ * written, 2 refused before anything was written (no file, an unknown verb, a file that exists, a
+ * returned file that would break the app).
  */
 export async function runWords(
   argv: string[],

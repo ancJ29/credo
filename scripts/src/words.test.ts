@@ -9,10 +9,10 @@ import { check, resolveConfig } from 'prettier';
 import { findWords } from './words-files';
 import { parseCsv, readWords } from './words-read';
 
-/** This repository's root, where the real word files are. */
 /** An answer that is no. */
 const no = () => Promise.resolve('n');
 
+/** This repository's root, where the real word files are. */
 const REPO = fileURLToPath(new URL('../../', import.meta.url));
 
 /** Runs `words` in a fresh folder; what it printed, its exit status and the folder. */
@@ -326,6 +326,32 @@ describe('words in', () => {
     expect(kept.status).toBe(0);
   });
 
+  it('reads a trailing space or decomposed accents as the same word', async () => {
+    const world = await scene();
+    const spaced = await world.returned(world.edit('nav.orders', 2, 'Đơn hàng '));
+    expect((await world.wordsIn(spaced)).out).toBe(NONE);
+    const decomposed = await world.returned(
+      world.edit('nav.orders', 2, 'Đơn hàng'.normalize('NFD')),
+    );
+    expect((await world.wordsIn(decomposed)).out).toBe(NONE);
+  });
+
+  it('refuses a placeholder repeated or a brace left outside one', async () => {
+    const world = await scene();
+    const key = world.rows.find((row) => row[1].includes('{{max}}'))![0];
+    const word = world.cell(key, 1);
+    const doubled = await world.wordsIn(
+      await world.returned(world.edit(key, 1, `${word} {{max}}`)),
+    );
+    expect(doubled.err).toContain(
+      `${key}: the English placeholders were {{max}}, now {{max}} {{max}}`,
+    );
+    const stray = await world.wordsIn(
+      await world.returned(world.edit(key, 1, word.replace('{{max}}', '{{max}}}'))),
+    );
+    expect(stray.err).toContain(`${key}: the English word has a { or } outside a placeholder`);
+  });
+
   it('changes nothing for a row left out, reordered rows, an extra column or empty rows', async () => {
     const world = await scene();
     const file = await world.returned((rows) => {
@@ -444,7 +470,7 @@ describe('words in, written', () => {
       ' Y ',
     );
     expect(result.status).toBe(0);
-    expect(result.out).toMatch(/wrote en\.ts and vi\.ts$/);
+    expect(result.out).toMatch(/wrote vi\.ts$/);
     const after = await readFile(world.viFile, 'utf8');
     expect(after).toBe(before.replace(orders('Đơn hàng'), orders('Đơn đặt hàng')));
     expect(await readFile(join(world.root, 'ui/src/i18n/en.ts'), 'utf8')).toBe(english);
@@ -477,6 +503,24 @@ describe('words in, written', () => {
       findWords(await readFile(join(world.root, 'ui/src/i18n/en.ts'), 'utf8')).get('nav.settings')
         ?.text,
     ).toBe('Setup');
+  });
+
+  it('writes neither file when a temporary file cannot be written, exit 1', async () => {
+    const world = await scene();
+    const english = await readFile(join(world.root, 'ui/src/i18n/en.ts'), 'utf8');
+    await mkdir(`${world.viFile}.words-new`);
+    const file = await world.returned((rows) => {
+      world.edit('nav.orders', 1, 'Orders!')(rows);
+      return world.edit('nav.orders', 2, 'Đơn đặt hàng')(rows);
+    });
+    const result = await world.wordsIn(file, world.root, 'y');
+    expect(result.status).toBe(1);
+    expect(result.err).toMatch(/^nothing written: /);
+    expect(result.out).not.toContain('wrote');
+    expect(await readFile(join(world.root, 'ui/src/i18n/en.ts'), 'utf8')).toBe(english);
+    await expect(readFile(join(world.root, 'ui/src/i18n/en.ts.words-new'))).rejects.toThrow(
+      /ENOENT/,
+    );
   });
 
   it('writes neither file when the re-read finds a key not reading its word, exit 1', async () => {
