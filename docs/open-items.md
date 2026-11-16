@@ -1909,3 +1909,10 @@ The guard in `ops/test.sh` refuses `<<<` on a line naming `kv`, `SECRET`, `STORA
 
 `ops/lib.sh#L1225-L1226` says the exit codes other than 0 and 1 (ssh's 255, sudo's refusal) are a failed read. `sudo test -e` that sudo refuses exits 1, the same as an absent file, so only ssh's failure (255) stops the deploy; the comment is wrong, the code is as intended.
 
+## 492. The new case-12 line has no standing refusal row, so its red is seen only once (the review of the list right fix, 2026-11-16, Low) — the machine; `[DEFERRED]`
+
+`loop_refusals` in `ops/test.sh#L1034-L1064` plants a fault in the template for each line of `boxes_loop_guard`, but none for the line at `ops/test.sh#L1001` ("leaves a ${Name}"). One row that plants a plain `${Name}/*` as the role's list condition and expects "leaves a ${Name}" keeps that red seen on every run; today it was seen red by hand on the old template only.
+
+## 493. The expansion renames `${Name}` in keys at every depth, but AWS was measured only on top-level ids (the review of the list right fix, 2026-11-16, Low) — the machine; `[DEFERRED]`
+
+The comment at `ops/test.sh#L963-L966` and `named` at `ops/test.sh#L967` replace `${Name}` in a key at any depth, while the measure covers only the loop's resource and output ids. All 8 such keys sit at depth 1 in `ops/env.yml`, and a nested one already goes red on the instance's equality row, so nothing is wrong today; narrow `named` to the ids, or measure a nested key, if one is ever added.

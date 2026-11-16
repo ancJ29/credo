@@ -352,12 +352,16 @@ milestone if the orchestrator wants one.
   *Size:* 20. *Expected red:* the new line on today's `ops/env.yml`; then a mutation that puts the plain
   string back, and one that makes the expansion replace everywhere again, each red then reverted. *Done when:*
   `bash ops/test.sh` ends `== exit 0` and `shellcheck -x ops/*.sh` exits 0.
-  *Ticked 2026-11-16:* the new line read red on the old `ops/env.yml` and green on the fixed one (a trimmed copy of
-  case 12's section, `fail=` by its exit code); with the old expansion and the old line the section was green,
-  which is why `ops/test.sh` passed it. Two mutations, each red then reverted: the plain string put back in the
-  list condition (red on the new line), and the plain-reading rule for an `Fn::Sub` with no variable taken out
-  of `UNNAME` (red on the role's row). The only `Fn::ForEach` in `ops/*.yml` are the two in `ops/env.yml`; the
-  outputs loop holds no plain `${Name}`. `bash ops/test.sh` on this tree ended `== exit 0`.
+  *Ticked 2026-11-16:* on a trimmed copy of case 12's section (its exit code the verdict) the new line read red on the
+  old `ops/env.yml` and green on the fixed one. With the old replace-everywhere expansion kept and the new line
+  kept, on the old template, the section read green (the probe was run twice, once by the builder and once by the
+  reviewer): `named` is what lets the new line see the literal, and the old expansion and old line together are
+  why `ops/test.sh` passed. One mutation on the fixed tree, the plain-reading rule for an `Fn::Sub` with no
+  variable taken out of `UNNAME`, read red on the role's row and was reverted. The plain string put back in
+  the list condition was not run apart from the old file, which it equals, so it is the first run again. The
+  only `Fn::ForEach` in `ops/*.yml` are the two in `ops/env.yml`; the outputs loop holds no plain `${Name}`.
+  `bash ops/test.sh` on the tree at `d6a92751` ended `all checks passed` at 08:09 and `== exit 0`, and
+  `shellcheck -x ops/*.sh` exited 0.
 
 **Third landing: the move** (after the store's copy tool is on `pre-merge`).
 
