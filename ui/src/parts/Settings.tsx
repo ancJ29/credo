@@ -30,7 +30,7 @@ import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LANGUAGE_NAMES } from '../i18n';
 import { Loaded } from '../frame/Loaded';
-import { PALETTES, paletteOfColour } from '../palettes';
+import { PALETTES, paletteOfColour } from '../design-system/palettes';
 
 type Props = {
   status: 'loading' | 'failed' | 'ready';

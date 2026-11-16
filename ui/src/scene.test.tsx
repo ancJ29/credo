@@ -89,14 +89,14 @@ describe('a scene’s parts', () => {
         device={device}
         passkeys={passkeys}
         build={build}
-        look={{ scheme: 'dark', root: () => holder }}
+        look={{ scheme: 'light', root: () => holder }}
         test
       />,
       '/staff',
     );
 
     expect(await screen.findByRole('heading', { level: 2, name: 'Staff' })).toBeTruthy();
-    expect(holder.getAttribute('data-mantine-color-scheme')).toBe('dark');
+    expect(holder.getAttribute('data-mantine-color-scheme')).toBe('light');
     // the page's own element is left alone, both while the app boots and once it is drawn
     expect(document.documentElement.getAttribute('data-mantine-color-scheme')).toBeNull();
   });

@@ -19,7 +19,7 @@ import { useTranslation } from 'react-i18next';
 import type { Brand } from '../brand';
 import classes from '../frame/frame.module.css';
 import { LANGUAGE_NAMES } from '../i18n';
-import { BRAND_GRADIENT } from '../theme';
+import { BRAND_GRADIENT } from '../design-system/appTheme';
 import { waitWords } from './waitWords';
 
 /** The page's own ground behind a door's card, the grey the signed-in pages sit on. */
@@ -27,7 +27,7 @@ const GROUND = 'light-dark(var(--mantine-color-neutral-1), var(--mantine-color-b
 
 /** The language switch's outline, white on the coloured header. */
 const SWITCH = {
-  border: '1px solid rgba(255, 255, 255, 0.55)',
+  border: '1px solid var(--credo-white-55)',
   borderRadius: 6,
   overflow: 'hidden',
 };
@@ -97,7 +97,7 @@ export function SignInFrame({ brand, title, languages = [], onLanguage, children
                 fz={12}
                 fw={700}
                 style={{
-                  background: i18n.language === language ? 'rgba(255, 255, 255, 0.22)' : undefined,
+                  background: i18n.language === language ? 'var(--credo-white-22)' : undefined,
                 }}
                 onClick={() => onLanguage(language)}
               >

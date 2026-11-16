@@ -12,7 +12,7 @@ import { OperatorSignIn } from './operator/OperatorSignIn';
 import { Providers } from '../frame/Providers';
 import { QrLanding } from './client/QrLanding';
 import { SignIn, SignInFrame } from './SignIn';
-import { BRAND_GRADIENT, shadesOf } from '../theme';
+import { BRAND_GRADIENT, shadesOf } from '../design-system/appTheme';
 
 const brand = { name: 'Minh Phát', logo: null };
 

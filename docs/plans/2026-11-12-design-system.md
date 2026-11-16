@@ -5,7 +5,8 @@
 **Amended 2026-11-16, at the human's ask:** a first landing builds the skeleton (the legacy's values
 in a new folder, six sample components in three levels, a gallery page that shows them) and changes
 no screen. The two landings of 11-12 follow as landings 2 and 3 only after the human's yes at
-landing 1's look: "I think I should confirm the skeleton first".
+landing 1's look: "I think I should confirm the skeleton first". **Amended again 2026-11-16:** the
+gallery's final shape, the human's yes of today, is landing 4, opened when the components pass 15.
 
 What it is for: the partners asked that the new app look like the legacy one. The look goes into one
 folder, `ui/src/design-system/`, its parts onto a page of their own, then the few values that still
@@ -31,6 +32,7 @@ on `pre-merge` up to three times, each walkable: the gallery, no screen changed;
 the home, nothing moved, so every pixel the third moves is a value's doing; the values with the
 screens they move, landed the day its run is read. **Landings 2 and 3 start only after the human's
 yes at point 1**: "thanks, plz wait for later / I think I should confirm the skeleton first".
+A fourth, the gallery's final shape, is opened by a count, not by a landing's order (below).
 
 Light only (the human's answer of 2026-11-11 23:01); no company's own ten shades (2026-11-03 17:47);
 the side menu's labels at 14 px and 600 (2026-11-16, replacing the "more bold" of 11-03, built as 16
@@ -125,13 +127,38 @@ legacy's card by hand (`ui/src/parts/Settings.tsx#L122-L131`), the model for the
 - **Button, text field and badge stay Mantine's**: a wrapper would touch the 42 files that draw 102
   buttons and move no pixel. **The confirm dialog** waits for its first caller (open item 306).
 
+## Landing 4: the gallery's final shape, and what was decided for it
+
+- **When: as the components pass 15, which landings 2 and 3 do not.** Landing 2 names no part;
+  landing 3's step 10 draws the two organisms already there, so step 2's count,
+  `ls ui/src/components/*/*.tsx | grep -vc test`, stays 6. The rest come one at a time, by the rule
+  of three and item 498; item 507's dialog and table are Mantine's. Landing 4 opens when that count
+  passes 15, first in the landing that takes it there. *This corrects "likely when the app's screens
+  take the look".*
+- **Built from what exists.** `LEVELS` (`ui/src/design-system/Gallery.tsx#L26-L65`) holds each
+  level, its heading and its entries by name, so the groups, counts and addresses come from it, with
+  `Values` and `Mantines` (`#L67-L95`) as two more groups. The app's React Router
+  (`ui/package.json#L25`, `ui/src/main.tsx#L41`) gives `HashRouter`, `/gallery.html#/atoms/field-label`,
+  a hash since the page is one file at one path; tests open an address in `MemoryRouter`
+  (`ui/src/mock/Frame.tsx#L38`); the list sits in the frame's `AppShell`
+  (`ui/src/frame/Shell.tsx#L129-L134`). Nothing to install. *Rejected:* the sketch's
+  `#atoms/field-label`, a hash reader beside the router.
+- **The page.** Each entry's states become named nodes (`StatusBadge`'s active and inactive), none
+  added; the counts stay whole while the search hides names; no address opens the first part.
+  `LEVELS` moves to `ui/src/design-system/entries.tsx`, the file that grows to 50.
+- **No legacy pane, and no picture per part in the picture run, until their callers.** No
+  picture of a legacy part exists: the capture takes whole screens of real people, outside git
+  (open item 516). A `walk/specs/gallery.spec.ts` would open each address and call
+  `walk/support.ts`'s `shot`, which names pictures by screen, but the run lacks four things (open
+  item 515).
+
 ## The cases
 
 | # | The case: one behaviour, one sentence | Held by |
 | --- | --- | --- |
 | 1 | The design system's theme draws the main colour at shade 6 while shade 7 stays the colour itself, a badge with 4-px corners, a table row under the pointer in the brand's shade 0, and a dialog centred with its title large at 550 | `ui/src/design-system/theme.test.ts`, the shade's case now at `ui/src/theme.test.ts#L52-L58` |
 | 2 | Each sample draws its states: a status badge green when active, grey when not; a detail field with no value a dash; a section title its icon in a grey tile; a page header its title as the page's heading | a test beside each, `ui/src/components/<level>/<Name>.test.tsx` |
-| 3 | The gallery shows every component of the three folders under its level's heading, light whatever the device asks | `ui/src/design-system/Gallery.test.tsx`, which reads the folders and mounts the entry on a `#root` |
+| 3 | The gallery shows every component of the three folders under its level's heading (from landing 4, in its list), light whatever the device asks | `ui/src/design-system/Gallery.test.tsx`, which reads the folders and mounts the entry on a `#root` |
 | 4 | A component imports nothing from a level above its own, nor from the app outside `components/` and the tokens | `eslint.config.js`, one block a level |
 | 5 | The gallery is served at `/gallery.html` by the ui's own Vite | the serve probe, step 1 |
 | 6 | Landing 1 changes no file the app, the fake build or the walks read | `git diff --name-only --diff-filter=MDR pre-merge...HEAD -- ui visual walk` prints `ui/CLAUDE.md` alone |
@@ -142,6 +169,10 @@ legacy's card by hand (`ui/src/parts/Settings.tsx#L122-L131`), the model for the
 | 11 | The app's theme is the design system's for every company's colour: case 1 holds over `themeOf` | case 1's test over both; the session-ended snapshot in `ui/src/frame/frameKept.test.tsx` |
 | 12 | A section card shows its icon in a grey tile and its title small, bold, in capitals | `ui/src/parts/DetailCards.test.tsx` |
 | 13 | The menu's labels are 14 px at 600; the phone's bar has a line and a soft shadow above, its header a soft shadow below | `ui/src/frame/Shell.test.tsx` |
+| 14 | A part's address, `#/atoms/field-label`, opens that part alone, its states side by side under `Atoms › Field label` | `ui/src/design-system/Gallery.test.tsx`, on `MemoryRouter` |
+| 15 | Each group of the list counts the parts its level holds, the components' read from their folders | the same |
+| 16 | The search narrows the list to the names holding its words, case ignored | the same |
+| 17 | An address that names no part says so beside the list and draws no part | the same |
 
 ## The steps
 
@@ -174,28 +205,33 @@ a review with its check about 20.
 **Landing 2: one home, nothing moved** (after the human's yes at point 1: "I think I should
 confirm the skeleton first").
 
-- [ ] **4. The app's theme joins the home.** `ui/src/theme.ts`, `ui/src/palettes.ts` and
+- [x] **4. The app's theme joins the home.** `ui/src/theme.ts`, `ui/src/palettes.ts` and
       `ui/src/theme.module.css` move in as above; every importer follows; `ui/CLAUDE.md`'s sentence
       grows. The session-ended, passkeys and ways snapshots are rewritten, their diff read to hold
       renamed classes only. _Done when:_ both checks and visual's exit 0; `git ls-files` of the three
       old paths prints nothing. **8 min.**
-- [ ] **5. The hand-written values to tokens.** The frame stylesheets' 26 colours, the shell's two
+      _Done 2026-11-16: `pre-merge` taken in (one conflict, `docs/open-items.md`, both sides kept in number order); the three files moved to `ui/src/design-system/` as `appTheme.ts` (the name `theme.ts` is `designThemeOf`'s, which step 9 joins), `palettes.ts` and `theme.module.css`, `theme.test.ts` as `appTheme.test.ts`, nine importers followed, `ui/CLAUDE.md` grew; one snapshot moved, the ways one (the session-ended and passkeys ones held), its text equal to the old once the hashes in class names are masked; `pnpm --filter @credo/ui check` exit 0 (typecheck, eslint, prettier, test, knip all 0); the citations test exit 0 (32 passed); `git ls-files` of the three old paths prints nothing; `pnpm --filter @credo/visual check` exit 0 (all five steps 0)._
+- [x] **5. The hand-written values to tokens.** The frame stylesheets' 26 colours, the shell's two
       whites and the sign-in card's two washes become variables of the same value; the gradients come
       from `tokens.ts`. Case 9. _Done when:_ the checks exit 0 and
       `grep -cE '#[0-9a-fA-F]{3,8}\b|rgba?\(' ui/src/frame/*.module.css` counts 0 in each. **8 min.**
-- [ ] **6. Light only.** `Providers` forces light, as the legacy's entry does; the 16 dark rules go,
+      _Done 2026-11-16: the counts held (26 colours in the two frame stylesheets, 11 and 15; two `#fff` in `Shell.tsx`; two washes in `SignIn.tsx`); `ui/src/design-system/cssVariables.ts`'s `credoVariables` writes the 16 `FRAME_COLOURS` of `tokens.ts` as `--credo-*` variables, `Providers` passes it, the stylesheets, the shell and the sign-in card read them, and `BRAND_GRADIENT` and `MENU_GRADIENT` of `appTheme.ts` read `TOKENS`; case 9 in `ui/src/frame/Providers.test.tsx`, red once with the resolver writing `#000` (exit 1), put back; the two inline-colour snapshots in `frameKept.test.tsx.snap` moved from `rgb(255, 255, 255)` to `var(--credo-white)` and nothing else, and seven lines pinning the old literals in `Shell.test.tsx` follow the variable (step 6 removes the dark ones), and the one that held the header's white text now also asserts `--credo-white: #fff;`, so the value stays pinned; case 10, the picture run, is their proof that no pixel moved; the grep counts 0 in each stylesheet; `pnpm --filter @credo/ui check` and `pnpm --filter @credo/visual check` exit 0; the citations test exit 0._
+- [x] **6. Light only.** `Providers` forces light, as the legacy's entry does; the 16 dark rules go,
       with the mock harness's dark choice (`ui/src/mock/MockPage.tsx#L15`) and the cases that pin
       dark (`ui/src/frame/Shell.test.tsx#L437`, `#L395`; `ui/src/mock/Frame.test.tsx#L8`, `#L40`).
       Case 8 red first. _Done when:_ the checks exit 0 and `grep -rc "color-scheme='dark'" ui/src`
       counts 0. **8 min.**
-- [ ] **7. The literal check.** Case 7: the test globs every stylesheet as text and asserts at least
+      _Done 2026-11-16: the 16 dark rules counted as the plan said (14 in `frameLook.module.css`, 2 in `frame.module.css`, 12 and 2 blocks) and went, with the comments that named the dark scheme; case 8 (`ui/src/frame/Providers.test.tsx`, "The app is light whatever the device asks") red first on the old `Providers` (received `dark`, exit 1), green after `forceColorScheme` reads `scheme ?? 'light'`, and `Scheme` and `Providers`' prop are `'light'` alone; the mock harness's `SCHEMES` is `['light']`; the cases that pinned dark follow, not only the plan's four: `ui/src/frame/Shell.test.tsx` lost its dark-surface case and one dark line, `ui/src/mock/Frame.test.tsx`, `ui/src/mock/MockPage.test.tsx` (its counts halve, its "dark" radio goes) and `ui/src/scene.test.tsx` (its look's scheme) say `light`; the colours only the dark rules read left `FRAME_COLOURS` (16 to 9); no snapshot moved; `grep -rc "color-scheme='dark'" ui/src` counts 0 in each file; `pnpm --filter @credo/ui check` and `pnpm --filter @credo/visual check` exit 0; the citations test exit 0._
+- [x] **7. The literal check.** Case 7: the test globs every stylesheet as text and asserts at least
       four found, so a move cannot quiet it; the ESLint rule skips the design system, the tests and
       the mock harness. Each red once on a planted `#fff`, put back. _Done when:_ the checks exit 0,
       the two red receipts in the tick. **5 min.**
-- [ ] **8. Review and landing.** Another model reads steps 4 to 7; one fix pass; `pre-merge` taken
+      _Done 2026-11-16: case 7 is `ui/src/design-system/literals.test.ts` (it globs every `*.module.css` under `ui/src`, asserts at least four found and at least one outside the design system, and that none outside it writes a hex or an `rgb(`, `rgba(`, `hsl(` or `hsla(` colour) and a `no-restricted-syntax` block in `eslint.config.js` over `ui/src/**/*.{ts,tsx}` that skips `ui/src/design-system/`, the tests and `ui/src/mock/`; red once each: the test on a planted `#fff` in `ui/src/frame/frame.module.css` (exit 1, that file named), the rule on a planted `'#fff'` in `ui/src/pages/SignIn.tsx` (exit 1), both put back, byte-equal to their backups; `pnpm --filter @credo/ui check` and `pnpm --filter @credo/visual check` exit 0; the citations test exit 0._
+- [x] **8. Review and landing.** Another model reads steps 4 to 7; one fix pass; `pre-merge` taken
       in; the picture run (case 10); the landing; point 3. _Done when:_ your run of all twelve walks with no `--moved` and
       no `--write` reads `== verdict: green` with every count 0, and the branch merges. **20 min, and
       your run, about 16.**
+      _Done 2026-11-16: the review of steps 4 to 7 said fix first, its fix pass `7fc94042` and a reread said may merge; `pre-merge` taken in at `0f788579`; your run of all twelve walks with no `--moved` and no `--write` read `== verdict: green: 35 comparisons, every raw count as asked`, every count 0, on `d03892b6`; the landing on `pre-merge` is the orchestrator's, after this tick._
 
 **Landing 3: the legacy's values.**
 
@@ -217,7 +253,25 @@ confirm the skeleton first").
       `== verdict: green` with every count 0, and the branch merges. **25 min, and your runs, about
       32.**
 
-About 150 machine minutes: about 50 for landing 1, about 100 for landings 2 and 3.
+**Landing 4: the gallery's final shape** (when the components pass 15; the human's yes of
+2026-11-16).
+
+- [ ] **13. The list, one part at a time, each at its address.** `LEVELS` to `entries.tsx`, the
+      values and Mantine's controls as two groups, each entry's states by name; `Gallery` reads the
+      part from `useLocation` beside the list, its counts and its search; `main.tsx` under
+      `HashRouter`. Cases 14 to 17 and case 3 over the list, each red once (every part drawn, a count
+      off by one, a search hiding nothing, an unknown address drawing the first part, a component
+      left out), put back. _Done when:_ both checks and step 1's serve probe exit 0, the five red
+      receipts in the tick, and `git diff --name-only pre-merge...HEAD -- ui visual walk | grep -vc
+      '^ui/src/design-system/'` counts 0. **6 min**, as this piece's step 1 ran, a page and its tests
+      through the ui gate (row 2026-11-16 14:01; step 2's, 4).
+- [ ] **14. Review and landing.** Another model reads step 13; one fix pass; `pre-merge` taken in;
+      the recap and the gallery's row in `docs/products.md`; the landing. _Done when:_ the checks
+      exit 0 after the fix and the branch merges. **26 min**, as step 3's review, fix, reread and
+      recap ran 12, 3, 9 and 2 (rows 14:18 to 14:44).
+
+About 150 machine minutes: about 50 for landing 1, about 100 for landings 2 and 3; about 32 for
+landing 4 when it opens.
 
 ## Keeping every test and walk green
 
@@ -251,6 +305,11 @@ About 150 machine minutes: about 50 for landing 1, about 100 for landings 2 and 
    badges with small corners, a pale tint under the pointer in a table, card titles small in capitals
    beside a grey icon, a centred dialog, the menu's labels smaller and bolder. Does each walk read as
    the legacy app? Yes per walk closes it; a no names the screen and part, and its step reopens.
+5. **The gallery's final shape: answered 2026-11-16.** You asked: "when we have more components to
+   check, let say, 50 components, a single long page is not realistic, right?" Shown the sketch (the
+   list by level with counts and a search, one part with its states, the legacy's beside it, an
+   address a part), you said "yes, thank you, let go on with your suggestion". Landing 4 builds it;
+   no look is asked again, the gallery opening as at point 1.
 
 ## Not in this piece, and named rather than dropped
 
@@ -265,3 +324,7 @@ About 150 machine minutes: about 50 for landing 1, about 100 for landings 2 and 
   309).
 - **The static looks `ui/frame-mock/` and `ui/signin-mock/`**: dated records, outside lint, not
   redrawn.
+- **One picture per part in the picture run** (open item 515) and **the legacy's own part beside
+  each** (open item 516), each at its caller.
+- **Storybook itself**, until knobs to play with a part's settings live, or a page for people
+  outside the team, are needed: a dependency to install and keep up to date.

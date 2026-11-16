@@ -3,14 +3,15 @@ import { MantineProvider } from '@mantine/core';
 import { type ReactNode, useMemo } from 'react';
 import { I18nextProvider } from 'react-i18next';
 import { createI18n } from '../i18n';
-import { themeOf } from '../theme';
+import { themeOf } from '../design-system/appTheme';
+import { credoVariables } from '../design-system/cssVariables';
 
 type Props = {
   /** The tenant's brand colour. */
   colour: string;
   language: Language;
-  /** Fixed by a mock; the app follows the system's. */
-  scheme?: 'light' | 'dark';
+  /** The app is light whatever the device asks. */
+  scheme?: 'light';
   /** The element that carries the colour scheme, where it is not the page's own. */
   root?: () => HTMLElement;
   /** Tests switch Mantine's transitions off. */
@@ -29,8 +30,8 @@ export function Providers({ colour, language, scheme, root, test, children }: Pr
   return (
     <MantineProvider
       theme={theme}
-      defaultColorScheme="auto"
-      forceColorScheme={scheme}
+      cssVariablesResolver={credoVariables}
+      forceColorScheme={scheme ?? 'light'}
       getRootElement={root}
       env={test ? 'test' : 'default'}
     >

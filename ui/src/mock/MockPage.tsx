@@ -12,7 +12,7 @@ import { useState } from 'react';
 import { Frame, type Scheme, type Width } from './Frame';
 import { SCREENS } from './screens';
 
-const SCHEMES: Scheme[] = ['light', 'dark'];
+const SCHEMES: Scheme[] = ['light'];
 /** Narrowest first, as the filter lists them; the widths themselves are `shared`'s. */
 const WIDTH_LIST: Width[] = Object.values(WIDTHS).reverse();
 
@@ -45,8 +45,7 @@ function Filter<T extends string | number>({
 }
 
 /**
- * The walks as one static page: piece 1's screens, each in every state, light
- * and dark, at 390, 768 and 1280 pixels, in Vietnamese and English. Its screens are the app's own components.
+ * The walks as one static page: piece 1's screens, each in every state, in light, at 390, 768 and 1280 pixels, in Vietnamese and English. Its screens are the app's own components.
  */
 export function MockPage() {
   const [language, setLanguage] = useState<Language | 'all'>('all');

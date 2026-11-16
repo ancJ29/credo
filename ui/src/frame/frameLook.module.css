@@ -24,11 +24,11 @@
 }
 
 .button:hover {
-  background: rgba(0, 0, 0, 0.04);
+  background: var(--credo-ink-04);
 }
 
 .user {
-  background: rgba(0, 0, 0, 0.04);
+  background: var(--credo-ink-04);
 }
 
 .avatar {
@@ -58,7 +58,7 @@
 }
 
 .item:hover {
-  background: rgba(0, 0, 0, 0.04);
+  background: var(--credo-ink-04);
 }
 
 .item[aria-current='page'] {
@@ -72,62 +72,6 @@
 
 .item[aria-current='page']::after {
   border-right-color: var(--mantine-color-brand-7);
-}
-
-/* In dark, the dark surface in their place. */
-[data-mantine-color-scheme='dark'] .header {
-  background: #2e2e2e;
-  color: #e9ecef;
-  border-bottom-color: #424242;
-}
-
-[data-mantine-color-scheme='dark'] .brandName {
-  color: #e9ecef;
-}
-
-[data-mantine-color-scheme='dark'] .button {
-  color: #b8b8b8;
-}
-
-[data-mantine-color-scheme='dark'] .button:hover,
-[data-mantine-color-scheme='dark'] .user {
-  background: rgba(255, 255, 255, 0.08);
-}
-
-[data-mantine-color-scheme='dark'] .avatar,
-[data-mantine-color-scheme='dark'] .badge {
-  background: var(--mantine-color-brand-9);
-  color: var(--mantine-color-brand-0);
-}
-
-[data-mantine-color-scheme='dark'] .menu {
-  background: #2e2e2e;
-  border-right-color: #424242;
-}
-
-[data-mantine-color-scheme='dark'] .item {
-  color: #e9ecef;
-}
-
-[data-mantine-color-scheme='dark'] .item svg {
-  color: #b8b8b8;
-}
-
-[data-mantine-color-scheme='dark'] .item:hover {
-  background: rgba(255, 255, 255, 0.06);
-}
-
-[data-mantine-color-scheme='dark'] .item[aria-current='page'] {
-  background: var(--mantine-color-brand-9);
-  color: var(--mantine-color-brand-0);
-}
-
-[data-mantine-color-scheme='dark'] .item[aria-current='page'] svg {
-  color: var(--mantine-color-brand-3);
-}
-
-[data-mantine-color-scheme='dark'] .item[aria-current='page']::after {
-  border-right-color: var(--mantine-color-brand-3);
 }
 
 /* The hidden menu as a PC's strip of icons, 60 wide (Mantine's navbar width), each page's name in a
@@ -148,7 +92,7 @@
   transform: translateY(-50%);
   border-radius: 6px;
   background: var(--mantine-color-neutral-8);
-  color: #fff;
+  color: var(--credo-white);
   font-size: 13px;
   font-weight: 500;
   white-space: nowrap;

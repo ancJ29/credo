@@ -1,7 +1,7 @@
 import { CREDO_COLOUR } from '@credo/shared';
 import { describe, expect, it } from 'vitest';
 import { PALETTES } from './palettes';
-import { BRAND_GRADIENT, shadesOf, themeOf } from './theme';
+import { BRAND_GRADIENT, shadesOf, themeOf } from './appTheme';
 
 describe('shadesOf', () => {
   it('gives ten shades, the lightest first, shade 7 the brand colour itself', () => {
