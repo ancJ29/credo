@@ -180,7 +180,7 @@ system's step 1, a page, a part and its tests through the ui gate, 6 minutes; it
       when:_ case 11 counts 0, the checks exit 0 after the fix, and the branch merges. **26 min.**
       _Progress, 2026-11-16:_ the review (opus, at `99643cfd`) said may merge with eight Lows; the one fix pass
       fixed all eight; `pre-merge` taken in (`c9e7a711`, no conflict); case 11 counts 0; the memo's levels count
-      and its frame line corrected; item 516 closed as moot, 553 written for the doors' later piece. Done: the review's verdict (may merge, at `99643cfd`) and the fix commit `1cbca5e2`; case 11 counts 0; after the fix pass the ui package's check and the visual package's check each exited 0; the recap is `docs/recaps/2026-11-16-sign-in-parts.md`. The landing on `pre-merge` follows; point 1 is still unasked.
+      and its frame line corrected; item 516 closed as moot, 553 written for the doors' later piece. Done: the review's verdict (may merge, at `99643cfd`) and the fix commit `1cbca5e2`; case 11 counts 0; after the fix pass the ui package's check and the visual package's check each exited 0; the recap is `docs/recaps/2026-11-16-sign-in-parts.md`. The landing on `pre-merge` follows; point 1, your look by eye in the gallery: yes, 2026-11-16.
 
 About 46 machine minutes, and one look.
 

@@ -1909,9 +1909,11 @@ The function's `APP_ORIGIN` is written only by `bff_settings_set`, which only `o
 
 `die` prints to the terminal's error stream and exits 1, so the one-offs' own log (outside git, `one-off/`) ends on "== done" with no `== verdict` line; the human reads the terminal, the log does not say red. Fix by a `die` wrapper in each one-off that writes the verdict line first.
 
-## 483. The `ops` job's guards step does nearly all the job's work and holds a 5-minute limit of its own, under the job's 19 — the machine; `[DEFERRED]` until one `ops` job's step times are read from a GitHub run (the reread of the jobs' limits, 2026-11-15, Medium)
+## 483. The `ops` job's guards step does nearly all the job's work and holds a 5-minute limit of its own, under the job's 19 — the machine; `[FIXED]` 2026-11-16 (the reread of the jobs' limits, 2026-11-15, Medium)
 
 In `.github/workflows/ci.yml`, the `ops` job's step "The guards" runs `bash ops/test.sh` under `timeout-minutes: 5`, and that script is nearly all of the job's minutes. As `ops/test.sh` grows, the step's 5 minutes cut before the job's 19 does. The step's own time on GitHub is unmeasured: no `ops` job log is saved, every `ops` run was green so the step took under 5 there, and the whole `ops/test.sh` took 5.7 minutes on the developer's Mac. *Fix:* read one `ops` job's step times from a GitHub run, set the step's limit by the rule (three times its longest, never under 15), and pin it in `ops/test.sh`'s guards.
+
+*Closed 2026-11-16.* GitHub's `ci` run 43878547335 (on `5a87402c`) cut "The guards" at its 5 minutes (305 seconds) and skipped the deploy; `ops/test.sh` had not changed in that push. The nine green `ops` runs read from GitHub's API give the step's longest time as 293 seconds (4.9 minutes, run 43700424182) and the job's longest as 383 seconds (6.4 minutes, the same run). By the rule, three times the longest and never under 15: the step's limit is 15 minutes (3 x 4.9 = 14.7, raised to 15), and the job's is 20 minutes (3 x 6.4 = 19.2, to a whole minute up), so its 19 was 20 and its pin in `scripts_guards` and the refusing case beside it now read 20. The step plus the shellcheck and cfn-lint steps (about 1.2 minutes) fit under 20. The step's own pin was not added.
 
 ## 484. The `ops` limit's pin sits inside the scripts' guard, so a red names the wrong gate — the machine; `[DEFERRED]` (the reread of the jobs' limits, 2026-11-15, Low)
 
