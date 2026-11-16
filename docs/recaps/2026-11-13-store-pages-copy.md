@@ -22,7 +22,7 @@ A copy inside c-storage; paging by offset; a `limit` parameter.
 
 ## Still yours
 
-- Is this the copy a move and a one-company restore should stand on? A yes lets the pooled shape build on it; a no reopens the copy tool. <!-- FILL: your answer, not yet known -->
+- Is this the copy a move and a one-company restore should stand on? A yes lets the pooled shape build on it; a no reopens the copy tool. Your answer, 2026-11-16: yes, moving a company between boxes and restoring one company alone are both built on this copy tool.
 - Your restore run of one demo copy on ridge, the wrapper's first, ended green: that one copy alone restored from the newest save; the compare found one record differing before and none after. A record written after the restore is not in the restored file.
 - Items 392 to 394 and 400 to 406 are in `docs/open-items.md`.
 
