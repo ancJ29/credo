@@ -17,7 +17,7 @@ The review (Opus) said may merge with eight Lows, all fixed in one pass; the mem
 
 ## Open look
 
-Your look is not yet asked: do the parts read as the old app's, judged by eye in the gallery? A yes opens the question of whether the doors take these parts in a later piece; a no names the part and its step reopens. <!-- FILL: the answer to the look; then strike this section's "not yet asked" -->
+Your look, by eye in the gallery, on whether the parts read as the old app's: yes, 2026-11-16. It opens the question of whether the doors take these parts in a later piece, still unanswered.
 
 ## Evidence
 
