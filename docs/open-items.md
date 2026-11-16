@@ -1980,3 +1980,11 @@ The rule of three is written at the `components/` note and again in the levels' 
 ## 514. The detail field's empty value follows the memo, not the legacy's own field (the same reread, Low) — the machine; `[DEFERRED]`
 
 `ui/src/components/molecules/DetailField.tsx#L9` draws an em dash for a missing value, as the legacy's design memo says; the legacy's own `DetailField` draws a hyphen, and the memo's empty value is dimmed and italic, which the sample is not. Settle the dash and the dimming with the first screen that shows an empty value.
+
+## 517. The delivery photos' card is not on the walks page, where partners already sign in (the check without code, 2026-11-16) — the machine; `[DEFERRED]`
+
+The card for checking a piece on ridge lives on the products page, which a person opens in the editor. Partners already sign in to the walks page and their answers arrive in the block the machine reads, so it is the right home once a partner checks a piece. The price is a code step in `visual/` with its tests, and a push to redeploy. Bring it in with the first piece a partner is to check on ridge.
+
+## 518. The photos' receipt is a one-off outside git, not an `ops/` script with its cases in `ops/test.sh` (the check without code, 2026-11-16) — the machine; `[DEFERRED]`
+
+The receipt that prints a card's calls from the access log was copied from the earlier access log read and kept outside git, with its four stand-in runs read by hand. Make it an `ops/` script with its cases in `ops/test.sh` when a second piece's card wants a receipt, when the copy would be the third.
