@@ -363,6 +363,28 @@ milestone if the orchestrator wants one.
   `bash ops/test.sh` on the tree at `d6a92751` ended `all checks passed` at 08:09 and `== exit 0`, and
   `shellcheck -x ops/*.sh` exited 0.
 
+- [x] **6y. The check's list of a box added.** The sitting's `ops/check.sh ridge` on 2026-11-16, with `b2` added, read
+  one red (the check of ridge's home box at 10:49, its only `RED`): the function's variables wanted the
+  eleven names of `BFF_ENV_NAMES_PHOTOS` and held those and `STORAGE_BOXES`, which `ops/app.sh` writes whenever the
+  stack holds a box beyond the home one (`b2`'s own check was green).
+  One part: the check wants `STORAGE_BOXES` among the names exactly when `stack_boxes` names a box (a new
+  `function_env_wanted` in `ops/lib.sh`, taken by the one `expect` in `ops/check.sh`), and not when it names none, so
+  one left behind after a box's removal is red; no new AWS read, the super-admin key never read. *Size:* 15.
+  *Expected red:* a case on the old check, feeding it the eleven names and `STORAGE_BOXES` with `b2` in the
+  stack; then two cases green on the fixed one: the eleven alone with `b2` in the stack is red, and the eleven and
+  `STORAGE_BOXES` with no box beyond the home one is red. *Done when:* `bash ops/test.sh` ends `== exit 0`,
+  `bash -n` and `shellcheck -x ops/*.sh` are clean.
+  *Ticked 2026-11-16:* red first on the old check: with `b2` in the stack, the whole check on a function holding
+  the eleven names and `STORAGE_BOXES` read `RED` on its variables, as the sitting's did. The whole check with a
+  box in the stack runs a second check of its own and leaves the stand-in's forward holding its port (the
+  later cases then died on a taken port, open item 495: the test stand-in's one master per state folder), so the
+  cases are the two lists the check compares: with `b2` the eleven and `STORAGE_BOXES` is what is wanted and the
+  eleven alone is not; with no box the eleven is wanted and `STORAGE_BOXES` beside them is not; the whole check with
+  `b2` in the stack under `FAKE_BOX2_DOWN=1` (the nested `--box b2` run then stops before it opens a forward), green on
+  its variables with the eleven and `STORAGE_BOXES` and red on them with the eleven alone (red once with the comparison
+  mutated back to the eleven alone); and the whole check, no box in the stack, red on a function holding
+  `STORAGE_BOXES`. The review's text guard on `ops/check.sh` is replaced by the two whole-check cases. Ran: `bash ops/test.sh` whole, "all checks passed" and `== exit 0`, 6 minutes (13:52 to 13:58, the whole run's log kept outside git); `bash -n` on each `ops/*.sh` exit 0; `shellcheck -x ops/*.sh` exit 0.
+
 **Third landing: the move** (after the store's copy tool is on `pre-merge`).
 
 - [ ] **7. The move.** Decision 11: the mark, the wait, the switch, the sweep, and the operator's

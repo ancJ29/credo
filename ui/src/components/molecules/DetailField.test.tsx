@@ -21,12 +21,12 @@ describe('DetailField', () => {
   it('shows a dash when it has no value', () => {
     draw(undefined);
 
-    expect(screen.getByText('–')).toBeDefined();
+    expect(screen.getByText('—')).toBeDefined();
   });
 
   it('shows a dash for an empty value', () => {
     draw('');
 
-    expect(screen.getByText('–')).toBeDefined();
+    expect(screen.getByText('—')).toBeDefined();
   });
 });

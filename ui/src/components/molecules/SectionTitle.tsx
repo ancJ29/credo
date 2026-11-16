@@ -16,7 +16,7 @@ export function SectionTitle({ icon, label }: { icon: ReactNode; label: string }
       >
         {icon}
       </ThemeIcon>
-      <Title order={3} fz="xs" fw={700} tt="uppercase" lts={0.5}>
+      <Title order={3} fz="xs" tt="uppercase" {...TOKENS.sectionTitle}>
         {label}
       </Title>
     </Group>

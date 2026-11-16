@@ -38,6 +38,7 @@ describe('Gallery', () => {
   });
 
   it('is light whatever the device asks', () => {
+    window.localStorage.setItem('mantine-color-scheme-value', 'dark');
     render(<Gallery />);
 
     expect(document.documentElement.getAttribute('data-mantine-color-scheme')).toBe('light');

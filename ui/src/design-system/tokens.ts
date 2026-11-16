@@ -11,6 +11,10 @@ export const TOKENS = {
   rowHover: 'var(--mantine-color-brand-0)',
   /** A dialog's title: large, at 550. */
   dialogTitle: { fontSize: 'var(--mantine-font-size-lg)', fontWeight: 550 },
+  /** A field's label: small capitals, the legacy's default weight and spacing, in grey. */
+  fieldLabel: { fw: 600, lts: 0.3 },
+  /** A section's title: the same small capitals, bolder and wider. */
+  sectionTitle: { fw: 700, lts: 0.5 },
   /** A section card's padding, in px. */
   cardPadding: 24,
   /** A section title's grey icon tile, in px. */

@@ -233,7 +233,8 @@ else
   got_names=$(function_env_names "$fn")
   expect "the function holds the photo store's three settings (without them no driver can deliver: the box's /etc/c-storage/photo-store.env is missing, so write it with the photo-store-env-write one-off, then deploy)" yes \
     "$(printf '%s' ",$got_names," | grep -qF ',PHOTO_STORE_URL,' && printf '%s' ",$got_names," | grep -qF ',PHOTO_STORE_KEY_ID,' && printf '%s' ",$got_names," | grep -qF ',PHOTO_STORE_KEY_SECRET,' && echo yes || echo no)"
-  expect "the function's variables (names only; never the super-admin key)" "$BFF_ENV_NAMES_PHOTOS" "$got_names"
+  # STORAGE_BOXES is among them exactly when the stack holds a box beyond the home one (app.sh writes it then and only then)
+  expect "the function's variables (names only; never the super-admin key)" "$(function_env_wanted "$(stack_boxes)")" "$got_names"
   expect "the function's APP_ORIGIN is the app's address, which its passkeys are bound to" yes "$(function_origin_verdict "$fn" "$APP_ADDRESS")"
   expect "the function reaches c-storage at the box's private address" yes \
     "$([ "$(function_url "$fn")" = "http://$BOX_LISTEN_ADDR:$BOX_PORT" ] && echo yes || echo no)"

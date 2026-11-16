@@ -6,7 +6,7 @@ export function DetailField({ label, value }: { label: string; value?: string })
   return (
     <Stack gap={2}>
       <FieldLabel>{label}</FieldLabel>
-      <Text size="sm">{value === undefined || value === '' ? '–' : value}</Text>
+      <Text size="sm">{value === undefined || value === '' ? '—' : value}</Text>
     </Stack>
   );
 }

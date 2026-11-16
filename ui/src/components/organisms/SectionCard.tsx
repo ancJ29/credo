@@ -15,7 +15,7 @@ export function SectionCard({
 }) {
   return (
     <Paper component="section" withBorder p={TOKENS.cardPadding}>
-      <Stack gap="lg">
+      <Stack gap="md">
         <SectionTitle icon={icon} label={title} />
         {children}
       </Stack>

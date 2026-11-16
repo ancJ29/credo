@@ -1933,6 +1933,42 @@ The guard in `ops/test.sh` refuses `<<<` on a line naming `kv`, `SECRET`, `STORA
 
 The comment at `ops/test.sh#L963-L966` and `named` at `ops/test.sh#L967` replace `${Name}` in a key at any depth, while the measure covers only the loop's resource and output ids. All 8 such keys sit at depth 1 in `ops/env.yml`, and a nested one already goes red on the instance's equality row, so nothing is wrong today; narrow `named` to the ids, or measure a nested key, if one is ever added.
 
+## 495. A whole `ops/check.sh` run with a box in the stack, on the test stand-ins, leaves the stand-in's master holding its port, so the cases after it die on a taken port (the check's list of a box added, 2026-11-16, Low) — the machine; `[DEFERRED]`
+
+The product is not the leak: the real check opens one master per run on its own control socket and closes it on every exit (`ops/lib.sh#L609`, `ops/lib.sh#L101`, `ops/lib.sh#L622-L624`). The leak is the test stand-in's one `$S/master.pid` per state folder (`ops/test.sh#L2836-L2864`), which the nested run inherits: in `ops/test.sh`, `FAKE_BOX2=1 chk_run … check.sh ridge` (the home run, which then runs `bash "$0" --box b2` from `ops/check.sh#L337`) opened a second stand-in master on the one state folder, so the check's local port answered for the rest of the run: the next whole check ended "something already answers on 127.0.0.1:<port>", and so did every one after it, and the port still answered after the run ended. Run with `FAKE_BOX2_DOWN=1` (`ops/test.sh#L2785`) the nested run stops at its `send-ssh-public-key`, before it opens a forward, so it leaves none, and the sitting's cases for a box added read the whole check's verdict on the function's names that way. A whole check with the nested run reaching b2 would need a state folder of its own for the stand-in's master per run. The human clears the listeners left by the first session's runs from their own terminal.
+
+## 496. The check's red on the function's names does not name its fix (the review of the check's list of a box added, 2026-11-16, Low) — the machine; `[DEFERRED]`
+
+The red at `ops/check.sh#L237`, when the function's variables differ from the wanted names (`STORAGE_BOXES` missing after a box was added, or left after one was removed), says only the two lists. The fix is a deploy that writes the variables, `ops/app.sh <env>`; the red should name it, as the photo store's red names its one-off.
+
+## 497. Port 3191 is shared by the tests, 3196 with `root-password.sh`, and a "no layer four" line in box mode is false (the review of the check's list of a box added, 2026-11-16, Low) — the machine; `[DEFERRED]`
+
+The check's local port (`ops/check.sh#L54`, 3191) is the one the test stand-ins take as well, so a test run and a real check cannot run together; the nested run's port, the check's plus 5 (`ops/check.sh#L337`), is 3196, the port `ops/root-password.sh#L33` takes. And in box mode (`--box <name>`) `LAYER4` is set to 0 (`ops/check.sh#L105`), so the "skipped: <env>'s stack holds no layer four yet" line (`ops/check.sh#L219`) is printed for a stack that holds it. Give the nested run a port of its own, and say "not read in box mode" there.
+
 ## 498. Two homes for the pieces a screen is built from, `parts/` and `components/` — the machine; *parked* until the human's answer on the design system's landings 2 and 3 (the design system's plan, 2026-11-16, Low)
 
 The design system's first landing adds `ui/src/components/` in three levels beside `ui/src/parts/` and moves no part across, by the human's "we should not touch current code" of 2026-11-16. Until the parts that are only look have moved, a reader looking for a shared piece checks both folders, and the gallery shows the organisms while the screens still draw the parts. The plan's landing 3 makes `ui/src/parts/DetailCards.tsx`'s `DetailCard` and `ui/src/parts/PageShell.tsx`'s `PageShell` draw the organisms `SectionCard` and `PageHeader`, their call sites unchanged. *Fix:* a part moves across at a landing that changes its look, and goes once its last caller imports the component; a part that knows the app's records, words or calls stays in `parts/`. *Trigger:* the human's answer to the plan's second point, then each change to a part's look.
+
+## 502. The print in `keys_run` fires on every expected refusal (the reread of the box lows, 2026-11-16, Low) — the machine; `[DEFERRED]`
+
+`keys_run` (`ops/test.sh#L5036`) prints the last five lines of `keys.sh`'s output whenever its exit is not 0, and six of its ten callers expect exit 1 (`ops/test.sh#L5120`, `#L5161`, `#L5169`, `#L5176`, `#L5182`, `#L5196`), so a green run carries about 36 extra lines, among them indented `== exit 1` and `STOPPED:` lines. Print only when `RC` differs from the case's expected exit.
+
+## 504. The direction's lint misses an atom importing an atom, a `./../` path and a dynamic `import()`, and its message reads "A atom" (the review of the design system's steps 1 and 2, 2026-11-16, Low) — the machine; `[DEFERRED]`
+
+`eslint.config.js#L55` holds one regex a level: an atom importing another atom passes, as does a path written `./../molecules/X` and an `import('../molecules/X')`, which `no-restricted-imports` with `patterns` does not read as a static import. The message built from `level.slice(0, -1)` reads "A atom". Cover the three forms or say they are out of the rule, and write the article from the level's name.
+
+## 505. The gallery's test checks a heading named after each file, not the component drawn (the same review, Low) — the machine; `[DEFERRED]`
+
+`ui/src/design-system/Gallery.test.tsx#L28` looks for a heading named like each component file, and the gallery's `entries` keys are typed by hand, so an entry may draw another component under the right name. A test mounting each entry's component by its export, or a key typed from the folder's exports, would close it.
+
+## 506. `ui/CLAUDE.md` states the rule of three twice, never names the six samples as its exception, and leaves C17's sentence unfinished (the same review, Low) — the machine; `[DEFERRED]`
+
+The rule of three is written at the `components/` note and again in the levels' lines; neither says the six day-one samples are the exception, and the `design-system/` note does not finish C17's "everything in here is a ___". One statement, the exception named, the sentence finished.
+
+## 507. The theme drops the dialog header's padding, and the gallery draws no dialog or table (the same review, Low) — the machine; `[DEFERRED]`
+
+`ui/src/design-system/theme.ts#L18-L21` carries the dialog's centring and title but not the header's padding of the legacy's `theme/index.ts#L89-L91`, and the gallery shows neither a dialog nor a table row under the pointer, so the two entries of case 1 are held by the test alone and cannot be judged by eye. Add the padding with the first screen that opens a dialog, and a dialog and a table to the gallery.
+
+## 508. `tokens.ts` repeats values `ui/src/theme.ts` holds (the same review, Low) — the machine; `[DEFERRED]`
+
+`ui/src/design-system/tokens.ts#L9` and `#L15` write the badge's corners and the row hover that `ui/src/theme.ts#L118-L119` already holds in its own entries; two homes that drift with nothing red. Landing 2 moves `theme.ts` in; read one from the other then.
