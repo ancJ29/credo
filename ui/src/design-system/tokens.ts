@@ -29,6 +29,10 @@ export const TOKENS = {
   buttonGradient: { from: 'brand.7', to: 'brand.9', deg: 135 },
   /** A labelled divider's word: small and dimmed. */
   dividerLabel: { fontSize: 'var(--mantine-font-size-sm)', color: 'var(--mantine-color-dimmed)' },
+  /** A band's padding above and below, then at the sides, in px: the legacy's 28 over 40. */
+  doorPadding: '28px 40px',
+  /** The gap under a door's subtitle, in px. */
+  doorSubtitleGap: 32,
   /** A section title's grey icon tile, in px. */
   iconTile: 24,
 } as const;

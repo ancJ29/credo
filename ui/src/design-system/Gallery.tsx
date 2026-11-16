@@ -15,14 +15,16 @@ import {
 import { CREDO_COLOUR } from '@credo/shared';
 import type { ReactNode } from 'react';
 import { IconBuilding, IconKeyboard, IconQrcode } from '@tabler/icons-react';
+import { BackLink } from '../components/atoms/BackLink';
+import { DoorHeading } from '../components/atoms/DoorHeading';
 import { FieldLabel } from '../components/atoms/FieldLabel';
 import { LogoTile } from '../components/atoms/LogoTile';
 import { StatusBadge } from '../components/atoms/StatusBadge';
+import { BrandBand } from '../components/molecules/BrandBand';
 import { DetailField } from '../components/molecules/DetailField';
 import { SectionTitle } from '../components/molecules/SectionTitle';
 import { PageHeader } from '../components/organisms/PageHeader';
 import { SectionCard } from '../components/organisms/SectionCard';
-import { LEGACY } from './legacy';
 import { designThemeOf } from './theme';
 
 /** A sample company logo for the tile: a plain shape, no real company's. */
@@ -36,6 +38,15 @@ const LEVELS: { level: string; heading: string; entries: Record<string, ReactNod
     heading: 'Atoms',
     entries: {
       FieldLabel: <FieldLabel>Phone</FieldLabel>,
+      DoorHeading: (
+        <Stack w={394} gap={0}>
+          <DoorHeading
+            title="Đăng nhập bằng liên kết"
+            subtitle="Quét mã QR hoặc nhập mã đăng nhập để đăng nhập"
+          />
+        </Stack>
+      ),
+      BackLink: <BackLink href="#">Quay lại đăng nhập</BackLink>,
       LogoTile: <LogoTile logo={SAMPLE_LOGO} alt="Sample company" />,
       StatusBadge: (
         <Group>
@@ -49,6 +60,11 @@ const LEVELS: { level: string; heading: string; entries: Record<string, ReactNod
     level: 'molecules',
     heading: 'Molecules',
     entries: {
+      BrandBand: (
+        <Stack w={474} gap={0}>
+          <BrandBand name="Công ty TNHH Acme" logo={SAMPLE_LOGO} />
+        </Stack>
+      ),
       DetailField: (
         <Group>
           <DetailField label="Phone" value="0901 234 567" />
@@ -71,23 +87,6 @@ const LEVELS: { level: string; heading: string; entries: Record<string, ReactNod
     },
   },
 ];
-
-/** A part drawn, and beside it the legacy's picture of it under "Legacy" when there is one. */
-function Beside({ name, children }: { name: string; children: ReactNode }) {
-  return (
-    <Group align="flex-start" gap="xl">
-      {children}
-      {LEGACY[name] && (
-        <Stack gap={4}>
-          <Text size="xs" c="dimmed">
-            Legacy
-          </Text>
-          <img src={LEGACY[name]} alt={`The legacy’s ${name}`} />
-        </Stack>
-      )}
-    </Group>
-  );
-}
 
 function Values() {
   const theme = useMantineTheme();
@@ -117,25 +116,25 @@ function Mantines() {
       </Group>
       <Stack gap="xs">
         <Title order={3}>Gradient button</Title>
-        <Beside name="Gradient button">
+        <Group align="flex-start" gap="xl">
           <Button variant="gradient" w={394} leftSection={<IconQrcode size={18} />}>
             Quét mã QR
           </Button>
-        </Beside>
+        </Group>
       </Stack>
       <Stack gap="xs">
         <Title order={3}>Default button</Title>
-        <Beside name="Default button">
+        <Group align="flex-start" gap="xl">
           <Button variant="default" w={394} leftSection={<IconKeyboard size={18} />}>
             Nhập mã thủ công
           </Button>
-        </Beside>
+        </Group>
       </Stack>
       <Stack gap="xs">
         <Title order={3}>Labelled divider</Title>
-        <Beside name="Labelled divider">
+        <Group align="flex-start" gap="xl">
           <Divider w={394} label="hoặc" />
-        </Beside>
+        </Group>
       </Stack>
     </Stack>
   );
@@ -156,7 +155,7 @@ export function Gallery() {
               {Object.entries(entries).map(([name, node]) => (
                 <Stack key={name} gap="xs">
                   <Title order={3}>{name}</Title>
-                  <Beside name={name}>{node}</Beside>
+                  {node}
                 </Stack>
               ))}
             </Stack>

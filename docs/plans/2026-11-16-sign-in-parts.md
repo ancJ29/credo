@@ -6,8 +6,12 @@ What it is for, in the human's words of 2026-11-16: "plz help me plan for compon
 support these pages, I think we can use this for design system starting point", pointing at the old
 app's `/login` and `/login-via-qr-code`, captured that day on a demo company. The two pages are built
 from thirteen parts; five become components, two become theme entries of Mantine's own parts,
-and the rest the new app already draws or does not need. Each shows in the gallery beside a picture
-of the same part in the old app, cut from the day's capture, which is what open item 516 waits for.
+and the rest the new app already draws or does not need. Each shows in the gallery, drawn in its states.
+
+**Changed 2026-11-16 18:5x, the human, after looking at the gallery:** "I think no need for legacy
+part". Read as: the gallery shows only our parts, with no picture of the old app's beside any of them;
+steps 1 and 2 built that pane, step 3b took it out, and the lines below that spoke of it are struck
+or reworded. Open item 516 (the pane's pictures) is moot.
 
 No screen changes: the gallery is the only caller, and its door card drawn as the two legacy pages
 is the mock of the doors' next version. Whether the doors take the parts is the question that ends
@@ -16,7 +20,7 @@ this page. The price: about 46 machine minutes and one look.
 ## The slice
 
 One slice, walkable in the gallery when it ends: the legacy's two sign-in cards rebuilt from parts,
-each part beside the legacy's own picture of it. It lands after the design system's landing 2, since
+each part drawn in the gallery. It lands after the design system's landing 2, since
 it is cut from that branch (`design-system`, `0f788579`) and carries its commits. Stage 3 is the
 gallery in the human's browser; stage 4 is not stood up, since nothing ships.
 
@@ -96,18 +100,10 @@ Each line is the machine's decision, with its reason, vetoed on sight.
 - **The gallery's two pages are the legacy's cards whole**, its checkbox and its link button
   included, since the look asked is whether the parts rebuild the pages; a door draws only what it
   has a behaviour for.
-- **The legacy's picture of each part is cut from the day's four pictures**, at the PC width (one
-  pixel a pixel, as the gallery draws), committed in `ui/src/design-system/legacy/`, imported by the
-  gallery alone, so in no bundle. Measured in this plan's run: Playwright's own PNG codec (installed,
-  `playwright-core`'s `utilsBundle`) cut the divider, the card's head and the back link at 0.6 to 9
-  KB each, read back as pictures; macOS `sips` is refused by the sandbox. The capture tool takes
-  whole pages only (`walk/legacy-capture.ts#L496`) and signs in as the root even when every screen
-  is signed out (`#L395-L403`), so a fresh take costs the human's terminal and the root's password;
-  cutting costs neither. The pictures show a demo company and no person, item 516's condition. The
-  cut is a one-off in the builder's scratch folder; each box goes in its step's tick.
-- **The pane is a map, `ui/src/design-system/legacy.ts`**, from a part's name to its picture; the
-  gallery draws the picture under "Legacy" beside a part the map names. `LEVELS`' shape
-  (`Gallery.tsx#L26-L65`) is unchanged, so landing 4's move to `entries.tsx` carries it as it is.
+- **No pane of the old app's pictures (the human's words of 2026-11-16 18:5x, quoted above).** Steps 1
+  and 2 cut four pictures from the day's capture and drew them under "Legacy" beside their parts;
+  step 3b took the pane, its map and the pictures out, and the gallery draws only our parts. The
+  parts' look is judged by eye against the old app's pages, as the human's point 1 says.
 - **The error stays the new app's red `Alert`**: the doors' tests find it by its `role="alert"`,
   which a screen reader announces; the legacy's red line is plain text, announced by nothing.
 - **The card's own gradient runs at 90°**, a token of its own: `tokens.ts`'s `brandGradient` says it
@@ -125,7 +121,7 @@ Each line is the machine's decision, with its reason, vetoed on sight.
 | 5 | A door card draws a 4-px bar in the brand's gradient across its top, the brand band, then what it holds | `ui/src/components/organisms/DoorCard.test.tsx` |
 | 6 | A gradient button draws the brand from shade 7 to shade 9 at 135°, with no colour of its own | `ui/src/design-system/theme.test.tsx` |
 | 7 | A labelled divider draws its word centred, small and dimmed, and a divider given no word draws none | the same |
-| 8 | The gallery draws a part's legacy picture beside it under "Legacy", and none beside a part without one | `ui/src/design-system/Gallery.test.tsx` |
+| 8 | ~~The gallery draws a part's legacy picture beside it under "Legacy"~~ struck 2026-11-16: no pane; the gallery's test now asserts it draws none | `ui/src/design-system/Gallery.test.tsx` |
 | 9 | The gallery shows every component of the three folders under its level's heading, the five new ones included | the same, its first case |
 | 10 | No new part writes a colour or imports from a level above its own | `literals.test.ts` and `eslint.config.js`, as they stand |
 | 11 | No screen of the app changes | `git diff --name-only --diff-filter=MDR pre-merge...HEAD -- ui visual walk \| grep -vcE '^ui/src/(components\|design-system)/'` counts 0, and `pnpm --filter @credo/visual check` exits 0 |
@@ -146,25 +142,34 @@ system's step 1, a page, a part and its tests through the ui gate, 6 minutes; it
       _Done, 2026-11-16:_ `design-system` taken in (`f9f153af`); the tile's picture cut 44 by 44 from the PC sign-in capture
       with Playwright's PNG codec; case 8 seen red (pane's block off), case 1 seen red (failed-load check off);
       `pnpm --filter @credo/ui check` exit 0, the citation test exit 0, the serve probe (Vite on 5391, gallery and picture) exit 0. 14 min.
+      The pane and its pictures were taken out in step 3b (the human's words of 2026-11-16 18:5x); the tile stays.
 - [x] **2. The theme's two.** `defaultGradient` and the divider's label in `designThemeOf`
       (cases 6 and 7); the gallery's Mantine group draws the gradient button and the default button
-      each with an icon, and the divider worded "hoặc"; each beside its picture. _Done when:_ both
+      each with an icon, and the divider worded "hoặc". _Done when:_ both
       checks exit 0, and `grep -c 'BRAND_GRADIENT' ui/src/pages/SignIn.tsx` still counts 3, no door
       touched. **4 min.**
       _Done, 2026-11-16:_ cases 6 and 7 each seen red once (the `defaultGradient` line removed; the divider's label style
-      emptied); the gallery draws the gradient button, the default button and the "hoặc" divider, each beside
-      its picture cut from the link page's PC capture; the case's test file became `theme.test.tsx` (JSX); both
+      emptied); the gallery draws the gradient button, the default button and the "hoặc" divider, each with
+      a picture of the old app's beside it (since taken out, step 3b); the case's test file became `theme.test.tsx` (JSX); both
       checks exit 0; `grep -c 'BRAND_GRADIENT' ui/src/pages/SignIn.tsx` counts 3, no door touched. 8 min.
-- [ ] **3. The heading, the back link and the band.** `DoorHeading`, `BackLink`, `BrandBand`, a
-      test beside each (cases 2 to 4), each beside its picture. _Done when:_ both checks exit 0 and
+- [x] **3. The heading, the back link and the band.** `DoorHeading`, `BackLink`, `BrandBand`, a
+      test beside each (cases 2 to 4), each drawn in the gallery. _Done when:_ both checks exit 0 and
       `ls ui/src/components/*/*.tsx | grep -vc test` counts 10. **4 min.**
+      _Done, 2026-11-16:_ cases 2, 3 and 4 each seen red once (the band's ground removed, the subtitle always drawn,
+      the link's colour shifted to brand-6; one run, one failing test each); the count is 10; both checks exit 0 after 3b. 8 min.
+- [x] **3b. The Legacy pane taken out** (the human's words of 2026-11-16 18:5x, above). The `Beside` helper's
+      legacy half, `legacy.ts`, the four pictures under `design-system/legacy/`, case 8's test and every test
+      looking for "Legacy" or a legacy picture; steps 1 and 2's ticks stay as history. _Done when:_ `grep -rnE
+      'legacy\.ts|LEGACY\b|design-system/legacy/' ui` finds none, both checks exit 0. **8 min.**
+      _Done, 2026-11-16:_ none found by the grep; the gallery's test asserts it draws no "Legacy" text or picture
+      and still shows the gradient button, default button and "hoặc" divider; both checks exit 0. 8 min.
+      Nothing outside `ui/src/design-system/`, `ui/src/components/` and this plan changed.
 - [ ] **4. The door card and the two pages.** `DoorCard` and its test (case 5); its gallery entry
-      draws two states, the sign-in and the link page, in sentence case, each beside the legacy's
-      whole card cut from its PC picture; `brandGradient`'s comment corrected. _Done when:_ both
+      draws two states, the sign-in and the link page, in sentence case; `brandGradient`'s comment corrected. _Done when:_ both
       checks exit 0, the count is 11, and step 1's serve probe exits 0. **6 min.**
 - [ ] **5. Review and landing.** Another model reads steps 1 to 4; one fix pass; `pre-merge` taken
       in; case 11; the recap; `docs/memo/ui-code.md#L69` corrected, since four doors draw
-      `SignInFrame`, not one; item 516 closed for the parts that have a picture; point 1. _Done
+      `SignInFrame`, not one; item 516 closed as moot; point 1. _Done
       when:_ case 11 counts 0, the checks exit 0 after the fix, and the branch merges. **26 min.**
 
 About 46 machine minutes, and one look.
@@ -180,10 +185,9 @@ About 46 machine minutes, and one look.
 
 ## The human's points
 
-1. **The parts beside the legacy's (step 5).** You open the gallery (in the piece's `ui/`,
-   `pnpm exec vite --open /gallery.html`). Each new part sits beside the same part cut from today's
-   capture, and the card is drawn twice, as the two sign-in pages, in sentence case with "hoặc" on
-   both. Do the parts read as the legacy's? A yes opens the question below; a no names the part,
+1. **The parts, judged against the old app's pages (step 5).** You open the gallery (in the piece's `ui/`,
+   `pnpm exec vite --open /gallery.html`). Each new part is drawn in its states, and the card is drawn twice, as the two sign-in pages, in sentence case with "hoặc" on
+   both. Do the parts read as the old app's, judged by eye? A yes opens the question below; a no names the part,
    and its step reopens.
 
 ## Not in this piece, and named rather than dropped
@@ -191,8 +195,6 @@ About 46 machine minutes, and one look.
 - **Remember me** (item 542) and **scanning or typing a code inside the app** (item 543): each a way
   of signing in the new app lacks, not a part; a door draws its control with its behaviour.
 - **The parts' phone width and the doors' refusals**, when the doors take the parts.
-- **A picture taken by the capture tool per part** (an element's picture, item 516's own wording),
-  until a part appears in no picture yet taken.
 
 ## The question: do the doors take these parts now?
 

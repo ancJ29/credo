@@ -29,27 +29,6 @@ describe('Gallery', () => {
     }
   });
 
-  it('8: draws a part’s legacy picture beside it under “Legacy”, and none beside a part without one', () => {
-    render(<Gallery />);
-
-    const tile = screen.getByRole('heading', { name: 'LogoTile' }).parentElement!;
-    expect(within(tile).getByText('Legacy')).toBeDefined();
-    expect(within(tile).getByRole('img', { name: 'The legacy’s LogoTile' })).toBeDefined();
-    const badge = screen.getByRole('heading', { name: 'StatusBadge' }).parentElement!;
-    expect(within(badge).queryByText('Legacy')).toBeNull();
-    expect(within(badge).queryByRole('img')).toBeNull();
-  });
-
-  it('shows the gradient and default buttons and the divider each beside its legacy picture', () => {
-    render(<Gallery />);
-
-    for (const name of ['Gradient button', 'Default button', 'Labelled divider']) {
-      const section = screen.getByRole('heading', { name }).parentElement!;
-      expect(within(section).getByRole('img', { name: `The legacy’s ${name}` })).toBeDefined();
-    }
-    expect(screen.getByText('hoặc')).toBeDefined();
-  });
-
   it('shows the values, and Mantine’s button and field', () => {
     render(<Gallery />);
 
