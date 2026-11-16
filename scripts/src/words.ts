@@ -2,7 +2,7 @@ import { readFile, writeFile } from 'node:fs/promises';
 import { join, resolve } from 'node:path';
 import { DICTIONARIES } from '@credo/ui/words';
 import { Refused } from './root-password';
-import { findWords, type FoundWord } from './words-files';
+import { findWords, formatWords, replaceWords, type FoundWord } from './words-files';
 import { readWords, type WordsRow } from './words-read';
 
 export type WordsIo = {
@@ -12,6 +12,8 @@ export type WordsIo = {
   cwd: string;
   /** The repository's root, where `ui/src/i18n/en.ts` and `vi.ts` are read from. */
   root: string;
+  /** Asks the person a question and gives back the answer typed. */
+  ask: (question: string) => Promise<string>;
 };
 
 const USAGE =
@@ -106,7 +108,12 @@ function problemsOf(returned: WordsRow[], sent: Map<string, WordsRow>): string[]
  * the words now in `ui/src/i18n/en.ts` and `vi.ts`, and prints each change, clash, vanished key and
  * note. A file that would break the app is refused whole. Nothing is written.
  */
-async function wordsIn(sentPath: string, returnedPath: string, io: WordsIo) {
+async function wordsIn(
+  sentPath: string,
+  returnedPath: string,
+  io: WordsIo,
+  formatter: Formatter,
+): Promise<number> {
   const sent = new Map(
     (await readRows(sentPath, 'the file you sent')).map((row) => [row.key, row]),
   );
@@ -122,6 +129,7 @@ async function wordsIn(sentPath: string, returnedPath: string, io: WordsIo) {
     vi: findWords(await readFile(join(io.root, 'ui/src/i18n/vi.ts'), 'utf8')),
   };
   const found = (key: string, code: 'en' | 'vi'): FoundWord => now[code].get(key)!;
+  const edits: Record<'en' | 'vi', Map<string, string>> = { en: new Map(), vi: new Map() };
   let changes = 0;
   const counts = { clashes: 0, gone: 0, notes: 0 };
   for (const row of returned) {
@@ -137,6 +145,7 @@ async function wordsIn(sentPath: string, returnedPath: string, io: WordsIo) {
         if (app.text === row[code]) io.out(`already so ${place}`);
         else if (app.text === was[code]) {
           changes++;
+          edits[code].set(row.key, row[code]);
           io.out(`change ${place}\n  now:    ${app.text}\n  theirs: ${row[code]}`);
         } else {
           counts.clashes++;
@@ -152,8 +161,51 @@ async function wordsIn(sentPath: string, returnedPath: string, io: WordsIo) {
     }
   }
   io.out(
-    `${changes} changes, ${counts.clashes} clashes, ${counts.gone} keys gone, ${counts.notes} notes; nothing written`,
+    `${changes} changes, ${counts.clashes} clashes, ${counts.gone} keys gone, ${counts.notes} notes`,
   );
+  if (changes === 0) return 0;
+  const answer = await io.ask(`Write these ${changes} changes? (y/N)`);
+  if (answer.trim().toLowerCase() !== 'y') {
+    io.out('nothing written');
+    return 0;
+  }
+  return writeEdits(edits, io, formatter);
+}
+
+/** How a word file is formatted: the repository's formatter; a test hands another. */
+type Formatter = (source: string, path: string) => Promise<string>;
+
+/**
+ * Puts `edits` into the two word files in place, formats each and reads it back: every key in
+ * `edits` must read its new word and every other key its old one, in both files, or neither file is
+ * written. Exit 1 when the read-back differs.
+ */
+async function writeEdits(
+  edits: Record<'en' | 'vi', Map<string, string>>,
+  io: WordsIo,
+  formatter: Formatter,
+): Promise<number> {
+  const done = [];
+  for (const { code } of LANGUAGES) {
+    const path = join(io.root, `ui/src/i18n/${code}.ts`);
+    const before = await readFile(path, 'utf8');
+    const after = await formatter(replaceWords(before, edits[code]), path);
+    const was = findWords(before);
+    const now = findWords(after);
+    const wrong = [...was].filter(
+      ([key, word]) => now.get(key)?.text !== (edits[code].get(key) ?? word.text),
+    );
+    if (wrong.length > 0 || now.size !== was.size) {
+      io.err(
+        `nothing written: ${code}.ts did not read back as intended (${wrong.map(([key]) => key).join(', ') || 'its keys moved'})`,
+      );
+      return 1;
+    }
+    done.push({ path, after, code });
+  }
+  for (const { path, after } of done) await writeFile(path, after);
+  io.out(`wrote ${done.map(({ code }) => `${code}.ts`).join(' and ')}`);
+  return 0;
 }
 
 /**
@@ -162,7 +214,7 @@ async function wordsIn(sentPath: string, returnedPath: string, io: WordsIo) {
  * sent file is what every return is read against.
  *
  * `words in <sent> <returned>` reads a returned file against the one sent and the words now, shows
- * what would change and writes nothing.
+ * what would change and, when the answer to the question is y, writes it into the two word files.
  *
  * Exit 0 done, 2 refused before anything was written (no file, an unknown verb, a file that
  * exists, a returned file that would break the app).
@@ -172,13 +224,13 @@ export async function runWords(
   env: Record<string, string | undefined>,
   io: WordsIo,
   dictionaries: { en: Tree; vi: Tree } = DICTIONARIES,
+  formatter: Formatter = formatWords,
 ): Promise<number> {
   const [verb, file, second, ...extra] = argv;
   const base = env.INIT_CWD ?? io.cwd;
   try {
     if (verb === 'in' && file && second && extra.length === 0) {
-      await wordsIn(resolve(base, file), resolve(base, second), io);
-      return 0;
+      return await wordsIn(resolve(base, file), resolve(base, second), io, formatter);
     }
   } catch (error) {
     if (!(error instanceof Refused)) throw error;

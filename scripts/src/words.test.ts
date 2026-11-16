@@ -5,10 +5,14 @@ import { fileURLToPath } from 'node:url';
 import { DICTIONARIES } from '@credo/ui/words';
 import { describe, expect, it } from 'vitest';
 import { runWords, wordsCsv } from './words';
+import { check, resolveConfig } from 'prettier';
 import { findWords } from './words-files';
 import { parseCsv, readWords } from './words-read';
 
 /** This repository's root, where the real word files are. */
+/** An answer that is no. */
+const no = () => Promise.resolve('n');
+
 const REPO = fileURLToPath(new URL('../../', import.meta.url));
 
 /** Runs `words` in a fresh folder; what it printed, its exit status and the folder. */
@@ -21,6 +25,7 @@ async function run(argv: string[], env: Record<string, string | undefined> = {})
     err: (line) => err.push(line),
     cwd: folder,
     root: REPO,
+    ask: no,
   });
   return { status, out, err, folder };
 }
@@ -85,7 +90,7 @@ describe('words out', () => {
     const status = await runWords(
       ['out', 'sent.csv'],
       {},
-      { out: (l) => out.push(l), err: (l) => err.push(l), cwd: folder, root: REPO },
+      { out: (l) => out.push(l), err: (l) => err.push(l), cwd: folder, root: REPO, ask: no },
     );
     expect(status).toBe(2);
     expect(await readFile(join(folder, 'sent.csv'), 'utf8')).toBe('p1 sent this');
@@ -110,7 +115,7 @@ describe('words out', () => {
     const status = await runWords(
       ['out', 'here.csv'],
       { INIT_CWD: ran },
-      { out: (l) => out.push(l), err: () => undefined, cwd: folder, root: REPO },
+      { out: (l) => out.push(l), err: () => undefined, cwd: folder, root: REPO, ask: no },
     );
     expect(status).toBe(0);
     expect(out).toEqual([`wrote ${join(ran, 'here.csv')}`]);
@@ -128,7 +133,7 @@ describe('words out', () => {
       runWords(
         ['out', 'no-such-folder/x.csv'],
         {},
-        { out: () => undefined, err: () => undefined, cwd: folder, root: REPO },
+        { out: () => undefined, err: () => undefined, cwd: folder, root: REPO, ask: no },
       ),
     ).rejects.toThrow(/ENOENT/);
   });
@@ -142,11 +147,12 @@ async function scene() {
   for (const file of ['en.ts', 'vi.ts']) {
     await cp(join(REPO, 'ui/src/i18n', file), join(root, 'ui/src/i18n', file));
   }
+  await cp(join(REPO, '.prettierrc.json'), join(root, '.prettierrc.json'));
   const sent = join(folder, 'sent.csv');
   await runWords(
     ['out', sent],
     {},
-    { out: () => undefined, err: () => undefined, cwd: folder, root },
+    { out: () => undefined, err: () => undefined, cwd: folder, root, ask: no },
   );
   const rows = parseCsv((await readFile(sent, 'utf8')).slice(1), ',');
   let count = 0;
@@ -159,15 +165,27 @@ async function scene() {
     await writeFile(path, mark + text + '\r\n');
     return path;
   }
-  async function wordsIn(file: string, from = root) {
+  async function wordsIn(
+    file: string,
+    from = root,
+    answer = 'n',
+    formatter?: (source: string, path: string) => Promise<string>,
+  ) {
     const out: string[] = [];
     const err: string[] = [];
+    const asked: string[] = [];
+    const ask = (question: string) => {
+      asked.push(question);
+      return Promise.resolve(answer);
+    };
     const status = await runWords(
       ['in', sent, file],
       {},
-      { out: (l) => out.push(l), err: (l) => err.push(l), cwd: folder, root: from },
+      { out: (l) => out.push(l), err: (l) => err.push(l), cwd: folder, root: from, ask },
+      undefined,
+      formatter,
     );
-    return { status, out: out.join('\n'), err: err.join('\n') };
+    return { status, out: out.join('\n'), err: err.join('\n'), asked };
   }
   const cell = (key: string, column: number) => rows.find((row) => row[0] === key)![column];
   const edit = (key: string, column: number, word: string) => (all: string[][]) => {
@@ -178,7 +196,7 @@ async function scene() {
   return { folder, root, sent, rows, returned, wordsIn, cell, edit, viFile };
 }
 
-const NONE = '0 changes, 0 clashes, 0 keys gone, 0 notes; nothing written';
+const NONE = '0 changes, 0 clashes, 0 keys gone, 0 notes';
 
 describe('words in', () => {
   it('takes back what out wrote, and the same rows with ; no mark or LF ends', async () => {
@@ -187,6 +205,7 @@ describe('words in', () => {
       status: 0,
       out: NONE,
       err: '',
+      asked: [],
     });
     const semicolons = await world.returned((rows) => rows, ';');
     expect((await world.wordsIn(semicolons)).out).toBe(NONE);
@@ -222,7 +241,7 @@ describe('words in', () => {
     const result = await world.wordsIn(file);
     expect(result.out).toBe(
       `change Vietnamese nav.orders (vi.ts line ${line})\n  now:    Đơn hàng\n  theirs: Đơn đặt hàng\n` +
-        '1 changes, 0 clashes, 0 keys gone, 0 notes; nothing written',
+        '1 changes, 0 clashes, 0 keys gone, 0 notes\nnothing written',
     );
     expect(await readFile(world.viFile, 'utf8')).toBe(
       await readFile(join(REPO, 'ui/src/i18n/vi.ts'), 'utf8'),
@@ -383,6 +402,7 @@ describe('words in', () => {
       out: (l: string) => out.push(l),
       err: (l: string) => err.push(l),
       cwd: world.folder,
+      ask: no,
       root: world.root,
     };
     expect(await runWords(['in', world.sent], {}, io)).toBe(2);
@@ -392,6 +412,96 @@ describe('words in', () => {
     await expect(world.wordsIn(world.sent, join(world.folder, 'no-repo'))).rejects.toThrow(
       /ENOENT/,
     );
+  });
+});
+
+describe('words in, written', () => {
+  const orders = (word: string) => `    orders: '${word}',`;
+
+  it('writes nothing for any answer but y, and asks only when something changes', async () => {
+    const world = await scene();
+    const file = await world.returned(world.edit('nav.orders', 2, 'Đơn đặt hàng'));
+    for (const answer of ['n', '', 'yes', 'sure']) {
+      const result = await world.wordsIn(file, world.root, answer);
+      expect(result.status).toBe(0);
+      expect(result.asked).toEqual(['Write these 1 changes? (y/N)']);
+      expect(result.out).toMatch(/nothing written$/);
+    }
+    expect(await readFile(world.viFile, 'utf8')).toBe(
+      await readFile(join(REPO, 'ui/src/i18n/vi.ts'), 'utf8'),
+    );
+    const none = await world.wordsIn(await world.returned((rows) => rows), world.root, 'y');
+    expect(none.asked).toEqual([]);
+  });
+
+  it('changes only the one property of vi.ts on y and leaves en.ts byte for byte', async () => {
+    const world = await scene();
+    const before = await readFile(world.viFile, 'utf8');
+    const english = await readFile(join(world.root, 'ui/src/i18n/en.ts'), 'utf8');
+    const result = await world.wordsIn(
+      await world.returned(world.edit('nav.orders', 2, 'Đơn đặt hàng')),
+      world.root,
+      ' Y ',
+    );
+    expect(result.status).toBe(0);
+    expect(result.out).toMatch(/wrote en\.ts and vi\.ts$/);
+    const after = await readFile(world.viFile, 'utf8');
+    expect(after).toBe(before.replace(orders('Đơn hàng'), orders('Đơn đặt hàng')));
+    expect(await readFile(join(world.root, 'ui/src/i18n/en.ts'), 'utf8')).toBe(english);
+  });
+
+  it('writes a file the formatter passes and that reads the word back, quote and backslash too', async () => {
+    const world = await scene();
+    const word =
+      "Don't \\ go: it's a very long word that goes past one hundred columns of the formatted line, so it wraps";
+    const result = await world.wordsIn(
+      await world.returned((rows) => {
+        world.edit('nav.orders', 2, word)(rows);
+        world.edit('nav.staff', 2, 'Nhân sự')(rows);
+        return world.edit('nav.settings', 1, 'Setup')(rows);
+      }),
+      world.root,
+      'y',
+    );
+    expect(result.status).toBe(0);
+    for (const code of ['en', 'vi']) {
+      const path = join(world.root, `ui/src/i18n/${code}.ts`);
+      const text = await readFile(path, 'utf8');
+      expect(await check(text, { ...(await resolveConfig(path)), filepath: path })).toBe(true);
+    }
+    const found = findWords(await readFile(world.viFile, 'utf8'));
+    expect(found.get('nav.orders')?.text).toBe(word);
+    expect(found.get('nav.settings')?.text).toBe('Cài đặt');
+    expect(found.get('nav.staff')?.text).toBe('Nhân sự');
+    expect(
+      findWords(await readFile(join(world.root, 'ui/src/i18n/en.ts'), 'utf8')).get('nav.settings')
+        ?.text,
+    ).toBe('Setup');
+  });
+
+  it('writes neither file when the re-read finds a key not reading its word, exit 1', async () => {
+    const world = await scene();
+    const english = await readFile(join(world.root, 'ui/src/i18n/en.ts'), 'utf8');
+    const vietnamese = await readFile(world.viFile, 'utf8');
+    const file = await world.returned((rows) => {
+      world.edit('nav.orders', 1, 'Orders!')(rows);
+      return world.edit('nav.orders', 2, 'Đơn đặt hàng')(rows);
+    });
+    const spoil = (source: string, path: string) =>
+      Promise.resolve(path.endsWith('vi.ts') ? source.replace("'Cài đặt'", "'Sai'") : source);
+    const result = await world.wordsIn(file, world.root, 'y', spoil);
+    expect(result.status).toBe(1);
+    expect(result.err).toBe('nothing written: vi.ts did not read back as intended (nav.settings)');
+    expect(await readFile(world.viFile, 'utf8')).toBe(vietnamese);
+    expect(await readFile(join(world.root, 'ui/src/i18n/en.ts'), 'utf8')).toBe(english);
+    const moved = await world.wordsIn(file, world.root, 'y', (source) =>
+      Promise.resolve(source.replace('orders:', "extra: 'x',\n orders:")),
+    );
+    expect(moved.err).toBe('nothing written: en.ts did not read back as intended (its keys moved)');
+    const dropped = await world.wordsIn(file, world.root, 'y', (source) =>
+      Promise.resolve(source.replace(/.*deliveries: .*\n/, '')),
+    );
+    expect(dropped.err).toContain('nav.deliveries');
   });
 });
 

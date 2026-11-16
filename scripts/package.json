@@ -24,7 +24,9 @@
     "@credo/bff": "workspace:*",
     "@credo/shared": "workspace:*",
     "@credo/ui": "workspace:*",
+    "prettier": "catalog:",
     "tsx": "catalog:",
+    "typescript": "catalog:",
     "vite": "catalog:"
   },
   "devDependencies": {
