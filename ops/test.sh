@@ -3542,6 +3542,26 @@ chk_run photoless check.sh ridge --reads-only
 check "13 of the delivery photos plan: a function with the eight variables and no photo store is red, naming the box's photo-store.env and that no driver can deliver" "1 1 1" \
   "$RC $(chk_has "RED  the function holds the photo store's three settings.*photo-store.env" "$S/out") $(chk_has "^RED .*no driver can deliver" "$S/out")"
 cp "$CHK/fn.eleven" "$CHK/fn.json"
+# a box added (plan step 6y): app.sh hands the function STORAGE_BOXES then and only then, and the check wants it exactly then.
+# The whole check with b2 in the stack runs a second check of its own (--box b2) and leaves the stand-in's forward holding
+# its port, so the b2 cases read the two functions the check compares; the whole check runs where no box is added.
+BOXVAR="the function's variables .names only"
+fn_boxes_handed=$(jq -c '.Names += ["STORAGE_BOXES"]' "$CHK/fn.eleven")
+fn_boxes_names=$(function_env_names "$fn_boxes_handed")
+check "6y: with b2 in the stack, a function holding the eleven names and STORAGE_BOXES is what the check wants" "yes" \
+  "$([ "$fn_boxes_names" = "$(function_env_wanted b2)" ] && echo yes || echo no)"
+check "6y: with b2 in the stack, a function holding the eleven names alone is not (the back end was not handed b2)" "no" \
+  "$([ "$(function_env_names "$(cat "$CHK/fn.eleven")")" = "$(function_env_wanted b2)" ] && echo yes || echo no)"
+check "6y: with no box beyond the home one, the eleven names are what the check wants, and STORAGE_BOXES beside them is not" "yes no" \
+  "$([ "$(function_env_names "$(cat "$CHK/fn.eleven")")" = "$(function_env_wanted '')" ] && echo yes || echo no) $([ "$fn_boxes_names" = "$(function_env_wanted '')" ] && echo yes || echo no)"
+# shellcheck disable=SC2016 # the greps want the script's own text, $ and quotes included
+check "6y: check.sh asks the stack's boxes for the list it wants, never the eleven alone" "1 0" \
+  "$(grep -cF 'function_env_wanted "$(stack_boxes)"' "$OPS_DIR/check.sh" || true) $(grep -cF '"$BFF_ENV_NAMES_PHOTOS" "$got_names"' "$OPS_DIR/check.sh" || true)"
+echo "$fn_boxes_handed" >"$CHK/fn.json"
+chk_run boxes-left-behind check.sh ridge --reads-only
+check "6y: with no box beyond the home one, STORAGE_BOXES left in the function is red on its variables, wanting the eleven" "1 0" \
+  "$(chk_has "^RED  $BOXVAR" "$S/out") $(chk_has "^ok   $BOXVAR" "$S/out")"
+cp "$CHK/fn.eleven" "$CHK/fn.json"
 chk_run flag check.sh ridge --reads-only
 check "case 9: --reads-only on ridge gives the same run: green, no key, no collection, no client" "0 1 0 gone gone 6" \
   "$RC $(chk_has '^== green' "$S/out") $(chk_has 'c-storage/keys.env' "$S/ssh.calls") $(file_state "$S/bru.calls") $(file_state "$S/ridge.calls") $(six_reads "$S/out")"

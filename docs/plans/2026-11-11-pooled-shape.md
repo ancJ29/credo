@@ -363,6 +363,27 @@ milestone if the orchestrator wants one.
   `bash ops/test.sh` on the tree at `d6a92751` ended `all checks passed` at 08:09 and `== exit 0`, and
   `shellcheck -x ops/*.sh` exited 0.
 
+- [x] **6y. The check's list of a box added.** The sitting's `ops/check.sh ridge` on 2026-11-16, with `b2` added, read
+  one red (`logs/2026-11-16-104916-check-ridge.log`, its only `RED`): the function's variables wanted the
+  eleven names of `BFF_ENV_NAMES_PHOTOS` and held those and `STORAGE_BOXES`, which `ops/app.sh` writes whenever the
+  stack holds a box beyond the home one (`b2`'s own run, `logs/2026-11-16-104959-check-ridge-b2.log`, was green).
+  One part: the check wants `STORAGE_BOXES` among the names exactly when `stack_boxes` names a box (a new
+  `function_env_wanted` in `ops/lib.sh`, taken by the one `expect` in `ops/check.sh`), and not when it names none, so
+  one left behind after a box's removal is red; no new AWS read, the super-admin key never read. *Size:* 15.
+  *Expected red:* a case on the old check, feeding it the eleven names and `STORAGE_BOXES` with `b2` in the
+  stack; then two cases green on the fixed one: the eleven alone with `b2` in the stack is red, and the eleven and
+  `STORAGE_BOXES` with no box beyond the home one is red. *Done when:* `bash ops/test.sh` ends `== exit 0`,
+  `bash -n` and `shellcheck -x ops/*.sh` are clean.
+  *Ticked 2026-11-16:* red first on the old check: with `b2` in the stack, the whole check on a function holding
+  the eleven names and `STORAGE_BOXES` read `RED` on its variables, as the sitting's did. The whole check with a
+  box in the stack runs a second check of its own and leaves the stand-in's forward holding its port (the
+  later cases then died on a taken port), so the cases that stayed are the two lists the check compares: with
+  `b2` the eleven and `STORAGE_BOXES` is what is wanted and the eleven alone is not; with no box the eleven is
+  wanted and `STORAGE_BOXES` beside them is not; a text guard that `ops/check.sh` asks `stack_boxes` and no longer
+  passes the eleven alone (red on the old line, green on the new); and the whole check, no box in the stack, red on
+  a function holding `STORAGE_BOXES`. `bash ops/test.sh` ended `== exit 0` (`CHECK_LOCAL_PORT` moved off a
+  port two earlier runs' stand-ins still held), `bash -n` and `shellcheck -x ops/*.sh` exited 0.
+
 **Third landing: the move** (after the store's copy tool is on `pre-merge`).
 
 - [ ] **7. The move.** Decision 11: the mark, the wait, the switch, the sweep, and the operator's

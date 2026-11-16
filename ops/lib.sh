@@ -1412,6 +1412,12 @@ BFF_ENV_NAMES=APP_ORIGIN,AUDIT_KEY,AUDIT_URL,C_STORAGE_URL,FRONT_DOOR_KEYS,INTER
 # no driver can deliver), so the eight alone are red
 # shellcheck disable=SC2034 # check.sh reads it
 BFF_ENV_NAMES_PHOTOS=APP_ORIGIN,AUDIT_KEY,AUDIT_URL,C_STORAGE_URL,FRONT_DOOR_KEYS,INTERNAL_ACCESS_KEY,PHOTO_STORE_KEY_ID,PHOTO_STORE_KEY_SECRET,PHOTO_STORE_URL,SERVICE_ACCESS_KEY,SERVICE_CODE
+# function_env_wanted <the boxes added, as stack_boxes names them, one a line or none> → the names the function should hold:
+# BFF_ENV_NAMES_PHOTOS, and STORAGE_BOXES after them exactly when the stack names a box beyond the home one (app.sh writes it
+# then, and only then), so a STORAGE_BOXES left behind after a box's removal is not what is wanted. Sorted, as function_env_names is.
+function_env_wanted() {
+  if [ -n "$1" ]; then printf '%s,STORAGE_BOXES\n' "$BFF_ENV_NAMES_PHOTOS"; else printf '%s\n' "$BFF_ENV_NAMES_PHOTOS"; fi
+}
 # function_env_names <the function, read by BFF_FN_QUERY> → the names of its variables, sorted and
 # comma-joined; no value is in what it reads
 function_env_names() {
