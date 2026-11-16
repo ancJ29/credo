@@ -1993,7 +1993,7 @@ The rule of three is written at the `components/` note and again in the levels' 
 
 A walk opens an address on the front (`walk/playwright.config.ts#L25`) and `shot` writes each picture by screen name (`walk/support.ts#L46`, `#L63`); `visual` takes no picture (`visual/src/capture.ts#L1-L4`). A `walk/specs/gallery.spec.ts` would open each part's address and call `walk/support.ts`'s `shot`. Four things stand in its way: both lanes' fronts serve a build of `index.html` alone (`scripts/src/fake.ts#L17`, `scripts/src/stack.ts#L35`, `ui/vite.config.ts#L13-L17`) and answer `/gallery.html` with the app (`scripts/src/running/front.ts#L98-L109`); every walk has a stack lane and is green only when the fake equals the stack (`walk/run.sh#L45-L58`); every `at` in a spec must be a screen of the walks page (`visual/src/walks.test.ts#L163-L171`), which draws the app's screens, not the gallery; and every spec shoots three widths in two languages (`#L204-L211`), where a part needs one picture.
 
-## 516. The gallery's "Legacy" pane has no picture of a legacy part to show — the machine; *parked* until the legacy capture opens, when the partners name the screens to match (the design system's plan, landing 4, 2026-11-16, Low)
+## 516. The gallery's "Legacy" pane has no picture of a legacy part to show — the machine; `[CLOSED AS MOOT, NOT FIXED]` 2026-11-16: the human said the gallery needs no legacy part, and the pane was taken out (the design system's plan, landing 4, 2026-11-16, Low)
 
 `ops/legacy-capture.sh` takes whole screens (`walk/legacy-capture.ts#L496`) of the employee feature (`walk/legacy-screens/employees.screens#L6-L15`) into a folder outside git (`ops/legacy-capture.sh#L17-L18`), since they show a client's real people (`docs/recaps/2026-11-04-legacy-capture.md#L24`); the design system's plan reads the legacy's code, not pictures. A pane beside each part needs a picture of that part alone (an element's picture rather than the page's), taken on data with no real person so it can sit beside the gallery; the pane is drawn only for a part that has one.
 
@@ -2046,6 +2046,18 @@ In `ui/src/pages/operator/MoveClientPage.tsx` the box choice stays live while th
 
 `GROUND` in `ui/src/pages/SignIn.tsx` keeps a `light-dark()` that can only resolve light, and the "narrows to one theme" row of `ui/src/mock/MockPage.test.tsx` clicks the only theme there is. Fix: the plain light value, and the row's click taken out with its count.
 
+## 542. The new app's sign-in has no "remember me" — the human; *parked* until a partner asks for it (the sign-in's parts, 2026-11-16, Low)
+
+The old app's sign-in offers "remember me", on by default (the old repo's `workspace/uis/c-mngt/src/pages/auth/SignInPage.tsx#L81`, drawn by `base/src/components/auth/pages/LoginUI.tsx#L106-L112`); the only lines of `ui/src`, `bff/src` and `shared/src` that say "remember" are about the fake's switch (`ui/src/fake.ts`). The gallery draws the box in the legacy's sign-in card as a look only ([the plan](plans/2026-11-16-sign-in-parts.md)); a door draws it only with a session that keeps the choice. *Trigger:* a partner who misses it, or the doors taking the sign-in's parts.
+
+## 543. No page signs in by scanning a code inside the app or typing it — the human; *parked* until a partner asks for it (the sign-in's parts, 2026-11-16, Low)
+
+The old app's `/login-via-qr-code` (the old repo's `workspace/uis/c-mngt/src/pages/auth/AccessViaQRCodePage.tsx`) scans a code with the camera or from a picture, or takes it typed, and its sign-in links to it. The new app's QR code is opened by the phone's own camera (`shared/src/signins.ts`'s `qrLink`, `ui/src/pages/client/QrLanding.tsx`'s `QrLanding`), and no page or button offers the other two ways. The sign-in's parts draw that page in the gallery as a look only; the divider and the back link have no door until this is built. *Trigger:* a partner whose people cannot open a link from the camera.
+
 ## 549. An English word changed by a partner reddens the `ui` tests that query it by its text — the machine; *parked* until the first returned file that changes an English word (the words file's plan, 2026-11-16, Low)
 
 29 test files under `ui/` hold 384 queries by a capitalised literal (`getByText`, `getByRole` with a `name`, `getByLabelText`, `getByPlaceholderText`), counted by `git grep` on 2026-11-16, while the walk's specs read the dictionaries. A word changed in `ui/src/i18n/en.ts` by `pnpm words in` (`docs/plans/2026-11-16-words-csv.md`) therefore turns each test that queries the old text red, and that change carries their edits. Fix, if the edits cost more than the change: those tests query by the dictionary's word. *Trigger:* the first returned file that changes an English word.
+
+## 553. The parts' back link reloads the page under the router, and the band says the company twice to a screen reader — the machine; `[DEFERRED]` (the sign-in parts' review, 2026-11-16, Info)
+
+For the piece that moves the doors onto these parts. `ui/src/components/atoms/BackLink.tsx`'s plain `href` reloads the page where the app routes with react-router, so a door needs it to take the router's own link or a click handler. `ui/src/components/molecules/BrandBand.tsx` gives the logo the company's name as its alt text, beside the same name as text, so a screen reader says it twice; the tile in the band wants an empty alt.

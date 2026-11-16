@@ -64,7 +64,7 @@ const RED: MantineColorsTuple = [
   '#7f1d1d',
 ];
 
-/** The brand's own gradient, from its shade 7 to its shade 9: the primary button, the card's top bar. */
+/** The brand's own gradient, from its shade 7 to its shade 9: the header and the primary button. */
 export const BRAND_GRADIENT = TOKENS.brandGradient;
 
 /** The side menu's ground, from the brand's shade 9 down to its shade 8. */
