@@ -1,6 +1,6 @@
 # Each company's own address, recap, 2026-11-14
 
-Written before the landing on `pre-merge`.
+Written before the landing on `pre-merge`; the ridge lines were filled once they ran, on 2026-11-16.
 
 | Who opens what | Before | Now |
 | --- | --- | --- |
@@ -14,12 +14,11 @@ The stack takes two settings, `Domain` and `CertificateArn`, both empty by defau
 
 The review (Opus) said fix first for one Medium: the check's two passes printed the same words, so a red could not say which address failed. Fixed in `58a24141`, each pass under its own header; the reread said may merge. Ten Lows are items 472 to 476, `[DEFERRED]`; the four living line citations in them are now file and symbol.
 
-## Still yours
+## On ridge
 
-- Your look at ridge: does a company open at its own address, with its sign-in in its name, and does the clients page show that address? <!-- FILL: your answer, yes or no -->
-- Your acts: the certificate, two DNS records, one stack run, an app deploy and the pushes. <!-- FILL: each act's result, not yet run -->
-- The whole check on `pre-merge`, then `main`. <!-- FILL: the verdict of each, not yet known -->
-- Left after this: step 7, ridge's check ending green through a company's own address.
+- Your look at ridge, yes: the first demo copy opened at its own address with its own sign-in page, and the console's list showed the same address.
+- Your acts, each green: the certificate was requested and issued; both DNS records answered public DNS; the stack run changed the distribution alone, with no removal and no replacement; the app deploy and ridge's own check, 8 of 8 lines through the company's address, passed. The push of 2026-11-15 ran GitHub's checks green and its deploy.
+- The whole check on `pre-merge` was red once, from the machine's load slowing three visual scenes, and green on a quiet rerun; `main` then took the same commit.
 
 ## Evidence
 

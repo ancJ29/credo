@@ -1,6 +1,6 @@
 # An alarm on ridge reaches the Slack channel, recap, 2026-11-12
 
-Written before the landing on `pre-merge`. Nothing is applied to ridge yet.
+Written before the landing on `pre-merge`; the ridge lines were filled once they ran, on 2026-11-13.
 
 ## What happened
 
@@ -10,16 +10,16 @@ Written before the landing on `pre-merge`. Nothing is applied to ridge yet.
 
 A token in the back end (it needs a fixed-charge NAT gateway), a function of our own posting a webhook, and email.
 
-## Still yours
+## On ridge
 
-- Your Slack clicks, then the stack run with `--plan` first. <!-- FILL: the plan read and the stack run's verdict in words -->
-- The forced alarm: each alarm's metric exists, and the alarm and its return to normal each run their action. <!-- FILL: the forced alarm's verdict in words -->
-- Your look: does the first message tell you, without opening anything else, that ridge's app calls were failing and when? A yes closes the piece; a no reopens the alarms' descriptions. <!-- FILL: the look's answer; strike this line when it comes -->
+- Your Slack clicks, then the stack run with `--plan` first: the plan showed nine changes, seven adds and two modifies, none removed or replaced; the real run completed and its watch line said alarms reach Slack.
+- The forced alarm, green: each alarm's metric exists, and the alarm and its return to normal each ran their action, two deliveries to the topic alone.
+- Your look, yes: the first message told you, without opening anything else, that ridge's app calls were failing, and the return to normal came too.
 
 ## Evidence
 
 - Base `ff42f0a1`; steps `1413e539`, `6bfbcc8e`, `f0c35fdf`, `db500d30`; fix `2866b35b`; citations `d4b94199`; `pre-merge` taken in at `c21ab975`.
 - Each step's gates (ShellCheck, `ops/test.sh`, the citation test) ended green. After the take-in, ShellCheck, the citation test and the whole `ops/test.sh` ended green.
 - Review on another model: three Medium, fixed. M1: moved line citations. M2, M3: the force script's verdicts on a missing metric and a failed alarm. Lows: fixed, or items 365 to 368. Its reread says it may land with named changes: 13 citations still wrong, finished in `d4b94199`, docs only, with no reread after it. Items 372 and 373 are deferred.
-- Not yet known: ridge's change set, the metrics' names there, AWS's wording for a successful action (item 367).
+- Still unread: AWS's wording for a successful action (item 367).
 - `docs/products.md`: the watch row now says "in `main`", not applied.
