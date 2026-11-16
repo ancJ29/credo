@@ -23,6 +23,8 @@ export const TOKENS = {
   /** The side menu's ground, from the brand's shade 9 down to its shade 8. */
   menuGradient:
     'linear-gradient(180deg, var(--mantine-color-brand-9) 0%, var(--mantine-color-brand-8) 100%)',
+  /** The company logo's tile, in px: 44 square, corners of 10 (the legacy's card head). */
+  logoTile: { size: 44, radius: 10 },
   /** A section title's grey icon tile, in px. */
   iconTile: 24,
 } as const;

@@ -15,12 +15,18 @@ import { CREDO_COLOUR } from '@credo/shared';
 import type { ReactNode } from 'react';
 import { IconBuilding } from '@tabler/icons-react';
 import { FieldLabel } from '../components/atoms/FieldLabel';
+import { LogoTile } from '../components/atoms/LogoTile';
 import { StatusBadge } from '../components/atoms/StatusBadge';
 import { DetailField } from '../components/molecules/DetailField';
 import { SectionTitle } from '../components/molecules/SectionTitle';
 import { PageHeader } from '../components/organisms/PageHeader';
 import { SectionCard } from '../components/organisms/SectionCard';
+import { LEGACY } from './legacy';
 import { designThemeOf } from './theme';
+
+/** A sample company logo for the tile: a plain shape, no real company's. */
+const SAMPLE_LOGO =
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath d='M6 34 20 6l14 28z' fill='teal'/%3E%3C/svg%3E";
 
 /** Every component of `components/`, by level, drawn in its states. A level with none says so. */
 const LEVELS: { level: string; heading: string; entries: Record<string, ReactNode> }[] = [
@@ -29,6 +35,7 @@ const LEVELS: { level: string; heading: string; entries: Record<string, ReactNod
     heading: 'Atoms',
     entries: {
       FieldLabel: <FieldLabel>Phone</FieldLabel>,
+      LogoTile: <LogoTile logo={SAMPLE_LOGO} alt="Sample company" />,
       StatusBadge: (
         <Group>
           <StatusBadge active label="Active" />
@@ -109,7 +116,17 @@ export function Gallery() {
               {Object.entries(entries).map(([name, node]) => (
                 <Stack key={name} gap="xs">
                   <Title order={3}>{name}</Title>
-                  {node}
+                  <Group align="flex-start" gap="xl">
+                    {node}
+                    {LEGACY[name] && (
+                      <Stack gap={4}>
+                        <Text size="xs" c="dimmed">
+                          Legacy
+                        </Text>
+                        <img src={LEGACY[name]} alt={`The legacy’s ${name}`} />
+                      </Stack>
+                    )}
+                  </Group>
                 </Stack>
               ))}
             </Stack>

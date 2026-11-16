@@ -138,11 +138,14 @@ its rule's line changed and put back. Sizes are the runs log's rows of the same 
 system's step 1, a page, a part and its tests through the ui gate, 6 minutes; its step 2, five parts,
 4; its review, fix, reread and recap, 12, 3, 9 and 2.
 
-- [ ] **1. The pane and the logo tile, end to end.** `design-system` taken in first, since another
+- [x] **1. The pane and the logo tile, end to end.** `design-system` taken in first, since another
       lane is fixing landing 2 in `tokens.ts` and the gallery. The tile's picture cut;
       `legacy.ts` and the pane (case 8, red first); `LogoTile` and its test (case 1); its tokens.
       _Done when:_ both checks exit 0, and in one invocation Vite's dev server on a spare port,
       `curl -sf` of `/gallery.html` and of the tile's picture, then stopped. **6 min.**
+      _Done, 2026-11-16:_ `design-system` taken in (`f9f153af`); the tile's picture cut 44 by 44 from the PC sign-in capture
+      with Playwright's PNG codec; case 8 seen red (pane's block off), case 1 seen red (failed-load check off);
+      `pnpm --filter @credo/ui check` exit 0, the citation test exit 0, the serve probe (Vite on 5391, gallery and picture) exit 0. 14 min.
 - [ ] **2. The theme's two.** `defaultGradient` and the divider's label in `designThemeOf`
       (cases 6 and 7); the gallery's Mantine group draws the gradient button and the default button
       each with an icon, and the divider worded "hoặc"; each beside its picture. _Done when:_ both
