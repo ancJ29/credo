@@ -116,9 +116,11 @@ changes is in decisions 3 to 7: a press repeated, a wait written on the mark, th
    company and the two boxes; every other press declares none on purpose, as the delete's press with
    no client does (`bff/src/routes/clients-delete.ts#L63`).
 10. **The terminal's acts refuse a moving company**, by one predicate beside the line's schema, read
-    by the helper too: `deleteClient` refuses a line carrying `move` as it refuses another box
-    (`bff/src/records/clients.ts#L152-L162`), which covers both terminal deletes
-    (`scripts/src/ridge.ts#L79`, `#L158`); the root password script, the seed, `copy-company` and
+    by the helper too: `deleteClient` refuses a line carrying `move` whatever store it is handed,
+    outside the condition of `refuseOtherBox` (`bff/src/records/clients.ts#L152-L162`), which acts
+    only when none is handed while the route hands one (`bff/src/routes/clients-delete.ts#L84-L90`).
+    That covers both terminal deletes (`scripts/src/ridge.ts#L79`, `#L158`), its red seen in a test of
+    a terminal delete, and stands behind the route's own 409. The root password script, the seed, `copy-company` and
     `drill-record` refuse it by name, writing nothing, where they refuse another box
     (`scripts/src/root-password.ts#L66-L69`, `scripts/src/demo/apply.ts#L661-L664`,
     `scripts/src/ridge.ts#L578-L581`, `#L600-L602`).
@@ -127,9 +129,10 @@ changes is in decisions 3 to 7: a press repeated, a wait written on the mark, th
     opening `/operator/clients/:code/move`. The page lists the other boxes with their free disk and
     companies, by the add form's list (`ui/src/parts/NewClient.tsx#L86-L111`) moved into a part both
     use, then presses on, saying what is left, until the company is moved. `listClients`
-    (`bff/src/records/clients.ts#L108-L126`) adds each line's box and, while it copies, the box it
-    goes to (`shared/src/wire.ts#L222-L227`, both optional, so a list written before still parses),
-    so a page opened mid-move offers to go on or to stop. *Rejected:* the terminal's `copy-company`
+    (`bff/src/records/clients.ts#L108-L126`) adds each line's box and its mark in either form, the box
+    it goes to while copying or the box being swept (`shared/src/wire.ts#L222-L227`, both optional,
+    so a list written before still parses): a page opened mid-move offers to go on or to stop, and
+    one opened on an unfinished sweep, after a stop or a switch, presses the sweep on to its end. *Rejected:* the terminal's `copy-company`
     as the move's door: it never marks or switches a line, and stays the restore's.
 
 **Who serves each part the move adds, and who calls it.**
@@ -141,7 +144,7 @@ changes is in decisions 3 to 7: a press repeated, a wait written on the mark, th
 | One press | `bff/src/records/company-move.ts`'s `moveCompany`, over the copy, the compare and the sweep | the route |
 | The sweep | `sweepCompany` in `bff/src/records/clients.ts` | `deleteClient` and `moveCompany` |
 | The route, its three bodies, its entry | `bff/src/routes/client-move.ts` (new), registered beside the delete's (`bff/src/app.ts#L505-L506`); `client.move` in `shared/src/activity.ts` | `ui/src/api.ts`'s `moveClient` |
-| The list's box and target | `listClients`, through the operator's clients route | `ui/src/api.ts`'s `listClients` |
+| The list's box and mark | `listClients`, through the operator's clients route | `ui/src/api.ts`'s `listClients` |
 | The wire shapes, the act | `shared/src/wire.ts` | the route, `ui/src/api.ts`, `ui/src/fake.ts` |
 | The page, in both languages | `ui/src/pages/operator/MoveClientPage.tsx` (new), the boxes' part, `ui/src/i18n/en.ts` and `vi.ts` | `ui/src/OperatorApp.tsx`'s route, `ClientsPage.tsx`'s button |
 
@@ -212,9 +215,9 @@ stage 3 point 1, stage 4 the sitting.
 | 10 | A stop before the switch serves the company at once from its old box, every record as it was, and sweeps the part copy from `sweepAt`; after the switch a stop is refused | BFF route |
 | 11 | Every other company on both boxes is unchanged by a move, one whose id begins with the moved one's included | BFF route |
 | 12 | The mark, the switch and a stop each leave one `client.move` entry naming the company and both boxes, and no other press leaves one | BFF route |
-| 13 | The clients list names each company's box, and the box a moving one goes to | BFF route |
+| 13 | The clients list names each company's box and its mark in either form: the box it goes to while copying, the box being swept after a stop or a switch | BFF route |
 | 14 | The page lists the other boxes with free disk and companies, presses on through the waits, the copy and the sweep saying what is left, and comes back to the list; a failed press says the company is still on its old box and offers to go on or to stop | ui, `MoveClientPage.test.tsx`; the fake |
-| 15 | The list offers "Move to another box" only when the back end holds more than one box, and a page opened mid-move offers to go on or to stop | ui, `ClientsPage.test.tsx` |
+| 15 | The list offers "Move to another box" only when the back end holds more than one box, a page opened mid-copy offers to go on or to stop, and one opened on an unfinished sweep presses it on to its end | ui, `ClientsPage.test.tsx`, `MoveClientPage.test.tsx` |
 | 16 | No existing test was changed to pass | `git diff --stat pre-merge` |
 | 17 | On ridge, a company moved from `b2` to the home box keeps its customer, closed only while it moved | your sitting |
 
