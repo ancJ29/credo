@@ -5,7 +5,9 @@ import {
   Divider,
   Group,
   MantineProvider,
+  Checkbox,
   Paper,
+  PasswordInput,
   Stack,
   Text,
   TextInput,
@@ -14,7 +16,7 @@ import {
 } from '@mantine/core';
 import { CREDO_COLOUR } from '@credo/shared';
 import type { ReactNode } from 'react';
-import { IconBuilding, IconKeyboard, IconQrcode } from '@tabler/icons-react';
+import { IconBuilding, IconKeyboard, IconLock, IconQrcode, IconUser } from '@tabler/icons-react';
 import { BackLink } from '../components/atoms/BackLink';
 import { DoorHeading } from '../components/atoms/DoorHeading';
 import { FieldLabel } from '../components/atoms/FieldLabel';
@@ -23,6 +25,7 @@ import { StatusBadge } from '../components/atoms/StatusBadge';
 import { BrandBand } from '../components/molecules/BrandBand';
 import { DetailField } from '../components/molecules/DetailField';
 import { SectionTitle } from '../components/molecules/SectionTitle';
+import { DoorCard } from '../components/organisms/DoorCard';
 import { PageHeader } from '../components/organisms/PageHeader';
 import { SectionCard } from '../components/organisms/SectionCard';
 import { designThemeOf } from './theme';
@@ -30,6 +33,59 @@ import { designThemeOf } from './theme';
 /** A sample company logo for the tile: a plain shape, no real company's. */
 const SAMPLE_LOGO =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath d='M6 34 20 6l14 28z' fill='teal'/%3E%3C/svg%3E";
+
+/** The old app's sign-in page as the card holds it, in sentence case: the first of the door card's two states. */
+function SignInState() {
+  return (
+    <DoorCard name="Công ty TNHH Acme" logo={SAMPLE_LOGO}>
+      <Stack gap="md">
+        <DoorHeading title="Đăng nhập vào tài khoản của bạn" />
+        <TextInput
+          label="Tên đăng nhập"
+          placeholder="Nhập tên đăng nhập"
+          leftSection={<IconUser size={18} />}
+        />
+        <PasswordInput
+          label="Mật khẩu"
+          placeholder="Nhập mật khẩu"
+          leftSection={<IconLock size={18} />}
+        />
+        <Checkbox defaultChecked label="Ghi nhớ đăng nhập" />
+        <Button variant="gradient" fullWidth>
+          Đăng nhập
+        </Button>
+        <Divider label="hoặc" />
+        <Button variant="default" fullWidth leftSection={<IconQrcode size={18} />}>
+          Dùng liên kết đăng nhập
+        </Button>
+      </Stack>
+    </DoorCard>
+  );
+}
+
+/** The old app's login-link page as the card holds it: the second state. */
+function LinkState() {
+  return (
+    <DoorCard name="Công ty TNHH Acme" logo={SAMPLE_LOGO}>
+      <Stack gap="md" align="center">
+        <Stack gap={0} w="100%">
+          <DoorHeading
+            title="Đăng nhập bằng liên kết"
+            subtitle="Quét mã QR hoặc nhập mã đăng nhập để đăng nhập"
+          />
+        </Stack>
+        <Button variant="gradient" fullWidth leftSection={<IconQrcode size={18} />}>
+          Quét mã QR
+        </Button>
+        <Divider label="hoặc" w="100%" />
+        <Button variant="default" fullWidth leftSection={<IconKeyboard size={18} />}>
+          Nhập mã thủ công
+        </Button>
+        <BackLink href="#">Quay lại đăng nhập</BackLink>
+      </Stack>
+    </DoorCard>
+  );
+}
 
 /** Every component of `components/`, by level, drawn in its states. A level with none says so. */
 const LEVELS: { level: string; heading: string; entries: Record<string, ReactNode> }[] = [
@@ -78,6 +134,16 @@ const LEVELS: { level: string; heading: string; entries: Record<string, ReactNod
     level: 'organisms',
     heading: 'Organisms',
     entries: {
+      DoorCard: (
+        <Group align="flex-start" gap="xl">
+          <Stack w={474}>
+            <SignInState />
+          </Stack>
+          <Stack w={474}>
+            <LinkState />
+          </Stack>
+        </Group>
+      ),
       SectionCard: (
         <SectionCard icon={<IconBuilding size={14} />} title="Basics">
           <DetailField label="Name" value="A shop" />

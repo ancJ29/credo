@@ -164,9 +164,15 @@ system's step 1, a page, a part and its tests through the ui gate, 6 minutes; it
       _Done, 2026-11-16:_ none found by the grep; the gallery's test asserts it draws no "Legacy" text or picture
       and still shows the gradient button, default button and "hoặc" divider; both checks exit 0. 8 min.
       Nothing outside `ui/src/design-system/`, `ui/src/components/` and this plan changed.
-- [ ] **4. The door card and the two pages.** `DoorCard` and its test (case 5); its gallery entry
+- [x] **4. The door card and the two pages.** `DoorCard` and its test (case 5); its gallery entry
       draws two states, the sign-in and the link page, in sentence case; `brandGradient`'s comment corrected. _Done when:_ both
       checks exit 0, the count is 11, and step 1's serve probe exits 0. **6 min.**
+      _Done, 2026-11-16:_ case 5 seen red once (the band left out of the card); `DoorCard` draws the 4-px bar at
+      90°, the band and the body at 28 over 40; the gallery's entry draws the sign-in and the link page in
+      sentence case, no picture of the old app's; `brandGradient`'s comment says 135° and the bar's own 90°; the
+      count is 11; both checks exit 0; the serve probe exits 0. 12 min.
+      Correction to 3b's line above: the test that the gallery draws no "Legacy" was not yet in step 3b's commit
+      (the command that wrote it was refused); it and the tests for the three Mantine rows were written in this step.
 - [ ] **5. Review and landing.** Another model reads steps 1 to 4; one fix pass; `pre-merge` taken
       in; case 11; the recap; `docs/memo/ui-code.md#L69` corrected, since four doors draw
       `SignInFrame`, not one; item 516 closed as moot; point 1. _Done
