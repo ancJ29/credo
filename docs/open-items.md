@@ -1996,3 +1996,7 @@ The receipt that prints a card's calls from the access log was copied from the e
 ## 522. `copy_problems` reads the first JSON document on stdin and ignores any after it (the same review, Low) — the machine; `[DEFERRED]`
 
 `input` at `ops/lib.sh#L721` takes the first document, where `--argjson` refused two. The AWS CLI's JSON output is one document, so the real path cannot meet a second. Make it refuse more than one document if the listing ever comes from another source.
+
+## 524. A doc comment sits above the wrong function in `bff/src/app.ts` — the machine; `[DEFERRED]` until the next piece that touches `app.ts`
+
+The comment "Runs first on every client route, before the body is read and before any session" sits above `boxStorage`'s own doc comment, and `boxStorage` is not what it describes: it belongs to `resolveTenant`. Move it down onto `resolveTenant`, and leave `boxStorage` with its own line.
