@@ -11,6 +11,9 @@ const LEVELS = [
   { level: 'organisms', above: [] },
 ];
 
+// A hex colour, or a function that makes one, in a string.
+const COLOUR = String.raw`/#[0-9a-fA-F]{3,8}\b|\b(rgb|hsl)a?\(/`;
+
 export default defineConfig(
   // services/c-storage/ is a Go project with its own face and gate (its CLAUDE.md line 2). ui/frame-mock/ is
   // a static look for the human to judge, its data written from the app's own files: no product code;
@@ -64,5 +67,20 @@ export default defineConfig(
       ],
     },
   })),
+  // No colour of its own outside the design system: a screen reads the theme's variables. The design
+  // system, the tests and the mock harness (a page of fixtures) are outside it.
+  {
+    files: ['ui/src/**/*.{ts,tsx}'],
+    ignores: ['ui/src/design-system/**', 'ui/src/mock/**', '**/*.test.{ts,tsx}'],
+    rules: {
+      'no-restricted-syntax': [
+        'error',
+        {
+          selector: `Literal[value=${COLOUR}], TemplateElement[value.raw=${COLOUR}]`,
+          message: 'A colour is written in the design system, and read by name or variable.',
+        },
+      ],
+    },
+  },
   { files: ['ui/**/*.{ts,tsx}'], extends: [reactHooks.configs.flat['recommended-latest']] },
 );
