@@ -4,7 +4,7 @@ import { IconFingerprint } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { CREDO_BRAND } from '../../brand';
 import { SignInFrame } from '../SignIn';
-import { BRAND_GRADIENT } from '../../theme';
+import { BRAND_GRADIENT } from '../../design-system/appTheme';
 
 type Props = {
   /** Idle, waiting on the device, the passkey not given, or a passkey that opens nothing here. */

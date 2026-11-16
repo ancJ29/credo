@@ -19,7 +19,7 @@ import { useTranslation } from 'react-i18next';
 import type { Brand } from '../brand';
 import classes from '../frame/frame.module.css';
 import { LANGUAGE_NAMES } from '../i18n';
-import { BRAND_GRADIENT } from '../theme';
+import { BRAND_GRADIENT } from '../design-system/appTheme';
 import { waitWords } from './waitWords';
 
 /** The page's own ground behind a door's card, the grey the signed-in pages sit on. */

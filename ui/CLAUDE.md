@@ -36,9 +36,10 @@ a directory of your own making is not on this list and is not a directory (vites
   state (`ui/src/frame/Shell.tsx`'s `Shell`, `ui/src/frame/Loaded.tsx`'s `Loaded`).
 - **`parts/`**: a piece a screen is built from, that no route mounts
   (`ui/src/parts/DetailCards.tsx`'s `DetailCard`, `ui/src/parts/PageShell.tsx`'s `PageShell`).
-- **`design-system/`**: the legacy app's look in one place: a token, the theme laid over `ui/src/theme.ts`,
-  the gallery page that shows the parts (`ui/src/design-system/theme.ts`'s `designThemeOf`,
-  `ui/src/design-system/Gallery.tsx`'s `Gallery`, served at `/gallery.html`).
+- **`design-system/`**: the look in one place: a token, the app's own theme and the nine palettes
+  (`ui/src/design-system/appTheme.ts`'s `themeOf`, `ui/src/design-system/palettes.ts`'s `PALETTES`, and its
+  `theme.module.css`), the theme laid over it (`ui/src/design-system/theme.ts`'s `designThemeOf`), and the
+  gallery page that shows the parts (`ui/src/design-system/Gallery.tsx`'s `Gallery`, served at `/gallery.html`).
 - **`components/`**: a piece of the design system, in a level directory, with its gallery entry. Mantine
   stays the base: a piece joins when it is drawn a third time, never to wrap a Mantine part alone.
   Levels are `atoms/`, `molecules/` and `organisms/`; each is a directory of components, not of its own
@@ -53,8 +54,8 @@ a directory of your own making is not on this list and is not a directory (vites
 - **`i18n/`**: the dictionary (`ui/src/i18n/en.ts`'s `en`).
 - **`mock/`**: the standalone harness that draws a screen on fake data
   (`ui/src/mock/MockPage.tsx`'s `MockPage`).
-- **The top level**: an entry, a route table, or a module with no screen in it: the API client, the
-  look, a sheet, a port (`ui/src/api.ts`'s `createApi`, `ui/src/theme.ts`).
+- **The top level**: an entry, a route table, or a module with no screen in it: the API client,
+  a sheet, a port (`ui/src/api.ts`'s `createApi`).
 
 A test sits beside its subject, and beside the app where the subject is the app
 (`ui/src/App.test.tsx`). A flow test with no source of its name (`ui/src/pages/client/Access.test.tsx`,

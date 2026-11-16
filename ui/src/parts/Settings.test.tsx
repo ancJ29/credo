@@ -3,7 +3,7 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { draw } from '../../tests/render';
-import { PALETTES } from '../palettes';
+import { PALETTES } from '../design-system/palettes';
 import { Settings } from './Settings';
 
 const config: TenantConfig = {

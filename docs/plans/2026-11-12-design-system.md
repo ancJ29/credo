@@ -205,11 +205,12 @@ a review with its check about 20.
 **Landing 2: one home, nothing moved** (after the human's yes at point 1: "I think I should
 confirm the skeleton first").
 
-- [ ] **4. The app's theme joins the home.** `ui/src/theme.ts`, `ui/src/palettes.ts` and
+- [x] **4. The app's theme joins the home.** `ui/src/theme.ts`, `ui/src/palettes.ts` and
       `ui/src/theme.module.css` move in as above; every importer follows; `ui/CLAUDE.md`'s sentence
       grows. The session-ended, passkeys and ways snapshots are rewritten, their diff read to hold
       renamed classes only. _Done when:_ both checks and visual's exit 0; `git ls-files` of the three
       old paths prints nothing. **8 min.**
+      _Done 2026-11-16: `pre-merge` taken in (one conflict, `docs/open-items.md`, both sides kept in number order); the three files moved to `ui/src/design-system/` as `appTheme.ts` (the name `theme.ts` is `designThemeOf`'s, which step 9 joins), `palettes.ts` and `theme.module.css`, `theme.test.ts` as `appTheme.test.ts`, nine importers followed, `ui/CLAUDE.md` grew; one snapshot moved, the ways one (the session-ended and passkeys ones held), its text equal to the old once the hashes in class names are masked; `pnpm --filter @credo/ui check` exit 0 (typecheck, eslint, prettier, test, knip all 0); the citations test exit 0 (32 passed); `git ls-files` of the three old paths prints nothing; `pnpm --filter @credo/visual check` exit 0 (all five steps 0)._
 - [ ] **5. The hand-written values to tokens.** The frame stylesheets' 26 colours, the shell's two
       whites and the sign-in card's two washes become variables of the same value; the gradients come
       from `tokens.ts`. Case 9. _Done when:_ the checks exit 0 and

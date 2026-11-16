@@ -3,7 +3,7 @@ import { MantineProvider } from '@mantine/core';
 import { type ReactNode, useMemo } from 'react';
 import { I18nextProvider } from 'react-i18next';
 import { createI18n } from '../i18n';
-import { themeOf } from '../theme';
+import { themeOf } from '../design-system/appTheme';
 
 type Props = {
   /** The tenant's brand colour. */

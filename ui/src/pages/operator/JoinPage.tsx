@@ -9,7 +9,7 @@ import { CREDO_BRAND } from '../../brand';
 import type { DeviceStore } from '../../device';
 import { PasskeyNotGiven, type Passkeys } from '../../passkeys';
 import { SignInFrame } from '../SignIn';
-import { BRAND_GRADIENT } from '../../theme';
+import { BRAND_GRADIENT } from '../../design-system/appTheme';
 
 type Props = {
   api: Api;

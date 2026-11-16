@@ -1,5 +1,5 @@
 import { Badge, createTheme, mergeThemeOverrides, Modal, Table } from '@mantine/core';
-import { themeOf } from '../theme';
+import { themeOf } from './appTheme';
 import { TOKENS } from './tokens';
 
 /**

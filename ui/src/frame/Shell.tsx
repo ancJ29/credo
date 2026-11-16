@@ -25,7 +25,7 @@ import classes from './frame.module.css';
 import looks from './frameLook.module.css';
 import { LANGUAGE_NAMES } from '../i18n';
 import { type MenuPage, PAGES } from '../nav';
-import { BRAND_GRADIENT, MENU_GRADIENT } from '../theme';
+import { BRAND_GRADIENT, MENU_GRADIENT } from '../design-system/appTheme';
 
 /** How many pages the phone's bar holds before More. */
 export const BAR_PAGES = 4;
