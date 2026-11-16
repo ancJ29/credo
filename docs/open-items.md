@@ -2037,3 +2037,11 @@ The comment "Runs first on every client route, before the body is read and befor
 ## 536. Two small wording points on the move page — the machine; `[DEFERRED]` (the move's reread, 2026-11-16, Info)
 
 In `ui/src/pages/operator/MoveClientPage.tsx` the box choice stays live while the passkey prompt and the first press run, so a click then changes the box later lines name. And `moveRefused` (`ui/src/i18n/en.ts`, `vi.ts`) says the move did not start when only its answer may have been lost; "may not have started" claims only what the page knows. Fix: lock the choice from the touch on, and reword the line. *Trigger:* the next change to the page's lines.
+
+## 542. The new app's sign-in has no "remember me" — the human; *parked* until a partner asks for it (the sign-in's parts, 2026-11-16, Low)
+
+The old app's sign-in offers "remember me", on by default (the old repo's `workspace/uis/c-mngt/src/pages/auth/SignInPage.tsx#L81`, drawn by `base/src/components/auth/pages/LoginUI.tsx#L106-L112`); the only lines of `ui/src`, `bff/src` and `shared/src` that say "remember" are about the fake's switch (`ui/src/fake.ts`). The gallery draws the box in the legacy's sign-in card as a look only ([the plan](plans/2026-11-16-sign-in-parts.md)); a door draws it only with a session that keeps the choice. *Trigger:* a partner who misses it, or the doors taking the sign-in's parts.
+
+## 543. No page signs in by scanning a code inside the app or typing it — the human; *parked* until a partner asks for it (the sign-in's parts, 2026-11-16, Low)
+
+The old app's `/login-via-qr-code` (the old repo's `workspace/uis/c-mngt/src/pages/auth/AccessViaQRCodePage.tsx`) scans a code with the camera or from a picture, or takes it typed, and its sign-in links to it. The new app's QR code is opened by the phone's own camera (`shared/src/signins.ts`'s `qrLink`, `ui/src/pages/client/QrLanding.tsx`'s `QrLanding`), and no page or button offers the other two ways. The sign-in's parts draw that page in the gallery as a look only; the divider and the back link have no door until this is built. *Trigger:* a partner whose people cannot open a link from the camera.
