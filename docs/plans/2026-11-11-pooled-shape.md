@@ -344,6 +344,24 @@ milestone if the orchestrator wants one.
   runbook's "A retained box". *Done when:* the machine reads the logs: the box and its disk added, the
   home box unchanged, each log ending `== exit 0`, the check reading both boxes, then the removal
   ending `== exit 0` with ridge on its one box.
+- [x] **6x. The list right of a box added.** The sitting's release was refused on `ListObjectsV2`: AWS's own
+  processing of the loop left `${Name}/*` unreplaced in the role's list condition (a plain string, replaced
+  only in a name and in an `Fn::Sub`), so the role may list no prefix. One part: the condition is written
+  `!Sub ${Name}/*`, as the put/get line beside it; case 12's expansion replaces `${Name}` only in a name and
+  in an `Fn::Sub`, as AWS was measured to, and a new line reads the expanded loop for a `${Name}` left over.
+  *Size:* 20. *Expected red:* the new line on today's `ops/env.yml`; then a mutation that puts the plain
+  string back, and one that makes the expansion replace everywhere again, each red then reverted. *Done when:*
+  `bash ops/test.sh` ends `== exit 0` and `shellcheck -x ops/*.sh` exits 0.
+  *Ticked 2026-11-16:* on a trimmed copy of case 12's section (its exit code the verdict) the new line read red on the
+  old `ops/env.yml` and green on the fixed one. With the old replace-everywhere expansion kept and the new line
+  kept, on the old template, the section read green (the probe was run twice, once by the builder and once by the
+  reviewer): `named` is what lets the new line see the literal, and the old expansion and old line together are
+  why `ops/test.sh` passed. One mutation on the fixed tree, the plain-reading rule for an `Fn::Sub` with no
+  variable taken out of `UNNAME`, read red on the role's row and was reverted. The plain string put back in
+  the list condition was not run apart from the old file, which it equals, so it is the first run again. The
+  only `Fn::ForEach` in `ops/*.yml` are the two in `ops/env.yml`; the outputs loop holds no plain `${Name}`.
+  `bash ops/test.sh` on the tree at `d6a92751` ended `all checks passed` at 08:09 and `== exit 0`, and
+  `shellcheck -x ops/*.sh` exited 0.
 
 **Third landing: the move** (after the store's copy tool is on `pre-merge`).
 
