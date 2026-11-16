@@ -1445,6 +1445,22 @@ The bare-name shape (`LOG_NAME` in `scripts/src/citations.ts`) excludes `*` and 
 
 A row cited twice in one document is the one shape where two branches each removing one copy can merge as a single deletion and leave a red neither had. A file name ending in `.log` written in prose for a different reason, such as a call on the console, would now count as a citation, and the red's advice to take it out would be wrong for a convention that names it; no such convention exists today. Two names still call `docs/open-items.md` "the log": the progress bullet in the At a glance of `docs/conventions/documentation.md` ("the to-do log") and a link in `.claude/skills/session/SKILL.md`, which sits one row from the rule that a record names no log. *Fix:* give a repeated row its count in the list, let the red's advice name the other cause, and rename the two mentions to "the open items". *Trigger:* the next change to the citation check, or the first convention that names such a file.
 
+## 306. The confirm dialog is a base part with no caller yet — the machine; *parked* (the design system's plan, 2026-11-12, Low)
+
+The design skeleton the human judged draws five base parts, the legacy's confirm dialog among them, but no screen of the new app opens a confirm dialog: the deletes confirm on a page of their own, and the one dialog drawn is the session-ended prompt (`ui/src/parts/SessionEnded.tsx`'s `SessionEnded`). The design system's plan gives the dialog its look through the theme's dialog entry and builds no part nothing calls. *Fix:* the part, from the legacy's `ConfirmModal` (a message, then Cancel and a red Confirm, right-aligned), in the step of the first screen that needs one. *Trigger:* the first screen that asks before an act in a dialog.
+
+## 307. Dark mode is parked, light only by the human's answer — the human; *parked* (the design system's plan, 2026-11-12)
+
+The human answered on 2026-11-11 that the app stays light only for now, as the legacy is. The design system's plan forces light in `ui/src/frame/Providers.tsx`'s `Providers` and deletes the frame's dark rules, which stay in git at the plan's commit. *Fix:* a dark set of tokens beside the light one in `ui/src/design-system/`, the provider following the device again, and the walks taken in both schemes. *Trigger:* the human's word, or a partner's ask.
+
+## 308. The legacy draws a page title a level smaller on a phone — the machine; *parked* (the design system's plan, 2026-11-12, Low)
+
+The legacy's list page title is a level-3 heading on a computer and a level-4 one on a phone (the old repository's `workspace/uis/c-mngt/src/components/ListPageHeader.tsx`, its two `Title` branches), 22 against 18 pixels; the new app draws 22 at every width. The skeleton the human judged did not show it, so the plan leaves it out. *Fix:* the phone's size as a token and the heading rule at the phone width, then a picture run over every walk. *Trigger:* a look the human asks for, or the next change to the page title.
+
+## 309. Font weights written as numbers in screens are outside the literal check — the machine; *parked* (the design system's plan, 2026-11-12, Info)
+
+The design system's literal check refuses a colour written outside `ui/src/design-system/`, not a weight: `fw=` with a number stands 18 times in `ui/src`'s screens and parts (500, 600 and 700). Each is a type value written where it is used. *Fix:* named weights in the tokens and the screens reading them by name, with the check extended. *Trigger:* the next change to a weight in the tokens.
+
 ## 251. The activity log's key, once it runs on ridge, has no way to be replaced — the machine, the activity log's lane; *parked* until that key reaches a deployed environment (the front door and keys plan, 2026-11-11)
 
 The front door and keys plan (`docs/plans/2026-11-11-front-door-keys.md`) makes `ops/keys.sh` replace the four keys a deployed environment holds once it is built: the store's internal and super-admin keys, the back end's service key and the front door's key. The back end's fifth, `AUDIT_KEY` (`bff/src/env.ts`'s `auditShape`), is set only by the local stack, since `ops/app.sh` sets no `AUDIT` variable; the activity log's own lane carries it to ridge. *Fix:* when that lane writes the key to the box and the function, it adds the key to `ops/keys.sh` as one more kind, in its own order (the service first, then the function), and to the function's variable list in `ops/lib.sh`. *Trigger:* the activity log running on any deployed environment.
@@ -1929,6 +1945,38 @@ The red at `ops/check.sh#L237`, when the function's variables differ from the wa
 
 The check's local port (`ops/check.sh#L54`, 3191) is the one the test stand-ins take as well, so a test run and a real check cannot run together; the nested run's port, the check's plus 5 (`ops/check.sh#L337`), is 3196, the port `ops/root-password.sh#L33` takes. And in box mode (`--box <name>`) `LAYER4` is set to 0 (`ops/check.sh#L105`), so the "skipped: <env>'s stack holds no layer four yet" line (`ops/check.sh#L219`) is printed for a stack that holds it. Give the nested run a port of its own, and say "not read in box mode" there.
 
+## 498. Two homes for the pieces a screen is built from, `parts/` and `components/` — the machine; *parked* until the human's answer on the design system's landings 2 and 3 (the design system's plan, 2026-11-16, Low)
+
+The design system's first landing adds `ui/src/components/` in three levels beside `ui/src/parts/` and moves no part across, by the human's "we should not touch current code" of 2026-11-16. Until the parts that are only look have moved, a reader looking for a shared piece checks both folders, and the gallery shows the organisms while the screens still draw the parts. The plan's landing 3 makes `ui/src/parts/DetailCards.tsx`'s `DetailCard` and `ui/src/parts/PageShell.tsx`'s `PageShell` draw the organisms `SectionCard` and `PageHeader`, their call sites unchanged. *Fix:* a part moves across at a landing that changes its look, and goes once its last caller imports the component; a part that knows the app's records, words or calls stays in `parts/`. *Trigger:* the human's answer to the plan's second point, then each change to a part's look.
+
 ## 502. The print in `keys_run` fires on every expected refusal (the reread of the box lows, 2026-11-16, Low) — the machine; `[DEFERRED]`
 
 `keys_run` (`ops/test.sh#L5036`) prints the last five lines of `keys.sh`'s output whenever its exit is not 0, and six of its ten callers expect exit 1 (`ops/test.sh#L5120`, `#L5161`, `#L5169`, `#L5176`, `#L5182`, `#L5196`), so a green run carries about 36 extra lines, among them indented `== exit 1` and `STOPPED:` lines. Print only when `RC` differs from the case's expected exit.
+
+## 504. The direction's lint misses an atom importing an atom, a `./../` path and a dynamic `import()`, and its message reads "A atom" (the review of the design system's steps 1 and 2, 2026-11-16, Low) — the machine; `[DEFERRED]`
+
+`eslint.config.js#L55` holds one regex a level: an atom importing another atom passes, as does a path written `./../molecules/X` and an `import('../molecules/X')`, which `no-restricted-imports` with `patterns` does not read as a static import. The message built from `level.slice(0, -1)` reads "A atom". Cover the three forms or say they are out of the rule, and write the article from the level's name.
+
+## 505. The gallery's test checks a heading named after each file, not the component drawn (the same review, Low) — the machine; `[DEFERRED]`
+
+`ui/src/design-system/Gallery.test.tsx#L28` looks for a heading named like each component file, and the gallery's `entries` keys are typed by hand, so an entry may draw another component under the right name. A test mounting each entry's component by its export, or a key typed from the folder's exports, would close it.
+
+## 506. `ui/CLAUDE.md` states the rule of three twice, never names the six samples as its exception, and leaves C17's sentence unfinished (the same review, Low) — the machine; `[DEFERRED]`
+
+The rule of three is written at the `components/` note and again in the levels' lines; neither says the six day-one samples are the exception, and the `design-system/` note does not finish C17's "everything in here is a ___". One statement, the exception named, the sentence finished.
+
+## 507. The theme drops the dialog header's padding, and the gallery draws no dialog or table (the same review, Low) — the machine; `[DEFERRED]`
+
+`ui/src/design-system/theme.ts#L18-L21` carries the dialog's centring and title but not the header's padding of the legacy's `theme/index.ts#L89-L91`, and the gallery shows neither a dialog nor a table row under the pointer, so the two entries of case 1 are held by the test alone and cannot be judged by eye. Add the padding with the first screen that opens a dialog, and a dialog and a table to the gallery.
+
+## 508. `tokens.ts` repeats values `ui/src/theme.ts` holds (the same review, Low) — the machine; `[DEFERRED]`
+
+`ui/src/design-system/tokens.ts#L9` and `#L19` write the badge's corners (4 px) and the card's padding (24 px) that `ui/src/theme.ts#L118-L119` already holds in its own entries (the radius `sm` and the spacing `lg`); two homes that drift with nothing red. Landing 2 moves `theme.ts` in; read one from the other then.
+
+## 513. The label atom's test asserts the weight alone, so its letter spacing can drift green (the reread of the skeleton's fix pass, 2026-11-16, Low) — the machine; `[DEFERRED]`
+
+`ui/src/components/atoms/FieldLabel.test.tsx#L17` checks that the style holds `600` and nothing on the spacing; with the spacing in `ui/src/design-system/tokens.ts#L15` put back at 0.5 the test stays green. Add the spacing's assertion with the next change to the atom.
+
+## 514. The detail field's empty value follows the memo, not the legacy's own field (the same reread, Low) — the machine; `[DEFERRED]`
+
+`ui/src/components/molecules/DetailField.tsx#L9` draws an em dash for a missing value, as the legacy's design memo says; the legacy's own `DetailField` draws a hyphen, and the memo's empty value is dimmed and italic, which the sample is not. Settle the dash and the dimming with the first screen that shows an empty value.
