@@ -89,7 +89,8 @@ client`. Nothing about the caller has been established at that point.
   ([the operator's door](#the-operators-door-resolves-no-company-and-reads-no-permission)).
 - *Hazard no gate catches:* `resolveTenant` covers the routes registered with the shared
   `forClient` option. The operator's routes that act on one client resolve a code to an id
-  themselves (`bff/src/routes/root-password.ts`, `bff/src/records/clients.ts`), so "one home" holds
+  themselves (`bff/src/routes/root-password.ts`, `bff/src/routes/client-move.ts`,
+  `bff/src/records/clients.ts`), so "one home" holds
   for the key *layout* and not for resolving a company. *Trigger:* each operator route that names a
   client.
 - *Decided and built (the pooled shape,
@@ -102,7 +103,30 @@ client`. Nothing about the caller has been established at that point.
   offer a retry; the log names the box and never a key. The box's own check that it holds the
   company is held by an absence, not a read: sessions, people and the root exist only on the
   company's own box, so on a wrong line a signed-in call is refused and a sign-in finds nobody.
-  *Intended, not built:* a company marked as moving, refused until the switch.
+- *Decided and built (the move between boxes,
+  [the detail page](../architecture-detail.md#pooled-on-boxes-in-the-same-one-stack-what-is-built-and-what-is-not)):*
+  the line may carry a mark, `move` (`shared/src/records.ts`'s `storedMoveSchema`), and
+  `resolveTenant` does not choose the store itself: `storeOfLine` in `bff/src/app.ts` answers it,
+  or refuses, by the line and by who asks. The same function serves the delete route
+  (`bff/src/routes/clients-delete.ts`) and the root password route
+  (`bff/src/routes/root-password.ts`), so the three callers share one answer; only the
+  move's route (`bff/src/routes/client-move.ts`) reads past a mark.
+
+  | The line | The company's own calls | The operator's delete and root password |
+  | --- | --- | --- |
+  | box A, no `move` | served from A | served from A |
+  | `copying` to B, in its wait or in the copy | **503** | **409**, "The client is moving" |
+  | `sweeping` B, `closed: false` (after a stop) | served from A at once | 409 |
+  | box B, `sweeping` A, `closed: true`, before `sweepAt` (after the switch) | **503** | 409 |
+  | box B, `sweeping` A, `closed: true`, from `sweepAt` | served from B | 409, until the sweep ends and the line loses `move` |
+  | any line naming a box this back end was not handed | **503**, the log naming the box | 503, the same |
+
+  *The surprise for a caller:* a company's own call is a 503 for the whole copy and for 15 seconds
+  after the switch (`bff/src/records/company-move.ts`'s `MOVE_WAIT_MS`), so the screens' offer of a
+  retry is what its people see; the terminal's scripts take no part in this table, they refuse a
+  company that `isMoving` by name (`shared/src/records.ts`'s `isMoving`). *Price of the choice:* the
+  mark is read from the home box on every call with no memory, which is what makes the very next
+  call see it.
 
 ## A session lasts a week, and an operator's an hour unused
 

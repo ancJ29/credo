@@ -498,6 +498,7 @@ describe('the fake Api', () => {
         'makeClient',
         'setRootPassword',
         'deleteClient',
+        'moveClient',
         'listOperators',
         'addOperator',
         'newOperatorLink',
@@ -912,6 +913,7 @@ describe('the fake Api', () => {
       name: 'Bình An',
       madeAt: Date.UTC(2026, 9, 21, 12),
       link: '/login?client-code=binh-an',
+      box: 'home',
     });
 
     await api.makeClient('another-one', 'Another One');

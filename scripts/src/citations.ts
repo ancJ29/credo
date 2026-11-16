@@ -27,6 +27,8 @@ const LIVING: { show: string; test: RegExp }[] = [
   // undated memos beside them hold one decision each and are not in the set.
   { show: 'docs/memo/bff.md', test: /^docs\/memo\/bff\.md$/ },
   { show: 'docs/memo/ui.md', test: /^docs\/memo\/ui\.md$/ },
+  { show: 'docs/memo/bff-code.md', test: /^docs\/memo\/bff-code\.md$/ },
+  { show: 'docs/memo/ui-code.md', test: /^docs\/memo\/ui-code\.md$/ },
 ];
 
 type Span = { text: string; start: number; end: number };

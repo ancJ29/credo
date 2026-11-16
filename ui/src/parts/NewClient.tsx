@@ -4,9 +4,10 @@ import {
   HOME_BOX,
   normaliseClientCode,
 } from '@credo/shared';
-import { Alert, Button, Paper, Radio, Stack, Text, TextInput, Title } from '@mantine/core';
+import { Alert, Button, Paper, Stack, Text, TextInput, Title } from '@mantine/core';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { BoxChoice } from './BoxChoice';
 
 type Props = {
   /** Idle, waiting on the service, the last attempt failed, or the code was already taken. */
@@ -16,8 +17,6 @@ type Props = {
   /** The box is given only when it is not the home box, so a form with no choice sends none. */
   onSubmit: (code: string, name: string, box?: string) => void;
 };
-
-const GIB = 1024 ** 3;
 
 /** The operator's form: a code and the company's name, and nothing else a client needs to start. */
 export function NewClient({ status, boxes = [], onSubmit }: Props) {
@@ -84,31 +83,13 @@ export function NewClient({ status, boxes = [], onSubmit }: Props) {
               onChange={(event) => setName(event.currentTarget.value)}
             />
             {boxes.length > 1 && (
-              <Radio.Group
+              <BoxChoice
                 label={t('operator.box')}
                 description={t('operator.boxHint')}
+                boxes={boxes}
                 value={box}
                 onChange={setBox}
-              >
-                <Stack gap="xs" mt="xs">
-                  {boxes.map((item) => (
-                    <Radio
-                      key={item.name}
-                      value={item.name}
-                      disabled={item.freeBytes === null}
-                      label={
-                        item.freeBytes === null
-                          ? t('operator.boxDown', { name: item.name })
-                          : t('operator.boxLine', {
-                              name: item.name,
-                              free: Math.floor(item.freeBytes / GIB),
-                              companies: item.companies,
-                            })
-                      }
-                    />
-                  ))}
-                </Stack>
-              </Radio.Group>
+              />
             )}
             <Button type="submit" loading={status === 'busy'}>
               {t('operator.make')}

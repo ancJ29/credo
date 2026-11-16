@@ -13,6 +13,7 @@ import {
   passwordIsValid,
   recordKeys,
   ROUTES,
+  isMoving,
   storedClientSchema,
 } from '@credo/shared';
 import { copyOfCode } from './demo/mapping';
@@ -70,6 +71,9 @@ async function readTargets(storage: CStorageClient, codes: string[]) {
     if (box !== HOME_BOX) {
       throw new Refused(`${code}: its line names box ${box}, and this script serves the home box`);
     }
+    // A company that is moving has its records on two boxes: nothing is written until it is not.
+    if (isMoving(client.data))
+      throw new Refused(`${code}: it is moving to another box, stop or finish the move first`);
     const root = await readSignIn(
       tenantStorage(storage, client.data.id),
       client.data.id,

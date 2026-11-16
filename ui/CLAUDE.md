@@ -20,6 +20,8 @@ How it behaves, which a person at a screen can be surprised by:
 
 ## The directories of `ui/src`
 
+Where each directory sits and the road one screen's call takes through them: [the code memo](../docs/memo/ui-code.md).
+
 Each but the last finishes "everything in here is a ___", by [`code.md`](../docs/conventions/code.md)'s C17;
 a directory of your own making is not on this list and is not a directory (vitest's own
 `__snapshots__/` beside a test aside), and a file with no sentence stays at the top.

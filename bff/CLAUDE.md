@@ -21,12 +21,14 @@ section per claim.
 
 ## The directories of `bff/src`
 
+For a person: [the code's layout and one call's path](../docs/memo/bff-code.md).
+
 Each finishes "everything in here is a ___", by [`code.md`](../docs/conventions/code.md)'s C17; a
 directory not on this list is not a directory, and a file with no sentence stays at the top. There
 is no `index.ts` in any of them, and no directory for configuration, connections or middleware: each
 was measured and has one file or two.
 
-- **`routes/`**: one kind of record's routes and the authorisation of them, a `register*Routes`
+- **`routes/`**: the routes and the authorisation of them, mostly one kind of record's and four the operator's, a `register*Routes`
   function `buildApp` registers (`bff/src/routes/staff.ts`'s `registerStaffRoutes`), with the
   test of each beside it.
 - **`records/`**: the reads and writes of a record kind, with no route in it

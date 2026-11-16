@@ -1427,9 +1427,11 @@ The services page (`ui/src/pages/operator/ServicesPage.tsx`) reads `shared/src/w
 
 After `docs/plans/2026-11-11-store-pages-copy.md` the store answers in pages and the back end's `every` (`bff/src/records/records.ts`) reads them all, so a customer, product or staff list past 1,000 comes back whole, in one answer, and the order page still loads both whole lists for its pickers (`ui/src/pages/client/OrderPage.tsx`'s `api.listCustomers()` and `api.listProducts()`). Nothing on screen asks for a part today, and the lists of the human's companies are far under any size a phone cannot draw. Fix: a list screen that asks for a page or a search, and pickers that search the back end. *Trigger:* the first company whose list a phone draws slowly, or whose answer nears the back end's answer limit, which that plan did not read.
 
-## 277. The copy tool carries a company's records and not its activity entries — the pooled shape's move; waits on the activity log running beside the store (the store's pages and copy plan, 2026-11-11, Medium)
+## 277. The copy tool carries a company's records and not its activity entries — the pooled shape's move; waits on the activity log running beside the store (the store's pages and copy plan, 2026-11-11, Medium) — `[FIXED]` in the move's step 2, 2026-11-16: refuted, nothing needs to move
 
 The copy tool of `docs/plans/2026-11-11-store-pages-copy.md` copies every record under a company's prefix in c-storage and nothing else. The activity log keeps each company's entries in its own service and file (`services/audit-backbone/internal/activity/store.go`'s `ByActor` and `ByTarget` take the company's id), so a company moved to another box would leave its history on the old one. A one-company restore is not touched by this: history records what happened, and stays. Fix: the move carries the company's entries too, or the back end reads a moved company's history where it was written. *Trigger:* the activity log's milestone, which ships it beside the store, and the shape's move, whichever plan comes second.
+
+**Closed (the move's step 2, 2026-11-16).** The premise was a log per box; there is one activity log (`bff/src/env.ts`), its address read off the home box, each entry kept under the company's id (`bff/src/app.ts`'s onSend hook), which a move keeps. A moved company's history is where it was written, and the photos sit in one bucket per back end, so neither moves. See `docs/plans/2026-11-16-shape-move.md`, "What the code says".
 
 ## 246. The terminal scripts reach a company's records with the whole store, so the pooled shape must route them too — the machine; `[FIXED]` in the pooled shape's first landing, 2026-11-14 (the one-company storage client's plan, 2026-11-11, Medium)
 
@@ -1793,9 +1795,11 @@ The e2e job's cache holds the Node prefix, and `npm install -g @usebruno/cli@4.2
 
 The app's row is the commit compiled into the scripts the tab loaded (`ui/src/main.tsx#L32`), while the BFF's and c-storage's are asked each minute (`ui/src/pages/operator/ServicesPage.tsx#L84-L99`). After a deploy, a tab opened before it marks the app's page "Different build", and the sentence above the rows (`ui/src/i18n/en.ts#L260-L261`) says c-storage is updated first, then the BFF and the app, which reads as "wait" when a reload is the whole remedy: `index.html` is served `no-cache` (`ops/app.sh#L156-L157`), so a reload shows the new build. It bites at a deploy's look and in the rehearsal of the way back, both read on this page. *Fix:* the sentence also says "or this page was opened before it: reload it", in both languages, which moves the services walk's half-done screen. *Trigger:* the next change to the Services page, or a no at the build version plan's look.
 
-## 440. The box's resolution is written out three times, so step 7's moving mark must be added to each copy — the machine; `[DEFERRED]` (the review of the pooled shape's first landing, 2026-11-14, Low)
+## 440. The box's resolution is written out three times, so step 7's moving mark must be added to each copy — the machine; `[FIXED]` in the move's step 2, 2026-11-16 (the review of the pooled shape's first landing, 2026-11-14, Low)
 
 `bff/src/app.ts` (`resolveTenant`), `bff/src/routes/clients-delete.ts` and `bff/src/routes/root-password.ts` each read the line's box (none is home), look for the store, and on a miss log the box and answer 503 (code convention C1). A copy missed by the move's mark would answer a moving company's call. *Fix, if taken:* one helper, for example `boxStorage` throwing the logged 503 itself, or a `companyOf(line)` answering the id and the store. *Trigger:* the move's step (step 7), which adds a mark to each copy.
+
+**Fixed (the move's step 2, 2026-11-16).** One helper in `bff/src/app.ts`, `storeOfLine`, answers a line's store or its refusal by the line's state; `resolveTenant`, the delete's route and the root password's route all call it, so the moving mark is read in one place.
 
 ## 441. Four comments sit on the wrong declaration after the boxes' inserts — the machine; `[DEFERRED]` (the review of the pooled shape's first landing, 2026-11-14, Low)
 
@@ -1973,6 +1977,10 @@ The rule of three is written at the `components/` note and again in the levels' 
 
 `ui/src/design-system/tokens.ts#L9` and `#L19` write the badge's corners (4 px) and the card's padding (24 px) that `ui/src/theme.ts#L118-L119` already holds in its own entries (the radius `sm` and the spacing `lg`); two homes that drift with nothing red. Landing 2 moves `theme.ts` in; read one from the other then.
 
+## 509. A company too large to be compared in one press cannot switch from the page — the machine; `[DEFERRED]` (the move's plan, 2026-11-16, Low)
+
+`compareCompany` (`bff/src/records/company-copy.ts`) walks the whole company on both boxes in one press, inside the function's 10 seconds (`bff/src/records/company-move.ts`'s `pressMove`). No copy rate was measured, so the size at which a compare passes the limit is unknown; past it every press ends in a failure after its copy is done and the move can only be stopped. Fix: a compare in presses, kept from a key on the line as the copy's is. *Trigger:* a move press near 10 seconds in the ridge sitting, or a company whose records pass the figure that sitting reads.
+
 ## 513. The label atom's test asserts the weight alone, so its letter spacing can drift green (the reread of the skeleton's fix pass, 2026-11-16, Low) — the machine; `[DEFERRED]`
 
 `ui/src/components/atoms/FieldLabel.test.tsx#L17` checks that the style holds `600` and nothing on the spacing; with the spacing in `ui/src/design-system/tokens.ts#L15` put back at 0.5 the test stays green. Add the spacing's assertion with the next change to the atom.
@@ -2004,3 +2012,28 @@ The receipt that prints a card's calls from the access log was copied from the e
 ## 522. `copy_problems` reads the first JSON document on stdin and ignores any after it (the same review, Low) — the machine; `[DEFERRED]`
 
 `input` at `ops/lib.sh#L721` takes the first document, where `--argjson` refused two. The AWS CLI's JSON output is one document, so the real path cannot meet a second. Make it refuse more than one document if the listing ever comes from another source.
+
+## 524. A doc comment sits above the wrong function in `bff/src/app.ts` — the machine; `[DEFERRED]` until the next piece that touches `app.ts`
+
+The comment "Runs first on every client route, before the body is read and before any session" sits above `boxStorage`'s own doc comment, and `boxStorage` is not what it describes: it belongs to `resolveTenant`. Move it down onto `resolveTenant`, and leave `boxStorage` with its own line.
+
+## 532. `copy-company` checks only the target line's id, so a target line naming another box or moving gets records it never reads — the machine; `[DEFERRED]` (the move's review, 2026-11-16, Low)
+
+`runRidge`'s `copy-company` (`scripts/src/ridge.ts`) checks the target's line by its id alone, while `carryCompany` writes to the target's home box. A target line that names another box, or carries a move, is handed records its calls never read, and the run still reports "0 differ". Fix: refuse such a target line by name, writing nothing, as the source's line is refused. *Trigger:* the next use of `copy-company` over a target that holds a line.
+
+## 533. The activity line prints only "client moved" for the mark, the switch and the stop — the machine; `[DEFERRED]` (the move's review, 2026-11-16, Low)
+
+`entryLine` (`shared/src/activity.ts`) names the action and not the step: the entries `bff/src/routes/client-move.ts` enters for `mark`, `switch` and `stop` read the same, though each carries its step and both boxes in its detail. Fix: print the step and the boxes. *Trigger:* the first reading of a move's entries in the activity log's page.
+
+## 534. The move's route repeats `storeOfLine`'s refusal of a box not held — the machine; `[DEFERRED]` (the move's review, 2026-11-16, Low)
+
+`registerMoveClientRoutes` (`bff/src/routes/client-move.ts`) has its own `boxOf`, which logs "a company names a box this back end does not hold" and answers 503, as `storeOfLine` in `bff/src/app.ts` does. Fix: one held-box helper both call. *Trigger:* the next change to either's wording or status.
+
+
+## 535. The move page names the wrong box when it never saw the ending answer — the machine; `[DEFERRED]` (the move's reread, 2026-11-16, Low)
+
+`ui/src/pages/operator/MoveClientPage.tsx`'s `boxes` assumes a switch when the page never saw the ending answer: opened mid-copy, its first answer `sweeping`, because another tab stopped the move or this page's stop answer was lost. The sweep line and a failed-press line then name the box the company lives on as the one being cleared; the server sweeps the right box. Fix: name no box when the ending is unknown, or reload the list once on such an answer. *Trigger:* the next change to the page's lines.
+
+## 536. Two small wording points on the move page — the machine; `[DEFERRED]` (the move's reread, 2026-11-16, Info)
+
+In `ui/src/pages/operator/MoveClientPage.tsx` the box choice stays live while the passkey prompt and the first press run, so a click then changes the box later lines name. And `moveRefused` (`ui/src/i18n/en.ts`, `vi.ts`) says the move did not start when only its answer may have been lost; "may not have started" claims only what the page knows. Fix: lock the choice from the touch on, and reword the line. *Trigger:* the next change to the page's lines.

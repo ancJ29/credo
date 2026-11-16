@@ -224,6 +224,11 @@ export const clientListItemSchema = z.strictObject({
   name: z.string(),
   madeAt: z.number().nullable(),
   link: z.string(),
+  /** The box the company's line names; none is the home box, as a list written before read. */
+  box: boxNameSchema.optional(),
+  /** The move the line carries, if any, in either form: copying to a box, or sweeping a box the
+   * company has left. The key the last press passed is never sent. */
+  move: z.strictObject({ form: z.enum(['copying', 'sweeping']), box: boxNameSchema }).optional(),
 });
 export type ClientListItem = z.infer<typeof clientListItemSchema>;
 
@@ -248,6 +253,23 @@ export const rootPasswordRoute = (code: string) =>
 /** The route that deletes a client whole, by the client's code: `DELETE` on the client's own path
  * under the operator's clients. */
 export const clientDeleteRoute = (code: string) => `${ROUTES.operatorClients}/${code}`;
+
+/** The route that moves a client to another box: `POST` on the client's own path plus `/move`. */
+export const moveClientRoute = (code: string) => `${clientDeleteRoute(code)}/move`;
+
+/** What one press of the move answers: a wait with the seconds left (the company is closed, its
+ * people told to try again), the copy with the changes still to make, the sweep of the old box
+ * with the records still to go, or the move ended. `switched` and `stopped` are the waits after
+ * the line names the new box and after a stop: the page offers no stop from then on. */
+export const moveClientReplySchema = z.discriminatedUnion('phase', [
+  z.strictObject({ phase: z.literal('waiting'), seconds: z.number().int().positive() }),
+  z.strictObject({ phase: z.literal('copying'), left: z.number().int().nonnegative() }),
+  z.strictObject({ phase: z.literal('switched'), seconds: z.number().int().positive() }),
+  z.strictObject({ phase: z.literal('stopped'), seconds: z.number().int().positive() }),
+  z.strictObject({ phase: z.literal('sweeping'), left: z.number().int().nonnegative() }),
+  z.strictObject({ phase: z.literal('done') }),
+]);
+export type MoveClientReply = z.infer<typeof moveClientReplySchema>;
 
 /** What setting a root's password answers: the password the app made, shown once, or null when the
  * operator typed one, which is never sent back. */
@@ -375,6 +397,7 @@ export const confirmActSchema = z.enum([
   'operator-link',
   'delete-operator',
   'delete-client',
+  'move-client',
 ]);
 export type ConfirmAct = z.infer<typeof confirmActSchema>;
 export const confirmOptionsRequestSchema = z.strictObject({ act: confirmActSchema });
@@ -472,6 +495,15 @@ export type DeleteOperatorRequest = z.infer<typeof deleteOperatorRequestSchema>;
 /** A client deleted whole, with the touch that allows it. */
 export const deleteClientRequestSchema = z.strictObject({ confirm: confirmationSchema });
 export type DeleteClientRequest = z.infer<typeof deleteClientRequestSchema>;
+
+/** One press of a company's move: `{ to, confirm }` begins it, with a fresh touch; `{}` goes on and
+ * `{ stop: true }` stops it, on the session alone. */
+export const moveClientRequestSchema = z.union([
+  z.strictObject({ to: boxNameSchema, confirm: confirmationSchema }),
+  z.strictObject({ stop: z.literal(true) }),
+  z.strictObject({}),
+]);
+export type MoveClientRequest = z.infer<typeof moveClientRequestSchema>;
 
 /** What one press of a client's delete answers: how many of its records are still to go. Zero is
  * done; more, and the page presses again. */
