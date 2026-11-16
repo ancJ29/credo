@@ -139,7 +139,9 @@ export function Shell({
       <AppShell.Header
         className={head(classes.header, 'header')}
         data-white={whiteHeader}
-        style={whiteHeader ? undefined : { background: BRAND_GRADIENT, color: '#fff' }}
+        style={
+          whiteHeader ? undefined : { background: BRAND_GRADIENT, color: 'var(--credo-white)' }
+        }
       >
         <Group h="100%" px="md" justify="space-between" wrap="nowrap">
           <Group wrap="nowrap" gap="sm">
@@ -239,7 +241,7 @@ export function Shell({
           className={side(classes.menu, 'menu')}
           data-white={whiteMenu}
           data-strip={strip}
-          style={whiteMenu ? undefined : { background: MENU_GRADIENT, color: '#fff' }}
+          style={whiteMenu ? undefined : { background: MENU_GRADIENT, color: 'var(--credo-white)' }}
           visibleFrom="sm"
           aria-label={t('nav.menu')}
         >

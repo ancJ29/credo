@@ -2,7 +2,7 @@
    in the light scheme and the dark; the phone's bar stays on the page's own ground. */
 
 .header {
-  color: #fff;
+  color: var(--credo-white);
   border: 0;
 }
 
@@ -26,7 +26,7 @@
 }
 
 .button:hover {
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--credo-white-12);
 }
 
 .user {
@@ -37,7 +37,7 @@
   padding: 4px 8px;
   border-radius: 8px;
   color: inherit;
-  background: rgba(255, 255, 255, 0.12);
+  background: var(--credo-white-12);
 }
 
 .avatar {
@@ -46,16 +46,16 @@
   justify-content: center;
   width: 28px;
   height: 28px;
-  border: 1.5px solid rgba(255, 255, 255, 0.9);
+  border: 1.5px solid var(--credo-white-90);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.18);
+  background: var(--credo-white-18);
   font-size: 11px;
   font-weight: 700;
 }
 
 .badge {
-  background: rgba(255, 255, 255, 0.18);
-  color: #fff;
+  background: var(--credo-white-18);
+  color: var(--credo-white);
 }
 
 /* A dropdown opened inside the header keeps the page's own text colour, not the header's white. */
@@ -75,20 +75,20 @@
   gap: 12px;
   min-height: 50px;
   padding: 0 12px;
-  color: #fff;
+  color: var(--credo-white);
   font-size: 16px;
   font-weight: 500;
   text-decoration: none;
 }
 
 .item:hover {
-  background: rgba(255, 255, 255, 0.05);
+  background: var(--credo-white-05);
 }
 
 /* The open page: washed in white, no change of weight, with a notch 15 wide and 20 high at the
    menu's right edge opening onto the page. */
 .item[aria-current='page'] {
-  background: rgba(255, 255, 255, 0.1);
+  background: var(--credo-white-10);
 }
 
 .item[aria-current='page']::after {
@@ -136,7 +136,7 @@
 }
 
 [data-mantine-color-scheme='dark'] .barLink {
-  color: #9a9a9a;
+  color: var(--credo-grey-9a);
 }
 
 [data-mantine-color-scheme='dark'] .barLink[aria-current='page'] .barIcon {

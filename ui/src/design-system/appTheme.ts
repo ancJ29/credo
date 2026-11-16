@@ -8,6 +8,7 @@ import {
 } from '@mantine/core';
 import { paletteOfColour } from './palettes';
 import classes from './theme.module.css';
+import { TOKENS } from './tokens';
 
 const FONT = '"Noto Sans Variable", sans-serif';
 
@@ -64,12 +65,10 @@ const RED: MantineColorsTuple = [
 ];
 
 /** The brand's own gradient, from its shade 7 to its shade 9: the primary button, the card's top bar. */
-export const BRAND_GRADIENT =
-  'linear-gradient(135deg, var(--mantine-color-brand-7) 0%, var(--mantine-color-brand-9) 100%)';
+export const BRAND_GRADIENT = TOKENS.brandGradient;
 
 /** The side menu's ground, from the brand's shade 9 down to its shade 8. */
-export const MENU_GRADIENT =
-  'linear-gradient(180deg, var(--mantine-color-brand-9) 0%, var(--mantine-color-brand-8) 100%)';
+export const MENU_GRADIENT = TOKENS.menuGradient;
 
 type Rgb = [number, number, number];
 

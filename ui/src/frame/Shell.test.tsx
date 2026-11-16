@@ -58,8 +58,8 @@ describe('Shell', () => {
     expect(sideMenu().getAttribute('style')).toContain(
       'linear-gradient(180deg, var(--mantine-color-brand-9) 0%, var(--mantine-color-brand-8) 100%)',
     );
-    expect(header.style.color).toBe('rgb(255, 255, 255)');
-    expect(sideMenu().style.color).toBe('rgb(255, 255, 255)');
+    expect(header.style.color).toBe('var(--credo-white)');
+    expect(sideMenu().style.color).toBe('var(--credo-white)');
     // 250 pixels wide, 64 high for the phone's bar, as Mantine writes them: in rem.
     const rules = [...document.querySelectorAll('style')]
       .map((style) => style.textContent)
@@ -392,7 +392,9 @@ describe('Shell', () => {
     expect(white.getAttribute('style') ?? '').not.toContain('color');
     expect(white.className).toContain('brandName');
     expect(rule('.brandName')).toContain('var(--mantine-color-neutral-8)');
-    expect(rule("[data-mantine-color-scheme='dark'] .brandName")).toContain('#e9ecef');
+    expect(rule("[data-mantine-color-scheme='dark'] .brandName")).toContain(
+      'var(--credo-dark-text)',
+    );
     cleanup();
 
     looked({ whiteHeader: false, whiteMenu: true, menuIcons: false });
@@ -436,9 +438,9 @@ describe('Shell', () => {
 
   it('9: In dark, a white header or menu takes the dark surface', () => {
     const dark = rule("[data-mantine-color-scheme='dark'] .header");
-    expect(dark).toContain('#2e2e2e');
-    expect(dark).toContain('#e9ecef');
-    expect(rule("[data-mantine-color-scheme='dark'] .menu")).toContain('#2e2e2e');
-    expect(rule("[data-mantine-color-scheme='dark'] .item")).toContain('#e9ecef');
+    expect(dark).toContain('var(--credo-dark-surface)');
+    expect(dark).toContain('var(--credo-dark-text)');
+    expect(rule("[data-mantine-color-scheme='dark'] .menu")).toContain('var(--credo-dark-surface)');
+    expect(rule("[data-mantine-color-scheme='dark'] .item")).toContain('var(--credo-dark-text)');
   });
 });
