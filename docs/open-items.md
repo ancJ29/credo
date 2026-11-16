@@ -1916,3 +1916,19 @@ The guard in `ops/test.sh` refuses `<<<` on a line naming `kv`, `SECRET`, `STORA
 ## 493. The expansion renames `${Name}` in keys at every depth, but AWS was measured only on top-level ids (the review of the list right fix, 2026-11-16, Low) — the machine; `[DEFERRED]`
 
 The comment at `ops/test.sh#L963-L966` and `named` at `ops/test.sh#L967` replace `${Name}` in a key at any depth, while the measure covers only the loop's resource and output ids. All 8 such keys sit at depth 1 in `ops/env.yml`, and a nested one already goes red on the instance's equality row, so nothing is wrong today; narrow `named` to the ids, or measure a nested key, if one is ever added.
+
+## 495. A whole `ops/check.sh` run with a box in the stack, on the test stand-ins, leaves the stand-in's master holding its port, so the cases after it die on a taken port (the check's list of a box added, 2026-11-16, Low) — the machine; `[DEFERRED]`
+
+The product is not the leak: the real check opens one master per run on its own control socket and closes it on every exit (`ops/lib.sh#L609`, `ops/lib.sh#L101`, `ops/lib.sh#L622-L624`). The leak is the test stand-in's one `$S/master.pid` per state folder (`ops/test.sh#L2836-L2864`), which the nested run inherits: in `ops/test.sh`, `FAKE_BOX2=1 chk_run … check.sh ridge` (the home run, which then runs `bash "$0" --box b2` from `ops/check.sh#L337`) opened a second stand-in master on the one state folder, so the check's local port answered for the rest of the run: the next whole check ended "something already answers on 127.0.0.1:<port>", and so did every one after it, and the port still answered after the run ended. Run with `FAKE_BOX2_DOWN=1` (`ops/test.sh#L2785`) the nested run stops at its `send-ssh-public-key`, before it opens a forward, so it leaves none, and the sitting's cases for a box added read the whole check's verdict on the function's names that way. A whole check with the nested run reaching b2 would need a state folder of its own for the stand-in's master per run. The human clears the listeners left by the first session's runs from their own terminal.
+
+## 496. The check's red on the function's names does not name its fix (the review of the check's list of a box added, 2026-11-16, Low) — the machine; `[DEFERRED]`
+
+The red at `ops/check.sh#L237`, when the function's variables differ from the wanted names (`STORAGE_BOXES` missing after a box was added, or left after one was removed), says only the two lists. The fix is a deploy that writes the variables, `ops/app.sh <env>`; the red should name it, as the photo store's red names its one-off.
+
+## 497. Port 3191 is shared by the tests, 3196 with `root-password.sh`, and a "no layer four" line in box mode is false (the review of the check's list of a box added, 2026-11-16, Low) — the machine; `[DEFERRED]`
+
+The check's local port (`ops/check.sh#L54`, 3191) is the one the test stand-ins take as well, so a test run and a real check cannot run together; the nested run's port, the check's plus 5 (`ops/check.sh#L337`), is 3196, the port `ops/root-password.sh#L33` takes. And in box mode (`--box <name>`) `LAYER4` is set to 0 (`ops/check.sh#L105`), so the "skipped: <env>'s stack holds no layer four yet" line (`ops/check.sh#L219`) is printed for a stack that holds it. Give the nested run a port of its own, and say "not read in box mode" there.
+
+## 502. The print in `keys_run` fires on every expected refusal (the reread of the box lows, 2026-11-16, Low) — the machine; `[DEFERRED]`
+
+`keys_run` (`ops/test.sh#L5036`) prints the last five lines of `keys.sh`'s output whenever its exit is not 0, and six of its ten callers expect exit 1 (`ops/test.sh#L5120`, `#L5161`, `#L5169`, `#L5176`, `#L5182`, `#L5196`), so a green run carries about 36 extra lines, among them indented `== exit 1` and `STOPPED:` lines. Print only when `RC` differs from the case's expected exit.

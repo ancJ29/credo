@@ -3542,6 +3542,33 @@ chk_run photoless check.sh ridge --reads-only
 check "13 of the delivery photos plan: a function with the eight variables and no photo store is red, naming the box's photo-store.env and that no driver can deliver" "1 1 1" \
   "$RC $(chk_has "RED  the function holds the photo store's three settings.*photo-store.env" "$S/out") $(chk_has "^RED .*no driver can deliver" "$S/out")"
 cp "$CHK/fn.eleven" "$CHK/fn.json"
+# a box added (plan step 6y): app.sh hands the function STORAGE_BOXES then and only then, and the check wants it exactly then.
+# The whole check with b2 in the stack runs a second check of its own (--box b2); under FAKE_BOX2_DOWN=1 that run's
+# send-ssh-public-key to b2 fails, so it stops before it opens a forward and leaves none (open item 495), and the home
+# run's own forward is closed on its exit. So the whole check runs with b2 in the stack, and its verdict on the function's
+# names is read, below the two lists the check compares.
+BOXVAR="the function's variables .names only"
+fn_boxes_handed=$(jq -c '.Names += ["STORAGE_BOXES"]' "$CHK/fn.eleven")
+fn_boxes_names=$(function_env_names "$fn_boxes_handed")
+check "6y: with b2 in the stack, a function holding the eleven names and STORAGE_BOXES is what the check wants" "yes" \
+  "$([ "$fn_boxes_names" = "$(function_env_wanted b2)" ] && echo yes || echo no)"
+check "6y: with b2 in the stack, a function holding the eleven names alone is not (the back end was not handed b2)" "no" \
+  "$([ "$(function_env_names "$(cat "$CHK/fn.eleven")")" = "$(function_env_wanted b2)" ] && echo yes || echo no)"
+check "6y: with no box beyond the home one, the eleven names are what the check wants, and STORAGE_BOXES beside them is not" "yes no" \
+  "$([ "$(function_env_names "$(cat "$CHK/fn.eleven")")" = "$(function_env_wanted '')" ] && echo yes || echo no) $([ "$fn_boxes_names" = "$(function_env_wanted '')" ] && echo yes || echo no)"
+echo "$fn_boxes_handed" >"$CHK/fn.json"
+FAKE_BOX2=1 FAKE_BOX2_DOWN=1 chk_run boxes-added-handed check.sh ridge --reads-only
+check "6y: the whole check with b2 in the stack, the function holding the eleven names and STORAGE_BOXES, is green on its variables" "1 0" \
+  "$(chk_has "^ok   $BOXVAR" "$S/out") $(chk_has "^RED  $BOXVAR" "$S/out")"
+cp "$CHK/fn.eleven" "$CHK/fn.json"
+FAKE_BOX2=1 FAKE_BOX2_DOWN=1 chk_run boxes-added-missing check.sh ridge --reads-only
+check "6y: the whole check with b2 in the stack, the function holding the eleven names alone, is red on its variables" "1 0" \
+  "$(chk_has "^RED  $BOXVAR" "$S/out") $(chk_has "^ok   $BOXVAR" "$S/out")"
+echo "$fn_boxes_handed" >"$CHK/fn.json"
+chk_run boxes-left-behind check.sh ridge --reads-only
+check "6y: with no box beyond the home one, STORAGE_BOXES left in the function is red on its variables, wanting the eleven" "1 0" \
+  "$(chk_has "^RED  $BOXVAR" "$S/out") $(chk_has "^ok   $BOXVAR" "$S/out")"
+cp "$CHK/fn.eleven" "$CHK/fn.json"
 chk_run flag check.sh ridge --reads-only
 check "case 9: --reads-only on ridge gives the same run: green, no key, no collection, no client" "0 1 0 gone gone 6" \
   "$RC $(chk_has '^== green' "$S/out") $(chk_has 'c-storage/keys.env' "$S/ssh.calls") $(file_state "$S/bru.calls") $(file_state "$S/ridge.calls") $(six_reads "$S/out")"
@@ -5007,6 +5034,10 @@ keys_run() { # <state name> <logs name> <args…>: keys.sh ridge <args> in the s
   printf '%s\n' "$S" >"$WORK/door.state"
   RC=0
   (cd "$E2E/stackrepo" && PATH="$E2E/keysbin:$PATH" bash ops/keys.sh ridge "$@") >"$S/out" 2>&1 </dev/null || RC=$?
+  if [ "$RC" != 0 ]; then # diagnostic only: a red shows which line of keys.sh ended it
+    echo "  keys.sh exit $RC, last lines of its output:"
+    tail -n 5 "$S/out" | sed 's/^/    /'
+  fi
 }
 boxkey() { sed -n "s/^$1=//p" "$S/box/$2"; } # <name> <file on the box>
 function_var() { tail -n 1 "$S/envfile.history" | jq -r ".$1"; }
