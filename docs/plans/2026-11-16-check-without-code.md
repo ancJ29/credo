@@ -145,17 +145,17 @@ it is the whole milestone.
   standing, and without the line the next piece's check goes back to a chat. *Done when:* `git grep -n "Check a piece on ridge"
   docs/conventions/` prints two lines, one in each file; the citation test exits 0. *Ran:* the grep printed two lines, `collaboration.md#L188` and `documentation.md#L169`; the citation test exited 0; the two rows step 1 left were checked against the close-out recaps and both corrected. *Size 3:* row
   `2026-11-11 18:16` (120, step 3, 3), one rule in two conventions.
-- [ ] **4. 👤 Your check, then your command.** Your point below, then the receipt in your terminal;
+- [x] **4. 👤 Your check, then your command.** Your point below, then the receipt in your terminal;
   the orchestrator hands the command. *Done when:* your yes or no is in the piece's record, and the
   receipt's log is read whole: its verdict, the three calls each with a 2xx answer, and an address
   count of 0. *Size 1*, the machine's log read: rows `2026-11-16 11:11` (130, 7-cert-log, 1) and
   `14:18` (128, restore-receipt, 1). Your own minutes are not measured yet: the card is six steps
-  and one command.
-- [ ] **5. The recap and two items.** The recap, in the products row's commit as the convention
+  and one command. *Ran:* your yes, at 15:54, to whether your photo showed on the office's page; the receipt's first run ended red with none of the three calls, since it began about 25 seconds after the last call, inside the access log's minute of lag; its second run, 26 seconds later, read whole, found all three calls each answered 2xx on one delivery, with an address count of 0 and exit 0.
+- [x] **5. The recap and two items.** The recap, in the products row's commit as the convention
   asks, says what was checked and read, naming no log; items 517 and 518 are filed `[DEFERRED]`
   for the two parts left out below. *Done when:* the recap exists, `grep -c "^## 51[78]\."
   docs/open-items.md` prints 2, and the citation test exits 0. *Size 5:* row `2026-11-13 08:55`
-  (135, recap, 5), a recap of a documents piece.
+  (135, recap, 5), a recap of a documents piece. *Ran:* the recap is written, items 517 and 518 are filed, the products page's Known gaps item 2 now says what its recap says.
 - [ ] **6. The stage on your page (the orchestrator's own act, at the merge).** The piece's head
   takes `where: live on ridge` and a `seen` that starts "The fourth stage is back:", then what you
   checked and when and what the receipt read; `glance.sh` draws it under "Live on ridge", and the

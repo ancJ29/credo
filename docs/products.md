@@ -138,9 +138,10 @@ The numbers are [open items](open-items.md).
    doubling to 15 minutes, and a right one is refused during the wait. It is counted per name, not
    per address, so one guesser trying many names meets only the door's throttle, and each invented
    name leaves a small record (open item 256).
-2. Four alarms are written in `ops/env.yml` and reach no one until the Slack steps are done and ridge's
-   stack is updated with the two IDs ([the watch](../ops/README.md#the-watch), open item 1); the
-   continuous copy of the records and its restore have run on ridge, and the drill's restore read back (item 6).
+2. Four alarms are written in `ops/env.yml` and have run on ridge: the Slack steps were done, the stack
+   was updated with the two IDs, and a forced alarm reached the channel, with its return to normal
+   ([the watch](../ops/README.md#the-watch), open item 1); the continuous copy of the records and its
+   restore have run on ridge, and the drill's restore read back (item 6).
 3. A client's own production stack (item 4) and the public address in front of ridge's c-storage
    (item 13) are not built.
 4. The console's passkeys are tested in Chrome only, and adding one in Safari may be refused
