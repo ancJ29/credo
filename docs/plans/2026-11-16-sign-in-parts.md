@@ -162,7 +162,7 @@ system's step 1, a page, a part and its tests through the ui gate, 6 minutes; it
       looking for "Legacy" or a legacy picture; steps 1 and 2's ticks stay as history. _Done when:_ `grep -rnE
       'legacy\.ts|LEGACY\b|design-system/legacy/' ui` finds none, both checks exit 0. **8 min.**
       _Done, 2026-11-16:_ none found by the grep; the gallery's test asserts it draws no "Legacy" text or picture
-      and still shows the gradient button, default button and "hoặc" divider; both checks exit 0. 8 min.
+      (written in step 4, see its correction) and still shows the gradient button, default button and "hoặc" divider; both checks exit 0. 8 min.
       Nothing outside `ui/src/design-system/`, `ui/src/components/` and this plan changed.
 - [x] **4. The door card and the two pages.** `DoorCard` and its test (case 5); its gallery entry
       draws two states, the sign-in and the link page, in sentence case; `brandGradient`'s comment corrected. _Done when:_ both
@@ -170,13 +170,18 @@ system's step 1, a page, a part and its tests through the ui gate, 6 minutes; it
       _Done, 2026-11-16:_ case 5 seen red once (the band left out of the card); `DoorCard` draws the 4-px bar at
       90°, the band and the body at 28 over 40; the gallery's entry draws the sign-in and the link page in
       sentence case, no picture of the old app's; `brandGradient`'s comment says 135° and the bar's own 90°; the
-      count is 11; both checks exit 0; the serve probe exits 0. 12 min.
+      count is 11; both checks exit 0; the serve probe, Vite on port 5472, fetched `/gallery.html` and
+      `src/components/organisms/DoorCard.tsx` and both exited 0 (step 1's fetched a picture step 3b deleted). 12 min.
       Correction to 3b's line above: the test that the gallery draws no "Legacy" was not yet in step 3b's commit
       (the command that wrote it was refused); it and the tests for the three Mantine rows were written in this step.
 - [ ] **5. Review and landing.** Another model reads steps 1 to 4; one fix pass; `pre-merge` taken
       in; case 11; the recap; `docs/memo/ui-code.md#L69` corrected, since four doors draw
       `SignInFrame`, not one; item 516 closed as moot; point 1. _Done
       when:_ case 11 counts 0, the checks exit 0 after the fix, and the branch merges. **26 min.**
+      _Progress, 2026-11-16:_ the review (opus, at `99643cfd`) said may merge with eight Lows; the one fix pass
+      fixed all eight; `pre-merge` taken in (`c9e7a711`, no conflict); case 11 counts 0; the memo's levels count
+      and its frame line corrected; item 516 closed as moot, 553 written for the doors' later piece. Open: the
+      recap and the landing.
 
 About 46 machine minutes, and one look.
 

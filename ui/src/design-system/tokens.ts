@@ -1,3 +1,6 @@
+/** The brand's gradient button and the header's ground: shade 7 to shade 9, at 135 degrees. */
+const BRAND_SHADES = { from: 7, to: 9, deg: 135 } as const;
+
 /**
  * The legacy app's values that the new app's theme lacks, and the gallery reads. The greys, green,
  * red, font, gaps and shadows are `appTheme.ts`'s `themeOf` already and are not copied here.
@@ -17,16 +20,19 @@ export const TOKENS = {
   sectionTitle: { fw: 700, lts: 0.5 },
   /** A section card's padding, in px. */
   cardPadding: 24,
-  /** The brand's own gradient at 135°, from its shade 7 to its shade 9: the primary button. The door card's bar has its own, at 90°. */
-  brandGradient:
-    'linear-gradient(135deg, var(--mantine-color-brand-7) 0%, var(--mantine-color-brand-9) 100%)',
+  /** The brand's own gradient, from its shade 7 to its shade 9: the header and the primary button. The door card's bar has its own, at 90°. */
+  brandGradient: `linear-gradient(${BRAND_SHADES.deg}deg, var(--mantine-color-brand-${BRAND_SHADES.from}) 0%, var(--mantine-color-brand-${BRAND_SHADES.to}) 100%)`,
   /** The side menu's ground, from the brand's shade 9 down to its shade 8. */
   menuGradient:
     'linear-gradient(180deg, var(--mantine-color-brand-9) 0%, var(--mantine-color-brand-8) 100%)',
   /** The company logo's tile, in px: 44 square, corners of 10 (the legacy's card head). */
   logoTile: { size: 44, radius: 10 },
   /** The brand's gradient button: from shade 7 to shade 9, at 135 degrees, as Mantine's gradient variant reads it. */
-  buttonGradient: { from: 'brand.7', to: 'brand.9', deg: 135 },
+  buttonGradient: {
+    from: `brand.${BRAND_SHADES.from}`,
+    to: `brand.${BRAND_SHADES.to}`,
+    deg: BRAND_SHADES.deg,
+  },
   /** A labelled divider's word: small and dimmed. */
   dividerLabel: { fontSize: 'var(--mantine-font-size-sm)', color: 'var(--mantine-color-dimmed)' },
   /** A band's padding above and below, then at the sides, in px: the legacy's 28 over 40. */

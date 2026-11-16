@@ -25,6 +25,8 @@ describe('DoorHeading', () => {
 
     const subtitle = screen.getByText('Use your code');
     expect(subtitle.style.textAlign).toBe('center');
+    expect(subtitle.style.color).toBe('var(--mantine-color-dimmed)');
+    expect(screen.getByRole('heading', { name: 'Sign in' }).nextElementSibling).toBe(subtitle);
     expect(subtitle.getAttribute('data-size')).toBe('sm');
     expect(subtitle.style.marginBottom).toContain('2rem');
     unmount();

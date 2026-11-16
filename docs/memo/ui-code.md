@@ -28,7 +28,7 @@ Drawn from [`main.tsx`](../../ui/src/main.tsx), [`App.tsx`](../../ui/src/App.tsx
 | `ui/src/pages/`, loose (3 files) | A screen both apps mount, and the sign-in's own frame | `ui/src/pages/MorePage.tsx`'s `MorePage` |
 | `ui/src/frame/` (5 files) | What a screen is drawn inside: the shell and menu, the providers, the boot, the loading state | `ui/src/frame/Shell.tsx`'s `Shell` |
 | `ui/src/parts/` (20 files) | A piece a screen is built from that no route mounts: a form, a table, a panel | `ui/src/parts/PageShell.tsx`'s `PageShell` |
-| `ui/src/components/` (three levels, 2 files each) | The design system's pieces: `atoms/`, `molecules/`, `organisms/`, each with a gallery entry | `ui/src/components/atoms/StatusBadge.tsx`'s `StatusBadge` |
+| `ui/src/components/` (three levels, 5, 3 and 3 files) | The design system's pieces: `atoms/`, `molecules/`, `organisms/`, each with a gallery entry | `ui/src/components/atoms/StatusBadge.tsx`'s `StatusBadge` |
 | `ui/src/design-system/` (7 files) | The app's theme, its palettes and the tokens, and the gallery page that shows the parts, served at `/gallery.html` | `ui/src/design-system/Gallery.tsx`'s `Gallery` |
 | `ui/src/i18n/` (3 files) | The words, English first and Vietnamese after | `ui/src/i18n/en.ts`'s `en` |
 | `ui/src/mock/` (6 files) | The standalone harness that draws one screen on fake data | `ui/src/mock/MockPage.tsx`'s `MockPage` |
@@ -66,7 +66,7 @@ Copy `ui/src/pages/client/ListPage.tsx`'s `ListPage`, for a screen the client ap
 - **`useLoad` reads again only when its `deps` change, and the caller names them.** The lint rule is switched off at that line; a missing name shows an old page and fails nothing.
 - **The fake sits in the source but not in the build.** `ui/src/main.tsx` imports `ui/src/fake.ts` only in the fake build; the real bundle drops it ([the behaviour memo](ui.md)).
 - **The menu is a view, not a guard.** A screen never guards; the BFF asks again on every call.
-- **`ui/src/frame/` is not where a screen's own frame goes.** The sign-in's frame sits beside it in `pages/` because only that screen uses it.
+- **`ui/src/frame/` is not where a screen's own frame goes.** The sign-in's frame sits beside it in `pages/` because only the four sign-in doors use it (`ui/src/pages/SignIn.tsx`, `ui/src/pages/client/QrLanding.tsx`, `ui/src/pages/operator/OperatorSignIn.tsx`, `ui/src/pages/operator/JoinPage.tsx`).
 
 ## What this page did not read
 

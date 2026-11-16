@@ -32,12 +32,10 @@ describe('Gallery', () => {
   it('draws the gradient button, the default button and the divider worded “hoặc”', () => {
     render(<Gallery />);
 
-    for (const name of ['Gradient button', 'Default button', 'Labelled divider']) {
-      expect(screen.getByRole('heading', { name })).toBeDefined();
-    }
-    expect(screen.getAllByRole('button', { name: 'Quét mã QR' }).length).toBeGreaterThan(0);
-    expect(screen.getAllByRole('button', { name: 'Nhập mã thủ công' }).length).toBeGreaterThan(0);
-    expect(screen.getAllByText('hoặc').length).toBeGreaterThan(0);
+    const row = (name: string) => within(screen.getByRole('heading', { name }).parentElement!);
+    expect(row('Gradient button').getByRole('button', { name: 'Quét mã QR' })).toBeDefined();
+    expect(row('Default button').getByRole('button', { name: 'Nhập mã thủ công' })).toBeDefined();
+    expect(row('Labelled divider').getByText('hoặc')).toBeDefined();
   });
 
   it('draws the door card in two states, the sign-in and the link page, in sentence case', () => {

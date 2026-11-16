@@ -51,7 +51,7 @@ function SignInState() {
           leftSection={<IconLock size={18} />}
         />
         <Checkbox defaultChecked label="Ghi nhớ đăng nhập" />
-        <Button variant="gradient" fullWidth>
+        <Button variant="gradient" size="md" fullWidth>
           Đăng nhập
         </Button>
         <Divider label="hoặc" />
@@ -74,7 +74,7 @@ function LinkState() {
             subtitle="Quét mã QR hoặc nhập mã đăng nhập để đăng nhập"
           />
         </Stack>
-        <Button variant="gradient" fullWidth leftSection={<IconQrcode size={18} />}>
+        <Button variant="gradient" size="md" fullWidth leftSection={<IconQrcode size={18} />}>
           Quét mã QR
         </Button>
         <Divider label="hoặc" w="100%" />
