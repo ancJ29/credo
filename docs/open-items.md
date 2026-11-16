@@ -2029,3 +2029,7 @@ The comment "Runs first on every client route, before the body is read and befor
 ## 536. Two small wording points on the move page — the machine; `[DEFERRED]` (the move's reread, 2026-11-16, Info)
 
 In `ui/src/pages/operator/MoveClientPage.tsx` the box choice stays live while the passkey prompt and the first press run, so a click then changes the box later lines name. And `moveRefused` (`ui/src/i18n/en.ts`, `vi.ts`) says the move did not start when only its answer may have been lost; "may not have started" claims only what the page knows. Fix: lock the choice from the touch on, and reword the line. *Trigger:* the next change to the page's lines.
+
+## 549. An English word changed by a partner reddens the `ui` tests that query it by its text — the machine; *parked* until the first returned file that changes an English word (the words file's plan, 2026-11-16, Low)
+
+29 test files under `ui/` hold 384 queries by a capitalised literal (`getByText`, `getByRole` with a `name`, `getByLabelText`, `getByPlaceholderText`), counted by `git grep` on 2026-11-16, while the walk's specs read the dictionaries. A word changed in `ui/src/i18n/en.ts` by `pnpm words in` (`docs/plans/2026-11-16-words-csv.md`) therefore turns each test that queries the old text red, and that change carries their edits. Fix, if the edits cost more than the change: those tests query by the dictionary's word. *Trigger:* the first returned file that changes an English word.
