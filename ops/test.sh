@@ -1418,6 +1418,10 @@ check "  a bucket laid out as the file replica's ltx/9/ holds no full copy for t
 cp_keyorder='[{"Key":"Box/records/0009/0000000000000001-0000000000000001.ltx","LastModified":"2026-11-12T00:00:00+00:00"},{"Key":"Box/records/0009/0000000000000001-0000000000000009.ltx","LastModified":"2026-11-05T00:00:00+00:00"},{"Key":"Box/records/0000/0000000000000009-0000000000000009.ltx","LastModified":"2026-11-12T10:00:00+00:00"}]'
 check "  the newest full copy is the one with the largest name, not the latest LastModified" "the newest full copy is 7 days old, over 6 days" \
   "$(copy_eval "$OPS_DIR/lib.sh" "$cp_ok_status" "$cp_keyorder")"
+# a listing past one argument's cap (128 KiB on Linux) is read as well as a small one: it reaches jq on stdin, not in its arguments
+cp_big=$(jq -nc '[range(0; 12000) | {Key: "Box/records/0000/\(. + 10 | tostring | ("0000000000000000" + .)[-16:])-\(. + 10 | tostring | ("0000000000000000" + .)[-16:]).ltx", LastModified: "2026-11-12T09:59:00+00:00"}] + [{"Key":"Box/records/0009/0000000000000001-0000000000000001.ltx","LastModified":"2026-11-12T00:00:00+00:00"}]')
+check "  the listing is past 1 MiB, over Linux's one-argument cap and macOS's whole-list cap" "yes" "$([ "${#cp_big}" -gt 1048576 ] && echo yes || echo no)"
+check "  a listing past 1 MiB is read, not refused for its length, and sound" "" "$(copy_eval "$OPS_DIR/lib.sh" "$cp_ok_status" "$cp_big" 2>&1)"
 # row 16: the restore's box script and the script that calls it, read as text
 # shellcheck disable=SC2016 # the file's source text is searched, not expanded
 restore_guard() { # <lib.sh> <restore.sh>

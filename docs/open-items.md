@@ -1989,6 +1989,26 @@ The rule of three is written at the `components/` note and again in the levels' 
 
 `compareCompany` (`bff/src/records/company-copy.ts`) walks the whole company on both boxes in one press, inside the function's 10 seconds (`bff/src/records/company-move.ts`'s `pressMove`). No copy rate was measured, so the size at which a compare passes the limit is unknown; past it every press ends in a failure after its copy is done and the move can only be stopped. Fix: a compare in presses, kept from a key on the line as the copy's is. *Trigger:* a move press near 10 seconds in the ridge sitting, or a company whose records pass the figure that sitting reads.
 
+## 517. The delivery photos' card is not on the walks page, where partners already sign in (the check without code, 2026-11-16) — the machine; `[DEFERRED]`
+
+The card for checking a piece on ridge lives on the products page, which a person opens in the editor. Partners already sign in to the walks page and their answers arrive in the block the machine reads, so it is the right home once a partner checks a piece. The price is a code step in `visual/` with its tests, and a push to redeploy. Bring it in with the first piece a partner is to check on ridge.
+
+## 518. The photos' receipt is a one-off outside git, not an `ops/` script with its cases in `ops/test.sh` (the check without code, 2026-11-16) — the machine; `[DEFERRED]`
+
+The receipt that prints a card's calls from the access log was copied from the earlier access log read and kept outside git, with its four stand-in runs read by hand. Make it an `ops/` script with its cases in `ops/test.sh` when a second piece's card wants a receipt, when the copy would be the third.
+
+## 521. The copy rows that expect a sound copy capture neither stderr nor the exit code (the cross-model review of piece 144, 2026-11-16, Low) — the machine; `[DEFERRED]`
+
+`ops/test.sh#L1401-L1403` compare the output of `copy_eval` alone for a sound copy, so a `copy_problems` whose `jq` dies still prints nothing and passes. With the pipe at `ops/lib.sh#L718` deleted, those rows stayed ok while the fault rows went red. Capture the exit code and stderr in those rows with the next change to the copy's rows.
+
+## 522. `copy_problems` reads the first JSON document on stdin and ignores any after it (the same review, Low) — the machine; `[DEFERRED]`
+
+`input` at `ops/lib.sh#L721` takes the first document, where `--argjson` refused two. The AWS CLI's JSON output is one document, so the real path cannot meet a second. Make it refuse more than one document if the listing ever comes from another source.
+
+## 524. A doc comment sits above the wrong function in `bff/src/app.ts` — the machine; `[DEFERRED]` until the next piece that touches `app.ts`
+
+The comment "Runs first on every client route, before the body is read and before any session" sits above `boxStorage`'s own doc comment, and `boxStorage` is not what it describes: it belongs to `resolveTenant`. Move it down onto `resolveTenant`, and leave `boxStorage` with its own line.
+
 ## 532. `copy-company` checks only the target line's id, so a target line naming another box or moving gets records it never reads — the machine; `[DEFERRED]` (the move's review, 2026-11-16, Low)
 
 `runRidge`'s `copy-company` (`scripts/src/ridge.ts`) checks the target's line by its id alone, while `carryCompany` writes to the target's home box. A target line that names another box, or carries a move, is handed records its calls never read, and the run still reports "0 differ". Fix: refuse such a target line by name, writing nothing, as the source's line is refused. *Trigger:* the next use of `copy-company` over a target that holds a line.
