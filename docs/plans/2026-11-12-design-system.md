@@ -156,7 +156,7 @@ legacy's card by hand (`ui/src/parts/Settings.tsx#L122-L131`), the model for the
 
 | # | The case: one behaviour, one sentence | Held by |
 | --- | --- | --- |
-| 1 | The design system's theme draws the main colour at shade 6 while shade 7 stays the colour itself, a badge with 4-px corners, a table row under the pointer in the brand's shade 0, and a dialog centred with its title large at 550 | `ui/src/design-system/theme.test.ts`, the shade's case now at `ui/src/theme.test.ts#L52-L58` |
+| 1 | The design system's theme draws the main colour at shade 6 while shade 7 stays the colour itself, a badge with 4-px corners, a table row under the pointer in the brand's shade 0, and a dialog centred with its title large at 550 | `ui/src/design-system/theme.test.tsx`, the shade's case now at `ui/src/theme.test.ts#L52-L58` |
 | 2 | Each sample draws its states: a status badge green when active, grey when not; a detail field with no value a dash; a section title its icon in a grey tile; a page header its title as the page's heading | a test beside each, `ui/src/components/<level>/<Name>.test.tsx` |
 | 3 | The gallery shows every component of the three folders under its level's heading (from landing 4, in its list), light whatever the device asks | `ui/src/design-system/Gallery.test.tsx`, which reads the folders and mounts the entry on a `#root` |
 | 4 | A component imports nothing from a level above its own, nor from the app outside `components/` and the tokens | `eslint.config.js`, one block a level |

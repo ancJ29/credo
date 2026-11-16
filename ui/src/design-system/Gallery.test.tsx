@@ -29,6 +29,34 @@ describe('Gallery', () => {
     }
   });
 
+  it('draws the gradient button, the default button and the divider worded “hoặc”', () => {
+    render(<Gallery />);
+
+    const row = (name: string) => within(screen.getByRole('heading', { name }).parentElement!);
+    expect(row('Gradient button').getByRole('button', { name: 'Quét mã QR' })).toBeDefined();
+    expect(row('Default button').getByRole('button', { name: 'Nhập mã thủ công' })).toBeDefined();
+    expect(row('Labelled divider').getByText('hoặc')).toBeDefined();
+  });
+
+  it('draws the door card in two states, the sign-in and the link page, in sentence case', () => {
+    render(<Gallery />);
+
+    const card = screen.getByRole('heading', { name: 'DoorCard' }).parentElement!;
+    expect(
+      within(card).getByRole('heading', { name: 'Đăng nhập vào tài khoản của bạn' }),
+    ).toBeDefined();
+    expect(within(card).getByRole('heading', { name: 'Đăng nhập bằng liên kết' })).toBeDefined();
+    expect(within(card).getAllByText('hoặc')).toHaveLength(2);
+    expect(within(card).getByRole('link', { name: 'Quay lại đăng nhập' })).toBeDefined();
+  });
+
+  it('draws no picture of the old app beside any part', () => {
+    render(<Gallery />);
+
+    expect(screen.queryByText('Legacy')).toBeNull();
+    expect(screen.queryAllByRole('img', { name: /^The legacy/ })).toHaveLength(0);
+  });
+
   it('shows the values, and Mantine’s button and field', () => {
     render(<Gallery />);
 
