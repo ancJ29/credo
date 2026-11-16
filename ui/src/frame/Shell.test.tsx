@@ -60,6 +60,10 @@ describe('Shell', () => {
     );
     expect(header.style.color).toBe('var(--credo-white)');
     expect(sideMenu().style.color).toBe('var(--credo-white)');
+    // the variable is white: the value the inline colour carried before it
+    expect(
+      [...document.querySelectorAll('style')].map((style) => style.textContent).join(''),
+    ).toContain('--credo-white: #fff;');
     // 250 pixels wide, 64 high for the phone's bar, as Mantine writes them: in rem.
     const rules = [...document.querySelectorAll('style')]
       .map((style) => style.textContent)
