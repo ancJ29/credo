@@ -1988,3 +1988,11 @@ The card for checking a piece on ridge lives on the products page, which a perso
 ## 518. The photos' receipt is a one-off outside git, not an `ops/` script with its cases in `ops/test.sh` (the check without code, 2026-11-16) — the machine; `[DEFERRED]`
 
 The receipt that prints a card's calls from the access log was copied from the earlier access log read and kept outside git, with its four stand-in runs read by hand. Make it an `ops/` script with its cases in `ops/test.sh` when a second piece's card wants a receipt, when the copy would be the third.
+
+## 521. The copy rows that expect a sound copy capture neither stderr nor the exit code (the cross-model review of piece 144, 2026-11-16, Low) — the machine; `[DEFERRED]`
+
+`ops/test.sh#L1401-L1403` compare the output of `copy_eval` alone for a sound copy, so a `copy_problems` whose `jq` dies still prints nothing and passes. With the pipe at `ops/lib.sh#L718` deleted, those rows stayed ok while the fault rows went red. Capture the exit code and stderr in those rows with the next change to the copy's rows.
+
+## 522. `copy_problems` reads the first JSON document on stdin and ignores any after it (the same review, Low) — the machine; `[DEFERRED]`
+
+`input` at `ops/lib.sh#L721` takes the first document, where `--argjson` refused two. The AWS CLI's JSON output is one document, so the real path cannot meet a second. Make it refuse more than one document if the listing ever comes from another source.
