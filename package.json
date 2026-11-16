@@ -15,7 +15,8 @@
     "demo-files": "pnpm --filter @credo/scripts run demo-files",
     "fake": "pnpm --filter @credo/scripts run fake",
     "local": "pnpm --filter @credo/scripts run local",
-    "counts": "pnpm --filter @credo/scripts run counts"
+    "counts": "pnpm --filter @credo/scripts run counts",
+    "words": "pnpm --filter @credo/scripts run words"
   },
   "devDependencies": {
     "@eslint/js": "catalog:",

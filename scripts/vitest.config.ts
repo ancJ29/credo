@@ -48,6 +48,9 @@ export default defineConfig({
       // the credo root and to the signals; src/local.test.ts runs runLocal with the same io, on fakes.
       // The detached stack it leaves standing is read by a person, in their own terminal.
       //
+      // elsewhere: words-main.ts only binds src/words.ts's runWords to the process and to its folder;
+      // src/words.test.ts runs runWords on temporary folders.
+      //
       // elsewhere: src/demo/apply-support.ts is what the ten src/demo/apply.*.test.ts files share, the
       // helpers that used to sit at the top of one test file (which this list leaves out already). Its
       // guards ('taken', a sort's other side) are the test's own and only a failing setup reaches them.
@@ -61,6 +64,7 @@ export default defineConfig({
         'src/demo-files-main.ts',
         'src/counts-main.ts',
         'src/local-main.ts',
+        'src/words-main.ts',
         'src/demo/apply-support.ts',
       ],
       reporter: [['text', { skipFull: true }]],

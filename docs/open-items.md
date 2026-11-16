@@ -2054,6 +2054,10 @@ The old app's sign-in offers "remember me", on by default (the old repo's `works
 
 The old app's `/login-via-qr-code` (the old repo's `workspace/uis/c-mngt/src/pages/auth/AccessViaQRCodePage.tsx`) scans a code with the camera or from a picture, or takes it typed, and its sign-in links to it. The new app's QR code is opened by the phone's own camera (`shared/src/signins.ts`'s `qrLink`, `ui/src/pages/client/QrLanding.tsx`'s `QrLanding`), and no page or button offers the other two ways. The sign-in's parts draw that page in the gallery as a look only; the divider and the back link have no door until this is built. *Trigger:* a partner whose people cannot open a link from the camera.
 
+## 549. An English word changed by a partner reddens the `ui` tests that query it by its text — the machine; *parked* until the first returned file that changes an English word (the words file's plan, 2026-11-16, Low)
+
+29 test files under `ui/` hold 384 queries by a capitalised literal (`getByText`, `getByRole` with a `name`, `getByLabelText`, `getByPlaceholderText`), counted by `git grep` on 2026-11-16, while the walk's specs read the dictionaries. A word changed in `ui/src/i18n/en.ts` by `pnpm words in` (`docs/plans/2026-11-16-words-csv.md`) therefore turns each test that queries the old text red, and that change carries their edits. Fix, if the edits cost more than the change: those tests query by the dictionary's word. *Trigger:* the first returned file that changes an English word.
+
 ## 553. The parts' back link reloads the page under the router, and the band says the company twice to a screen reader — the machine; `[DEFERRED]` (the sign-in parts' review, 2026-11-16, Info)
 
 For the piece that moves the doors onto these parts. `ui/src/components/atoms/BackLink.tsx`'s plain `href` reloads the page where the app routes with react-router, so a door needs it to take the router's own link or a click handler. `ui/src/components/molecules/BrandBand.tsx` gives the logo the company's name as its alt text, beside the same name as text, so a screen reader says it twice; the tile in the band wants an empty alt.
