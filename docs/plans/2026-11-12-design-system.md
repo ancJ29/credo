@@ -227,10 +227,11 @@ confirm the skeleton first").
       the mock harness. Each red once on a planted `#fff`, put back. _Done when:_ the checks exit 0,
       the two red receipts in the tick. **5 min.**
       _Done 2026-11-16: case 7 is `ui/src/design-system/literals.test.ts` (it globs every `*.module.css` under `ui/src`, asserts at least four found and at least one outside the design system, and that none outside it writes a hex or an `rgb(`, `rgba(`, `hsl(` or `hsla(` colour) and a `no-restricted-syntax` block in `eslint.config.js` over `ui/src/**/*.{ts,tsx}` that skips `ui/src/design-system/`, the tests and `ui/src/mock/`; red once each: the test on a planted `#fff` in `ui/src/frame/frame.module.css` (exit 1, that file named), the rule on a planted `'#fff'` in `ui/src/pages/SignIn.tsx` (exit 1), both put back, byte-equal to their backups; `pnpm --filter @credo/ui check` and `pnpm --filter @credo/visual check` exit 0; the citations test exit 0._
-- [ ] **8. Review and landing.** Another model reads steps 4 to 7; one fix pass; `pre-merge` taken
+- [x] **8. Review and landing.** Another model reads steps 4 to 7; one fix pass; `pre-merge` taken
       in; the picture run (case 10); the landing; point 3. _Done when:_ your run of all twelve walks with no `--moved` and
       no `--write` reads `== verdict: green` with every count 0, and the branch merges. **20 min, and
       your run, about 16.**
+      _Done 2026-11-16: the review of steps 4 to 7 said fix first, its fix pass `7fc94042` and a reread said may merge; `pre-merge` taken in at `0f788579`; your run of all twelve walks with no `--moved` and no `--write` read `== verdict: green: 35 comparisons, every raw count as asked`, every count 0, on `d03892b6`; the landing on `pre-merge` is the orchestrator's, after this tick._
 
 **Landing 3: the legacy's values.**
 
