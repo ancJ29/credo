@@ -364,9 +364,9 @@ milestone if the orchestrator wants one.
   `shellcheck -x ops/*.sh` exited 0.
 
 - [x] **6y. The check's list of a box added.** The sitting's `ops/check.sh ridge` on 2026-11-16, with `b2` added, read
-  one red (`logs/2026-11-16-104916-check-ridge.log`, its only `RED`): the function's variables wanted the
+  one red (the check of ridge's home box at 10:49, its only `RED`): the function's variables wanted the
   eleven names of `BFF_ENV_NAMES_PHOTOS` and held those and `STORAGE_BOXES`, which `ops/app.sh` writes whenever the
-  stack holds a box beyond the home one (`b2`'s own run, `logs/2026-11-16-104959-check-ridge-b2.log`, was green).
+  stack holds a box beyond the home one (`b2`'s own check was green).
   One part: the check wants `STORAGE_BOXES` among the names exactly when `stack_boxes` names a box (a new
   `function_env_wanted` in `ops/lib.sh`, taken by the one `expect` in `ops/check.sh`), and not when it names none, so
   one left behind after a box's removal is red; no new AWS read, the super-admin key never read. *Size:* 15.
@@ -383,7 +383,7 @@ milestone if the orchestrator wants one.
   `b2` in the stack under `FAKE_BOX2_DOWN=1` (the nested `--box b2` run then stops before it opens a forward), green on
   its variables with the eleven and `STORAGE_BOXES` and red on them with the eleven alone (red once with the comparison
   mutated back to the eleven alone); and the whole check, no box in the stack, red on a function holding
-  `STORAGE_BOXES`. The review's text guard on `ops/check.sh` is replaced by the two whole-check cases. Ran: `bash ops/test.sh` whole, "all checks passed" and `== exit 0`, 6 minutes (13:52 to 13:58, log `/tmp/claude-501/build-box-rerun/full.log`); `bash -n` on each `ops/*.sh` exit 0; `shellcheck -x ops/*.sh` exit 0.
+  `STORAGE_BOXES`. The review's text guard on `ops/check.sh` is replaced by the two whole-check cases. Ran: `bash ops/test.sh` whole, "all checks passed" and `== exit 0`, 6 minutes (13:52 to 13:58, the whole run's log kept outside git); `bash -n` on each `ops/*.sh` exit 0; `shellcheck -x ops/*.sh` exit 0.
 
 **Third landing: the move** (after the store's copy tool is on `pre-merge`).
 
