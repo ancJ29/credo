@@ -154,12 +154,12 @@ a review with its check about 20.
 
 **Landing 1: the skeleton, no screen changed.**
 
-- [ ] **1. The skeleton, end to end.** `tokens.ts` and `theme.ts` (case 1, red once on a planted
+- [x] **1. The skeleton, end to end.** `tokens.ts` and `theme.ts` (case 1, red once on a planted
       shade 7), `StatusBadge` and its test, `Gallery.tsx`, `main.tsx` and `ui/gallery.html` (case 3),
       and `ui/CLAUDE.md`'s sentences for `design-system/`, `components/` and `atoms/`. _Done when:_
       both checks exit 0, and the serve probe exits 0: in one invocation, Vite's dev server up on a
       spare port, `curl -sf` of `/gallery.html` and `/src/design-system/main.tsx`, then stopped.
-      **14 min.**
+      **14 min.** _Done 2026-11-16: `pnpm --filter @credo/ui check` exit 0 (typecheck, eslint, prettier, test, knip all 0); the citations test exit 0 (32 passed); serve probe on port 5391, `curl -sf` of `/gallery.html` and `/src/design-system/main.tsx` both exit 0, server stopped in the same invocation; case 1 red on a planted shade 7 (exit 1), case 3 red with the badge's entry renamed (exit 1), both put back._
 - [ ] **2. The other samples, and the direction.** The five other samples, a test beside each
       (case 2), the gallery showing them (case 3, red with one left out); `eslint.config.js`'s three
       blocks (case 4, each red on a planted upward import, put back); `ui/CLAUDE.md`'s `molecules/`,
