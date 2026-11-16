@@ -114,7 +114,7 @@ it is the whole milestone.
 
 ## The steps
 
-- [ ] **1. The card and its pointers.** In `docs/products.md`: one sentence after the opening lines
+- [x] **1. The card and its pointers.** In `docs/products.md`: one sentence after the opening lines
   pointing to a new section "Check a piece on ridge, without code", placed before "Known gaps"; that
   section's short intro (who can check, how they get the link, what a yes and a no each start, the
   receipt); the delivery photos' card from the outline above; in the My deliveries row's "Open or
@@ -123,7 +123,7 @@ it is the whole milestone.
   *Done when:* `grep -c "Check a piece on ridge, without code" docs/products.md` prints 2; `grep -n
   "local only, ridge open\|not yet run on ridge" docs/products.md` prints nothing; each quoted label
   is found in both word files (case 1); each new link's file exists (case 2); the citation test
-  exits 0. *Size 8:* rows `2026-11-13 08:27` (135, guide, 4) and `08:51` (135, guide-fix, 4), a
+  exits 0. *Ran:* the first grep printed 2; the second printed the two other rows' own "not yet run on ridge" (the remake, the restore), none of the two stale rows; every label found in both word files; each link's target exists; the citation test exited 0. *Size 8:* rows `2026-11-13 08:27` (135, guide, 4) and `08:51` (135, guide-fix, 4), a
   living page of acts read against the code and then linked.
 - [ ] **2. The receipt, a one-off outside git.** Copied from the access log read of 2026-11-08 with
   its changes: no requests sent, no stack read; one optional argument, the minutes back (120 by
