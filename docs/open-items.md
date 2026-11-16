@@ -1971,4 +1971,12 @@ The rule of three is written at the `components/` note and again in the levels' 
 
 ## 508. `tokens.ts` repeats values `ui/src/theme.ts` holds (the same review, Low) — the machine; `[DEFERRED]`
 
-`ui/src/design-system/tokens.ts#L9` and `#L15` write the badge's corners and the row hover that `ui/src/theme.ts#L118-L119` already holds in its own entries; two homes that drift with nothing red. Landing 2 moves `theme.ts` in; read one from the other then.
+`ui/src/design-system/tokens.ts#L9` and `#L19` write the badge's corners (4 px) and the card's padding (24 px) that `ui/src/theme.ts#L118-L119` already holds in its own entries (the radius `sm` and the spacing `lg`); two homes that drift with nothing red. Landing 2 moves `theme.ts` in; read one from the other then.
+
+## 513. The label atom's test asserts the weight alone, so its letter spacing can drift green (the reread of the skeleton's fix pass, 2026-11-16, Low) — the machine; `[DEFERRED]`
+
+`ui/src/components/atoms/FieldLabel.test.tsx#L17` checks that the style holds `600` and nothing on the spacing; with the spacing in `ui/src/design-system/tokens.ts#L15` put back at 0.5 the test stays green. Add the spacing's assertion with the next change to the atom.
+
+## 514. The detail field's empty value follows the memo, not the legacy's own field (the same reread, Low) — the machine; `[DEFERRED]`
+
+`ui/src/components/molecules/DetailField.tsx#L9` draws an em dash for a missing value, as the legacy's design memo says; the legacy's own `DetailField` draws a hyphen, and the memo's empty value is dimmed and italic, which the sample is not. Settle the dash and the dimming with the first screen that shows an empty value.

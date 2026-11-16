@@ -166,9 +166,10 @@ a review with its check about 20.
       `organisms/` and the rule of three. _Done when:_ both checks exit 0, the four red receipts in
       the tick, and `ls ui/src/components/*/*.tsx | grep -vc test` counts 6. **14 min.**
       _Done 2026-11-16: `pnpm --filter @credo/ui check` exit 0 (typecheck, eslint, prettier, test, knip all 0); the citations test exit 0 (32 passed); `ls ui/src/components/*/*.tsx | grep -vc test` prints 6; case 4 red on a planted upward import in each level (an atom importing `../molecules/DetailField`, a molecule `../organisms/PageHeader`, an organism `../../theme`, eslint exit 1 each), case 3 red with `PageHeader` left out of the gallery (exit 1), all put back (the tests are outside the lint block)._
-- [ ] **3. Review, the null proof, and landing.** Another model reads steps 1 and 2; one fix pass;
+- [x] **3. Review, the null proof, and landing.** Another model reads steps 1 and 2; one fix pass;
       case 6; the recap and the gallery's row in `docs/products.md`; the landing; point 1. _Done
       when:_ case 6's command prints `ui/CLAUDE.md` alone, and the branch merges. **20 min.**
+      _Done 2026-11-16: the review and its fix pass read green (items 504 to 508 filed), the reread said may merge (items 513 and 514 filed, 508 corrected); `pre-merge` taken in; case 6's command prints `ui/CLAUDE.md` alone; the citations test exit 0; the recap and the gallery's row written; the landing on `pre-merge` is the orchestrator's, after this tick._
 
 **Landing 2: one home, nothing moved** (after the human's yes at point 1: "I think I should
 confirm the skeleton first").
