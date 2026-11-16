@@ -1,5 +1,6 @@
 import { clientAddress, type Language } from '@credo/shared';
 import { Button, Group, Stack, Table, Text, Title } from '@mantine/core';
+import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import type { Api } from '../../api';
@@ -16,6 +17,19 @@ export function ClientsPage({ api, onSignedOut }: Props) {
   const { t, i18n } = useTranslation();
   const loaded = useLoad(() => api.listClients(), { onSignedOut }, [api]);
   const clients = loaded.data ?? [];
+  const [boxes, setBoxes] = useState(0);
+
+  /** A move is offered only where the back end holds more than one box. A list that does not come
+   * offers none. */
+  useEffect(() => {
+    void (async () => {
+      try {
+        setBoxes((await api.operatorBoxes()).length);
+      } catch {
+        // no list, no move
+      }
+    })();
+  }, [api]);
 
   return (
     <Stack gap="lg">
@@ -64,6 +78,17 @@ export function ClientsPage({ api, onSignedOut }: Props) {
                         >
                           {t('operator.rootPassword')}
                         </Button>
+                        {boxes > 1 && (
+                          <Button
+                            component={Link}
+                            to={`/operator/clients/${client.code}/move`}
+                            variant="default"
+                            size="xs"
+                            aria-label={`${t('operator.moveClient')}: ${client.code}`}
+                          >
+                            {t('operator.moveClient')}
+                          </Button>
+                        )}
                         <Button
                           component={Link}
                           to={`/operator/clients/${client.code}/delete`}

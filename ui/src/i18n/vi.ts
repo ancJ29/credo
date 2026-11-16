@@ -147,6 +147,28 @@ export const vi: Dictionary = {
       'Khách hàng này không có trong danh sách. Nếu việc xóa đã dừng giữa chừng, một số bản ghi của họ có thể vẫn còn trong kho: hãy bấm “Tiếp tục xóa” để hoàn tất. Nếu không còn gì, trang này sẽ cho biết.',
     deleteClientResume: 'Tiếp tục xóa',
     deleteClientFinished: 'Không còn gì của khách hàng này: việc xóa đã hoàn tất.',
+    moveClient: 'Chuyển sang hộp khác',
+    moveTitle: 'Chuyển {{name}} sang hộp khác',
+    moveHere: '{{name}} đang ở hộp {{box}}.',
+    moveIntro:
+      'Trong lúc chuyển, công ty bị đóng và mọi người của công ty được báo thử lại. Khi xong, họ đăng nhập và thấy mọi bản ghi như cũ. Cho đến khi hộp mới có đủ, công ty vẫn nguyên vẹn trên hộp cũ.',
+    moveBox: 'Chuyển tới',
+    moveBoxHint: 'Hộp mà các bản ghi của công ty này được sao chép tới.',
+    moveNoBox: 'Không có hộp nào khác để chuyển công ty này tới.',
+    moveTouch: 'Khi chuyển, ứng dụng sẽ yêu cầu khóa truy cập của bạn.',
+    moveMake: 'Chuyển công ty',
+    moveWait:
+      'Đang đóng trong lúc chuyển: bước tiếp theo sau {{count}} giây. Hãy giữ trang này mở.',
+    moveCopying: 'Đang sao chép… còn {{count}} thay đổi. Hãy giữ trang này mở.',
+    moveSweeping: 'Đang dọn hộp cũ… còn {{count}} bản ghi. Hãy giữ trang này mở.',
+    moveFailed:
+      'Một bước đã lỗi. Công ty vẫn nguyên vẹn trên hộp cũ. Hãy bấm tiếp tục để thử lại bước đó, hoặc dừng việc chuyển để đưa công ty về và dọn phần đã sao chép.',
+    moveFailedAfter:
+      'Một bước đã lỗi sau khi công ty sang hộp mới. Công ty chạy được trên đó. Hãy bấm tiếp tục để dọn xong hộp cũ.',
+    moveGoOn: 'Tiếp tục',
+    moveStop: 'Dừng việc chuyển',
+    moveUnder:
+      'Công ty này đang được chuyển tới {{box}}. Hãy tiếp tục việc chuyển, hoặc dừng và giữ công ty trên hộp cũ.',
     back: 'Về danh sách khách hàng',
     unavailableStorage:
       'Ứng dụng và BFF trả lời, nhưng BFF không kết nối được tới kho dữ liệu, nên không ai đăng nhập hoặc lưu được. Hãy thử lại sau giây lát.',

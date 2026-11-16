@@ -498,6 +498,7 @@ describe('the fake Api', () => {
         'makeClient',
         'setRootPassword',
         'deleteClient',
+        'moveClient',
         'listOperators',
         'addOperator',
         'newOperatorLink',

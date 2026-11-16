@@ -148,6 +148,28 @@ export const en = {
       'This client is not in the list. If a deletion of it stopped part way, some of its records may still be in storage: press “Continue deleting” to finish it. If nothing was left, this page says so.',
     deleteClientResume: 'Continue deleting',
     deleteClientFinished: 'Nothing is left of this client: its deletion is finished.',
+    moveClient: 'Move to another box',
+    moveTitle: 'Move {{name}} to another box',
+    moveHere: '{{name}} is on the box {{box}}.',
+    moveIntro:
+      'While it moves, the company is closed and its people are told to try again. When it is done they sign in and find every record where it was. Until the new box holds everything, the company stays whole on its old box.',
+    moveBox: 'Move to',
+    moveBoxHint: 'The box this company’s records are copied to.',
+    moveNoBox: 'There is no other box to move this company to.',
+    moveTouch: 'Moving asks for your passkey.',
+    moveMake: 'Move the company',
+    moveWait:
+      'Closed while it moves: the next step comes in {{count}} seconds. Keep this page open.',
+    moveCopying: 'Copying… {{count}} changes are still to make. Keep this page open.',
+    moveSweeping: 'Clearing the old box… {{count}} records are still to go. Keep this page open.',
+    moveFailed:
+      'A step failed. The company is still whole on its old box. Go on to try the step again, or stop the move to put the company back and clear what was copied.',
+    moveFailedAfter:
+      'A step failed after the company went to its new box. It works there. Go on to finish clearing the old box.',
+    moveGoOn: 'Go on',
+    moveStop: 'Stop the move',
+    moveUnder:
+      'This company is being moved to {{box}}. Go on with the move, or stop it and keep the company on its old box.',
     back: 'Back to the clients',
     unavailableStorage:
       'The app and the BFF answer, but the BFF cannot reach its storage, so no one can sign in or save. Try again in a moment.',

@@ -169,13 +169,14 @@ medians of three fix steps of another shape. Steps 1 and 2 are larger jobs than 
 figure is a floor. Stage 1 is step 1 (the fake), stage 2 each gate with two real store services,
 stage 3 point 1, stage 4 the sitting.
 
-- [ ] **1. The page on the fake.** Decision 11 and decision 8's wire shapes in `shared/src/wire.ts`;
+- [x] **1. The page on the fake.** Decision 11 and decision 8's wire shapes in `shared/src/wire.ts`;
   `ui/src/api.ts`'s `moveClient`; `ui/src/fake.ts` answering a move in a few presses (the wait, two
   copy presses, the switch's wait, a sweep) with a cue for a failed press; the page, the boxes' part
   taken out of `NewClient`, the row's button and the route. *Done when:* the `shared` and `ui` gates
   end `== exit 0`; cases 14 and 15 red once; `git diff --stat pre-merge -- '*.test.ts' '*.test.tsx'`
   names new files, or an old test gaining a stub line for the new call alone. *Size:* at least 13
   (the form's list on the fake, row 668). Then 👤 point 1.
+  _Done 2026-11-16: the `shared` and `ui` gates each ended `== exit 0`; case 14 red once with the page's loop re-sending the beginning on every press, case 15 red once with the list offering the move on one box, both put back; the diff against `pre-merge` names new test files, and old tests gain only a `moveClient` stub line or a name in the fake's call list._
 - [ ] **2. The move in the back end and the terminal.** Decisions 1 to 10 and decision 11's list:
   the mark and its predicate, the helper, the press, the sweep's function, the route and its entry,
   the terminal's refusals. *Done when:* `pnpm check` ends `== exit 0` at 100 %; cases 1 to 13 red

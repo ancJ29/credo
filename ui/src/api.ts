@@ -8,6 +8,8 @@ import {
   addOperatorReplySchema,
   type AddOperatorRequest,
   type DeleteClientReply,
+  type MoveClientReply,
+  type MoveClientRequest,
   type DeleteClientRequest,
   type DeleteOperatorRequest,
   type OperatorLinkReply,
@@ -97,6 +99,8 @@ import {
   type RootPasswordReply,
   rootPasswordReplySchema,
   clientDeleteRoute,
+  moveClientReplySchema,
+  moveClientRoute,
   deleteClientReplySchema,
   rootPasswordRoute,
   type SetRootPasswordRequest,
@@ -511,6 +515,14 @@ export function createApi({
       );
       if (!response.ok) throw new ApiError(response.status);
       return await read(response, deleteClientReplySchema);
+    },
+
+    /** One press of a client's move to another box: `{ to, confirm }` begins it, `{}` goes on and
+     * `{ stop: true }` stops it, the last two on the session alone. The answer says where it is. */
+    async moveClient(code: string, request: MoveClientRequest): Promise<MoveClientReply> {
+      const response = await send('POST', moveClientRoute(code), request, 'operator');
+      if (!response.ok) throw new ApiError(response.status);
+      return await read(response, moveClientReplySchema);
     },
 
     /** A client's root password set anew, with the operator's fresh touch: the answer holds the

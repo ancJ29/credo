@@ -74,6 +74,7 @@ function setup(
     newOperatorLink: vi.fn(() => Promise.resolve({ link: '/operator/join#x' })),
     deleteOperator: vi.fn(() => Promise.resolve()),
     deleteClient: vi.fn(() => Promise.resolve({ left: 0 })),
+    moveClient: vi.fn(() => Promise.reject(new ApiError(null))),
     setRootPassword: vi.fn(() => Promise.resolve({ made: null })),
     ...staffCalls,
     listClients: vi.fn(() => Promise.resolve(CLIENTS)),
