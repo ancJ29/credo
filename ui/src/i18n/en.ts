@@ -102,6 +102,7 @@ export const en = {
     add: 'Add a client',
     colName: 'Name when made',
     colCode: 'Code',
+    colBox: 'Box',
     colMade: 'Made on',
     colLink: 'Sign-in link',
     copyLink: 'Copy the link',
@@ -148,6 +149,33 @@ export const en = {
       'This client is not in the list. If a deletion of it stopped part way, some of its records may still be in storage: press “Continue deleting” to finish it. If nothing was left, this page says so.',
     deleteClientResume: 'Continue deleting',
     deleteClientFinished: 'Nothing is left of this client: its deletion is finished.',
+    moveClient: 'Move to another box',
+    moveTitle: 'Move {{name}} to another box',
+    moveHere: '{{name}} is on the box {{box}}.',
+    moveIntro:
+      'While it moves, the company is closed and its people are told to try again. When it is done they sign in and find every record where it was. Until the new box holds everything, the company stays whole on its old box.',
+    moveBox: 'Move to',
+    moveBoxHint: 'The box this company’s records are copied to.',
+    moveNoBox: 'There is no other box to move this company to.',
+    moveTouch: 'Moving asks for your passkey.',
+    moveMake: 'Move the company',
+    moveWait: 'Closed while it moves: the next step comes after {{count}} s. Keep this page open.',
+    moveSwitched:
+      'The company now works on {{works}}. It stays closed for {{count}} s more, then {{clearing}} is cleared. Keep this page open.',
+    moveStopped:
+      'The move is stopped. The company works on {{works}} again; clearing {{clearing}} starts after {{count}} s. Keep this page open.',
+    moveCopying: 'Copying… Keep this page open.',
+    moveSweeping: 'Clearing {{clearing}}… records left: {{count}}. Keep this page open.',
+    moveFailed:
+      'A step failed. The company is still whole on its old box. Go on to try the step again, or stop the move to put the company back and clear what was copied.',
+    moveFailedAfter:
+      'A step failed after the move ended. The company works on {{works}}. Go on to finish clearing {{clearing}}.',
+    moveRefused:
+      'The move did not start. The company may already be moving, or the other box may not answer. Open the clients list and try again.',
+    moveGoOn: 'Go on',
+    moveStop: 'Stop the move',
+    moveUnder:
+      'This company is being moved to {{box}}. Go on with the move, or stop it and keep the company on its old box.',
     back: 'Back to the clients',
     unavailableStorage:
       'The app and the BFF answer, but the BFF cannot reach its storage, so no one can sign in or save. Try again in a moment.',

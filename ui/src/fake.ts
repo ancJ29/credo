@@ -4,6 +4,7 @@ import {
   addedNewestFirst,
   addOperatorRequestSchema,
   deleteClientRequestSchema,
+  moveClientRequestSchema,
   deleteOperatorRequestSchema,
   operatorLinkRequestSchema,
   addProductRequestSchema,
@@ -59,6 +60,7 @@ import {
   type SaveOrderRequest,
   type SendOrderRequest,
   HOME_BOX,
+  type MoveClientReply,
   sendableOn,
   setRootPasswordRequestSchema,
   staffConfig,
@@ -312,6 +314,27 @@ export function createFakeApi({
 
   /** The box each company made since the page loaded was put on; the data set's are on the home box. */
   const boxOf = new Map<string, string>();
+
+  /** The moves begun since the page loaded, by company: the box it left and the box it goes to, and
+   * the answers the next presses give, in order. The wait is two seconds here, so a look at the
+   * page is not a quarter of a minute of nothing. */
+  const moves = new Map<
+    string,
+    {
+      from: string;
+      to: string;
+      queue: MoveClientReply[];
+      mark: 'copying' | 'sweeping';
+      swept: string;
+    }
+  >();
+  const COPY_PRESSES: MoveClientReply[] = [
+    { phase: 'copying', left: 60 },
+    { phase: 'switched', seconds: 2 },
+    { phase: 'sweeping', left: 30 },
+    { phase: 'done' },
+  ];
+  const STOP_PRESSES: MoveClientReply[] = [{ phase: 'sweeping', left: 30 }, { phase: 'done' }];
 
   /** Every client the operator's list shows: the data set's, then any made since the page loaded. */
   const clients = new Map<string, ClientListItem>(
@@ -1380,7 +1403,16 @@ export function createFakeApi({
     listClients: () =>
       call('listClients', () => {
         if (!device.operatorAuthId()) throw signedOut();
-        return [...clients.values()].map((client) => ({ ...client })).sort(newestFirst);
+        return [...clients.values()]
+          .map((client) => {
+            const move = moves.get(client.code);
+            return {
+              ...client,
+              box: boxOf.get(client.code) ?? HOME_BOX,
+              ...(move ? { move: { form: move.mark, box: move.swept } } : {}),
+            };
+          })
+          .sort(newestFirst);
       }),
 
     listOperators: () =>
@@ -1470,6 +1502,44 @@ export function createFakeApi({
         if (!deleteClientRequestSchema.safeParse(request).success) throw new ApiError(400, true);
         clients.delete(code);
         return { left: 0 };
+      }),
+
+    moveClient: (code, request) =>
+      call('moveClient', () => {
+        if (!device.operatorAuthId()) throw signedOut();
+        // As the route orders it: the client, then the body, then the line's state.
+        if (!clients.has(code)) throw notFound();
+        const parsed = moveClientRequestSchema.safeParse(request);
+        if (!parsed.success) throw new ApiError(400, true);
+        const move = moves.get(code);
+        const here = boxOf.get(code) ?? HOME_BOX;
+        if ('to' in parsed.data) {
+          const { to } = parsed.data;
+          if (!DEMO_BOXES.some((box) => box.name === to) || to === here) {
+            throw new ApiError(400, true);
+          }
+          if (move) throw new ApiError(409, true);
+          moves.set(code, { from: here, to, queue: [...COPY_PRESSES], mark: 'copying', swept: to });
+          return { phase: 'waiting' as const, seconds: 2 };
+        }
+        if (!move) throw notFound();
+        if ('stop' in parsed.data) {
+          if (move.mark === 'sweeping') throw new ApiError(409, true);
+          move.queue = [...STOP_PRESSES];
+          move.mark = 'sweeping';
+          return { phase: 'stopped' as const, seconds: 2 };
+        }
+        const reply = move.queue.shift()!;
+        if (reply.phase === 'switched') {
+          boxOf.set(code, move.to);
+          move.mark = 'sweeping';
+          move.swept = move.from;
+        }
+        if (reply.phase === 'done') {
+          moves.delete(code);
+          if (boxOf.get(code) === HOME_BOX) boxOf.delete(code);
+        }
+        return reply;
       }),
 
     setRootPassword: (code, request) =>

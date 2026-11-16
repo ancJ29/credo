@@ -102,6 +102,7 @@ export const vi: Dictionary = {
     add: 'Thêm khách hàng',
     colName: 'Tên khi tạo',
     colCode: 'Mã',
+    colBox: 'Máy chủ lưu trữ',
     colMade: 'Ngày tạo',
     colLink: 'Đường dẫn đăng nhập',
     copyLink: 'Sao chép đường dẫn',
@@ -147,6 +148,34 @@ export const vi: Dictionary = {
       'Khách hàng này không có trong danh sách. Nếu việc xóa đã dừng giữa chừng, một số bản ghi của họ có thể vẫn còn trong kho: hãy bấm “Tiếp tục xóa” để hoàn tất. Nếu không còn gì, trang này sẽ cho biết.',
     deleteClientResume: 'Tiếp tục xóa',
     deleteClientFinished: 'Không còn gì của khách hàng này: việc xóa đã hoàn tất.',
+    moveClient: 'Chuyển sang máy chủ lưu trữ khác',
+    moveTitle: 'Chuyển {{name}} sang máy chủ lưu trữ khác',
+    moveHere: '{{name}} đang ở máy chủ lưu trữ {{box}}.',
+    moveIntro:
+      'Trong lúc chuyển, công ty bị đóng và mọi người của công ty được báo thử lại. Khi xong, họ đăng nhập và thấy mọi bản ghi như cũ. Cho đến khi máy chủ lưu trữ mới có đủ, công ty vẫn nguyên vẹn trên máy chủ cũ.',
+    moveBox: 'Chuyển tới',
+    moveBoxHint: 'Máy chủ lưu trữ mà các bản ghi của công ty này được sao chép tới.',
+    moveNoBox: 'Không có máy chủ lưu trữ nào khác để chuyển công ty này tới.',
+    moveTouch: 'Khi chuyển, ứng dụng sẽ yêu cầu khóa truy cập của bạn.',
+    moveMake: 'Chuyển công ty',
+    moveWait:
+      'Đang đóng trong lúc chuyển: bước tiếp theo sau {{count}} giây. Hãy giữ trang này mở.',
+    moveSwitched:
+      'Công ty giờ chạy trên {{works}}. Công ty còn đóng thêm {{count}} giây, rồi {{clearing}} được dọn. Hãy giữ trang này mở.',
+    moveStopped:
+      'Việc chuyển đã dừng. Công ty lại chạy trên {{works}}; việc dọn {{clearing}} bắt đầu sau {{count}} giây. Hãy giữ trang này mở.',
+    moveCopying: 'Đang sao chép… Hãy giữ trang này mở.',
+    moveSweeping: 'Đang dọn {{clearing}}… số bản ghi còn lại: {{count}}. Hãy giữ trang này mở.',
+    moveFailed:
+      'Một bước đã lỗi. Công ty vẫn nguyên vẹn trên máy chủ cũ. Hãy bấm tiếp tục để thử lại bước đó, hoặc dừng việc chuyển để đưa công ty về và dọn phần đã sao chép.',
+    moveFailedAfter:
+      'Một bước đã lỗi sau khi việc chuyển kết thúc. Công ty chạy trên {{works}}. Hãy bấm tiếp tục để dọn xong {{clearing}}.',
+    moveRefused:
+      'Việc chuyển chưa bắt đầu. Có thể công ty đang được chuyển, hoặc máy chủ lưu trữ kia không trả lời. Hãy mở danh sách khách hàng và thử lại.',
+    moveGoOn: 'Tiếp tục',
+    moveStop: 'Dừng việc chuyển',
+    moveUnder:
+      'Công ty này đang được chuyển tới {{box}}. Hãy tiếp tục việc chuyển, hoặc dừng và giữ công ty trên máy chủ cũ.',
     back: 'Về danh sách khách hàng',
     unavailableStorage:
       'Ứng dụng và BFF trả lời, nhưng BFF không kết nối được tới kho dữ liệu, nên không ai đăng nhập hoặc lưu được. Hãy thử lại sau giây lát.',

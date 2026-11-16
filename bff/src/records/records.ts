@@ -1,4 +1,4 @@
-import { CStorageError, type CStorageClient, recordKeys } from '@credo/shared';
+import { CStorageError, type CStorageClient, recordKeys, type StoredClient } from '@credo/shared';
 import type { z } from 'zod';
 
 /** The four record calls of a storage client: what the record helpers and the sessions need, and
@@ -7,6 +7,14 @@ export type RecordStore = Pick<
   CStorageClient,
   'getRecord' | 'listRecords' | 'putRecord' | 'removeRecord'
 >;
+
+/** The one answer to which store a line's company stands on (`buildApp` makes it): the store, or
+ * the refusal the line's state gives the caller, a company's own call or an act on the company. */
+export type StoreOfLine = (
+  line: Pick<StoredClient, 'box' | 'move'>,
+  caller: 'company' | 'act',
+  log: { error: (fields: object, message: string) => void },
+) => CStorageClient;
 
 /** A company's client: the record calls, each refusing a key outside the company, and the company's
  * id. The whole client has no `tenantId`, so handing it where this is typed is a type error. */

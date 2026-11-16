@@ -125,9 +125,9 @@ without the listener's two, since API Gateway is the listener
 
 > **Built today** is cited by file and symbol. The pooled shape the human gave on 2026-11-10 and
 > 2026-11-11, priced in two research pages kept outside this repository, is built in the back end,
-> the operator's form and the local stack; what stays **intended, not built** is a box added to
-> ridge by one command and the move of a company between boxes, and its lines cite only the code
-> they would change.
+> the operator's form and pages, the terminal and the local stack, the move of a company between
+> boxes included; what stays **intended, not built** is a box added to ridge by one command, and
+> the move has not yet been run on ridge, which holds one box.
 
 ### Built today: one stack, one box on ridge, every tenant in it
 
@@ -150,7 +150,8 @@ without the listener's two, since API Gateway is the listener
   box alone, which is all ridge has; the local stack hands a second box, `b2`
   (`scripts/src/stack.ts`'s `STACK_BOXES`). A malformed value is refused at start, naming the variable.
 - **The routing table is the tenant index.** One record a tenant, `client.<code>` to `{id, name,
-  madeAt, box}` (`shared/src/records.ts`'s `recordKeys` and `storedClientSchema`), written last, on
+  madeAt, box, move}` (`shared/src/records.ts`'s `recordKeys` and `storedClientSchema`; `move` is the
+  mark of a company on its way between boxes, described under the pooled shape below), written last, on
   the home box, by `bff/src/records/clients.ts`'s `createClient` from the operator's form, which
   sends a code, a name and, when it is not the home box, the box
   (`shared/src/wire.ts`'s `createClientRequestSchema`). A line with no box is on the home box, so
@@ -161,10 +162,12 @@ without the listener's two, since API Gateway is the listener
   Nothing in `bff/src` caches it: a search of its non-test files for `cache` and `new Map` finds two
   `cache-control: no-store` replies and one `Map` local to one handler in
   `bff/src/routes/orders.ts`, against a control that hits: `getRecord`, twice in `bff/src/app.ts`.
-  The line's box then picks the company's client: `resolveTenant` makes it over the box the line
-  names, and a line naming a box the back end was not handed is a 503, the log naming the box and
-  no key. No memory is kept: the read costs a call under two cents a company a month, and without
-  one a later move's mark is seen by the very next call.
+  The line then picks the company's client: `resolveTenant` hands it to `storeOfLine` (both in
+  `bff/src/app.ts`), which answers the store of the box the line names, or a refusal by the line's
+  mark (the table in [the BFF's memo](memo/bff.md#the-company-is-resolved-first-and-that-authenticates-nobody)),
+  and a line naming a box the back end was not handed is a 503, the log naming the box and no key.
+  No memory is kept: the read costs a call under two cents a company a month, and without one the
+  move's mark is seen by the very next call.
 - **The screens send the code; the back end never reads the address.** On a company's own address
   (`shared/src/wire.ts`'s `companyOfAddress`, handed to the app by `ui/src/main.tsx`) the screens take
   the code from the address's first part, ahead of the link and the device; elsewhere
@@ -205,14 +208,58 @@ without the listener's two, since API Gateway is the listener
   (open item 266). A premium tenant is a group of one. The operator's own records, the tenant list
   among them, stay on the first box, the home box: a box of their own would be a fixed charge that
   buys nothing yet, since every call still reads the list first.
-- **The record.** Built: `storedClientSchema` gains the tenant's box, and never a key. **Not built:**
-  a mark that the tenant is moving, which would answer every call of it 503 while the copy runs, and
-  the audit store's own box. The box's check that it holds the company is an absence, not a read:
+- **The record.** Built: `storedClientSchema` gains the tenant's box, and never a key, and the move's
+  mark (`storedMoveSchema`, with `isMoving` beside it, in `shared/src/records.ts`), which answers
+  every call of the company 503 while its copy runs. **Not built:** the audit store's own box,
+  which the move does not need: there is one log, each entry under the company's minted id, which a
+  move keeps. The box's check that it holds the company is an absence, not a read:
   sessions, people and the root exist only on the company's own box, so a wrong line meets a refusal;
   only a delete would harm, so the delete route (`bff/src/routes/clients-delete.ts`) first reads the
   company's settings on the named box, and answers 409, removing nothing, when there are none (a
   sign-in try leaves a wait record there, so any record would not do). `deleteClient` itself,
-  handed no box (the terminal's callers), refuses a line or a deletion record naming another.
+  handed no box (the terminal's callers), refuses a line or a deletion record naming another, and,
+  whatever store it is handed, a line that `isMoving`.
+- **Moving a company between boxes.** Built, and not yet run on ridge, which holds one box. The
+  operator starts it from the clients list (`ui/src/pages/operator/ClientsPage.tsx`, shown when
+  `api.operatorBoxes` answers more than one box), the page is
+  `ui/src/pages/operator/MoveClientPage.tsx`, and the route is one `POST` on the company's path
+  plus `/move` (`shared/src/wire.ts`'s `moveClientRoute`, served by `registerMoveClientRoutes` in
+  `bff/src/routes/client-move.ts`). The body is `{ to, confirm }` to begin, with a fresh touch
+  under the act `move-client` (`shared/src/wire.ts`'s `ConfirmAct`), `{}` to go on and
+  `{ stop: true }` to stop (`moveClientRequestSchema`); each answers `moveClientReplySchema`'s
+  phase and the seconds or the records left. A press is one bounded part, the page presses on
+  (`bff/src/records/company-move.ts`'s `pressMove`):
+  1. *The mark.* `beginMove` writes the line over its own tag with `move: { form: 'copying', to,
+     markedAt }`, the line's `box` still the old box. From that write every call of the company is
+     a 503, and the route refuses a box not held or the company's own (400), a line already
+     marked (409) and a target whose status call does not answer (503), before the touch.
+  2. *The first wait.* A press before `markedAt` plus `MOVE_WAIT_MS` (15 seconds: the function's 10
+     and the store client's 5) copies nothing and says the seconds left.
+  3. *The copy.* Each press is one `copyCompany` (`bff/src/records/company-copy.ts`) from the key
+     the line holds, the key written back over the line's tag; the key stays on the line and is
+     never sent to a page, since it may hold a sign-in name. At `done` a `compareCompany`: at 0
+     differ the switch is written, otherwise the key is cleared and the next press walks from the
+     start, so a write that landed on the old box in the wait shows there.
+  4. *The switch.* The line names the new box (the home box as no `box`) and carries
+     `{ form: 'sweeping', box: the old box, sweepAt, closed: true }`, `sweepAt` being 15 seconds
+     on. The company answers 503 until `sweepAt`, then from the new box, and a press finding the line
+     sweeping touches no box before `sweepAt` (`pressMove`).
+  5. *The sweep.* From `sweepAt` a press is one `sweepCompany` (`bff/src/records/clients.ts`, also
+     the delete's half) of the box named, 200 records a press, and when a list comes back empty
+     the line loses `move`.
+  6. *A stop*, before the switch only (`stopMove`; after it the route answers 409, and a move back
+     is another move): the line carries `{ form: 'sweeping', box: the box copied to, closed: false }`
+     and the company opens on its old box at once, which was only read; the part copy goes from
+     `sweepAt`.
+  While the line carries any mark, the operator's delete and a root password get 409 and the
+  terminal's `untenant` (through `deleteClient`), `seed`, `copy-company`, `drill-record` and
+  `root-password` refuse the company, writing nothing (the refusals sit in `scripts/src/ridge.ts`,
+  `scripts/src/demo/apply.ts` and `scripts/src/root-password.ts`, each reading
+  `shared/src/records.ts`'s `isMoving`). The mark, the switch and a stop each enter the activity
+  `client.move` (`shared/src/activity.ts`'s `ACTIONS`), naming the company and both boxes; every
+  other press enters none. The clients list names each company's box and, while it moves, the
+  box it goes to or the box being swept (`bff/src/records/clients.ts`'s `listClients`), so a page
+  opened mid-move offers to go on or to stop.
 - **The boxes and their keys.** Built: the keys stay in the back end's environment
   (`STORAGE_BOXES`), and the operator's list is the boxes that environment holds. **Not built:** the
   list from the stack's outputs at each deploy; a stack's box is added by the human's command in a

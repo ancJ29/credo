@@ -7,6 +7,7 @@ import { Boot } from './frame/Boot';
 import { BEFORE_CONFIG } from './brand';
 import { ClientsPage } from './pages/operator/ClientsPage';
 import { DeleteClientPage } from './pages/operator/DeleteClientPage';
+import { MoveClientPage } from './pages/operator/MoveClientPage';
 import { DeleteOperatorPage } from './pages/operator/DeleteOperatorPage';
 import type { DeviceStore } from './device';
 import { JoinPage } from './pages/operator/JoinPage';
@@ -200,6 +201,16 @@ function Console({ api, device, passkeys, build, test }: Props) {
               path="/operator/clients/:code/delete"
               element={
                 <DeleteClientPage
+                  api={api}
+                  passkeys={passkeys}
+                  onSignedOut={() => setEnded('idle')}
+                />
+              }
+            />
+            <Route
+              path="/operator/clients/:code/move"
+              element={
+                <MoveClientPage
                   api={api}
                   passkeys={passkeys}
                   onSignedOut={() => setEnded('idle')}

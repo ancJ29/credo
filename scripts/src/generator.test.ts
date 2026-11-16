@@ -298,7 +298,7 @@ describe('the demo generator', () => {
     expect(clientListReplySchema.parse(listed.json()).clients).toEqual(
       [...DEMO_CLIENTS]
         .sort((a, b) => b.madeAt - a.madeAt)
-        .map((client) => ({ ...client, link: clientLinkPath(client.code) })),
+        .map((client) => ({ ...client, link: clientLinkPath(client.code), box: 'home' })),
     );
   });
 

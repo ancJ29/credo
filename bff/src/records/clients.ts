@@ -6,6 +6,7 @@ import {
   CStorageError,
   CREDO_COLOUR,
   HOME_BOX,
+  isMoving,
   KEPT_CODES,
   newestFirst,
   type CStorageClient,
@@ -17,7 +18,7 @@ import {
   type TenantConfig,
 } from '@credo/shared';
 import { hashPassword, newPassword } from '../calling/password';
-import { type RecordStore, recordTools, tenantStorage } from './records';
+import { type RecordStore, recordTools, type TenantStorage, tenantStorage } from './records';
 
 export const ROOT_NAME = 'root';
 
@@ -120,6 +121,15 @@ export async function listClients(storage: CStorageClient): Promise<ClientListIt
         name: index.name,
         madeAt: index.madeAt ?? null,
         link: clientLinkPath(code.data),
+        box: index.box ?? HOME_BOX,
+        ...(index.move
+          ? {
+              move: {
+                form: index.move.form,
+                box: index.move.form === 'copying' ? index.move.to : index.move.box,
+              },
+            }
+          : {}),
       };
     })
     .sort(newestFirst);
@@ -196,6 +206,13 @@ export async function deleteClient(
   const key = recordKeys.clientDeletion(code);
   let deletion;
   if (index) {
+    // Whatever store is handed: a company that is moving has records on two boxes, and a sweep of
+    // one would leave the other named by nothing.
+    if (isMoving(index)) {
+      throw new Error(
+        `the company ${code} is moving to another box: nothing was deleted, stop or finish the move first`,
+      );
+    }
     refuseOtherBox(code, index.box, box);
     const prior = await storage.getRecord(key);
     if (prior && storedClientDeletionSchema.parse(prior.data).id !== index.id) return 'busy';
@@ -217,8 +234,22 @@ export async function deleteClient(
     deletion = storedClientDeletionSchema.parse(held.data);
     refuseOtherBox(code, deletion.box, box);
   }
-  const company = tenantStorage(box ?? storage, deletion.id);
-  const prefix = recordKeys.tenant(deletion.id).all;
+  const swept = await sweepCompany(tenantStorage(box ?? storage, deletion.id));
+  if (swept.empty) {
+    await storage.removeRecord(key);
+    return { left: 0 };
+  }
+  return { left: swept.left };
+}
+
+/**
+ * One press of a sweep: removes up to `DELETE_BOUND` of the records under the company's prefix on
+ * the box `company` is over, and answers how many are left, and whether a list of the prefix came
+ * back empty (the only sign the sweep is done). The delete and the move's sweep of a box both call
+ * it; what ends the act (the deletion record, the line's mark) is the caller's.
+ */
+export async function sweepCompany(company: TenantStorage) {
+  const prefix = recordKeys.tenant(company.tenantId).all;
   const listed = await company.listRecords(prefix);
   const batch = listed.records.slice(0, DELETE_BOUND);
   for (let from = 0; from < batch.length; from += DELETE_AT_ONCE) {
@@ -227,9 +258,5 @@ export async function deleteClient(
     );
   }
   const rest = await company.listRecords(prefix);
-  if (rest.records.length === 0 && !rest.more) {
-    await storage.removeRecord(key);
-    return { left: 0 };
-  }
-  return { left: rest.records.length };
+  return { left: rest.records.length, empty: rest.records.length === 0 && !rest.more };
 }

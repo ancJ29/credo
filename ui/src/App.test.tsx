@@ -65,6 +65,7 @@ function setup(
     newOperatorLink: vi.fn(() => Promise.reject(new ApiError(null))),
     deleteOperator: vi.fn(() => Promise.reject(new ApiError(null))),
     deleteClient: vi.fn(() => Promise.reject(new ApiError(null))),
+    moveClient: vi.fn(() => Promise.reject(new ApiError(null))),
     setRootPassword: vi.fn(() => Promise.reject(new ApiError(null))),
     operatorServices: vi.fn(() => Promise.reject(new ApiError(null))),
     operatorBoxes: vi.fn(() => Promise.reject(new ApiError(null))),
