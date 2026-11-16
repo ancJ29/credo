@@ -344,6 +344,20 @@ milestone if the orchestrator wants one.
   runbook's "A retained box". *Done when:* the machine reads the logs: the box and its disk added, the
   home box unchanged, each log ending `== exit 0`, the check reading both boxes, then the removal
   ending `== exit 0` with ridge on its one box.
+- [x] **6x. The list right of a box added.** The sitting's release was refused on `ListObjectsV2`: AWS's own
+  processing of the loop left `${Name}/*` unreplaced in the role's list condition (a plain string, replaced
+  only in a name and in an `Fn::Sub`), so the role may list no prefix. One part: the condition is written
+  `!Sub ${Name}/*`, as the put/get line beside it; case 12's expansion replaces `${Name}` only in a name and
+  in an `Fn::Sub`, as AWS was measured to, and a new line reads the expanded loop for a `${Name}` left over.
+  *Size:* 20. *Expected red:* the new line on today's `ops/env.yml`; then a mutation that puts the plain
+  string back, and one that makes the expansion replace everywhere again, each red then reverted. *Done when:*
+  `bash ops/test.sh` ends `== exit 0` and `shellcheck -x ops/*.sh` exits 0.
+  *Ticked 2026-11-16:* the new line read red on the old `ops/env.yml` and green on the fixed one (a trimmed copy of
+  case 12's section, `fail=` by its exit code); with the old expansion and the old line the section was green,
+  which is why `ops/test.sh` passed it. Two mutations, each red then reverted: the plain string put back in the
+  list condition (red on the new line), and the plain-reading rule for an `Fn::Sub` with no variable taken out
+  of `UNNAME` (red on the role's row). The only `Fn::ForEach` in `ops/*.yml` are the two in `ops/env.yml`; the
+  outputs loop holds no plain `${Name}`. `bash ops/test.sh` on this tree ended `== exit 0`.
 
 **Third landing: the move** (after the store's copy tool is on `pre-merge`).
 

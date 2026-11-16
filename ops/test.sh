@@ -949,18 +949,23 @@ echo "== a box added by command: the loop is the home box's block but for its na
 # Fn::Sub) read as the plain name, is what the home box's block says: so a change to the home box that the loop lacks, or
 # to the loop that the home box lacks, is red. The names that differ on purpose are the resource ids, the tag and the
 # records disk's name, and the box's path in the copy's bucket (Box/ for the home box, <name>/ for each box added).
+# An Fn::Sub left with no variable once the name is out (the list condition's !Sub ${Name}/*) is read as the plain string.
 # shellcheck disable=SC2016 # jq programs, in single quotes
 UNNAME='def unname: walk(
     if type == "object" then
       (if has("Ref") and (.Ref | type) == "object" and (.Ref | has("Fn::Sub")) then {Ref: (.Ref["Fn::Sub"] | sub("^More"; "") | sub("\\$\\{Name\\}$"; ""))}
        elif has("Fn::GetAtt") and (.["Fn::GetAtt"][0] | type) == "object" then {"Fn::GetAtt": [(.["Fn::GetAtt"][0]["Fn::Sub"] | sub("^More"; "") | sub("\\$\\{Name\\}$"; "")), .["Fn::GetAtt"][1:][]]}
+       elif has("Fn::Sub") and (.["Fn::Sub"] | type) == "string" and (.["Fn::Sub"] | test("\\$\\{") | not) then .["Fn::Sub"]
        else . end)
     elif type == "string" then gsub("-\\$\\{Name\\}"; "") | gsub("/\\$\\{Name\\}/"; "/Box/") | sub("^\\$\\{Name\\}/"; "Box/")
     else . end);
 def loopbody($section; $loop): .[$section][$loop][2] | with_entries(.key |= (gsub("\\$\\{Name\\}"; "") | sub("^More"; ""))) | map_values(del(.Condition) | unname);
-# expand($names): the loop as CloudFormation expands it for a list of names (every ${Name} in its body is the name), or
-# nothing when the list is the word none, which HasMoreBoxes reads as no box.
-def expand($names): .Resources["Fn::ForEach::Boxes"][2] as $r | .Outputs["Fn::ForEach::BoxOutputs"][2] as $o | if ($names | join("")) == "none" then {r: {}, o: {}} else {r: ($names | map(. as $n | $r | tojson | gsub("\\$\\{Name\\}"; $n) | fromjson) | add // {}), o: ($names | map(. as $n | $o | tojson | gsub("\\$\\{Name\\}"; $n) | fromjson) | add // {})} end;
+# expand($names): the loop as CloudFormation expands it for a list of names, or nothing when the list is the word none,
+# which HasMoreBoxes reads as no box. AWS was measured (the processed template of a plan-only change set of ridge with b2,
+# 2026-11-16) to replace ${Name} in a name (a key) and in an Fn::Sub, and in no plain string: the list condition of the role,
+# written plain, came out as the literal ${Name}/*, which matches no prefix, so the expansion does no more than that.
+def named($n): walk(if type == "object" then with_entries(.key |= gsub("\\$\\{Name\\}"; $n)) | (if (.["Fn::Sub"] | type) == "string" then .["Fn::Sub"] |= gsub("\\$\\{Name\\}"; $n) else . end) else . end);
+def expand($names): .Resources["Fn::ForEach::Boxes"][2] as $r | .Outputs["Fn::ForEach::BoxOutputs"][2] as $o | if ($names | join("")) == "none" then {r: {}, o: {}} else {r: ($names | map(. as $n | $r | named($n)) | add // {}), o: ($names | map(. as $n | $o | named($n)) | add // {})} end;
 def home: {r: [.Resources | keys[] | select(startswith("Fn::") | not)], o: [.Outputs | keys[] | select(startswith("Fn::") | not)]};'
 # shellcheck disable=SC2016 # jq programs, in single quotes
 boxes_loop_guard() {
@@ -993,6 +998,8 @@ boxes_loop_guard() {
     "$UNNAME"'expand(["none"]) | .r == {} and .o == {}'
   must "$1" "the loop expanded for an empty name makes an id the template already has, or none at all (a blank list would write over the home box)" \
     "$UNNAME"'home as $h | expand([""]) as $e | ($e.r | keys) as $rk | ($e.o | keys) as $ok | ($rk | length) == 5 and ($ok | length) == 3 and ($rk - $h.r) == $rk and ($ok - $h.o) == $ok'
+  must "$1" "the loop expanded for one name leaves a \${Name} in a string or a name (AWS replaces it only in a name and in an Fn::Sub, so a plain one reaches the stack as written, a role's list condition that matches no prefix)" \
+    "$UNNAME"'expand(["b2"]) | [.r, .o | .. | (strings, (objects | keys[])) | select(test("\\$\\{Name\\}"))] == []'
   must "$1" "the loop expanded for one name makes other than five resources and three outputs, or an id the template already has" \
     "$UNNAME"'home as $h | expand(["b2"]) as $e | ($e.r | keys) as $rk | ($e.o | keys) as $ok | ($rk | length) == 5 and ($ok | length) == 3 and ($rk - $h.r) == $rk and ($ok - $h.o) == $ok and ($rk | all(endswith("b2")))'
 }
