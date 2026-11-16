@@ -383,7 +383,7 @@ milestone if the orchestrator wants one.
   `b2` in the stack under `FAKE_BOX2_DOWN=1` (the nested `--box b2` run then stops before it opens a forward), green on
   its variables with the eleven and `STORAGE_BOXES` and red on them with the eleven alone (red once with the comparison
   mutated back to the eleven alone); and the whole check, no box in the stack, red on a function holding
-  `STORAGE_BOXES`. The review's text guard on `ops/check.sh` is replaced by the two whole-check cases. RUNLINE
+  `STORAGE_BOXES`. The review's text guard on `ops/check.sh` is replaced by the two whole-check cases. Ran: `bash ops/test.sh` whole, "all checks passed" and `== exit 0`, 6 minutes (13:52 to 13:58, log `/tmp/claude-501/build-box-rerun/full.log`); `bash -n` on each `ops/*.sh` exit 0; `shellcheck -x ops/*.sh` exit 0.
 
 **Third landing: the move** (after the store's copy tool is on `pre-merge`).
 

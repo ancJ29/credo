@@ -1928,3 +1928,7 @@ The red at `ops/check.sh#L237`, when the function's variables differ from the wa
 ## 497. Port 3191 is shared by the tests, 3196 with `root-password.sh`, and a "no layer four" line in box mode is false (the review of the check's list of a box added, 2026-11-16, Low) — the machine; `[DEFERRED]`
 
 The check's local port (`ops/check.sh#L54`, 3191) is the one the test stand-ins take as well, so a test run and a real check cannot run together; the nested run's port, the check's plus 5 (`ops/check.sh#L337`), is 3196, the port `ops/root-password.sh#L33` takes. And in box mode (`--box <name>`) `LAYER4` is set to 0 (`ops/check.sh#L105`), so the "skipped: <env>'s stack holds no layer four yet" line (`ops/check.sh#L219`) is printed for a stack that holds it. Give the nested run a port of its own, and say "not read in box mode" there.
+
+## 502. The print in `keys_run` fires on every expected refusal (the reread of the box lows, 2026-11-16, Low) — the machine; `[DEFERRED]`
+
+`keys_run` (`ops/test.sh#L5036`) prints the last five lines of `keys.sh`'s output whenever its exit is not 0, and six of its ten callers expect exit 1 (`ops/test.sh#L5120`, `#L5161`, `#L5169`, `#L5176`, `#L5182`, `#L5196`), so a green run carries about 36 extra lines, among them indented `== exit 1` and `STOPPED:` lines. Print only when `RC` differs from the case's expected exit.
