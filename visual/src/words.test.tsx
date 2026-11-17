@@ -516,7 +516,7 @@ describe('the app’s own scenes, drawn', () => {
     await expect(
       drawnSceneWords(lacking, 'en', { limits: { findFor: 100, stillFor: 10, stillAtMost: 50 } }),
     ).rejects.toThrow(
-      `walk a-walk, screen x-1-nothing: step 1 ({"press":"staff.empty"}): found no button, link or choice named “${DICTIONARIES.en.staff.empty}”.`,
+      `walk a-walk, screen x-1-nothing: step 1 ({"press":"staff.empty"}): found no button, link or choice named “${DICTIONARIES.en.staff.empty}”`,
     );
   });
 

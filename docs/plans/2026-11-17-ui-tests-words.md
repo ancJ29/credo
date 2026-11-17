@@ -197,7 +197,7 @@ commit after it is 5, a first run. The recap is 7, the last one, and the landing
       page decided: the person's page reads `fields.*` for its start date, birth date and address
       (not `setup.field*`), the list reads `staff.*`, the add page `addPerson.*`. Every `toContain`
       of a fragment became the whole dictionary word, none was dropped.
-- [ ] **4. The lists, the orders and the rest of the client's pages, and the whole checks.** This
+- [x] **4. The lists, the orders and the rest of the client's pages, and the whole checks.** This
       batch covers about 660 lines in 10 files: `ListPage`, `OrdersPages`, `MyDeliveries`,
       `Reconcile`, `DeliveriesPages`, `ListImportPage`, `ImportPage`, `Access`, `UnknownClient` and
       `SettingsPage`. Item 549 is marked fixed. `ui/CLAUDE.md#L82`
@@ -205,6 +205,17 @@ commit after it is 5, a first run. The recap is 7, the last one, and the landing
       _Done when:_ one mutation is seen red, then put back, and `pnpm --filter @credo/ui check`,
       `pnpm --filter @credo/visual check` and the citation test each exit 0. That is case 7.
       **86 min:** 59 of work, 25 of lock, 2 for the two checks.
+      _Done:_ the ten files were converted in three commits; item 549 is marked fixed and
+      `ui/CLAUDE.md` says a word a test finds is `DICTIONARIES[language]`'s, never typed. The key
+      `unknownClient.title` in `UnknownClient.tsx` changed to `unknownClient.text` reddened
+      `UnknownClient.test.tsx` (1 of 2) and was put back, `git diff` empty. On the tree as committed,
+      `pnpm --filter @credo/ui check` exited 0, `pnpm --filter @credo/visual check` exited 0 and
+      the citation test exited 0, each by its log's `== exit` line. The first visual run was red in
+      one test, `words.test.tsx` "a step that finds nothing stops the build": its expected message
+      ended `”.` after a dictionary word that already ends in a period, so the closing full stop of
+      the test's own template was dropped; the visual check and the citation test were then rerun
+      green. The slow reds of the earlier whole run were the load, not the change: none came back at
+      a load of 2 to 5.
 - [ ] **5. The walk's pictures, retaken: the human's run.** The orchestrator hands the human one
       command, run from this worktree in the human's terminal while the review reads:
       `bash walk/run.sh piece-1 piece-2 admin-lists office-orders driver-deliveries office-reconcile operator passkeys services root-password team delete-client --moved all --write`.
