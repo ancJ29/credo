@@ -216,7 +216,7 @@ commit after it is 5, a first run. The recap is 7, the last one, and the landing
       the test's own template was dropped; the visual check and the citation test were then rerun
       green. The slow reds of the earlier whole run were the load, not the change: none came back at
       a load of 2 to 5.
-- [ ] **5. The walk's pictures, retaken: the human's run.** The orchestrator hands the human one
+- [x] **5. The walk's pictures, retaken: the human's run.** The orchestrator hands the human one
       command, run from this worktree in the human's terminal while the review reads:
       `bash walk/run.sh piece-1 piece-2 admin-lists office-orders driver-deliveries office-reconcile operator passkeys services root-password team delete-client --moved all --write`.
       Its usage is in `walk/run.sh#L4`, `--moved` and `--write` at `#L12-L14`. The bases live in each
@@ -226,6 +226,12 @@ commit after it is 5, a first run. The recap is 7, the last one, and the landing
       a screen p1's words touch, and commits them. _Done when:_ the run's log ends green with exit
       0; `git status --short` shows only files under `walk/specs/*-snapshots/`, and they are
       committed. **18 min** for the run, **5** for the commit.
+      _Done:_ the first run read red: nine walks moved between the fake build and the stack build,
+      the cause being the fake build's style order (step 5a), and it wrote the pictures of the three
+      green walks, committed as `c6cc723d`. After the fix (`e0654fa7`) the human's rerun of the nine
+      read green: every "fake to full-1" and "full-1 to full-2" comparison read 0 moved, the verdict
+      was green, and the nine walks' bases were written and committed as `2b8a6957` (648 pictures,
+      all under `walk/specs/*-snapshots/`). All twelve walks now have their pictures on p1's words.
 - [x] **5a. The fake build's stylesheet order.** The human's first walk run read "fake to full-1"
       moved in nine walks while the stack's two passes agreed: the fake build drew the filter
       fields as Mantine's boxes, the stack build underlined, as the design system's rule says. The
@@ -246,11 +252,18 @@ commit after it is 5, a first run. The recap is 7, the last one, and the landing
       byte 43615 and the theme's at 233877. `pnpm --filter @credo/ui check` exited 0 on the tree as
       changed; the citation test exited 0 after this edit. A try with the fake build's
       stylesheets merged into one file (`cssCodeSplit: false`) left the theme's rule first and was
-      dropped. Step 5 stays open: the nine red walks need the human's rerun; the three green
-      walks' pictures are committed and stand, the stack build being unchanged.
-- [ ] **6. The review, on another model.** It reads the diff against the case table. For each
+      dropped. The nine red walks were rerun after it, and step 5 is ticked; the three green
+      walks' pictures committed earlier stand, the stack build being unchanged.
+- [x] **6. The review, on another model.** It reads the diff against the case table. For each
       converted test, it asks whether that key is the one the component reads. **13 min.** Then the
       fix pass, by step 4's checks (**17 min**), and the recap (**7 min**).
+      _Done:_ Opus reviewed the tree at `ae6c7eed`: no High, one Medium (the list page's test read a
+      twin key in 13 lines) and Lows. The fix pass, `ae6c7eed..a61ec425`, fixed the Medium and the
+      Lows that named typed words, "Menu" and the key detectors' lost half, and its reread found those
+      lines sound. The fix pass's ui check and citation test exited 0 and the visual check exited 0
+      on its rerun. Left open and filed: items 587, 588, 589 (words still typed in two tests, the
+      proof run's other reds unclassified) and 591 (step 5a's sentence on the chunks that share the
+      theme). The recap is `docs/recaps/2026-11-17-ui-tests-words.md`.
 - [ ] **7. The landing on `pre-merge`.** The orchestrator lands this branch, p1's words with it.
       `ops/words-in.sh` and its section of `ops/test.sh` stay as they are, and `--land` is not used.
       The words branch, `words-p1-1117-1459`, is untouched here. Once `pre-merge` holds its commit,

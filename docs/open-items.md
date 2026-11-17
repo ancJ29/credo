@@ -2058,7 +2058,7 @@ The old app's sign-in offers "remember me", on by default (the old repo's `works
 
 The old app's `/login-via-qr-code` (the old repo's `workspace/uis/c-mngt/src/pages/auth/AccessViaQRCodePage.tsx`) scans a code with the camera or from a picture, or takes it typed, and its sign-in links to it. The new app's QR code is opened by the phone's own camera (`shared/src/signins.ts`'s `qrLink`, `ui/src/pages/client/QrLanding.tsx`'s `QrLanding`), and no page or button offers the other two ways. The sign-in's parts draw that page in the gallery as a look only; the divider and the back link have no door until this is built. *Trigger:* a partner whose people cannot open a link from the camera.
 
-## 549. An English word changed by a partner reddens the `ui` tests that query it by its text — the machine; `[FIXED]` 2026-11-17 by the ui tests' words plan: every ui test finds a word by its key in `DICTIONARIES` and `ui/CLAUDE.md` says so (the words file's plan, 2026-11-16, Low)
+## 549. An English word changed by a partner reddens the `ui` tests that query it by its text — the machine; `[FIXED]` 2026-11-17 by the ui tests' words plan: every ui test but those item 589 names finds a word by its key in `DICTIONARIES`, and `ui/CLAUDE.md` says so (the words file's plan, 2026-11-16, Low)
 
 29 test files under `ui/` hold 384 queries by a capitalised literal (`getByText`, `getByRole` with a `name`, `getByLabelText`, `getByPlaceholderText`), counted by `git grep` on 2026-11-16, while the walk's specs read the dictionaries. A word changed in `ui/src/i18n/en.ts` by `pnpm words in` (`docs/plans/2026-11-16-words-csv.md`) therefore turns each test that queries the old text red, and that change carries their edits. Fix, if the edits cost more than the change: those tests query by the dictionary's word. *Trigger:* the first returned file that changes an English word.
 
@@ -2158,3 +2158,19 @@ After the ui tests' words piece, every ui test reads its words from `DICTIONARIE
 
 `ops/words-in.sh#L75` prints `cd $REPO_DIR && bash $OPS_DIR/words-in.sh --land $BRANCH` with the two paths bare, so a credo root with a space in its path pastes as two words. This root has none. Fix: print each path single-quoted. *Trigger:* a credo root moved to a path with a space.
 
+
+## 587. The operator page's test reads `words.app.name` for the brand's name — the machine; `[DEFERRED]` (the ui tests' words review, 2026-11-17, Low)
+
+`ui/src/frame/OperatorPage.test.tsx#L22` reads the page's heading as `words.app.name`. The heading shows `CREDO_BRAND.name` (`ui/src/brand.ts#L14`), which is data, and `app.name` is drawn only by `ui/src/frame/Boot.tsx#L29`; the two hold the same text today, so the test is green, and the fix pass's proof run (each key's word given a suffix) went red on it. The doors' pin keeps "Credo" typed as data. Fix: keep the brand's name typed, or read `CREDO_BRAND.name`. *Trigger:* a returned file that changes `app.name`, or the next edit of that test.
+
+## 588. `visual/src/words.test.tsx` has a stranded doc comment, two doc blocks stacked — the machine; `[DEFERRED]` (the ui tests' words review, 2026-11-17, Low)
+
+`visual/src/words.test.tsx#L27-L28`: the key pattern's doc comment went in between `hasNote`'s doc comment and `hasNote`, so two doc blocks stack above the pattern and `hasNote` (`#L41`) has none. Nothing fails. Fix: move `hasNote`'s comment back above `hasNote`. *Trigger:* the next edit of the file.
+
+## 589. A few ui tests still find a word by its typed text — the machine; `[DEFERRED]` (the ui tests' words review's reread, 2026-11-17, Low)
+
+Words found by hand on the branch after the fix pass: `ui/src/listSheet.test.ts#L283` types the forms a person writes for three column headings, `['ĐỊA CHỈ', 'tên *', 'MA']`, which are `lists.columns.address`, `.name` and `.code` in Vietnamese in upper, lower and unaccented case, where case 5 says the forms are applied to the dictionary word (`ui/src/importSheet.test.ts#L256-L261` does); and `ui/src/pages/client/StaffPages.test.tsx#L186` types "Active" inside the person card's whole text, which is `words.staff.chipActive`. A returned file that changes those words reddens them. Not confirmed: the fix pass's proof run left 16 reds in 12 files, and its author's list of words left typed is in no commit or plan text; of those reds, the template and sheet-name ones read as artefacts of the suffix it appended, and the three in `ui/src/pages/client/Reconcile.test.tsx` (money cells that were not found) and `ui/src/listSheet.test.ts#L223` were not classified. Fix: read those two from the dictionary, then run the proof again, key suffix and all, to find any other. *Trigger:* the next returned words file, or a proof run.
+
+## 591. The plan's account of which chunks share the theme is wrong — the machine; `[DEFERRED]` (the fake build's style fix review, 2026-11-17, Low)
+
+`docs/plans/2026-11-17-ui-tests-words.md`, step 5a, says the theme is shared by "the gallery and the fake chunk". The review of the style fix (`e0654fa7`) read the built page: the entry and the gallery share the theme, and the fake chunk imports neither. The fix stands and nothing breaks; the sentence is history, not a living document. Fix: none unless the plan is reopened. *Trigger:* the plan reopened.
