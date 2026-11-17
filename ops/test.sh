@@ -4724,7 +4724,22 @@ case "$*" in
   *get-region-opt-status*) echo ENABLED ;;
   *"describe-stacks --stack-name credo-network"*) echo '{"Stacks":[{"StackName":"credo-network","StackStatus":"UPDATE_COMPLETE","Outputs":[{"OutputKey":"VpcId","OutputValue":"vpc-test"}]}]}' ;;
   *"describe-stacks"*)
-    echo '{"Stacks":[{"StackName":"ridge","StackStatus":"UPDATE_COMPLETE","Parameters":[{"ParameterKey":"Repository","ParameterValue":"test-owner/test-repo"},{"ParameterKey":"SubjectPrefix","ParameterValue":"repo:test-owner/test-repo"}'"${FAKE_STACK_EXTRA:-}"'],"Outputs":[{"OutputKey":"BoxId","OutputValue":"i-test"},{"OutputKey":"BoxAddress","OutputValue":"10.9.8.7"},{"OutputKey":"Zone","OutputValue":"z"},{"OutputKey":"DeployRoleArn","OutputValue":"arn:aws:iam::000000000000:role/fake-deploy"},{"OutputKey":"AppAddress","OutputValue":"https://app.example.test"}]}]}' | jq -c --arg m "${FAKE_MOREBOXES-unset}" 'if $m == "unset" then . else .Stacks[0].Parameters += [{ParameterKey: "MoreBoxes", ParameterValue: $m}] end' ;;
+    echo '{"Stacks":[{"StackName":"ridge","StackStatus":"UPDATE_COMPLETE","Parameters":[{"ParameterKey":"Repository","ParameterValue":"test-owner/test-repo"},{"ParameterKey":"SubjectPrefix","ParameterValue":"repo:test-owner/test-repo"}'"${FAKE_STACK_EXTRA:-}"'],"Outputs":[{"OutputKey":"BoxId","OutputValue":"i-test"},{"OutputKey":"BoxAddress","OutputValue":"10.9.8.7"},{"OutputKey":"Zone","OutputValue":"z"},{"OutputKey":"DeployRoleArn","OutputValue":"arn:aws:iam::000000000000:role/fake-deploy"},{"OutputKey":"AppAddress","OutputValue":"https://app.example.test"}]}]}' | jq -c --arg m "${FAKE_MOREBOXES-unset}" 'if $m == "unset" then . else .Stacks[0].Parameters += [{ParameterKey: "MoreBoxes", ParameterValue: $m}] end' |
+      jq -c --arg b "${FAKE_BOXOUTS-}" '.Stacks[0].Outputs += [{OutputKey: "CopyBucketName", OutputValue: "credo-test-copy"}] + ($b | split(",") | map(select(. != "") | {OutputKey: ("MoreBox" + . + "Id"), OutputValue: "i-more"}))' ;;
+  # the copy bucket's keys (FAKE_COPY_KEYS, a list of keys), kept in the state folder: a listing counts those under --prefix, or gives the newest time; a recursive remove deletes them and reports each
+  *"s3api list-objects-v2"*)
+    all="$*"; pre=${all##*--prefix }; pre=${pre%% *}
+    [ -f "${FAKE_STATE:?}/copy.keys" ] || { tr ' ' '\n' <<<"${FAKE_COPY_KEYS:-}" | grep . >"$FAKE_STATE/copy.keys" || true; }
+    case "$all" in
+      *"max("*) if grep -q "^$pre" "$FAKE_STATE/copy.keys"; then echo 2026-11-17T09:00:00+00:00; else echo None; fi ;;
+      *) grep -c "^$pre" "$FAKE_STATE/copy.keys" || true ;;
+    esac ;;
+  *"s3 rm s3://"*)
+    all="$*"; uri=${all##*s3 rm s3://}; uri=${uri%% *}; pre=${uri#*/}
+    grep "^$pre" "${FAKE_STATE:?}/copy.keys" | while IFS= read -r k; do echo "delete: s3://${uri%%/*}/$k"; done || true
+    { grep -v "^$pre" "$FAKE_STATE/copy.keys" || true; } >"$FAKE_STATE/copy.left"; mv "$FAKE_STATE/copy.left" "$FAKE_STATE/copy.keys" ;;
+  *execute-change-set*) : ;;
+  *"wait stack-update-complete"*) : ;;
   *"wait change-set-create-complete"*) [ -z "${FAKE_CHANGESET:-}" ] || exit 0; exit 255 ;;
   *describe-change-set*) if [ -n "${FAKE_CHANGESET:-}" ]; then cat "$FAKE_CHANGESET"; else echo "The submitted information didn't contain changes. Submit different information to create a change set."; fi ;;
   *create-change-set*) all="$*"; p=${all##*--parameters file://}; cp "${p%% *}" "${FAKE_STATE:?}/params.json"; echo "$*" >"${FAKE_STATE:?}/create.args" ;;
@@ -4869,6 +4884,28 @@ MoreRecordsAttachmentb2 (AWS::EC2::VolumeAttachment): Remove, replacement none
 MoreRecordsVolumeb2 (AWS::EC2::Volume): Remove, replacement none" "$(filter changeset-boxremoved.json '[]')"
 check "  and each taken by its own name lets that one through" "MoreBoxRoleb2 (AWS::IAM::Role): Remove, replacement none" \
   "$(filter changeset-boxremoved.json '["MoreBoxb2","MoreBoxProfileb2","MoreRecordsAttachmentb2","MoreRecordsVolumeb2"]')"
+
+# The box taken out takes its copy with it (docs/plans/2026-11-17-move-fixes.md, cases 1, 2 and 6): the stand-in's bucket holds
+# keys under b2, Box and b20, so only the first is the delete's reach.
+TAKE5=(--take MoreBoxb2 --take MoreBoxProfileb2 --take MoreBoxRoleb2 --take MoreRecordsAttachmentb2 --take MoreRecordsVolumeb2)
+COPYKEYS="b2/records/0009/a b2/records/0009/b Box/records/0009/c b20/records/0009/d"
+BUCKETURI=s3://credo-test-copy/b2/records/
+call_line() { grep -n -m1 -e "$1" "$S/aws.calls" | cut -d: -f1; }
+FAKE_MOREBOXES=b2 FAKE_BOXOUTS=b2 FAKE_COPY_KEYS=$COPYKEYS FAKE_CHANGESET=$OPS_DIR/testdata/changeset-boxremoved.json stack_run stack-takeout --more-boxes none "${TAKE5[@]}"
+check "1: a run that takes b2 out deletes under b2/records/ once, after the update completes, and the log names the path and 0 left" "0 1 after 1" \
+  "$RC $(grep -c -F -e "aws s3 rm $BUCKETURI --recursive" "$S/aws.calls" || true) $(if [ "$(call_line 's3 rm')" -gt "$(call_line 'execute-change-set')" ] 2>/dev/null; then echo after; else echo not; fi) $(grep -c -F -x "ok   the copy under ${BUCKETURI} is deleted: 2 file(s), 0 left" "$S/out" || true)"
+check "  and the keys under Box/ and b20/ are still there" "Box/records/0009/c b20/records/0009/d" "$(tr '\n' ' ' <"$S/copy.keys" | sed 's/ $//')"
+FAKE_MOREBOXES=b2 FAKE_BOXOUTS=b2 FAKE_COPY_KEYS=$COPYKEYS FAKE_CHANGESET=$OPS_DIR/testdata/changeset-boxremoved.json stack_run stack-takeout-plan --plan --more-boxes none "${TAKE5[@]}"
+check "2: the --plan of that removal names the path, its count and 'after the update', and deletes nothing" "0 1 0 4" \
+  "$RC $(grep -c -F -x "  the copy under ${BUCKETURI}: 2 file(s), newest 2026-11-17T09:00:00+00:00, is deleted after the update" "$S/out" || true) $(grep -c -F ' s3 rm' "$S/aws.calls" || true) $(wc -l <"$S/copy.keys" | tr -d ' ')"
+FAKE_MOREBOXES=b2 FAKE_BOXOUTS=b2 FAKE_COPY_KEYS=$COPYKEYS FAKE_CHANGESET=$OPS_DIR/testdata/changeset-adds.json stack_run stack-keep-run
+check "6: a run with no --more-boxes, boxes held and changes executed, makes no s3 call" "0 1 0" \
+  "$RC $(grep -c 'execute-change-set' "$S/aws.calls" || true) $(grep -c '^aws s3' "$S/aws.calls" || true)"
+FAKE_MOREBOXES=b2 FAKE_BOXOUTS=b2 FAKE_COPY_KEYS=$COPYKEYS FAKE_CHANGESET=$OPS_DIR/testdata/changeset-adds.json stack_run stack-same-list --more-boxes b2
+check "  a run naming the list the stack holds, changes executed, makes none" "0 1 0" \
+  "$RC $(grep -c 'execute-change-set' "$S/aws.calls" || true) $(grep -c '^aws s3' "$S/aws.calls" || true)"
+FAKE_MOREBOXES=b2 FAKE_BOXOUTS=b2 FAKE_COPY_KEYS=$COPYKEYS stack_run stack-same-list-plan --plan --more-boxes b2
+check "  and the same list with no changes, none" "0 0" "$RC $(grep -c '^aws s3' "$S/aws.calls" || true)"
 
 echo "== the front door's key (plan 2026-11-11-front-door-keys, step 1): the template carries it, the deploy role reads it, stack.sh makes, keeps and masks it"
 # row 8: the API's origin carries x-front-door-key from a NoEcho parameter with no default

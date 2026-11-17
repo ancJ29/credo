@@ -9,6 +9,8 @@
 # (the loop over MoreBoxes); a blank value is the word none, which the template reads as no box. Without the flag the stack keeps the list it has: a box is
 # added or taken out by naming the whole list. A box taken out is a removal, which the guard refuses unless it is
 # named with --take (its instance, its records disk, its attachment, its role and its profile).
+# Once the update completes, the copy under each box taken out (its <name>/records/ in the copy bucket) is deleted and read back empty; --plan
+# shows each path, its count and its newest time first. A run with no list, or one that takes out no box, reads no bucket.
 # Run by the human, from a worktree at main, in a terminal holding an AWS session. Never by CI.
 # Expected length: about 5 minutes for network and env (the endpoint and the box take the time),
 # about a minute for github.
@@ -89,7 +91,7 @@ case "$KIND" in
     TEMPLATE=env.yml
     # CAPABILITY_AUTO_EXPAND beside it for the loop's transform: AWS says it has no effect on a change set (docs/plans/2026-11-11-pooled-shape.md, step 6)
     CAPS='CAPABILITY_IAM CAPABILITY_AUTO_EXPAND'
-    STEPS=8
+    STEPS=9
     # A key run (ops/keys.sh front-door) ends at the outputs: it opens no box and writes nothing to GitHub.
     [ -z "${FRONT_DOOR_KEY_FILE:-}" ] || STEPS=6
     ;;
@@ -194,6 +196,17 @@ echo "template: ops/$TEMPLATE at origin/main $(git -C "$REPO_DIR" rev-parse --sh
 stack_load "$STACK"
 choose_change_type
 echo "stack $STACK: $CS_TYPE"
+# The boxes taken out: those the stack holds that the list given leaves out. Each one's copy in the bucket goes after the update
+# (a run with no list keeps it, and a creation holds none).
+TAKEN_OUT=''
+COPY_BUCKET=''
+if [ "$KIND" = env ] && [ "$MORE_BOXES_GIVEN" = 1 ] && [ "$CS_TYPE" = UPDATE ]; then
+  TAKEN_OUT=$(stack_boxes | grep -vxFf <(tr ',' '\n' <<<"$MORE_BOXES") || true)
+  if [ -n "$TAKEN_OUT" ]; then
+    COPY_BUCKET=$(out CopyBucketName)
+    [ -n "$COPY_BUCKET" ] || die "stack $STACK names no copy bucket (CopyBucketName), so the copy of $(tr '\n' ' ' <<<"$TAKEN_OUT")cannot be found: nothing was changed"
+  fi
+fi
 PARAMS='[]'
 case "$KIND" in
   network)
@@ -333,6 +346,12 @@ else
     ok "nothing unsafe except what was taken: $(jq -r 'join(", ")' <<<"$TAKE")"
   fi
 
+  # what the run deletes after the update, shown before it is done
+  while IFS= read -r name; do
+    [ -n "$name" ] || continue
+    echo "  the copy under s3://$COPY_BUCKET/$name/records/: $(copy_count "$COPY_BUCKET" "$name") file(s), newest $(copy_newest "$COPY_BUCKET" "$name"), is deleted after the update"
+  done <<<"$TAKEN_OUT"
+
   if [ "$PLAN_ONLY" = 1 ]; then
     echo "--plan: the change set is deleted, nothing changed"
     exit 0
@@ -343,6 +362,13 @@ else
   CS_OPEN=0
   if aws cloudformation wait "stack-$(tr '[:upper:]' '[:lower:]' <<<"$CS_TYPE")-complete" --stack-name "$STACK"; then
     ok "stack $STACK: $CS_TYPE complete"
+    if [ -n "$TAKEN_OUT" ]; then
+      step "the copy of each box taken out"
+      while IFS= read -r name; do
+        [ -n "$name" ] || continue
+        copy_clear "$COPY_BUCKET" "$name"
+      done <<<"$TAKEN_OUT"
+    fi
   else
     stack_events
     die "stack $STACK did not complete"

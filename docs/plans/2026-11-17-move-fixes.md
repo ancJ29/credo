@@ -119,12 +119,13 @@ repository's gate, `shellcheck -x ops/*.sh walk/*.sh services/c-storage/scripts/
 `bash ops/test.sh`, each exit 0 on the committed tree. Each new case is seen red once against the
 code before its fix.
 
-- [ ] **1. The removal deletes its copy, end to end on stand-ins (cases 1, 2, 6).** Add `copy_clear` to
+- [x] **1. The removal deletes its copy, end to end on stand-ins (cases 1, 2, 6).** Add `copy_clear` to
   `ops/lib.sh`: the count, the delete and the read-back. `ops/stack.sh` works out the names taken out,
   prints them under `--plan`, and clears each one after "UPDATE complete". The env run's `STEPS` grows
   by one (`#L92`). The stack.sh stand-in (`ops/test.sh#L4720-L4735`) gains a `CopyBucketName` output,
   `s3api list-objects-v2` and `s3 rm`. The cases go in the `--more-boxes` section (`#L4841`).
   *Done when:* cases 1, 2 and 6 each seen red, then both gate rows exit 0. Size 14.
+  *Done, 2026-11-17:* cases 1 and 2 seen red on the old code, then green; case 6's cases (no list, the same list) green and seen red by a mutation clearing every held box, reverted; a creation is not on stand-ins. Added `copy_count`, `copy_newest`, `copy_clear` to `ops/lib.sh`; `STEPS=9`.
 - [ ] **2. The add clears a leftover, and the delete's guards (cases 3, 4, 5, 7, 8).** `ops/stack.sh`
   works out the names added and clears each one between the guard and the execute. `copy_clear` gains
   the versioning refusal and the short-count and not-empty reds. Row 2's guard (`ops/test.sh#L841-L851`)
