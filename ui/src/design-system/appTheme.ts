@@ -1,3 +1,6 @@
+// Mantine's own rules first: the theme's classes below must come after them in any build, and
+// where the theme is shared with a lazy chunk (the gallery) a bundler may hoist it ahead of the entry.
+import '@mantine/core/styles.css';
 import {
   Checkbox,
   createTheme,

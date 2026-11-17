@@ -226,6 +226,28 @@ commit after it is 5, a first run. The recap is 7, the last one, and the landing
       a screen p1's words touch, and commits them. _Done when:_ the run's log ends green with exit
       0; `git status --short` shows only files under `walk/specs/*-snapshots/`, and they are
       committed. **18 min** for the run, **5** for the commit.
+- [x] **5a. The fake build's stylesheet order.** The human's first walk run read "fake to full-1"
+      moved in nine walks while the stack's two passes agreed: the fake build drew the filter
+      fields as Mantine's boxes, the stack build underlined, as the design system's rule says. The
+      cause is the order of the built stylesheets, not the words: since `main` added the gallery as a
+      lazy chunk, the theme (which the gallery and the fake chunk share) is hoisted into a shared
+      chunk whose stylesheet the page links before the entry's, which holds Mantine's own, so
+      Mantine's field rule came after the theme's and won. The fix is one import,
+      `ui/src/design-system/appTheme.ts#L1-L3`: the theme loads Mantine's styles first. _Done when:_
+      the default build's emitted files are byte for byte what they were, the fake build's theme
+      rule comes after Mantine's, and `pnpm --filter @credo/ui check` and the citation test each
+      exit 0. **15 min.**
+      _Done:_ built twice into a scratch folder, before the fix. Default: one stylesheet linked,
+      `index-BooSCvDE.css`, Mantine's `.m_6c018570` at byte 45920, the theme's field rule at 236182.
+      Fake: two linked, `IconUser-CKivOye3.css` first, which holds the theme's rule at byte 16, then
+      `index-k4dvCbOg.css`, which holds Mantine's. After the fix the default build's whole output
+      folder is identical to its output before it (`diff -r` empty, both stylesheets with the same
+      hashes), and the fake build's `IconUser-NmKcvrH-.css`, linked first, holds Mantine's rule at
+      byte 43615 and the theme's at 233877. `pnpm --filter @credo/ui check` exited 0 on the tree as
+      changed; the citation test exited 0 after this edit. A try with the fake build's
+      stylesheets merged into one file (`cssCodeSplit: false`) left the theme's rule first and was
+      dropped. Step 5 stays open: the nine red walks need the human's rerun; the three green
+      walks' pictures are committed and stand, the stack build being unchanged.
 - [ ] **6. The review, on another model.** It reads the diff against the case table. For each
       converted test, it asks whether that key is the one the component reads. **13 min.** Then the
       fix pass, by step 4's checks (**17 min**), and the recap (**7 min**).
