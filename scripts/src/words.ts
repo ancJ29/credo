@@ -64,9 +64,9 @@ const LANGUAGES = [
 
 const PLACEHOLDER = /\{\{[^}]*\}\}/g;
 
-/** The placeholders of a word, `{{name}}` each, sorted, a repeated one repeated. */
+/** The distinct placeholders of a word, `{{name}}` each, sorted, a repeated one once. */
 function placeholders(word: string): string[] {
-  return (word.match(PLACEHOLDER) ?? []).sort();
+  return [...new Set(word.match(PLACEHOLDER) ?? [])].sort();
 }
 
 const listOf = (names: string[]) => (names.length > 0 ? names.join(' ') : 'none');
