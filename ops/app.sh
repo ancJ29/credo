@@ -149,4 +149,3 @@ aws s3 cp "$ui/" "s3://$UI_BUCKET/" --recursive --exclude index.html \
 aws s3 cp "$ui/index.html" "s3://$UI_BUCKET/index.html" \
   --cache-control no-cache --content-type 'text/html; charset=utf-8' --metadata "commit=$sha" --only-show-errors
 echo "shipped $sha"
-# The way back's harmless line (decision 5 of the production plan): a comment only, reverted after the first timed push.
