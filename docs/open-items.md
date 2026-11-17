@@ -1977,6 +1977,8 @@ The rule of three is written at the `components/` note and again in the levels' 
 
 `ui/src/design-system/theme.ts#L18-L21` carries the dialog's centring and title but not the header's padding of the legacy's `theme/index.ts#L89-L91`, and the gallery shows neither a dialog nor a table row under the pointer, so the two entries of case 1 are held by the test alone and cannot be judged by eye. Add the padding with the first screen that opens a dialog, and a dialog and a table to the gallery.
 
+**Half done (design system, the fix pass of landing 3, 2026-11-17).** The dialog header's padding half is done at step 12: the legacy's `var(--mantine-spacing-sm) var(--mantine-spacing-md)` is `TOKENS.dialogHeader` in `ui/src/design-system/tokens.ts`, read by the dialog's entry in `ui/src/design-system/appTheme.ts` and held in `ui/src/design-system/appTheme.test.tsx`. The gallery half is still open: the gallery draws no dialog and no table row.
+
 ## 508. `tokens.ts` repeats values `ui/src/design-system/appTheme.ts` holds (the same review, Low) — the machine; `[DEFERRED]`
 
 `ui/src/design-system/tokens.ts#L9` and `#L19` write the badge's corners (4 px) and the card's padding (24 px) that `themeOf` in `ui/src/design-system/appTheme.ts` already holds in its own entries (the radius `sm` and the spacing `lg`); two homes that drift with nothing red. Landing 3's step 9 joins the two themes; read one from the other then.
@@ -2149,3 +2151,11 @@ The whole check's commit is read by `git rev-parse HEAD` in `pre-merge`'s worktr
 ## 590. `frameKept.test.tsx`'s id mask needs nine characters, and Mantine's random id is sometimes eight — a snapshot taken then holds a live id and fails the next run — the machine; `[DEFERRED]` (design system step 10, 2026-11-17, Low)
 
 `ui/src/frame/frameKept.test.tsx#L13` masks `mantine-[a-z0-9]{9}`, but Mantine's fallback id is `Math.random().toString(36).slice(2, 11)`, which is eight characters about one time in thirty-six; the first `-u` rewrite of the ways snapshot took `mantine-nevtwxk2` as it was, and a second rewrite masked it. Fix: mask `{8,9}`. *Trigger:* a snapshot red on an id nobody changed.
+
+## 595. Case 13 pins two of its five values, and its feature came after its test (design system landing 3's review, 2026-11-17, Low) — the machine; `[DEFERRED]`
+
+`ui/src/frame/Shell.test.tsx#L81-L82` pins the menu's 14 px and 600, but `#L102-L103` only checks that the bar's line, the bar's shadow and the header's shadow each have some value, so a shadow cast downward or ten times darker passes, and the snapshots show only the variable names; the two negatives at `#L100` and `#L101` pass with the feature or without it. The test was committed two hours before its feature (873e4165 and c3f1acbe, then ffb02689), which `docs/conventions/qa.md#L204` does not ask. Fix: assert the three values as `FRAME_VALUES` in `ui/src/design-system/tokens.ts` writes them. *Trigger:* the next change to the frame's values.
+
+## 596. `tokens.ts` still repeats `themeOf`'s corner and spacing, and item 507's citation named a deleted file (design system landing 3's review, 2026-11-17, Low) — the machine; `[DEFERRED]`
+
+Item 507's `ui/src/design-system/theme.ts#L18-L21` named a file step 9 deleted; item 507 closed with the dialog's padding, so that part is gone. Item 508 asked step 9 to read one theme from the other; it did not, and `ui/src/design-system/tokens.ts#L12` (`'4px'`) and `#L24` (`24`) still repeat the radius `sm` and the spacing `lg` at `ui/src/design-system/appTheme.ts#L125-L126`, two homes that drift with nothing red. Neither item's page is in the citation check's living set (`scripts/src/citations.ts#L15-L32`). Fix: write the badge's radius and the card's padding once, read by the other. *Trigger:* a change to either value.
