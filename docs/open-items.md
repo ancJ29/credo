@@ -2071,3 +2071,15 @@ A build of `pre-merge` at `a0514569`, made into a scratch folder for that plan, 
 ## 560. The gallery's frame is `100vh`, which a phone browser's toolbar may cover — the machine; `[DEFERRED]` to the ridge look (the gallery workbench's review, 2026-11-17, Low)
 
 `ui/src/design-system/Gallery.module.css`'s `.root` sets `height: 100vh; overflow: hidden`. On iOS Safari the toolbar may cover the foot of a part's scroll area; `100dvh` is the usual fix. Not changed: no test here measures a layout and the picture run cannot take the gallery, so the change cannot be proved harmless or useful without the human's phone on ridge. *Trigger:* the plan's ridge look; if the end of a part sits under the toolbar, change it to `100dvh`.
+
+## 571. A staff or list file made from a template downloaded before a words change no longer imports — the machine; *parked* until the first real client, or a partner who meets it (the ui tests' words plan, 2026-11-17, Low)
+
+The staff import finds each column by the dictionary's word for it in either language (`ui/src/importSheet.ts#L48`), and a file without the name column fails whole (`#L202`); the lists read their columns the same way. A template downloaded before a returned words file lands carries the old headings: after p1's file, `addPerson.name` reads "Full name" and "Họ và tên" where it read "Name" and "Tên", so a file filled from the earlier template fails as having no name column. Nothing is lost, and a fresh template imports. *Trigger:* the first real client, or a partner who reports it; the likely fix is to also accept the headings the template had before a change.
+
+## 572. The words file goes out with no note on the words whose meaning a case needs — the machine; *parked* until the next words file sent (the ui tests' words plan, 2026-11-17, Low)
+
+`pnpm words out` writes an empty Note for every row, so a partner cannot see that eight failure words must say the act may have happened (`docs/plans/2026-11-17-ui-tests-words.md`'s case 6); p1's file dropped the hedge from all eight. *Trigger:* the next file sent to a partner; the fix is a note on those eight rows, written by `out`.
+
+## 573. No mechanical check stops a new ui test from finding a word by its typed text — the machine; *parked* until a returned file reddens on such a test (the ui tests' words plan, 2026-11-17, Low)
+
+After the ui tests' words piece, every ui test reads its words from `DICTIONARIES`, and `ui/CLAUDE.md`'s "The file to copy" says so; nothing else stops the next test from typing one, which then goes red only when a partner changes that word. *Trigger:* a returned file that reddens a test on a typed word; the fix is a run of the ui tests against a dictionary whose every word is altered, or a scan of the test files' literals against the dictionaries.
