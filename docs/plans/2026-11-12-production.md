@@ -111,17 +111,20 @@ act, handed as one script.
   the code write); the comment naming deleted item 29 says what the row holds; `ops/app.sh` keeps the
   VPC settings string and the 120-second bound each in one local variable. Landed: the branch's tip `39853f12` is an
   ancestor of `main` (`git merge-base --is-ancestor 39853f12 main` exit 0), and `pre-merge` is taken in.
-- [ ] **2. The harmless line, then its revert.** The line (decision 5) on its own branch, landed, the
+- [x] **2. The harmless line, then its revert.** The line (decision 5) on its own branch, landed, the
   whole check started at once; after your first push, its revert the same way. *Done when:* each
   lands with the gate green and `main` moved. **8.**
-  *Revert written:* `751bbe8f565c0592d7aaddfc4f191fadb2002bc1` on `production`, one `git revert` of `fcf5ea07`, `ops/app.sh` alone, that file as before the line (`git diff --quiet fcf5ea07^ 751bbe8f -- ops/app.sh` exit 0); it lands in `main` next, the box stays open until then.
-- [ ] 👤 **2h. Your two pushes, by one script.** `<stamp>-way-back.sh`, run once for each: it pushes
+  *Revert written:* `751bbe8f565c0592d7aaddfc4f191fadb2002bc1` on `production`, one `git revert` of `fcf5ea07`, `ops/app.sh` alone, that file as before the line (`git diff --quiet fcf5ea07^ 751bbe8f -- ops/app.sh` exit 0); it is in `main` now (`git merge-base --is-ancestor 751bbe8f main` exit 0).
+  *Done:* the harmless line and then the revert each reached `main`, and each push's `ci` run ended success. `main`'s move for each is read from its reflog; the whole check on `pre-merge` is read here only through that move.
+- [x] 👤 **2h. Your two pushes, by one script.** `<stamp>-way-back.sh`, run once for each: it pushes
   `main`, waits for `ci`'s run on that commit, and prints its conclusion, the deploy's `released <sha>`
   and `== green` lines, and its start and end stamps. *Done when:* `bash -n` and `shellcheck` clean;
   the first run reads case 6, the second case 7. **7**, and a read of each run, **2** each.
-- [ ] **3. The recap.** `docs/recaps/<date>-production.md`: the order fix, the four stamps and the
+  *Done:* `bash -n` and `shellcheck` on the script exit 0. The harmless line's push ended success, with ridge's deploy `== green` and `/health`, the function's description and `index.html` naming one commit: case 6. The revert's push ended the same way, the script's own case 7 line reads the file as before the line, and the file check `git diff --quiet fcf5ea07^ 751bbe8f -- ops/app.sh` exits 0. The revert's push to deploy end was 10 m 59 s, the revert's commit to deploy end 65 m 58 s.
+- [x] **3. The recap.** `docs/recaps/<date>-production.md`: the order fix, the four stamps and the
   total; open item 301 given the minutes it waits for. *Done when:* the citation test at exit 0; `git
   grep -nE '/Users/|~/'` finds nothing new. **3.**
+  *Done:* `docs/recaps/2026-11-17-production.md`, one marker left for whether the whole check was started at once; open item 301 carries the minutes.
 
 **About 35 minutes in all**, 45 with a fix pass. Step 1 builds now. Step 2 waits for step 1 in `main`,
 so the first push also carries the fix to ridge, and case 6 is its stage 4.
