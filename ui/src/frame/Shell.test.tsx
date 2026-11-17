@@ -72,7 +72,7 @@ describe('Shell', () => {
     expect(rules).toContain('--app-shell-footer-height:calc(4rem');
   });
 
-  it('13: The menu’s labels are 14 px at 600, the phone’s bar has a line and a soft shadow above, the header a soft shadow below', () => {
+  it('13: The menu’s labels are 14 px at 600, the phone’s bar has a line and a soft shadow above, the phone’s header a soft shadow below, the PC’s none', () => {
     shell(['en']);
 
     const rules = [...document.querySelectorAll('style')]
@@ -89,7 +89,16 @@ describe('Shell', () => {
     const footer = bar().parentElement!;
     expect(footer.style.borderTop).toBe('var(--credo-bar-line)');
     expect(footer.style.boxShadow).toBe('var(--credo-bar-shadow)');
-    expect(document.querySelector('header')!.style.boxShadow).toBe('var(--credo-header-shadow)');
+    // the header's shadow is the phone's alone: a rule below 48em on `.header`, none outside it
+    const css = readFileSync(join(import.meta.dirname, 'frame.module.css'), 'utf8').replace(
+      /\/\*[\s\S]*?\*\//g,
+      '',
+    );
+    expect(css).toMatch(
+      /@media \(max-width: 47\.99em\) \{\s*\.header \{\s*box-shadow: var\(--credo-header-shadow\);\s*\}\s*\}/,
+    );
+    expect(css.replace(/@media[^{]*\{[\s\S]*?\}\s*\}/g, '')).not.toContain('header-shadow');
+    expect(document.querySelector('header')!.style.boxShadow).toBe('');
     for (const name of ['bar-line', 'bar-shadow', 'header-shadow'])
       expect(rules).toMatch(new RegExp(`--credo-${name}: [^;]+;`));
   });
