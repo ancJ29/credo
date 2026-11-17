@@ -149,16 +149,18 @@ code before its fix.
   `pnpm --filter @credo/scripts check` exits 0 (the citation test). Size 5 (the last two documentation
   steps of an `ops/` piece, 2 and 3 minutes).
   *Done, 2026-11-17:* `ops/README.md` says an add clears a leftover under its name with `--plan` first (step 1), the restore takes `--box` (step 5's list, the table's row, the blank-disk paragraph), and the copy goes in the removal's run after the update (step 6); `docs/open-items.md`'s restore line names `[--box <name>]`. The grep reads 2; the citation test alone (`pnpm --filter @credo/scripts exec vitest run src/citations.test.ts`, documentation only) exits 0.
-- [ ] **5. The review, on the other model** (opus, `review`, of steps 1 to 4). It reads the delete's
+- [x] **5. The review, on the other model** (opus, `review`, of steps 1 to 4). It reads the delete's
   reach first: the prefix, the order against the execute, and a failure at each point. *Done when:* its
   findings are written, each with its line. Size 13 (the last review of a three-step build). The fix
   pass follows, each finding fixed or filed, the gate rerun. Size 12 (the median of the last three
   fix passes: 7, 12 and 15).
   *Fix pass, 2026-11-17:* the Medium checked on the code and held: `copy_count` and `copy_newest` read `--output text`, which the CLI runs per page, so 1236 keys counted 1000 and 236 and `copy_clear` died "1236 delete(s) reported against 1000\n236 file(s) counted before". Case 9 (a stand-in paging at 1000 as the CLI does, text per page, json merged; 1234 more keys under b2/) seen red on `5efc0f71`'s code, then green with both reads on `--output json | jq`; cases 1 to 8 green. The Lows are items 565, 566, 575, 576, 577 and 578, and item 382's (c) names the same count in `ops/destroy.sh`. Row 3 (shellcheck) and row 5 (the whole `ops/test.sh`) exit 0.
-- [ ] **6. The recap, and the landing on `pre-merge`.** `pre-merge` is taken in, and both gate rows plus
+  *Review, 2026-11-17:* Opus read steps 1 to 4 at `5efc0f71`: no High, one Medium (the copy's count and newest read a paged listing as text, so a prefix past 1000 objects counted one number a page and the delete's check died after deleting), six Lows filed by the fix pass as items 565, 566 and 575 to 578; `ops/destroy.sh`'s same count joined item 382 as (c). The fix pass `b49f07c0` reads both as JSON; the reread found it sound, plus one Low filed as item 579.
+- [x] **6. The recap, and the landing on `pre-merge`.** `pre-merge` is taken in, and both gate rows plus
   row 4, `cfn-lint ops/network.yml ops/github.yml ops/env.yml`, exit 0 on the merged tree. Then the
   recap in `docs/recaps/`. *Done when:* the three rows exit 0 and the recap is committed. Size 9 (the
   last recap with a take-in).
+  *Done, 2026-11-17:* `pre-merge` (at `03c0481e`) was already in the branch from `ddef2ae0`, so the take-in changed nothing. On the committed tree, `shellcheck -x ops/*.sh walk/*.sh services/c-storage/scripts/*.sh`, the whole `bash ops/test.sh` (about 7 minutes) and `cfn-lint ops/network.yml ops/github.yml ops/env.yml` each exit 0; the recap is `docs/recaps/2026-11-17-move-fixes.md`, and the citation test exits 0.
 
 The total is about 81 minutes, against the board's 40: three fixes, each red first, plus the review,
 its fix pass and the landing, at the sizes the rows give. Steps 1 to 3 touch different lines of
