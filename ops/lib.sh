@@ -564,9 +564,11 @@ stack_boxes() {
 copy_count() {
   local n
   [[ "$2" =~ ^[a-z][a-z0-9]{0,15}$ ]] || die "'$2' is not a box name: nothing is read under it"
-  n=$(aws s3api list-objects-v2 --bucket "$1" --prefix "$2/records/" --query 'length(Contents || `[]`)' --output text) ||
+  # --output json: the CLI pages a listing at 1000 keys, and its text output runs --query on each page (one number a page),
+  # where json merges the pages first (awscli/formatter.py), so a prefix of any size reads one number
+  n=$(aws s3api list-objects-v2 --bucket "$1" --prefix "$2/records/" --query 'length(Contents || `[]`)' --output json | jq -r '. // 0') ||
     die "could not count the files under s3://$1/$2/records/"
-  case "$n" in None | "") n=0 ;; esac
+  [[ "$n" =~ ^[0-9]+$ ]] || die "the count of the files under s3://$1/$2/records/ read '$n', not one number"
   echo "$n"
 }
 
@@ -574,9 +576,9 @@ copy_count() {
 # copy_newest <bucket> <name>: the time of the newest object under <name>/records/, or the word none
 copy_newest() {
   local t
-  t=$(aws s3api list-objects-v2 --bucket "$1" --prefix "$2/records/" --query 'max(Contents[].LastModified || `[]`)' --output text) ||
+  t=$(aws s3api list-objects-v2 --bucket "$1" --prefix "$2/records/" --query 'max(Contents[].LastModified || `[]`)' --output json | jq -r '. // "none"') ||
     die "could not read the newest file under s3://$1/$2/records/"
-  case "$t" in None | "") t=none ;; esac
+  [ "$(wc -l <<<"$t" | tr -d ' ')" = 1 ] || die "the newest file under s3://$1/$2/records/ read as more than one time"
   echo "$t"
 }
 

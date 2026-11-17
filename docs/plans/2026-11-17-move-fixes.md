@@ -154,6 +154,7 @@ code before its fix.
   findings are written, each with its line. Size 13 (the last review of a three-step build). The fix
   pass follows, each finding fixed or filed, the gate rerun. Size 12 (the median of the last three
   fix passes: 7, 12 and 15).
+  *Fix pass, 2026-11-17:* the Medium checked on the code and held: `copy_count` and `copy_newest` read `--output text`, which the CLI runs per page, so 1236 keys counted 1000 and 236 and `copy_clear` died "1236 delete(s) reported against 1000\n236 file(s) counted before". Case 9 (a stand-in paging at 1000 as the CLI does, text per page, json merged; 1234 more keys under b2/) seen red on `5efc0f71`'s code, then green with both reads on `--output json | jq`; cases 1 to 8 green. The Lows are items 565, 566, 575, 576, 577 and 578, and item 382's (c) names the same count in `ops/destroy.sh`. Row 3 (shellcheck) and row 5 (the whole `ops/test.sh`) exit 0.
 - [ ] **6. The recap, and the landing on `pre-merge`.** `pre-merge` is taken in, and both gate rows plus
   row 4, `cfn-lint ops/network.yml ops/github.yml ops/env.yml`, exit 0 on the merged tree. Then the
   recap in `docs/recaps/`. *Done when:* the three rows exit 0 and the recap is committed. Size 9 (the

@@ -4764,9 +4764,23 @@ case "$*" in
     all="$*"; pre=${all##*--prefix }; pre=${pre%% *}
     [ -z "${FAKE_LIST_FAIL:-}" ] || { echo "stand-in aws: the listing fails" >&2; exit 254; }
     [ -f "${FAKE_STATE:?}/copy.keys" ] || { tr ' ' '\n' <<<"${FAKE_COPY_KEYS:-}" | grep . >"$FAKE_STATE/copy.keys" || true; }
+    # FAKE_COPY_BULK=<n> adds n keys under b2/records/ (a prefix holding more than a page)
+    if [ -n "${FAKE_COPY_BULK:-}" ] && [ ! -f "$FAKE_STATE/copy.bulk" ]; then touch "$FAKE_STATE/copy.bulk"; seq 1 "$FAKE_COPY_BULK" | sed 's|^|b2/records/9999/k|' >>"$FAKE_STATE/copy.keys"; fi
+    # the real CLI pages a listing at 1000 keys: its text output runs --query on each page (one line a page), its json output
+    # merges the pages first (awscli/formatter.py, TextFormatter and JSONFormatter)
+    total=$(grep -c "^$pre" "$FAKE_STATE/copy.keys" || true)
     case "$all" in
-      *"max("*) if grep -q "^$pre" "$FAKE_STATE/copy.keys"; then echo 2026-11-17T09:00:00+00:00; else echo None; fi ;;
-      *) grep -c "^$pre" "$FAKE_STATE/copy.keys" || true ;;
+      *"--output json"*) js=1 ;;
+      *) js=0 ;;
+    esac
+    case "$all" in
+      *"max("*)
+        if [ "$total" = 0 ]; then if [ "$js" = 1 ]; then echo null; else echo None; fi
+        else pages=$(((total + 999) / 1000)); while [ "$pages" -gt 0 ]; do if [ "$js" = 1 ]; then echo '"2026-11-17T09:00:00+00:00"'; exit 0; fi; echo 2026-11-17T09:00:00+00:00; pages=$((pages - 1)); done; fi ;;
+      *)
+        if [ "$js" = 1 ]; then echo "$total"; exit 0; fi
+        left=$total; [ "$left" -gt 0 ] || echo 0
+        while [ "$left" -gt 0 ]; do if [ "$left" -gt 1000 ]; then echo 1000; left=$((left - 1000)); else echo "$left"; left=0; fi; done ;;
     esac ;;
   *"s3 rm s3://"*)
     all="$*"; uri=${all##*s3 rm s3://}; uri=${uri%% *}; pre=${uri#*/}
@@ -4953,6 +4967,12 @@ check "4: a delete that reports fewer deletes than the count ends red naming the
 FAKE_MOREBOXES=b2 FAKE_BOXOUTS=b2 FAKE_COPY_KEYS=$COPYKEYS FAKE_RM_KEEP=1 FAKE_CHANGESET=$OPS_DIR/testdata/changeset-boxremoved.json stack_run stack-left --more-boxes none "${TAKE5[@]}"
 check "  and a read-back that still holds one ends red naming the path, exit 1" "1 1" \
   "$RC $(grep -c -F "s3://credo-test-copy/b2/records/ still holds 1 file(s) after the delete" "$S/out" || true)"
+FAKE_COPY_BULK=1234 FAKE_MOREBOXES=b2 FAKE_BOXOUTS=b2 FAKE_COPY_KEYS=$COPYKEYS FAKE_CHANGESET=$OPS_DIR/testdata/changeset-boxremoved.json stack_run stack-paged --more-boxes none "${TAKE5[@]}"
+check "9: a copy holding more than a page (1236 keys under b2/records/, listed 1000 then 236) is counted once, deleted, read back empty: exit 0, the count and 0 left in the log, Box/ and b20/ kept" "0 1 Box/records/0009/c b20/records/0009/d" \
+  "$RC $(grep -c -F -x "ok   the copy under ${BUCKETURI} is deleted: 1236 file(s), 0 left" "$S/out" || true) $(tr '\n' ' ' <"$S/copy.keys" | sed 's/ $//')"
+FAKE_COPY_BULK=1234 FAKE_MOREBOXES=b2 FAKE_BOXOUTS=b2 FAKE_COPY_KEYS=$COPYKEYS FAKE_CHANGESET=$OPS_DIR/testdata/changeset-boxremoved.json stack_run stack-paged-plan --plan --more-boxes none "${TAKE5[@]}"
+check "  and its --plan names one count and one newest time for that copy, not one a page" "0 1" \
+  "$RC $(grep -c -F -x "  the copy under ${BUCKETURI}: 1236 file(s), newest 2026-11-17T09:00:00+00:00, is deleted after the update" "$S/out" || true)"
 for V in Enabled Suspended; do
   FAKE_VERS=$V FAKE_MOREBOXES=b2 FAKE_BOXOUTS=b2 FAKE_COPY_KEYS=$COPYKEYS FAKE_CHANGESET=$OPS_DIR/testdata/changeset-boxremoved.json stack_run "stack-vers-$V" --more-boxes none "${TAKE5[@]}"
   check "7: a copy bucket whose versioning reads $V stops the delete before any delete: exit 1, no s3 rm, the refusal said" "1 0 1" \
