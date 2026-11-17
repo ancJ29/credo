@@ -138,7 +138,7 @@ code before its fix.
   $BOX_WANTED` when it is not home. The box's line at `#L185` names no command, since the release's own
   line names it. *Done when:* each case seen red, then both gate rows exit 0. Size 14.
   *Done, 2026-11-17:* cases 9, 10 and 11 seen red on the old code (a partial run cut after the restore cases: row 12's guard, both usage lines, the b2 restore timing out, the `nope` refusal absent, `--box` with no name); case 12 held green on old and new code, its home-box log and closing line pinned. `ops/restore.sh` takes `--box <name>` (last in its usage; `box_open` with the name, `box_out RecordsVolumeId`, log `restore-<env>-<name>`, closing line and swap line name the box); `ops/release.sh` names `--box <name>` in its refusal on a box added, none on the home box, and the box's own line names no command. Both gate rows exit 0.
-- [ ] **4. The runbook and the items (case 13).** In `ops/README.md`:
+- [x] **4. The runbook and the items (case 13).** In `ops/README.md`:
   - step 1 (`#L620-L625`): an add clears a leftover under its name, and `--plan` shows it first;
   - step 5's list (`#L632-L633`): the restore takes `--box`;
   - step 6 (`#L634-L645`): the copy goes in the same run, after the update;
@@ -148,6 +148,7 @@ code before its fix.
   `grep -c 'ops/restore.sh <env>.*\[--box <name>\]' ops/README.md` reads 2, and
   `pnpm --filter @credo/scripts check` exits 0 (the citation test). Size 5 (the last two documentation
   steps of an `ops/` piece, 2 and 3 minutes).
+  *Done, 2026-11-17:* `ops/README.md` says an add clears a leftover under its name with `--plan` first (step 1), the restore takes `--box` (step 5's list, the table's row, the blank-disk paragraph), and the copy goes in the removal's run after the update (step 6); `docs/open-items.md`'s restore line names `[--box <name>]`. The grep reads 2; the citation test alone (`pnpm --filter @credo/scripts exec vitest run src/citations.test.ts`, documentation only) exits 0.
 - [ ] **5. The review, on the other model** (opus, `review`, of steps 1 to 4). It reads the delete's
   reach first: the prefix, the order against the execute, and a failure at each point. *Done when:* its
   findings are written, each with its line. Size 13 (the last review of a three-step build). The fix

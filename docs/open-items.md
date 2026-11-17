@@ -85,7 +85,7 @@ How it is built, each line read off the scripts:
   1 GiB free. c-storage keeps the time of its last write in memory only, so after any restart the lag cannot
   be read, and the check's green line then says so and does not claim the copy holds the last write (a
   reading that survives a restart is item 378 below).
-- **The restore:** `ops/restore.sh <env> [--at <time>] [--onto-live | --onto-blank]` (`box_restore` and `box_restore_blank` in `ops/lib.sh`). By
+- **The restore:** `ops/restore.sh <env> [--at <time>] [--onto-live | --onto-blank] [--box <name>]` (`box_restore` and `box_restore_blank` in `ops/lib.sh`). By
   default it writes a new file, `restored-<stamp>.db`, on the records disk and touches nothing live.
   `--onto-live` stops c-storage, moves the live file and its companions aside (never deleted), puts the
   restore on the live path and starts c-storage; it is refused on an environment that may hold real data
