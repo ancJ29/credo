@@ -559,6 +559,51 @@ stack_boxes() {
   jq -r '.Stacks[0].Outputs // [] | map(.OutputKey | select(test("^MoreBox[a-z0-9]+Id$")) | sub("^MoreBox"; "") | sub("Id$"; "")) | sort | .[]' <<<"$STACK_JSON"
 }
 
+# shellcheck disable=SC2016 # the backticks are JMESPath literals for aws --query, not shell
+# copy_count <bucket> <name>: the number of objects under <name>/records/ in the copy bucket (a name is a box added: lower case, never the home box's Box)
+copy_count() {
+  local n
+  [[ "$2" =~ ^[a-z][a-z0-9]{0,15}$ ]] || die "'$2' is not a box name: nothing is read under it"
+  # --output json: the CLI pages a listing at 1000 keys, and its text output runs --query on each page (one number a page),
+  # where json merges the pages first (awscli/formatter.py), so a prefix of any size reads one number
+  n=$(aws s3api list-objects-v2 --bucket "$1" --prefix "$2/records/" --query 'length(Contents || `[]`)' --output json | jq -r '. // 0') ||
+    die "could not count the files under s3://$1/$2/records/"
+  [[ "$n" =~ ^[0-9]+$ ]] || die "the count of the files under s3://$1/$2/records/ read '$n', not one number"
+  echo "$n"
+}
+
+# shellcheck disable=SC2016 # the same
+# copy_newest <bucket> <name>: the time of the newest object under <name>/records/, or the word none
+copy_newest() {
+  local t
+  t=$(aws s3api list-objects-v2 --bucket "$1" --prefix "$2/records/" --query 'max(Contents[].LastModified || `[]`)' --output json | jq -r '. // "none"') ||
+    die "could not read the newest file under s3://$1/$2/records/"
+  [ "$(wc -l <<<"$t" | tr -d ' ')" = 1 ] || die "the newest file under s3://$1/$2/records/ read as more than one time"
+  echo "$t"
+}
+
+# copy_clear <bucket> <name>: deletes every object under <name>/records/ (the slash included, so b2 never reaches b20) and
+# reads the path back empty; the deletes AWS reports must equal the count. The copy of the box taken out goes with it.
+# A copy of the pattern of ops/destroy.sh's copy bucket step.
+copy_clear() {
+  local n out deleted left vers prefix="$2/records/"
+  [ -n "$1" ] || die "no copy bucket named: nothing is deleted under $prefix"
+  # the template has no versioning; with it a delete would leave old versions behind (a copy of ops/destroy.sh's refusal)
+  vers=$(aws s3api get-bucket-versioning --bucket "$1" --query Status --output text 2>/dev/null || true)
+  case "$vers" in "" | None) ;; *) die "bucket $1 has versioning '$vers'; the template has none, so a delete would leave old versions behind: nothing is deleted under $prefix" ;; esac
+  n=$(copy_count "$1" "$2")
+  if [ "$n" = 0 ]; then
+    ok "the copy under s3://$1/$prefix holds nothing"
+    return 0
+  fi
+  out=$(aws s3 rm "s3://$1/$prefix" --recursive 2>&1) || die "deleting s3://$1/$prefix failed; AWS said: $out"
+  deleted=$(grep -c '^delete: ' <<<"$out" || true)
+  [ "$deleted" = "$n" ] || die "s3://$1/$prefix: $deleted delete(s) reported against $n file(s) counted before"
+  left=$(copy_count "$1" "$2")
+  [ "$left" = 0 ] || die "s3://$1/$prefix still holds $left file(s) after the delete"
+  ok "the copy under s3://$1/$prefix is deleted: $n file(s), $left left"
+}
+
 # require_box <env> <name>: dies unless the stack in STACK_JSON holds a box added of that name, naming those it does
 require_box() {
   [[ "$2" =~ ^[a-z][a-z0-9]{0,15}$ ]] || die "'$2' is not a box name"

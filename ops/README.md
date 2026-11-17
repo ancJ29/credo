@@ -32,7 +32,7 @@ A push to `main` releases c-storage and the activity log, ships the BFF and the 
 | a package's gate (typecheck, eslint, prettier, tests, knip), or the whole repository's | `pnpm --filter @credo/<pkg> check`, or `pnpm check` for all six; each runs `ops/gate.sh`, which waits for the load and the gate lock and writes `logs/<stamp>-gate-<pkg>.log` ending `== exit <code>` (c-storage's own gate is `make check` there) | about 30 seconds a package, about 6 minutes for all |
 | to check an environment | `ops/check.sh <env> [--reads-only]` ([on production](#on-production)) | about 3 minutes |
 | to read ridge's c-storage from this Mac, with Bruno or curl | `ops/tunnel.sh ridge` ([the tunnel](#the-tunnel)) | until Ctrl-C, an hour at most |
-| the records back from the copy, to a new file, or onto the live one | `ops/restore.sh <env> [--at <time>] [--onto-live | --onto-blank]` ([restoring the records](#restoring-the-records)) | about a minute |
+| the records back from the copy, to a new file, or onto the live one | `ops/restore.sh <env> [--at <time>] [--onto-live | --onto-blank] [--box <name>]` ([restoring the records](#restoring-the-records)) | about a minute |
 | one demo copy back to the copy's newest moment, alone | `ops/company-restore.sh ridge <code>` ([restoring the records](#restoring-the-records)) | about two minutes |
 | the alarms and their Slack channel | your Slack steps, then `ops/stack.sh env ridge` with the two IDs ([the watch](#the-watch)) | about 5 minutes, plus the Slack steps |
 | the crash and reboot drill | `ops/drill.sh <env>`, then `ops/check.sh <env>` | about 5 minutes |
@@ -719,7 +719,10 @@ in the copy's bucket (`<name>/records`).
    adds the box (`MoreBoxb2`), its role and profile, its records disk and the disk's attachment, and three outputs
    (`MoreBoxb2Id`, `MoreBoxb2Address`, `MoreRecordsVolumeb2Id`), and leaves the home box and everything else as they are. Anything
    changed or replaced, stop. The flag names the **whole** list: `--more-boxes b2,b3` on a stack holding `b2` adds `b3`,
-   and a run without the flag keeps the list the stack has.
+   and a run without the flag keeps the list the stack has. A name that comes back may find the copy an earlier box of
+   that name left under `<name>/records/` in the bucket; the run deletes it before the change set executes (a blank disk
+   beside a copy is a restore, never a fresh start, so a release would refuse), and `--plan` shows the path, its count and
+   its newest time first.
 2. Run it again without `--plan`. The new box is empty: no release has been to it.
 3. `ops/release.sh <env>` goes to the home box and then to each box added, each its own run with its own log
    (`...-release-<env>-b2.log`); `ops/release.sh <env> --box b2` is that one box alone.
@@ -728,7 +731,7 @@ in the copy's bucket (`<name>/records`).
    the function is written. **A key run (`ops/keys.sh`) sets the function's environment without `STORAGE_BOXES`**, so
    after one on an environment that holds a box added, run `ops/app.sh <env>` again (open item 448).
 5. `ops/check.sh <env>` reads the home box whole and then each box added, alone; `ops/check.sh <env> --box b2` is one box
-   alone. `ops/tunnel.sh <env> --box b2` and `ops/drill.sh <env> --box b2` take the box in the same way.
+   alone. `ops/tunnel.sh <env> --box b2`, `ops/drill.sh <env> --box b2` and `ops/restore.sh <env> --box b2 --onto-blank` take the box in the same way.
 6. Taking a box out is a removal. First write down the box's id and zone (the stack's output `MoreBox<name>Id`, which
    goes with the box). Then `ops/stack.sh env <env> --more-boxes none --plan` (or the list as it should be): **never a
    blank list**, which AWS reads as one empty name, so no box is the word `none`. The fence refuses the removal and
@@ -736,7 +739,12 @@ in the copy's bucket (`<name>/records`).
    it passes when each is named with `--take`. What is left: the instance and its root disk are kept, and the records
    disk is **snapshotted and then deleted** (its policy is `Snapshot`: AWS, "CloudFormation creates a snapshot for the
    resource before deleting it"), so a snapshot stays and bills until `aws ec2 delete-snapshot` removes it. A company
-   still on the box is not moved by this: move the companies off first. To find the instance left, look it up by **its
+   still on the box is not moved by this: move the companies off first. **The box's copy goes in the same run:** once the
+   stack's update completes, every object under `<name>/records/` in the copy's bucket is deleted and the path is read
+   back empty (a delete that fails ends the run red, naming the path, and the next add of that name clears what is
+   left), and `--plan` shows the path, its count and "is deleted after the update" first; the bucket's own rule would
+   have expired it only seven days after its last write. The snapshot of the records disk is not part of this and
+   stays until you delete it. To find the instance left, look it up by **its
    own tag**, `aws ec2 describe-instances --region ap-southeast-5 --filters Name=tag:Name,Values=credo-<env>-<name> --query 'Reservations[].Instances[].[InstanceId,Placement.AvailabilityZone,State.Name]' --output text`;
    the tag `credo-<env>` alone is the home box, which is running in the stack and is never the one to stop or remove.
    Then follow [a retained box](#a-retained-box) from its step 2, with that instance's id, and
@@ -853,7 +861,8 @@ The drill reads the copy for real.
    restore to the new file there, look at it, and swap it in by hand from the box, with c-storage stopped.
    - **a records disk that holds no `c-storage.db`, while the bucket holds a copy** (a replacement box, or a
      disk made blank): a release refuses it, blank or mounted by hand alike, and names the one path:
-     `ops/restore.sh <env> [--at <time>] --onto-blank`. It formats a disk with no filesystem, mounts it at the
+     `ops/restore.sh <env> [--at <time>] --onto-blank [--box <name>]` (on a box added, the refusal names the
+     box). It formats a disk with no filesystem, mounts it at the
      records path and restores the newest copy (or the copy as of `--at`) onto it, with c-storage stopped and
      never started in between; it runs on any environment, since nothing live exists there, and refuses a
      c-storage that is running, a filesystem other than XFS and a disk that already holds a `c-storage.db`.
