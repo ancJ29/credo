@@ -210,7 +210,7 @@ row, 2 to 3 (piece 143); a review 7 to 16, 8 at the median, a fix pass 12 to 15,
   and found; the citation test exits 0; `words-in.sh` counts 4 in `ops/README.md`; `$HOME` prints nothing in `ops` and
   `docs/products.md`. Not run: the script and `pnpm words`, by the brief. The script's `to land it again` line starts at
   `ops/`, so the section gives the block with the branch's name. The pictures part states today's order (landing first).
-- [ ] **4. Reviewed, fixed, recapped.** Another model reads steps 1 to 3; one fix pass; a reread;
+- [x] **4. Reviewed, fixed, recapped.** Another model reads steps 1 to 3; one fix pass; a reread;
   the recap. *Done when:* every finding tagged in the recap; the fix pass's rows 3 to 5 and the
   citation test exit 0; the branch landed on `pre-merge` by the orchestrator. *Size:* 25 (review 8,
   fix 12, recap 5). Then 👤 point 1, and point 2 once `main` holds it.
@@ -220,6 +220,12 @@ row, 2 to 3 (piece 143); a review 7 to 16, 8 at the median, a fix pass 12 to 15,
   `words-returned/` beside `words-sent/`, which the human's terminal reads, with a refusals row for the system's
   "Operation not permitted"; the printed `--land` line carries the script's absolute path. Cases 25 and 14 were red
   on `5bdfdba3`'s code. Items 580 to 585 hold the other Lows.
+  *Ticked 11-17:* the reviewer's reread found every fixed line sound and the piece fit to merge, plus one Low, filed as item
+  586 (the printed `--land` line's paths are unquoted). `pre-merge` was taken in (`714f4a64`); its one conflict, in
+  `docs/open-items.md`, where both sides appended items, kept both sides whole in number order. On the merged tree
+  shellcheck, `cfn-lint` and the whole `ops/test.sh` each exit 0, the script's section running whole (46 checks); the
+  citation test exits 0. Every finding is tagged in `docs/recaps/2026-11-17-words-paste.md`. Not done here: the landing
+  on `pre-merge`, the orchestrator's; the human's two points stay open.
 
 About 55 machine minutes; the whole check that moves `main` is the orchestrator's, about 20 more.
 
