@@ -7,6 +7,12 @@ import { describe, expect, it } from 'vitest';
 import { openApp, type Spied } from '../../../tests/open';
 import { ApiError } from '../../api';
 
+import { DICTIONARIES } from '../../i18n';
+
+const words = DICTIONARIES.en;
+const wordsVi = DICTIONARIES.vi;
+/** A word at the start of a label, the star of a required field allowed after it. */
+const starting = (word: string) => new RegExp(`^${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`);
 /** What an input holds. */
 const valueOf = (input: HTMLElement) => (input as HTMLInputElement).value;
 
@@ -22,14 +28,21 @@ const cells = () =>
 describe('the customers and the products', () => {
   it('The root opens Customers and Products from the menu; each lists all of the company’s in code order: a customer’s code, name, phone and address; a product’s code, name, unit and price in đồng', async () => {
     const drawn = openApp('/staff');
-    const menu = within((await screen.findAllByRole('navigation', { name: 'Menu' }))[0]);
+    const menu = within((await screen.findAllByRole('navigation', { name: words.nav.menu }))[0]);
 
-    await userEvent.click(menu.getByRole('link', { name: 'Customers' }));
+    await userEvent.click(menu.getByRole('link', { name: words.lists.customers.sheet }));
 
-    expect(await screen.findByRole('heading', { level: 2, name: 'Customers' })).toBeTruthy();
+    expect(
+      await screen.findByRole('heading', { level: 2, name: words.lists.customers.sheet }),
+    ).toBeTruthy();
     const customers = await screen.findAllByRole('row');
     expect(customers).toHaveLength(DEMO_CUSTOMERS.length + 1);
-    expect(cells()[0]).toEqual(['Code', 'Name', 'Phone', 'Address']);
+    expect(cells()[0]).toEqual([
+      words.lists.columns.code,
+      words.lists.columns.name,
+      words.lists.columns.phone,
+      words.lists.columns.address,
+    ]);
     expect(cells().slice(1)).toEqual(
       DEMO_CUSTOMERS.map((one) => [one.code, one.name, one.extra['phone'], one.extra['address']]),
     );
@@ -39,18 +52,26 @@ describe('the customers and the products', () => {
         .map((row) => row[0]),
     ).toEqual([...DEMO_CUSTOMERS.map((one) => one.code)].sort());
 
-    await userEvent.click(menu.getByRole('link', { name: 'Products' }));
+    await userEvent.click(menu.getByRole('link', { name: words.lists.products.sheet }));
 
-    expect(await screen.findByRole('heading', { level: 2, name: 'Products' })).toBeTruthy();
+    expect(
+      await screen.findByRole('heading', { level: 2, name: words.lists.products.sheet }),
+    ).toBeTruthy();
     await screen.findByText('VT-006');
-    expect(cells()[0]).toEqual(['Code', 'Name', 'Unit', 'Price (VND)', 'Stocked']);
+    expect(cells()[0]).toEqual([
+      words.lists.columns.code,
+      words.lists.columns.name,
+      words.lists.columns.unit,
+      words.lists.columns.price,
+      words.lists.columns.stocked,
+    ]);
     expect(cells().slice(1)).toEqual(
       DEMO_PRODUCTS.map((one) => [
         one.code,
         one.name,
         one.unit,
         new Intl.NumberFormat('en').format(one.price),
-        one.stocked ? 'Yes' : 'No',
+        one.stocked ? words.lists.yes : 'No',
       ]),
     );
     expect(cells().find((row) => row[0] === 'VT-001')?.[3]).toBe('95,000');
@@ -64,16 +85,24 @@ describe('the customers and the products', () => {
   it('shows the list in Vietnamese with the price written as Vietnamese writes it, and a link to the import', async () => {
     openApp('/products', { language: 'vi' });
 
-    expect(await screen.findByRole('heading', { level: 2, name: 'Sản phẩm' })).toBeTruthy();
+    expect(
+      await screen.findByRole('heading', { level: 2, name: wordsVi.lists.products.sheet }),
+    ).toBeTruthy();
     await screen.findByText('VT-001');
-    expect(cells()[0]).toEqual(['Mã', 'Tên', 'Đơn vị tính', 'Giá (đồng)', 'Quản lý tồn kho']);
+    expect(cells()[0]).toEqual([
+      'Mã',
+      wordsVi.lists.columns.name,
+      wordsVi.lists.columns.unit,
+      wordsVi.lists.columns.price,
+      wordsVi.lists.products.stock,
+    ]);
     expect(
       cells()
         .find((row) => row[0] === 'VT-001')
         ?.slice(3),
     ).toEqual(['95.000', 'Có']);
-    expect(cells().find((row) => row[0] === 'DV-001')?.[4]).toBe('Không');
-    expect(screen.getByRole('link', { name: 'Nhập từ Excel' }).getAttribute('href')).toBe(
+    expect(cells().find((row) => row[0] === 'DV-001')?.[4]).toBe(wordsVi.lists.no);
+    expect(screen.getByRole('link', { name: wordsVi.lists.import }).getAttribute('href')).toBe(
       '/products/import',
     );
   });
@@ -102,9 +131,7 @@ describe('the customers and the products', () => {
         spied.listCustomers.mockResolvedValue([]);
       },
     });
-    expect(
-      await screen.findByText('No customers yet. Import them from an Excel file.'),
-    ).toBeTruthy();
+    expect(await screen.findByText(words.lists.customers.empty)).toBeTruthy();
     empty.unmount();
 
     openApp('/products', {
@@ -112,36 +139,40 @@ describe('the customers and the products', () => {
         spied.listProducts.mockRejectedValueOnce(new ApiError(503));
       },
     });
-    expect(screen.getByLabelText('Loading')).toBeTruthy();
-    await userEvent.click(await screen.findByRole('button', { name: 'Try again' }));
+    expect(screen.getByLabelText(words.common.loading)).toBeTruthy();
+    await userEvent.click(await screen.findByRole('button', { name: words.common.retry }));
     expect(await screen.findByText('VT-001')).toBeTruthy();
   });
 
   it('Whoever may see orders sees the two lists in the menu and opens them; only the root imports, and someone who may not see orders has neither', async () => {
     const office = openApp('/customers', { as: 'EMP-0001' });
 
-    expect(await screen.findByRole('heading', { level: 2, name: 'Customers' })).toBeTruthy();
+    expect(
+      await screen.findByRole('heading', { level: 2, name: words.lists.customers.sheet }),
+    ).toBeTruthy();
     await screen.findByText('KH-001');
     expect(office.api.listCustomers).toHaveBeenCalledOnce();
-    const menu = within(screen.getAllByRole('navigation', { name: 'Menu' })[0]);
-    expect(menu.getByText('Customers')).toBeTruthy();
-    expect(menu.getByText('Products')).toBeTruthy();
-    expect(screen.queryByRole('link', { name: 'Import from Excel' })).toBeNull();
+    const menu = within(screen.getAllByRole('navigation', { name: words.nav.menu })[0]);
+    expect(menu.getByText(words.lists.customers.sheet)).toBeTruthy();
+    expect(menu.getByText(words.lists.products.sheet)).toBeTruthy();
+    expect(screen.queryByRole('link', { name: words.lists.import })).toBeNull();
     office.unmount();
 
     const imports = openApp('/products/import', { as: 'EMP-0001' });
     expect(
-      await screen.findByRole('heading', { level: 2, name: 'You cannot open this page' }),
+      await screen.findByRole('heading', { level: 2, name: words.forbidden.title }),
     ).toBeTruthy();
     imports.unmount();
 
     const warehouse = openApp('/customers', { as: 'EMP-0004' });
     expect(
-      await screen.findByRole('heading', { level: 2, name: 'You cannot open this page' }),
+      await screen.findByRole('heading', { level: 2, name: words.forbidden.title }),
     ).toBeTruthy();
     expect(warehouse.api.listCustomers).not.toHaveBeenCalled();
     expect(
-      within(screen.getAllByRole('navigation', { name: 'Menu' })[0]).queryByText('Customers'),
+      within(screen.getAllByRole('navigation', { name: words.nav.menu })[0]).queryByText(
+        words.lists.customers.sheet,
+      ),
     ).toBeNull();
   });
 
@@ -153,8 +184,10 @@ describe('the customers and the products', () => {
 
     expect(await screen.findByRole('heading', { level: 2, name: first.name })).toBeTruthy();
     expect(screen.queryByRole('table')).toBeNull();
-    await userEvent.click(screen.getByRole('link', { name: 'Back to the customers' }));
-    expect(await screen.findByRole('heading', { level: 2, name: 'Customers' })).toBeTruthy();
+    await userEvent.click(screen.getByRole('link', { name: words.lists.customers.back }));
+    expect(
+      await screen.findByRole('heading', { level: 2, name: words.lists.customers.sheet }),
+    ).toBeTruthy();
     // the heading is outside the list's load; the table waits for it
     expect(await screen.findByRole('table')).toBeTruthy();
   });
@@ -169,17 +202,36 @@ describe('the customers and the products', () => {
     expect(screen.getByText(first.code)).toBeTruthy();
     expect(
       screen.getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent),
-    ).toEqual(['Basic information', 'Contacts', 'Address', 'Note']);
-    const basic = card('Basic information');
-    expect(valueOf(basic.getByRole('textbox', { name: 'Code' }))).toBe(first.code);
-    expect(valueOf(basic.getByRole('textbox', { name: 'Name' }))).toBe(first.name);
-    expect(valueOf(card('Contacts').getByRole('textbox', { name: 'Phone' }))).toBe(
-      first.extra['phone'],
+    ).toEqual([
+      words.lists.customers.basic,
+      words.lists.customers.contacts,
+      words.lists.customers.address,
+      words.lists.customers.note,
+    ]);
+    const basic = card(words.lists.customers.basic);
+    expect(valueOf(basic.getByRole('textbox', { name: words.lists.columns.code }))).toBe(
+      first.code,
     );
-    expect(valueOf(card('Address').getByRole('textbox'))).toBe(first.extra['address']);
-    expect(valueOf(card('Note').getByRole('textbox'))).toBe(first.extra['note']);
+    expect(valueOf(basic.getByRole('textbox', { name: words.lists.columns.name }))).toBe(
+      first.name,
+    );
     expect(
-      card('Basic information').getByRole('textbox', { name: 'Code' }).hasAttribute('readonly'),
+      valueOf(
+        card(words.lists.customers.contacts).getByRole('textbox', {
+          name: words.lists.columns.phone,
+        }),
+      ),
+    ).toBe(first.extra['phone']);
+    expect(valueOf(card(words.lists.customers.address).getByRole('textbox'))).toBe(
+      first.extra['address'],
+    );
+    expect(valueOf(card(words.lists.customers.note).getByRole('textbox'))).toBe(
+      first.extra['note'],
+    );
+    expect(
+      card(words.lists.customers.basic)
+        .getByRole('textbox', { name: words.lists.columns.code })
+        .hasAttribute('readonly'),
     ).toBe(true);
     expect(drawn.api.getCustomer).toHaveBeenCalledOnce();
     expect(drawn.api.listCustomers).not.toHaveBeenCalled();
@@ -189,7 +241,12 @@ describe('the customers and the products', () => {
     expect(await screen.findByRole('heading', { level: 2, name: first.name })).toBeTruthy();
     expect(
       screen.getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent),
-    ).toEqual(['Thông tin cơ bản', 'Liên hệ', 'Địa chỉ', 'Ghi chú']);
+    ).toEqual([
+      wordsVi.lists.customers.basic,
+      wordsVi.lists.customers.contacts,
+      wordsVi.lists.customers.address,
+      wordsVi.lists.customers.note,
+    ]);
   });
 
   it('A customer with no note has an empty Note card to write one into for whoever may edit, and no Note card for someone who may only see', async () => {
@@ -199,8 +256,13 @@ describe('the customers and the products', () => {
     expect(await screen.findByRole('heading', { level: 2, name: quiet.name })).toBeTruthy();
     expect(
       screen.getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent),
-    ).toEqual(['Basic information', 'Contacts', 'Address', 'Note']);
-    expect(valueOf(screen.getByRole('textbox', { name: 'Note' }))).toBe('');
+    ).toEqual([
+      words.lists.customers.basic,
+      words.lists.customers.contacts,
+      words.lists.customers.address,
+      words.lists.customers.note,
+    ]);
+    expect(valueOf(screen.getByRole('textbox', { name: words.lists.customers.note }))).toBe('');
     office.unmount();
 
     openApp(`/customers/${quiet.id}`, {
@@ -213,7 +275,11 @@ describe('the customers and the products', () => {
     expect(await screen.findByRole('heading', { level: 2, name: quiet.name })).toBeTruthy();
     expect(
       screen.getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent),
-    ).toEqual(['Basic information', 'Contacts', 'Address']);
+    ).toEqual([
+      words.lists.customers.basic,
+      words.lists.customers.contacts,
+      words.lists.customers.address,
+    ]);
   });
 
   it('Whoever may only see orders sees the values and no Save button', async () => {
@@ -227,9 +293,13 @@ describe('the customers and the products', () => {
     });
 
     expect(await screen.findByRole('heading', { level: 2, name: noted.name })).toBeTruthy();
-    expect(valueOf(screen.getByRole('textbox', { name: 'Name' }))).toBe(noted.name);
-    expect(valueOf(screen.getByRole('textbox', { name: 'Note' }))).toBe(noted.extra['note']);
-    expect(screen.queryByRole('button', { name: 'Save' })).toBeNull();
+    expect(valueOf(screen.getByRole('textbox', { name: words.lists.columns.name }))).toBe(
+      noted.name,
+    );
+    expect(valueOf(screen.getByRole('textbox', { name: words.lists.customers.note }))).toBe(
+      noted.extra['note'],
+    );
+    expect(screen.queryByRole('button', { name: words.lists.customers.save })).toBeNull();
     for (const box of screen.getAllByRole('textbox'))
       expect(box.hasAttribute('readonly')).toBe(true);
   });
@@ -251,14 +321,20 @@ describe('the customers and the products', () => {
     });
     await screen.findByRole('heading', { level: 2, name: one.name });
 
-    await userEvent.clear(screen.getByRole('textbox', { name: 'Phone' }));
-    await userEvent.type(screen.getByRole('textbox', { name: 'Address' }), ' 12');
-    await userEvent.type(screen.getByRole('textbox', { name: 'Note' }), ' Gọi trước.');
-    await userEvent.clear(screen.getByRole('textbox', { name: 'Name' }));
-    await userEvent.type(screen.getByRole('textbox', { name: 'Name' }), '  Tên mới ');
-    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await userEvent.clear(screen.getByRole('textbox', { name: words.lists.columns.phone }));
+    await userEvent.type(screen.getByRole('textbox', { name: words.lists.columns.address }), ' 12');
+    await userEvent.type(
+      screen.getByRole('textbox', { name: words.lists.customers.note }),
+      ' Gọi trước.',
+    );
+    await userEvent.clear(screen.getByRole('textbox', { name: words.lists.columns.name }));
+    await userEvent.type(
+      screen.getByRole('textbox', { name: words.lists.columns.name }),
+      '  Tên mới ',
+    );
+    await userEvent.click(screen.getByRole('button', { name: words.lists.customers.save }));
 
-    expect((await screen.findByRole('alert')).textContent).toBe('Saved.');
+    expect((await screen.findByRole('alert')).textContent).toBe(words.lists.customers.saved);
     const kept = Object.fromEntries(
       Object.entries({ ...one.extra, tier: 'gold' }).filter(([key]) => key !== 'phone'),
     );
@@ -270,7 +346,7 @@ describe('the customers and the products', () => {
       extra: kept,
     });
     expect(await screen.findByRole('heading', { level: 2, name: 'Tên mới' })).toBeTruthy();
-    expect(valueOf(screen.getByRole('textbox', { name: 'Phone' }))).toBe('');
+    expect(valueOf(screen.getByRole('textbox', { name: words.lists.columns.phone }))).toBe('');
   });
 
   it('An emptied address and note remove their own keys, and the phone and the name stay', async () => {
@@ -278,11 +354,11 @@ describe('the customers and the products', () => {
     const drawn = openApp(`/customers/${one.id}`);
     await screen.findByRole('heading', { level: 2, name: one.name });
 
-    await userEvent.clear(screen.getByRole('textbox', { name: 'Address' }));
-    await userEvent.clear(screen.getByRole('textbox', { name: 'Note' }));
-    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await userEvent.clear(screen.getByRole('textbox', { name: words.lists.columns.address }));
+    await userEvent.clear(screen.getByRole('textbox', { name: words.lists.customers.note }));
+    await userEvent.click(screen.getByRole('button', { name: words.lists.customers.save }));
 
-    expect((await screen.findByRole('alert')).textContent).toBe('Saved.');
+    expect((await screen.findByRole('alert')).textContent).toBe(words.lists.customers.saved);
     const { address: _address, note: _note, ...kept } = one.extra;
     expect(drawn.api.saveCustomer).toHaveBeenCalledExactlyOnceWith(one.id, {
       version: 'c1',
@@ -296,11 +372,11 @@ describe('the customers and the products', () => {
     const drawn = openApp(`/customers/${one.id}`);
     await screen.findByRole('heading', { level: 2, name: one.name });
 
-    await userEvent.clear(screen.getByRole('textbox', { name: 'Name' }));
-    await userEvent.type(screen.getByRole('textbox', { name: 'Name' }), '   ');
-    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await userEvent.clear(screen.getByRole('textbox', { name: words.lists.columns.name }));
+    await userEvent.type(screen.getByRole('textbox', { name: words.lists.columns.name }), '   ');
+    await userEvent.click(screen.getByRole('button', { name: words.lists.customers.save }));
 
-    expect(await screen.findByText('Please write the customer’s name.')).toBeTruthy();
+    expect(await screen.findByText(words.lists.customers.nameNeeded)).toBeTruthy();
     expect(drawn.api.saveCustomer).not.toHaveBeenCalled();
   });
 
@@ -309,26 +385,30 @@ describe('the customers and the products', () => {
     const drawn = openApp(`/customers/${one.id}`, { cue: 'saveCustomer:409' });
     await screen.findByRole('heading', { level: 2, name: one.name });
 
-    await userEvent.type(screen.getByRole('textbox', { name: 'Phone' }), '9');
-    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await userEvent.type(screen.getByRole('textbox', { name: words.lists.columns.phone }), '9');
+    await userEvent.click(screen.getByRole('button', { name: words.lists.customers.save }));
 
     const notice = await screen.findByRole('alert');
-    expect(notice.textContent).toContain('Someone saved newer details first.');
-    expect(valueOf(screen.getByRole('textbox', { name: 'Phone' }))).toBe(
+    expect(notice.textContent).toContain(words.lists.customers.conflict);
+    expect(valueOf(screen.getByRole('textbox', { name: words.lists.columns.phone }))).toBe(
       `${textOf(one.extra['phone'])}9`,
     );
-    await userEvent.click(within(notice).getByRole('button', { name: 'Show the newer details' }));
+    await userEvent.click(
+      within(notice).getByRole('button', { name: words.lists.customers.conflictReload }),
+    );
     await screen.findByRole('heading', { level: 2, name: one.name });
     expect(screen.queryByRole('alert')).toBeNull();
-    expect(valueOf(screen.getByRole('textbox', { name: 'Phone' }))).toBe(one.extra['phone']);
+    expect(valueOf(screen.getByRole('textbox', { name: words.lists.columns.phone }))).toBe(
+      one.extra['phone'],
+    );
     expect(drawn.api.getCustomer).toHaveBeenCalledTimes(2);
   });
 
   it('A save that fails says so and keeps what was typed; one the BFF refuses as no longer allowed says that', async () => {
     const one = DEMO_CUSTOMERS[0];
-    for (const [status, words] of [
-      [503, 'The customer was not saved. What you typed'],
-      [403, 'you may no longer change customers'],
+    for (const [status, expected] of [
+      [503, words.lists.customers.saveFailed],
+      [403, words.lists.customers.saveForbidden],
     ] as const) {
       const drawn = openApp(`/customers/${one.id}`, {
         override: (spied) => {
@@ -336,11 +416,11 @@ describe('the customers and the products', () => {
         },
       });
       await screen.findByRole('heading', { level: 2, name: one.name });
-      await userEvent.type(screen.getByRole('textbox', { name: 'Phone' }), '9');
-      await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+      await userEvent.type(screen.getByRole('textbox', { name: words.lists.columns.phone }), '9');
+      await userEvent.click(screen.getByRole('button', { name: words.lists.customers.save }));
 
-      expect((await screen.findByRole('alert')).textContent).toContain(words);
-      expect(valueOf(screen.getByRole('textbox', { name: 'Phone' }))).toBe(
+      expect((await screen.findByRole('alert')).textContent).toContain(expected);
+      expect(valueOf(screen.getByRole('textbox', { name: words.lists.columns.phone }))).toBe(
         `${textOf(one.extra['phone'])}9`,
       );
       drawn.unmount();
@@ -350,12 +430,8 @@ describe('the customers and the products', () => {
   it('An unknown customer address says the customer is not there, with the way back, and shows no customer’s details', async () => {
     openApp('/customers/00000000-0000-4000-8000-0000000000ff');
 
-    expect(
-      await screen.findByText(
-        'This customer is not in the list. It may have been taken out, or the address is wrong.',
-      ),
-    ).toBeTruthy();
-    expect(screen.getByRole('link', { name: 'Back to the customers' })).toBeTruthy();
+    expect(await screen.findByText(words.lists.customers.notThere)).toBeTruthy();
+    expect(screen.getByRole('link', { name: words.lists.customers.back })).toBeTruthy();
     expect(screen.queryAllByRole('heading', { level: 3 })).toHaveLength(0);
     expect(screen.queryByRole('textbox')).toBeNull();
   });
@@ -368,7 +444,7 @@ describe('the customers and the products', () => {
       },
     });
 
-    await userEvent.click(await screen.findByRole('button', { name: 'Try again' }));
+    await userEvent.click(await screen.findByRole('button', { name: words.common.retry }));
     expect(await screen.findByRole('heading', { level: 2, name: first.name })).toBeTruthy();
   });
 
@@ -380,8 +456,10 @@ describe('the customers and the products', () => {
 
     expect(await screen.findByRole('heading', { level: 2, name: first.name })).toBeTruthy();
     expect(screen.queryByRole('table')).toBeNull();
-    await userEvent.click(screen.getByRole('link', { name: 'Back to the products' }));
-    expect(await screen.findByRole('heading', { level: 2, name: 'Products' })).toBeTruthy();
+    await userEvent.click(screen.getByRole('link', { name: words.lists.products.back }));
+    expect(
+      await screen.findByRole('heading', { level: 2, name: words.lists.products.sheet }),
+    ).toBeTruthy();
     // the heading is outside the list's load; the table waits for it
     expect(await screen.findByRole('table')).toBeTruthy();
   });
@@ -396,20 +474,33 @@ describe('the customers and the products', () => {
     expect(screen.getByText(noted.code)).toBeTruthy();
     expect(
       screen.getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent),
-    ).toEqual(['Basic information', 'Unit and price', 'Stock', 'Note']);
-    const basic = card('Basic information');
-    expect(valueOf(basic.getByRole('textbox', { name: 'Code' }))).toBe(noted.code);
-    expect(valueOf(basic.getByRole('textbox', { name: 'Name' }))).toBe(noted.name);
-    const unit = card('Unit and price');
-    expect(valueOf(unit.getByRole('textbox', { name: 'Unit' }))).toBe(noted.unit);
-    expect(valueOf(unit.getByRole('textbox', { name: /^Price \(VND\)/ }))).toBe(
+    ).toEqual([
+      words.lists.products.basic,
+      words.lists.products.unitPrice,
+      words.lists.products.stock,
+      words.lists.products.note,
+    ]);
+    const basic = card(words.lists.products.basic);
+    expect(valueOf(basic.getByRole('textbox', { name: words.lists.columns.code }))).toBe(
+      noted.code,
+    );
+    expect(valueOf(basic.getByRole('textbox', { name: words.lists.columns.name }))).toBe(
+      noted.name,
+    );
+    const unit = card(words.lists.products.unitPrice);
+    expect(valueOf(unit.getByRole('textbox', { name: words.lists.columns.unit }))).toBe(noted.unit);
+    expect(valueOf(unit.getByRole('textbox', { name: starting(words.lists.columns.price) }))).toBe(
       new Intl.NumberFormat('en').format(noted.price),
     );
-    expect(card('Stock').getByRole<HTMLInputElement>('switch', { name: 'Stocked' }).checked).toBe(
-      noted.stocked,
-    );
-    expect(valueOf(card('Note').getByRole('textbox'))).toBe(noted.extra['note']);
-    expect(basic.getByRole('textbox', { name: 'Code' }).hasAttribute('readonly')).toBe(true);
+    expect(
+      card(words.lists.products.stock).getByRole<HTMLInputElement>('switch', {
+        name: words.lists.columns.stocked,
+      }).checked,
+    ).toBe(noted.stocked);
+    expect(valueOf(card(words.lists.products.note).getByRole('textbox'))).toBe(noted.extra['note']);
+    expect(
+      basic.getByRole('textbox', { name: words.lists.columns.code }).hasAttribute('readonly'),
+    ).toBe(true);
     expect(drawn.api.getProduct).toHaveBeenCalledOnce();
     expect(drawn.api.listProducts).not.toHaveBeenCalled();
     drawn.unmount();
@@ -418,12 +509,19 @@ describe('the customers and the products', () => {
     expect(await screen.findByRole('heading', { level: 2, name: noted.name })).toBeTruthy();
     expect(
       screen.getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent),
-    ).toEqual(['Thông tin cơ bản', 'Đơn vị và giá', 'Tồn kho', 'Ghi chú']);
+    ).toEqual([
+      wordsVi.lists.products.basic,
+      wordsVi.lists.products.unitPrice,
+      wordsVi.lists.products.stock,
+      wordsVi.lists.products.note,
+    ]);
     expect(
       valueOf(
         within(
-          screen.getByRole('heading', { level: 3, name: 'Đơn vị và giá' }).closest('section')!,
-        ).getByRole('textbox', { name: /^Giá \(đồng\)/ }),
+          screen
+            .getByRole('heading', { level: 3, name: wordsVi.lists.products.unitPrice })
+            .closest('section')!,
+        ).getByRole('textbox', { name: starting(wordsVi.lists.columns.price) }),
       ),
     ).toBe(new Intl.NumberFormat('vi').format(noted.price));
   });
@@ -433,14 +531,14 @@ describe('the customers and the products', () => {
     const drawn = openApp(`/products/${one.id}`, { language: 'vi' });
     await screen.findByRole('heading', { level: 2, name: one.name });
 
-    const box = screen.getByRole('textbox', { name: /^Giá \(đồng\)/ });
+    const box = screen.getByRole('textbox', { name: starting(wordsVi.lists.columns.price) });
     expect(box.getAttribute('aria-describedby')).toBeTruthy();
     await userEvent.clear(box);
     await userEvent.type(box, '120.000');
     expect(valueOf(box)).toBe('120.000');
-    await userEvent.click(screen.getByRole('button', { name: 'Lưu' }));
+    await userEvent.click(screen.getByRole('button', { name: wordsVi.lists.products.save }));
 
-    expect((await screen.findByRole('alert')).textContent).toBe('Đã lưu.');
+    expect((await screen.findByRole('alert')).textContent).toBe(wordsVi.lists.products.saved);
     expect(drawn.api.saveProduct).toHaveBeenCalledExactlyOnceWith(
       one.id,
       expect.objectContaining({ price: 120000 }),
@@ -451,14 +549,14 @@ describe('the customers and the products', () => {
     const one = DEMO_PRODUCTS[0];
     const drawn = openApp(`/products/${one.id}`);
     await screen.findByRole('heading', { level: 2, name: one.name });
-    const box = () => screen.getByRole('textbox', { name: /^Price \(VND\)/ });
-    const word = 'Write a whole number of đồng above zero.';
+    const box = () => screen.getByRole('textbox', { name: starting(words.lists.columns.price) });
+    const word = words.lists.products.priceInvalid;
 
     // letters: the box yields nothing, so the price is empty, and empty is refused
     await userEvent.clear(box());
     await userEvent.type(box(), 'abc');
     expect(valueOf(box())).toBe('');
-    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await userEvent.click(screen.getByRole('button', { name: words.lists.products.save }));
     expect(await screen.findByText(word)).toBeTruthy();
     // zero, a typed minus, a pasted minus, a pasted decimal and a size past the top each stay
     // as they were written
@@ -473,7 +571,7 @@ describe('the customers and the products', () => {
       await userEvent.click(box());
       await (how === 'type' ? userEvent.type(box(), text) : userEvent.paste(text));
       expect(valueOf(box())).toBe(shown);
-      await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+      await userEvent.click(screen.getByRole('button', { name: words.lists.products.save }));
       expect(screen.getByText(word)).toBeTruthy();
     }
     expect(drawn.api.saveProduct).not.toHaveBeenCalled();
@@ -484,16 +582,17 @@ describe('the customers and the products', () => {
     const drawn = openApp(`/products/${one.id}`);
     await screen.findByRole('heading', { level: 2, name: one.name });
 
-    await userEvent.clear(screen.getByRole('textbox', { name: 'Name' }));
-    await userEvent.type(screen.getByRole('textbox', { name: 'Name' }), '   ');
-    await userEvent.clear(screen.getByRole('textbox', { name: 'Unit' }));
-    await userEvent.type(screen.getByRole('textbox', { name: 'Unit' }), 'x'.repeat(21));
-    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await userEvent.clear(screen.getByRole('textbox', { name: words.lists.columns.name }));
+    await userEvent.type(screen.getByRole('textbox', { name: words.lists.columns.name }), '   ');
+    await userEvent.clear(screen.getByRole('textbox', { name: words.lists.columns.unit }));
+    await userEvent.type(
+      screen.getByRole('textbox', { name: words.lists.columns.unit }),
+      'x'.repeat(21),
+    );
+    await userEvent.click(screen.getByRole('button', { name: words.lists.products.save }));
 
-    expect(
-      await screen.findByText('Please write the product’s name, at most 200 characters.'),
-    ).toBeTruthy();
-    expect(screen.getByText('Please write the unit, at most 20 characters.')).toBeTruthy();
+    expect(await screen.findByText(words.lists.products.nameNeeded)).toBeTruthy();
+    expect(screen.getByText(words.lists.products.unitNeeded)).toBeTruthy();
     expect(drawn.api.saveProduct).not.toHaveBeenCalled();
   });
 
@@ -501,12 +600,13 @@ describe('the customers and the products', () => {
     const one = DEMO_PRODUCTS.find((p) => p.stocked)!;
     const drawn = openApp(`/products/${one.id}`);
     await screen.findByRole('heading', { level: 2, name: one.name });
-    const stock = () => screen.getByRole<HTMLInputElement>('switch', { name: 'Stocked' });
+    const stock = () =>
+      screen.getByRole<HTMLInputElement>('switch', { name: words.lists.columns.stocked });
     expect(stock().checked).toBe(true);
 
     await userEvent.click(stock());
-    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
-    expect((await screen.findByRole('alert')).textContent).toBe('Saved.');
+    await userEvent.click(screen.getByRole('button', { name: words.lists.products.save }));
+    expect((await screen.findByRole('alert')).textContent).toBe(words.lists.products.saved);
     expect(drawn.api.saveProduct).toHaveBeenLastCalledWith(
       one.id,
       expect.objectContaining({ version: 'p1', stocked: false, price: one.price }),
@@ -514,7 +614,7 @@ describe('the customers and the products', () => {
     expect(stock().checked).toBe(false);
 
     await userEvent.click(stock());
-    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await userEvent.click(screen.getByRole('button', { name: words.lists.products.save }));
     await waitFor(() => expect(drawn.api.saveProduct).toHaveBeenCalledTimes(2));
     expect(drawn.api.saveProduct).toHaveBeenLastCalledWith(
       one.id,
@@ -533,14 +633,22 @@ describe('the customers and the products', () => {
     });
 
     expect(await screen.findByRole('heading', { level: 2, name: noted.name })).toBeTruthy();
-    expect(valueOf(screen.getByRole('textbox', { name: 'Name' }))).toBe(noted.name);
-    expect(valueOf(screen.getByRole('textbox', { name: 'Unit' }))).toBe(noted.unit);
-    expect(valueOf(screen.getByRole('textbox', { name: /^Price \(VND\)/ }))).toBe(
-      new Intl.NumberFormat('en').format(noted.price),
+    expect(valueOf(screen.getByRole('textbox', { name: words.lists.columns.name }))).toBe(
+      noted.name,
     );
-    expect(valueOf(screen.getByRole('textbox', { name: 'Note' }))).toBe(noted.extra['note']);
-    expect(screen.queryByRole('button', { name: 'Save' })).toBeNull();
-    expect(screen.getByRole<HTMLInputElement>('switch', { name: 'Stocked' }).disabled).toBe(true);
+    expect(valueOf(screen.getByRole('textbox', { name: words.lists.columns.unit }))).toBe(
+      noted.unit,
+    );
+    expect(
+      valueOf(screen.getByRole('textbox', { name: starting(words.lists.columns.price) })),
+    ).toBe(new Intl.NumberFormat('en').format(noted.price));
+    expect(valueOf(screen.getByRole('textbox', { name: words.lists.products.note }))).toBe(
+      noted.extra['note'],
+    );
+    expect(screen.queryByRole('button', { name: words.lists.products.save })).toBeNull();
+    expect(
+      screen.getByRole<HTMLInputElement>('switch', { name: words.lists.columns.stocked }).disabled,
+    ).toBe(true);
     for (const box of screen.getAllByRole('textbox'))
       expect(box.hasAttribute('readonly')).toBe(true);
   });
@@ -558,9 +666,9 @@ describe('the customers and the products', () => {
       },
     });
     await screen.findByRole('heading', { level: 2, name: noted.name });
-    await userEvent.clear(screen.getByRole('textbox', { name: 'Note' }));
-    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
-    expect((await screen.findByRole('alert')).textContent).toBe('Saved.');
+    await userEvent.clear(screen.getByRole('textbox', { name: words.lists.products.note }));
+    await userEvent.click(screen.getByRole('button', { name: words.lists.products.save }));
+    expect((await screen.findByRole('alert')).textContent).toBe(words.lists.products.saved);
     const { note: _note, ...kept } = hidden;
     expect(first.api.saveProduct).toHaveBeenCalledExactlyOnceWith(
       noted.id,
@@ -577,8 +685,8 @@ describe('the customers and the products', () => {
       },
     });
     await screen.findByRole('heading', { level: 2, name: quiet.name });
-    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
-    expect((await screen.findByRole('alert')).textContent).toBe('Saved.');
+    await userEvent.click(screen.getByRole('button', { name: words.lists.products.save }));
+    expect((await screen.findByRole('alert')).textContent).toBe(words.lists.products.saved);
     expect(second.api.saveProduct).toHaveBeenCalledExactlyOnceWith(
       quiet.id,
       expect.objectContaining({ extra: { note: 5 } }),
@@ -590,10 +698,13 @@ describe('the customers and the products', () => {
     const drawn = openApp(`/products/${quiet.id}`);
     await screen.findByRole('heading', { level: 2, name: quiet.name });
 
-    await userEvent.type(screen.getByRole('textbox', { name: 'Note' }), '  Giao trong ngày. ');
-    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await userEvent.type(
+      screen.getByRole('textbox', { name: words.lists.products.note }),
+      '  Giao trong ngày. ',
+    );
+    await userEvent.click(screen.getByRole('button', { name: words.lists.products.save }));
 
-    expect((await screen.findByRole('alert')).textContent).toBe('Saved.');
+    expect((await screen.findByRole('alert')).textContent).toBe(words.lists.products.saved);
     expect(drawn.api.saveProduct).toHaveBeenCalledExactlyOnceWith(
       quiet.id,
       expect.objectContaining({ extra: { ...quiet.extra, note: 'Giao trong ngày.' } }),
@@ -605,13 +716,11 @@ describe('the customers and the products', () => {
     const drawn = openApp(`/products/${quiet.id}`);
     await screen.findByRole('heading', { level: 2, name: quiet.name });
 
-    await userEvent.click(screen.getByRole('textbox', { name: 'Note' }));
+    await userEvent.click(screen.getByRole('textbox', { name: words.lists.products.note }));
     await userEvent.paste('x'.repeat(9000));
-    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await userEvent.click(screen.getByRole('button', { name: words.lists.products.save }));
 
-    expect(
-      await screen.findByText('This note is too long to save. Please shorten it.'),
-    ).toBeTruthy();
+    expect(await screen.findByText(words.lists.products.noteTooLong)).toBeTruthy();
     expect(drawn.api.saveProduct).not.toHaveBeenCalled();
   });
 
@@ -620,25 +729,29 @@ describe('the customers and the products', () => {
     const drawn = openApp(`/products/${one.id}`, { cue: 'saveProduct:409' });
     await screen.findByRole('heading', { level: 2, name: one.name });
 
-    await userEvent.type(screen.getByRole('textbox', { name: 'Unit' }), 'z');
-    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await userEvent.type(screen.getByRole('textbox', { name: words.lists.columns.unit }), 'z');
+    await userEvent.click(screen.getByRole('button', { name: words.lists.products.save }));
 
     const notice = await screen.findByRole('alert');
-    expect(notice.textContent).toContain('Someone saved newer details first.');
-    expect(valueOf(screen.getByRole('textbox', { name: 'Unit' }))).toBe(`${one.unit}z`);
-    await userEvent.click(within(notice).getByRole('button', { name: 'Show the newer details' }));
+    expect(notice.textContent).toContain(words.lists.products.conflict);
+    expect(valueOf(screen.getByRole('textbox', { name: words.lists.columns.unit }))).toBe(
+      `${one.unit}z`,
+    );
+    await userEvent.click(
+      within(notice).getByRole('button', { name: words.lists.products.conflictReload }),
+    );
     await screen.findByRole('heading', { level: 2, name: one.name });
     expect(screen.queryByRole('alert')).toBeNull();
-    expect(valueOf(screen.getByRole('textbox', { name: 'Unit' }))).toBe(one.unit);
+    expect(valueOf(screen.getByRole('textbox', { name: words.lists.columns.unit }))).toBe(one.unit);
     expect(drawn.api.getProduct).toHaveBeenCalledTimes(2);
   });
 
   it('A save that fails says so, one the BFF refuses as no longer allowed says that, and one it refuses as invalid says that; each keeps what was typed', async () => {
     const one = DEMO_PRODUCTS[0];
-    for (const [status, words] of [
-      [503, 'The product was not saved. What you typed'],
-      [403, 'you may no longer change products'],
-      [400, 'the system refused what you typed'],
+    for (const [status, expected] of [
+      [503, words.lists.products.saveFailed],
+      [403, words.lists.products.saveForbidden],
+      [400, words.lists.products.saveRefused],
     ] as const) {
       const drawn = openApp(`/products/${one.id}`, {
         override: (spied) => {
@@ -646,11 +759,13 @@ describe('the customers and the products', () => {
         },
       });
       await screen.findByRole('heading', { level: 2, name: one.name });
-      await userEvent.type(screen.getByRole('textbox', { name: 'Unit' }), 'z');
-      await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+      await userEvent.type(screen.getByRole('textbox', { name: words.lists.columns.unit }), 'z');
+      await userEvent.click(screen.getByRole('button', { name: words.lists.products.save }));
 
-      expect((await screen.findByRole('alert')).textContent).toContain(words);
-      expect(valueOf(screen.getByRole('textbox', { name: 'Unit' }))).toBe(`${one.unit}z`);
+      expect((await screen.findByRole('alert')).textContent).toContain(expected);
+      expect(valueOf(screen.getByRole('textbox', { name: words.lists.columns.unit }))).toBe(
+        `${one.unit}z`,
+      );
       drawn.unmount();
     }
   });
@@ -658,12 +773,8 @@ describe('the customers and the products', () => {
   it('An unknown product address says the product is not there, with the way back, and shows no product’s details', async () => {
     openApp('/products/00000000-0000-4000-8000-0000000000ff');
 
-    expect(
-      await screen.findByText(
-        'This product is not in the list. It may have been taken out, or the address is wrong.',
-      ),
-    ).toBeTruthy();
-    expect(screen.getByRole('link', { name: 'Back to the products' })).toBeTruthy();
+    expect(await screen.findByText(words.lists.products.notThere)).toBeTruthy();
+    expect(screen.getByRole('link', { name: words.lists.products.back })).toBeTruthy();
     expect(screen.queryAllByRole('heading', { level: 3 })).toHaveLength(0);
     expect(screen.queryByRole('textbox')).toBeNull();
   });
@@ -675,8 +786,13 @@ describe('the customers and the products', () => {
     expect(await screen.findByRole('heading', { level: 2, name: quiet.name })).toBeTruthy();
     expect(
       screen.getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent),
-    ).toEqual(['Basic information', 'Unit and price', 'Stock', 'Note']);
-    expect(valueOf(screen.getByRole('textbox', { name: 'Note' }))).toBe('');
+    ).toEqual([
+      words.lists.products.basic,
+      words.lists.products.unitPrice,
+      words.lists.products.stock,
+      words.lists.products.note,
+    ]);
+    expect(valueOf(screen.getByRole('textbox', { name: words.lists.products.note }))).toBe('');
     expect(office.container.querySelectorAll('.mantine-Grid-col')).toHaveLength(2);
     office.unmount();
 
@@ -690,7 +806,11 @@ describe('the customers and the products', () => {
     expect(await screen.findByRole('heading', { level: 2, name: quiet.name })).toBeTruthy();
     expect(
       screen.getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent),
-    ).toEqual(['Basic information', 'Unit and price', 'Stock']);
+    ).toEqual([
+      words.lists.products.basic,
+      words.lists.products.unitPrice,
+      words.lists.products.stock,
+    ]);
     const grid = reader.container.querySelector('.mantine-Grid-inner')!;
     expect(grid.querySelectorAll('.mantine-Grid-col')).toHaveLength(1);
     // one span of 12 writes no media query: the same at every width
@@ -713,14 +833,13 @@ describe('the customers and the products', () => {
       },
     });
 
-    await userEvent.click(await screen.findByRole('button', { name: 'Try again' }));
+    await userEvent.click(await screen.findByRole('button', { name: words.common.retry }));
     expect(await screen.findByRole('heading', { level: 2, name: first.name })).toBeTruthy();
   });
 
   // Adding: the same record the import would put in, from the same two schemas (case-table 7 to 11)
-  const codeWord = 'Write a code of 2 to 20 letters A to Z, digits or hyphens.';
-  const taken = (list: string) =>
-    `That code is taken: another ${list} in the list has it. Choose another code.`;
+  const codeWord = words.lists.products.codeInvalid;
+  const taken = (kind: 'customers' | 'products') => words.lists[kind].codeTaken;
   const viewer = {
     override: (spied: Spied) => {
       spied.me.mockResolvedValue({
@@ -731,69 +850,91 @@ describe('the customers and the products', () => {
 
   it('A customer add with no code, a code of the wrong shape, or no name is refused on the page with its own word and makes no call', async () => {
     const drawn = openApp('/customers/new');
-    await screen.findByRole('heading', { level: 2, name: 'Add a customer' });
-    const add = () => userEvent.click(screen.getByRole('button', { name: 'Add the customer' }));
+    await screen.findByRole('heading', { level: 2, name: words.lists.customers.newTitle });
+    const add = () =>
+      userEvent.click(screen.getByRole('button', { name: words.lists.customers.create }));
 
     // nothing typed: no code and no name
     await add();
     expect(await screen.findByText(codeWord)).toBeTruthy();
-    expect(screen.getByText('Please write the customer’s name.')).toBeTruthy();
+    expect(screen.getByText(words.lists.customers.nameNeeded)).toBeTruthy();
     // a code of the wrong shape, with a name
-    await userEvent.type(screen.getByRole('textbox', { name: 'Name' }), 'Tên');
-    await userEvent.type(screen.getByRole('textbox', { name: 'Code' }), 'a b');
+    await userEvent.type(
+      screen.getByRole('textbox', { name: words.lists.columns.name }),
+      wordsVi.lists.columns.name,
+    );
+    await userEvent.type(screen.getByRole('textbox', { name: words.lists.columns.code }), 'a b');
     await add();
     expect(screen.getByText(codeWord)).toBeTruthy();
-    expect(screen.queryByText('Please write the customer’s name.')).toBeNull();
+    expect(screen.queryByText(words.lists.customers.nameNeeded)).toBeNull();
     // a good code and a name of spaces
-    await userEvent.clear(screen.getByRole('textbox', { name: 'Code' }));
-    await userEvent.type(screen.getByRole('textbox', { name: 'Code' }), 'KH-90');
-    await userEvent.clear(screen.getByRole('textbox', { name: 'Name' }));
-    await userEvent.type(screen.getByRole('textbox', { name: 'Name' }), '   ');
+    await userEvent.clear(screen.getByRole('textbox', { name: words.lists.columns.code }));
+    await userEvent.type(screen.getByRole('textbox', { name: words.lists.columns.code }), 'KH-90');
+    await userEvent.clear(screen.getByRole('textbox', { name: words.lists.columns.name }));
+    await userEvent.type(screen.getByRole('textbox', { name: words.lists.columns.name }), '   ');
     await add();
-    expect(screen.getByText('Please write the customer’s name.')).toBeTruthy();
+    expect(screen.getByText(words.lists.customers.nameNeeded)).toBeTruthy();
     expect(screen.queryByText(codeWord)).toBeNull();
     expect(drawn.api.addCustomer).not.toHaveBeenCalled();
   });
 
   it('The add form offers the import’s columns and asks the import’s code rule: the customer’s code, name, phone, address and note; the product’s code, name, unit, price, stock and note', async () => {
     const customer = openApp('/customers/new');
-    await screen.findByRole('heading', { level: 2, name: 'Add a customer' });
+    await screen.findByRole('heading', { level: 2, name: words.lists.customers.newTitle });
     expect(
       screen.getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent),
-    ).toEqual(['Basic information', 'Contacts', 'Address', 'Note']);
-    expect(screen.getByRole('textbox', { name: 'Code' }).hasAttribute('readonly')).toBe(false);
-    expect(screen.getByText(/^Needed\. 2 to 20 letters, digits or hyphens/)).toBeTruthy();
+    ).toEqual([
+      words.lists.customers.basic,
+      words.lists.customers.contacts,
+      words.lists.customers.address,
+      words.lists.customers.note,
+    ]);
+    expect(
+      screen.getByRole('textbox', { name: words.lists.columns.code }).hasAttribute('readonly'),
+    ).toBe(false);
+    expect(screen.getByText(words.lists.write.code)).toBeTruthy();
     expect(screen.getAllByRole('textbox').map((box) => valueOf(box))).toEqual(['', '', '', '', '']);
     customer.unmount();
 
     openApp('/products/new');
-    await screen.findByRole('heading', { level: 2, name: 'Add a product' });
+    await screen.findByRole('heading', { level: 2, name: words.lists.products.newTitle });
     expect(
       screen.getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent),
-    ).toEqual(['Basic information', 'Unit and price', 'Stock', 'Note']);
-    expect(screen.getByRole('textbox', { name: 'Code' }).hasAttribute('readonly')).toBe(false);
+    ).toEqual([
+      words.lists.products.basic,
+      words.lists.products.unitPrice,
+      words.lists.products.stock,
+      words.lists.products.note,
+    ]);
+    expect(
+      screen.getByRole('textbox', { name: words.lists.columns.code }).hasAttribute('readonly'),
+    ).toBe(false);
     expect(screen.getByRole<HTMLInputElement>('switch').checked).toBe(true);
     expect(screen.getAllByRole('textbox').map((box) => valueOf(box))).toEqual(['', '', '', '', '']);
   });
 
   it('A product add with no unit, no price, a minus price or a fractional price is refused on the page and makes no call', async () => {
     const drawn = openApp('/products/new');
-    await screen.findByRole('heading', { level: 2, name: 'Add a product' });
-    const add = () => userEvent.click(screen.getByRole('button', { name: 'Add the product' }));
-    const price = () => screen.getByRole('textbox', { name: /^Price \(VND\)/ });
-    const word = 'Write a whole number of đồng above zero.';
+    await screen.findByRole('heading', { level: 2, name: words.lists.products.newTitle });
+    const add = () =>
+      userEvent.click(screen.getByRole('button', { name: words.lists.products.create }));
+    const price = () => screen.getByRole('textbox', { name: starting(words.lists.columns.price) });
+    const word = words.lists.products.priceInvalid;
     // no code: its own word
     await add();
     expect(await screen.findByText(codeWord)).toBeTruthy();
-    await userEvent.type(screen.getByRole('textbox', { name: 'Code' }), 'VT-90');
-    await userEvent.type(screen.getByRole('textbox', { name: 'Name' }), 'Xi măng');
+    await userEvent.type(screen.getByRole('textbox', { name: words.lists.columns.code }), 'VT-90');
+    await userEvent.type(
+      screen.getByRole('textbox', { name: words.lists.columns.name }),
+      'Xi măng',
+    );
 
     // no unit and no price
     await add();
-    expect(await screen.findByText('Please write the unit, at most 20 characters.')).toBeTruthy();
+    expect(await screen.findByText(words.lists.products.unitNeeded)).toBeTruthy();
     expect(screen.getByText(word)).toBeTruthy();
     // a unit, and a minus price, then a fractional one
-    await userEvent.type(screen.getByRole('textbox', { name: 'Unit' }), 'bao');
+    await userEvent.type(screen.getByRole('textbox', { name: words.lists.columns.unit }), 'bao');
     for (const [how, text] of [
       ['type', '-5'],
       ['paste', '95000.5'],
@@ -804,53 +945,85 @@ describe('the customers and the products', () => {
       await add();
       expect(screen.getByText(word)).toBeTruthy();
     }
-    expect(screen.queryByText('Please write the unit, at most 20 characters.')).toBeNull();
+    expect(screen.queryByText(words.lists.products.unitNeeded)).toBeNull();
     expect(drawn.api.addProduct).not.toHaveBeenCalled();
   });
 
   it('A taken code shows its own notice, in either case it was typed in, and keeps every field as typed; a customer and a product both', async () => {
     const taken1 = DEMO_CUSTOMERS[0];
     const customer = openApp('/customers/new');
-    await screen.findByRole('heading', { level: 2, name: 'Add a customer' });
-    await userEvent.type(screen.getByRole('textbox', { name: 'Code' }), taken1.code.toLowerCase());
-    await userEvent.type(screen.getByRole('textbox', { name: 'Name' }), 'Người mới');
-    await userEvent.type(screen.getByRole('textbox', { name: 'Phone' }), '0900');
-    await userEvent.click(screen.getByRole('button', { name: 'Add the customer' }));
+    await screen.findByRole('heading', { level: 2, name: words.lists.customers.newTitle });
+    await userEvent.type(
+      screen.getByRole('textbox', { name: words.lists.columns.code }),
+      taken1.code.toLowerCase(),
+    );
+    await userEvent.type(
+      screen.getByRole('textbox', { name: words.lists.columns.name }),
+      'Người mới',
+    );
+    await userEvent.type(screen.getByRole('textbox', { name: words.lists.columns.phone }), '0900');
+    await userEvent.click(screen.getByRole('button', { name: words.lists.customers.create }));
 
-    expect((await screen.findByRole('alert')).textContent).toBe(taken('customer'));
-    expect(valueOf(screen.getByRole('textbox', { name: 'Code' }))).toBe(taken1.code.toLowerCase());
-    expect(valueOf(screen.getByRole('textbox', { name: 'Name' }))).toBe('Người mới');
-    expect(valueOf(screen.getByRole('textbox', { name: 'Phone' }))).toBe('0900');
+    expect((await screen.findByRole('alert')).textContent).toBe(taken('customers'));
+    expect(valueOf(screen.getByRole('textbox', { name: words.lists.columns.code }))).toBe(
+      taken1.code.toLowerCase(),
+    );
+    expect(valueOf(screen.getByRole('textbox', { name: words.lists.columns.name }))).toBe(
+      'Người mới',
+    );
+    expect(valueOf(screen.getByRole('textbox', { name: words.lists.columns.phone }))).toBe('0900');
     expect(screen.queryByRole('heading', { level: 2, name: 'Người mới' })).toBeNull();
     expect((await customer.api.listCustomers()).length).toBe(DEMO_CUSTOMERS.length);
     customer.unmount();
 
     const first = DEMO_PRODUCTS[0];
     const product = openApp('/products/new');
-    await screen.findByRole('heading', { level: 2, name: 'Add a product' });
-    await userEvent.type(screen.getByRole('textbox', { name: 'Code' }), first.code);
-    await userEvent.type(screen.getByRole('textbox', { name: 'Name' }), 'Hàng mới');
-    await userEvent.type(screen.getByRole('textbox', { name: 'Unit' }), 'bao');
-    await userEvent.type(screen.getByRole('textbox', { name: /^Price \(VND\)/ }), '5000');
-    await userEvent.click(screen.getByRole('button', { name: 'Add the product' }));
+    await screen.findByRole('heading', { level: 2, name: words.lists.products.newTitle });
+    await userEvent.type(
+      screen.getByRole('textbox', { name: words.lists.columns.code }),
+      first.code,
+    );
+    await userEvent.type(
+      screen.getByRole('textbox', { name: words.lists.columns.name }),
+      'Hàng mới',
+    );
+    await userEvent.type(screen.getByRole('textbox', { name: words.lists.columns.unit }), 'bao');
+    await userEvent.type(
+      screen.getByRole('textbox', { name: starting(words.lists.columns.price) }),
+      '5000',
+    );
+    await userEvent.click(screen.getByRole('button', { name: words.lists.products.create }));
 
-    expect((await screen.findByRole('alert')).textContent).toBe(taken('product'));
-    expect(valueOf(screen.getByRole('textbox', { name: 'Name' }))).toBe('Hàng mới');
-    expect(valueOf(screen.getByRole('textbox', { name: 'Unit' }))).toBe('bao');
-    expect(valueOf(screen.getByRole('textbox', { name: /^Price \(VND\)/ }))).toBe('5,000');
+    expect((await screen.findByRole('alert')).textContent).toBe(taken('products'));
+    expect(valueOf(screen.getByRole('textbox', { name: words.lists.columns.name }))).toBe(
+      'Hàng mới',
+    );
+    expect(valueOf(screen.getByRole('textbox', { name: words.lists.columns.unit }))).toBe('bao');
+    expect(
+      valueOf(screen.getByRole('textbox', { name: starting(words.lists.columns.price) })),
+    ).toBe('5,000');
     expect((await product.api.listProducts()).length).toBe(DEMO_PRODUCTS.length);
   });
 
   it('A cued refusal shows the same notice, and the next press, with another code, adds the customer and opens its page', async () => {
     const drawn = openApp('/customers/new', { cue: 'addCustomer:409' });
-    await screen.findByRole('heading', { level: 2, name: 'Add a customer' });
-    await userEvent.type(screen.getByRole('textbox', { name: 'Code' }), ' kh-90 ');
-    await userEvent.type(screen.getByRole('textbox', { name: 'Name' }), '  Người mới ');
-    await userEvent.type(screen.getByRole('textbox', { name: 'Address' }), '12 Lê Lợi');
-    await userEvent.click(screen.getByRole('button', { name: 'Add the customer' }));
-    expect((await screen.findByRole('alert')).textContent).toBe(taken('customer'));
+    await screen.findByRole('heading', { level: 2, name: words.lists.customers.newTitle });
+    await userEvent.type(
+      screen.getByRole('textbox', { name: words.lists.columns.code }),
+      ' kh-90 ',
+    );
+    await userEvent.type(
+      screen.getByRole('textbox', { name: words.lists.columns.name }),
+      '  Người mới ',
+    );
+    await userEvent.type(
+      screen.getByRole('textbox', { name: words.lists.columns.address }),
+      '12 Lê Lợi',
+    );
+    await userEvent.click(screen.getByRole('button', { name: words.lists.customers.create }));
+    expect((await screen.findByRole('alert')).textContent).toBe(taken('customers'));
 
-    await userEvent.click(screen.getByRole('button', { name: 'Add the customer' }));
+    await userEvent.click(screen.getByRole('button', { name: words.lists.customers.create }));
 
     expect(await screen.findByRole('heading', { level: 2, name: 'Người mới' })).toBeTruthy();
     expect(drawn.api.addCustomer).toHaveBeenCalledTimes(2);
@@ -861,19 +1034,30 @@ describe('the customers and the products', () => {
     });
     // the server capitalised it, as it does an imported code
     expect(screen.getByText('KH-90')).toBeTruthy();
-    expect(valueOf(screen.getByRole('textbox', { name: 'Code' }))).toBe('KH-90');
-    expect(screen.getByRole('textbox', { name: 'Code' }).hasAttribute('readonly')).toBe(true);
+    expect(valueOf(screen.getByRole('textbox', { name: words.lists.columns.code }))).toBe('KH-90');
+    expect(
+      screen.getByRole('textbox', { name: words.lists.columns.code }).hasAttribute('readonly'),
+    ).toBe(true);
   });
 
   it('A product added with the stock switch untouched is sent with stocked true, as a blank stock cell in an import reads, its price whole, and opens on its own page', async () => {
     const drawn = openApp('/products/new');
-    await screen.findByRole('heading', { level: 2, name: 'Add a product' });
-    await userEvent.type(screen.getByRole('textbox', { name: 'Code' }), 'vt-90');
-    await userEvent.type(screen.getByRole('textbox', { name: 'Name' }), 'Xi măng PCB40');
-    await userEvent.type(screen.getByRole('textbox', { name: 'Unit' }), 'bao');
-    await userEvent.type(screen.getByRole('textbox', { name: /^Price \(VND\)/ }), '95000');
-    await userEvent.type(screen.getByRole('textbox', { name: 'Note' }), ' Kho 2 ');
-    await userEvent.click(screen.getByRole('button', { name: 'Add the product' }));
+    await screen.findByRole('heading', { level: 2, name: words.lists.products.newTitle });
+    await userEvent.type(screen.getByRole('textbox', { name: words.lists.columns.code }), 'vt-90');
+    await userEvent.type(
+      screen.getByRole('textbox', { name: words.lists.columns.name }),
+      'Xi măng PCB40',
+    );
+    await userEvent.type(screen.getByRole('textbox', { name: words.lists.columns.unit }), 'bao');
+    await userEvent.type(
+      screen.getByRole('textbox', { name: starting(words.lists.columns.price) }),
+      '95000',
+    );
+    await userEvent.type(
+      screen.getByRole('textbox', { name: words.lists.products.note }),
+      ' Kho 2 ',
+    );
+    await userEvent.click(screen.getByRole('button', { name: words.lists.products.create }));
 
     expect(await screen.findByRole('heading', { level: 2, name: 'Xi măng PCB40' })).toBeTruthy();
     expect(drawn.api.addProduct).toHaveBeenCalledExactlyOnceWith({
@@ -889,11 +1073,11 @@ describe('the customers and the products', () => {
   });
 
   it('An add that fails says so, and one the BFF refuses as no longer allowed says that; each keeps what was typed', async () => {
-    for (const [kind, status, words] of [
-      ['customers', 503, 'The customer was not added. What you typed'],
-      ['customers', 403, 'you may no longer change customers'],
-      ['products', 400, 'The product was not added. What you typed'],
-      ['products', 403, 'you may no longer change products'],
+    for (const [kind, status, expected] of [
+      ['customers', 503, words.lists.customers.createFailed],
+      ['customers', 403, words.lists.customers.createForbidden],
+      ['products', 400, words.lists.products.createFailed],
+      ['products', 403, words.lists.products.createForbidden],
     ] as const) {
       const drawn = openApp(`/${kind}/new`, {
         override: (spied) => {
@@ -901,17 +1085,28 @@ describe('the customers and the products', () => {
           spied.addProduct.mockRejectedValueOnce(new ApiError(status));
         },
       });
-      await screen.findByRole('heading', { level: 2, name: /^Add a / });
-      await userEvent.type(screen.getByRole('textbox', { name: 'Code' }), 'XX-1');
-      await userEvent.type(screen.getByRole('textbox', { name: 'Name' }), 'Tên');
+      await screen.findByRole('heading', { level: 2, name: words.lists[kind].newTitle });
+      await userEvent.type(screen.getByRole('textbox', { name: words.lists.columns.code }), 'XX-1');
+      await userEvent.type(
+        screen.getByRole('textbox', { name: words.lists.columns.name }),
+        wordsVi.lists.columns.name,
+      );
       if (kind === 'products') {
-        await userEvent.type(screen.getByRole('textbox', { name: 'Unit' }), 'bao');
-        await userEvent.type(screen.getByRole('textbox', { name: /^Price \(VND\)/ }), '5000');
+        await userEvent.type(
+          screen.getByRole('textbox', { name: words.lists.columns.unit }),
+          'bao',
+        );
+        await userEvent.type(
+          screen.getByRole('textbox', { name: starting(words.lists.columns.price) }),
+          '5000',
+        );
       }
-      await userEvent.click(screen.getByRole('button', { name: /^Add the / }));
+      await userEvent.click(screen.getByRole('button', { name: words.lists[kind].create }));
 
-      expect((await screen.findByRole('alert')).textContent).toContain(words);
-      expect(valueOf(screen.getByRole('textbox', { name: 'Name' }))).toBe('Tên');
+      expect((await screen.findByRole('alert')).textContent).toContain(expected);
+      expect(valueOf(screen.getByRole('textbox', { name: words.lists.columns.name }))).toBe(
+        wordsVi.lists.columns.name,
+      );
       drawn.unmount();
     }
   });
@@ -920,12 +1115,12 @@ describe('the customers and the products', () => {
     for (const kind of ['customers', 'products'] as const) {
       const reader = openApp(`/${kind}`, viewer);
       await screen.findByRole('table');
-      expect(screen.queryByRole('link', { name: /^Add a / })).toBeNull();
+      expect(screen.queryByRole('link', { name: words.lists[kind].newButton })).toBeNull();
       reader.unmount();
 
       const blocked = openApp(`/${kind}/new`, viewer);
       expect(
-        await screen.findByRole('heading', { level: 2, name: 'You cannot open this page' }),
+        await screen.findByRole('heading', { level: 2, name: words.forbidden.title }),
       ).toBeTruthy();
       expect(screen.queryByRole('textbox')).toBeNull();
       blocked.unmount();
@@ -933,21 +1128,23 @@ describe('the customers and the products', () => {
       const office = openApp(`/${kind}`, { as: 'EMP-0001' });
       await screen.findByRole('table');
       const add = screen.getByRole('link', {
-        name: kind === 'customers' ? 'Add a customer' : 'Add a product',
+        name:
+          kind === 'customers' ? words.lists.customers.newButton : words.lists.products.newButton,
       });
       expect(add.getAttribute('href')).toBe(`/${kind}/new`);
-      expect(screen.queryByRole('link', { name: 'Import from Excel' })).toBeNull();
+      expect(screen.queryByRole('link', { name: words.lists.import })).toBeNull();
       office.unmount();
 
       const root = openApp(`/${kind}`);
       await screen.findByRole('table');
-      expect(screen.getByRole('link', { name: 'Import from Excel' })).toBeTruthy();
+      expect(screen.getByRole('link', { name: words.lists.import })).toBeTruthy();
       await userEvent.click(
         screen.getByRole('link', {
-          name: kind === 'customers' ? 'Add a customer' : 'Add a product',
+          name:
+            kind === 'customers' ? words.lists.customers.newButton : words.lists.products.newButton,
         }),
       );
-      expect(await screen.findByRole('textbox', { name: 'Code' })).toBeTruthy();
+      expect(await screen.findByRole('textbox', { name: words.lists.columns.code })).toBeTruthy();
       root.unmount();
     }
   });
@@ -969,7 +1166,7 @@ describe('the customers and the products', () => {
       for (const path of [`/${kind}`, `/${kind}/new`]) {
         const drawn = openApp(path, editor);
         expect(
-          await screen.findByRole('heading', { level: 2, name: 'You cannot open this page' }),
+          await screen.findByRole('heading', { level: 2, name: words.forbidden.title }),
         ).toBeTruthy();
         expect(screen.queryByRole('textbox')).toBeNull();
         drawn.unmount();
@@ -979,14 +1176,20 @@ describe('the customers and the products', () => {
 
   it('The add pages read in Vietnamese, and the Back link returns to the list', async () => {
     const drawn = openApp('/customers/new', { language: 'vi' });
-    expect(await screen.findByRole('heading', { level: 2, name: 'Thêm khách hàng' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Thêm khách hàng này' })).toBeTruthy();
-    await userEvent.click(screen.getByRole('link', { name: 'Về danh sách khách hàng' }));
-    expect(await screen.findByRole('heading', { level: 2, name: 'Khách hàng' })).toBeTruthy();
+    expect(
+      await screen.findByRole('heading', { level: 2, name: wordsVi.lists.customers.newTitle }),
+    ).toBeTruthy();
+    expect(screen.getByRole('button', { name: wordsVi.lists.customers.create })).toBeTruthy();
+    await userEvent.click(screen.getByRole('link', { name: wordsVi.lists.customers.back }));
+    expect(
+      await screen.findByRole('heading', { level: 2, name: wordsVi.lists.customers.sheet }),
+    ).toBeTruthy();
     drawn.unmount();
 
     openApp('/products/new', { language: 'vi' });
-    expect(await screen.findByRole('heading', { level: 2, name: 'Thêm sản phẩm' })).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Thêm sản phẩm này' })).toBeTruthy();
+    expect(
+      await screen.findByRole('heading', { level: 2, name: wordsVi.lists.products.newTitle }),
+    ).toBeTruthy();
+    expect(screen.getByRole('button', { name: wordsVi.lists.products.create })).toBeTruthy();
   });
 });
