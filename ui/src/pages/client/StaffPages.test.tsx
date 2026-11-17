@@ -61,9 +61,11 @@ describe('the staff list', () => {
     expect(status.value).toBe('active');
     expect([...status.options].map((option) => option.text)).toEqual(['Active', 'Inactive', 'All']);
     expect(screen.queryByLabelText('Show people who left')).toBeNull();
-    // the chip is a filled badge in the theme's primary, the brand's shade 7: no colour of its own
+    // the chip is a filled badge in the theme's primary, with the design system's 4-px corners: no colour of its own
     const chip = within(lan).getByText('Active').closest('.mantine-Badge-root');
-    expect(chip?.getAttribute('style')).toBeNull();
+    expect(chip?.getAttribute('style')).toBe(
+      '--badge-radius: calc(0.25rem * var(--mantine-scale));',
+    );
 
     await user.selectOptions(status, 'Inactive');
     const left = await rowOf('Hoàng Gia Huy');

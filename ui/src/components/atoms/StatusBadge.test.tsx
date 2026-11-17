@@ -1,12 +1,12 @@
 import { MantineProvider } from '@mantine/core';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { designThemeOf } from '../../design-system/theme';
+import { themeOf } from '../../design-system/appTheme';
 import { StatusBadge } from './StatusBadge';
 
 const draw = (active: boolean) =>
   render(
-    <MantineProvider theme={designThemeOf('#2f7d6d')} env="test">
+    <MantineProvider theme={themeOf('#2f7d6d')} env="test">
       <StatusBadge active={active} label={active ? 'Active' : 'Inactive'} />
     </MantineProvider>,
   );

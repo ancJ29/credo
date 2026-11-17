@@ -1,12 +1,12 @@
 import { MantineProvider } from '@mantine/core';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { designThemeOf } from '../../design-system/theme';
+import { themeOf } from '../../design-system/appTheme';
 import { DoorHeading } from './DoorHeading';
 
 const draw = (subtitle?: string) =>
   render(
-    <MantineProvider theme={designThemeOf('#2f7d6d')} env="test">
+    <MantineProvider theme={themeOf('#2f7d6d')} env="test">
       <DoorHeading title="Sign in" subtitle={subtitle} />
     </MantineProvider>,
   );

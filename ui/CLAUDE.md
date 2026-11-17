@@ -1,4 +1,5 @@
 # ui
+
 Stack: React with Mantine, Vite, Vitest on jsdom · Gate: `pnpm check` from the root, which runs this package's typecheck, lint and tests at 100 % · Ship: the files in S3 behind CloudFront
 
 Everything a browser draws: the client app and the operator console, one bundle chosen by address.
@@ -39,8 +40,8 @@ a directory of your own making is not on this list and is not a directory (vites
 - **`parts/`**: a piece a screen is built from, that no route mounts
   (`ui/src/parts/DetailCards.tsx`'s `DetailCard`, `ui/src/parts/PageShell.tsx`'s `PageShell`).
 - **`design-system/`**: the look in one place: a token, the app's own theme and the nine palettes
-  (`ui/src/design-system/appTheme.ts`'s `themeOf`, `ui/src/design-system/palettes.ts`'s `PALETTES`, and its
-  `theme.module.css`), the theme laid over it (`ui/src/design-system/theme.ts`'s `designThemeOf`), and the
+  (`ui/src/design-system/appTheme.ts`'s `themeOf`, which holds the main shade, the badge, table and dialog
+  entries, `ui/src/design-system/palettes.ts`'s `PALETTES`, and its `theme.module.css`), and the
   gallery page that shows the parts (`ui/src/design-system/Gallery.tsx`'s `Gallery`, served at `/48b74d079/gallery`; each part's entry is a row of `ui/src/design-system/entries.tsx`'s `ENTRIES`).
 - **`components/`**: a piece of the design system, in a level directory, with its gallery entry. Mantine
   stays the base: a piece joins when it is drawn a third time, never to wrap a Mantine part alone.

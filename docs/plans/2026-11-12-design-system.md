@@ -237,9 +237,10 @@ confirm the skeleton first").
 
 **Landing 3: the legacy's values.**
 
-- [ ] **9. The app takes the design system's theme.** `themeOf` takes the main shade and the badge,
+- [x] **9. The app takes the design system's theme.** `themeOf` takes the main shade and the badge,
       table and dialog entries `designThemeOf` lays over it, and the two become one. Case 11, seen
       red first. _Done when:_ the checks exit 0. **8 min.**
+      _Done 2026-11-17: `main` taken in by fast-forward; case 11 red on the old `themeOf` (exit 1, `expected 7 to be 6`), green after; `themeOf` in `ui/src/design-system/appTheme.ts` takes the main shade, the gradient and the badge, divider, table and dialog entries, `theme.ts` and `designThemeOf` gone, `theme.test.tsx`'s cases joined `appTheme.test.tsx`, eight importers followed; the frame snapshots moved by the badge's `--badge-radius` (two) and the dialog title's size and weight (one), nothing else, and the staff chip's style test now reads the radius; `pnpm --filter @credo/ui check` exit 0 (typecheck, eslint, prettier, test, knip all 0); the citations test exit 0 (32 passed). **14 min.**_
 - [ ] **10. The card and the page header.** `DetailCard` draws `SectionCard`, each card with the
       legacy's icon for the same section where one exists, else the nearest; `PageShell`'s heading
       draws `PageHeader`; the settings copy becomes a `DetailCard`. Case 12. _Done when:_ the checks
