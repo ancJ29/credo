@@ -192,11 +192,24 @@ row, 2 to 3 (piece 143); a review 7 to 16, 8 at the median, a fix pass 12 to 15,
   five refusals), the land line after a not-run, a lock-wait, a moved-again or a failed merge, `merge --abort` after a failed
   landing, `branch -d` run in `pre-merge`'s worktree with no `-D` fallback, and a named tool fault for a failed read-back.
   Cases 12, 21, 25 and 26 stay step 1's.
-- [ ] **3. The line where you find it.** `ops/README.md`'s row and section "A partner's returned
-  words" (the block, the send line into `words-sent/`, a one-line branch per refusal, from the
-  table's words); `docs/products.md`'s `pnpm words` row. *Done when:* the citation test exits 0;
-  `git grep -c 'words-in.sh' -- ops/README.md` is at least 2; `git grep -n "$HOME" -- ops
-  docs/products.md` prints nothing. *Size:* 5.
+- [x] **3. The line where you find it, and the guideline for a partner's review.** `ops/README.md`'s row and section
+  "A partner's returned words", written for the human to follow alone, the whole round trip with a partner, in seven
+  parts: (1) making the file to send (`pnpm words out` into `words-sent/<label>.csv`) and what to send; (2) what the
+  partner does and must leave as it is (a key, a placeholder, a column); (3) the one paste when it comes back and what
+  it shows; (4) each refusal as one line, what it means and what to do, from the script's own messages; (5) a red check,
+  one sentence to tell the orchestrator; (6) the pictures, as the order is today (the script lands before they are
+  retaken, so the orchestrator names the moved screens and hands the `ops/full-run.sh` line); (7) the landing again,
+  `--land`. `docs/products.md`'s `pnpm words` row, and the gallery row's look made true. *Done when:* the citation test
+  exits 0; `git grep -c 'words-in.sh' -- ops/README.md` is at least 2; `git grep -n "$HOME" -- ops docs/products.md`
+  prints nothing; every command in the section read against its script's own parser, every refusal line against the
+  script's own message text. *Size:* 10 (5, doubled for the round trip). Grown 11-17 at the human's word: "a guideline
+  for me to know what should I do when I need to ask others to review the i18n".
+  *Ticked 11-17:* the section and its row are in `ops/README.md` (seven parts); `pnpm words out` reads as writing
+  with a `wx` flag, so it refuses an existing file with the message the section quotes, and does not make a missing folder,
+  so the send block makes `words-sent` first; every refusal line was grepped in `ops/words-in.sh` or `scripts/src/words.ts`
+  and found; the citation test exits 0; `words-in.sh` counts 4 in `ops/README.md`; `$HOME` prints nothing in `ops` and
+  `docs/products.md`. Not run: the script and `pnpm words`, by the brief. The script's `to land it again` line starts at
+  `ops/`, so the section gives the block with the branch's name. The pictures part states today's order (landing first).
 - [ ] **4. Reviewed, fixed, recapped.** Another model reads steps 1 to 3; one fix pass; a reread;
   the recap. *Done when:* every finding tagged in the recap; the fix pass's rows 3 to 5 and the
   citation test exit 0; the branch landed on `pre-merge` by the orchestrator. *Size:* 25 (review 8,
