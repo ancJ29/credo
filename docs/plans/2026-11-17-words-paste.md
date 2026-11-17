@@ -214,6 +214,12 @@ row, 2 to 3 (piece 143); a review 7 to 16, 8 at the median, a fix pass 12 to 15,
   the recap. *Done when:* every finding tagged in the recap; the fix pass's rows 3 to 5 and the
   citation test exit 0; the branch landed on `pre-merge` by the orchestrator. *Size:* 25 (review 8,
   fix 12, recap 5). Then 👤 point 1, and point 2 once `main` holds it.
+  *Fix pass 11-17:* the review's two Mediums and one Low held against the code. The ui check's lines now stream through
+  `tee`, so the terminal and the log both hold them (the old `>&3` reached the terminal alone, from step 1 on; the
+  check's exit stays pnpm's by `pipefail`), the citation test's lines too; the guideline has the returned file saved in
+  `words-returned/` beside `words-sent/`, which the human's terminal reads, with a refusals row for the system's
+  "Operation not permitted"; the printed `--land` line carries the script's absolute path. Cases 25 and 14 were red
+  on `5bdfdba3`'s code. Items 580 to 585 hold the other Lows.
 
 About 55 machine minutes; the whole check that moves `main` is the orchestrator's, about 20 more.
 

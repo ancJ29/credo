@@ -548,10 +548,11 @@ a terminal opened in any folder of the project (any worktree); each finds the pr
 1. **Make the file to send, once for each partner.**
 
    ```sh
-   R=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)") && mkdir -p "$R/words-sent" && cd "$R/main" && pnpm words out "$R/words-sent/p1.csv"
+   R=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)") && mkdir -p "$R/words-sent" "$R/words-returned" && cd "$R/main" && pnpm words out "$R/words-sent/p1.csv"
    ```
 
-   You will see `wrote` and the path of `words-sent/p1.csv` in the project's folder. Send that file to `p1` as it is, and
+   You will see `wrote` and the path of `words-sent/p1.csv` in the project's folder; the folder `words-returned` beside it is
+   where a returned file goes (step 3). Send that file to `p1` as it is, and
    nothing else. Keep your copy and never open it to change it: every return is read against it, so a changed copy
    would show words as changed that the partner never touched. For another partner write `p2` for `p1`.
    - **`refused: … already exists; the file you sent is kept, name a new one`:** you already made that partner's file.
@@ -565,10 +566,11 @@ a terminal opened in any folder of the project (any worktree); each finds the pr
    - each English and Vietnamese cell filled, on one line (no line break inside a cell).
    - The `Note` column is theirs: a note is shown to you and written nowhere. A row they leave out is left alone.
 
-3. **The file comes back: paste this.** Save the returned file as `p1-returned.csv` in your Downloads folder, then:
+3. **The file comes back: paste this.** Save the returned file as `p1.csv` in the `words-returned` folder of the project's folder, beside
+   `words-sent` (not in Downloads or Documents: macOS guards both, and your terminal may be refused there), then:
 
    ```sh
-   R=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)") && cd "$R/main" && bash "$R/main/ops/words-in.sh" "$HOME/Downloads/p1-returned.csv" p1
+   R=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)") && cd "$R/main" && bash "$R/main/ops/words-in.sh" "$R/words-returned/p1.csv" p1
    ```
 
    You will see, after `== 1 refusals`, when `words-sent/p1.csv` was written, then `== 3 the import`: a `change` line for
@@ -585,7 +587,7 @@ a terminal opened in any folder of the project (any worktree); each finds the pr
    | --- | --- | --- |
    | `refused: usage: ops/words-in.sh …` | a value missing or one too many | paste the block above again whole |
    | `the label '…' is not p and a number (p1)` | a name was typed in the label's place | type `p1` or `p2` |
-   | `cannot read the returned file …` | no file at that path | save it as `p1-returned.csv` in Downloads, paste again |
+   | `cannot read the returned file …` | no file at that path, or the system's `Operation not permitted`: the file sits in a folder macOS guards (Downloads, Documents, Desktop) | move the file into `words-returned/` in the project's folder, named `p1.csv`, paste again |
    | `no …/words-sent/p1.csv: the file you sent p1 is kept there` | that partner has no sent copy | step 1; if you sent a file before, put that exact file there |
    | `needs a terminal to answer the import's question on` | not run in a terminal of yours | run it in your own terminal |
    | `the branch or folder words-p1-… already exists` | the same paste twice in one minute, or a leftover | wait a minute and paste again; if it stays, tell the orchestrator |
@@ -623,7 +625,7 @@ a terminal opened in any folder of the project (any worktree); each finds the pr
    terminal, with its `--moved` list; its `== verdict: green` is what you read back.
 
 7. **The landing again, when a stop kept the branch** (the lock was busy, `pre-merge` moved, the merge failed). The script printed
-   `to land it again, paste: …` with the branch's name; its line there starts at `ops/`, so use this block with that name:
+   `to land it again, paste: …`, a line you can paste as it stands; the same block, with the branch's name:
 
    ```sh
    R=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)") && cd "$R/main" && bash "$R/main/ops/words-in.sh" --land words-p1-MMDD-HHMM

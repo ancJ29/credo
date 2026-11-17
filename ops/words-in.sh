@@ -72,7 +72,7 @@ drop_made() {
 kept() {
   say "verdict: stopped, $1"
   if [ "${2:-}" = again ]; then
-    echo "the branch $BRANCH is kept in $WT; to land it again, paste: bash ops/words-in.sh --land $BRANCH"
+    echo "the branch $BRANCH is kept in $WT; to land it again, paste: cd $REPO_DIR && bash $OPS_DIR/words-in.sh --land $BRANCH"
   else
     echo "the branch $BRANCH is kept in $WT; a session takes it from here"
   fi
@@ -85,10 +85,10 @@ checks() {
   local ui cite
   NOTRUN=no
   echo "the ui check waits at most $1 s for the machine's lock, until $(clock_at "$1"); not run reads as 'not run', never red"
-  (cd "$WT" && GATE_WAIT_MAX=$1 pnpm --filter @credo/ui check >"$WORK/ui.out" 2>&1)
+  # stdout is the log's pipe (terminal and log, line by line); fd 3 is the terminal alone. pipefail keeps pnpm's exit.
+  (cd "$WT" && GATE_WAIT_MAX=$1 pnpm --filter @credo/ui check 2>&1 | tee "$WORK/ui.out")
   ui=$?
-  cat "$WORK/ui.out" >&3
-  (cd "$WT" && pnpm --filter @credo/scripts exec vitest run src/citations.test.ts >&3 2>&3)
+  (cd "$WT" && pnpm --filter @credo/scripts exec vitest run src/citations.test.ts 2>&1)
   cite=$?
   echo "the ui check exit $ui, the citation test exit $cite"
   [ "$ui" = 0 ] && [ "$cite" = 0 ] && return 0

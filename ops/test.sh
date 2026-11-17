@@ -6141,9 +6141,10 @@ case "$*" in
     echo "$n" >"$WI_CALLS.ui"
     if [ "$n" = 1 ] && [ -n "${WI_HOOK:-}" ]; then sh -c "$WI_HOOK"; fi
     if [ "$n" = 2 ] && [ -n "${WI_HOOK2:-}" ]; then sh -c "$WI_HOOK2"; fi
+    echo "the ui check's own line $n"
     [ -z "${WI_UI_GIVEUP:-}" ] || { echo "error: gave up after 600s waiting for the lock"; exit 1; }
     exit "${WI_UI:-0}" ;;
-  *"@credo/scripts exec vitest"*) exit "${WI_CITE:-0}" ;;
+  *"@credo/scripts exec vitest"*) echo "the citation test's own line"; exit "${WI_CITE:-0}" ;;
 esac
 exit 0
 STUB
@@ -6309,13 +6310,20 @@ wi_make
 wi_run WI_CITE=1 -- "$(wi_ret)" p1
 check "13: a red citation test is named, the ui check green, nothing landed, branch kept, exit 1" "1 1 1 0 1" \
   "$WI_RC $(wi_has '^the citation test is red') $(wi_has '^the ui check exit 0, the citation test exit 1') $(wi_has 'the ui check is red') $(git -C "$WI_R/.bare" branch --list 'words-*' | wc -l | tr -d ' ')"
+# case 25: both checks' own lines reach the terminal and the log, each before the line that gives its exit
+wi_make
+wi_run WI_UI=1 WI_CITE=1 -- "$(wi_ret)" p1
+check "25: the ui check's and the citation test's own lines reach the terminal and the log, before the exit line" "1 1 1 1 1" \
+  "$(wi_has "^the ui check's own line 1\$" "$WI_OUT") $(wi_has "^the citation test's own line\$" "$WI_OUT") $(wi_has "^the ui check's own line 1\$") $(wi_has "^the citation test's own line\$") $(awk '/^the ui check.s own line 1$/{u=NR} /^the citation test.s own line$/{c=NR} /^the ui check exit/{e=NR} END{print (u>0 && u<c && c<e) ? 1 : 0}' "$WI_LOG")"
 # case 14: the ui check gives up on the lock: not run, not red, the land line
 wi_make
 T14=$(wi_tip)
 wi_run WI_UI_GIVEUP=1 -- "$(wi_ret)" p1
 B14=$(git -C "$WI_R/.bare" branch --list 'words-*' | tr -d ' *+')
 check "14: a ui check that gave up is said as not run and not red, the branch kept, the land line printed, exit 1" "1 1 0 1 1 $T14" \
-  "$WI_RC $(wi_has '^the ui check did not run: it gave up waiting for the machine.s lock; that is not red') $(wi_has 'the ui check is red') $(wi_has "to land it again, paste: bash ops/words-in.sh --land $B14\$") $(git -C "$WI_R/.bare" branch --list 'words-*' | wc -l | tr -d ' ') $(wi_tip)"
+  "$WI_RC $(wi_has '^the ui check did not run: it gave up waiting for the machine.s lock; that is not red') $(wi_has 'the ui check is red') $(wi_has "to land it again, paste: cd /[^ ]+ && bash /[^ ]+/ops/words-in\.sh --land $B14\$") $(git -C "$WI_R/.bare" branch --list 'words-*' | wc -l | tr -d ' ') $(wi_tip)"
+check "14: the printed land line holds the script's absolute path, to paste from anywhere" "1" \
+  "$(wi_has "to land it again, paste: cd $WI_R/main && bash $WI_R/main/ops/words-in\\.sh --land $B14\$")"
 # case 15: before each wait, its bound and the clock time it ends (the ui check's, from case 14's log; the landing's)
 check "15: before the ui check, the bound and the clock time it ends" "1" \
   "$(wi_has '^the ui check waits at most 600 s for the machine.s lock, until [0-2][0-9]:[0-5][0-9];')"
@@ -6348,7 +6356,7 @@ T17=$(wi_tip)
 wi_run WORDS_LAND_WAIT=2 -- "$(wi_ret)" p1
 B17=$(git -C "$WI_R/.bare" branch --list 'words-*' | tr -d ' *+')
 check "17: a lock still held after the wait: nothing landed, the land line printed, branch kept, the other's lock untouched, exit 1" "1 1 1 $T17 1" \
-  "$WI_RC $(wi_has '^== verdict: stopped, the locks were still held after 2 s, nothing landed') $(wi_has "to land it again, paste: bash ops/words-in.sh --land $B17\$") $(wi_tip) $(grep -c 'pid=1 log=/x/gate-ui.log' "$WI_R/gl/owner")"
+  "$WI_RC $(wi_has '^== verdict: stopped, the locks were still held after 2 s, nothing landed') $(wi_has "to land it again, paste: cd /[^ ]+ && bash /[^ ]+/ops/words-in\.sh --land $B17\$") $(wi_tip) $(grep -c 'pid=1 log=/x/gate-ui.log' "$WI_R/gl/owner")"
 wi_make
 mkdir "$WI_R/rl"
 echo "pid=2 log=/x/full-run.log started=2026-11-17 10:00:00" >"$WI_R/rl/owner"
@@ -6372,12 +6380,12 @@ HOOK20="cd \"\$WI_PM\" && echo again >again.txt && git add again.txt && git -c u
 wi_run WI_HOOK="$HOOK19" WI_HOOK2="$HOOK20" -- "$(wi_ret)" p1
 B20=$(git -C "$WI_R/.bare" branch --list 'words-*' | tr -d ' *+')
 check "20: pre-merge moved again after taking it in lands nothing, the land line printed, branch kept, exit 1" "1 1 1 2 0" \
-  "$WI_RC $(wi_has '^== verdict: stopped, pre-merge moved again, nothing landed') $(wi_has "to land it again, paste: bash ops/words-in.sh --land $B20\$") $(cat "$WI_R/calls.ui") $(wi_landed)"
+  "$WI_RC $(wi_has '^== verdict: stopped, pre-merge moved again, nothing landed') $(wi_has "to land it again, paste: cd /[^ ]+ && bash /[^ ]+/ops/words-in\.sh --land $B20\$") $(cat "$WI_R/calls.ui") $(wi_landed)"
 wi_make
 wi_run WI_HOOK="cd \"\$WI_PM\" && echo dirty >dirty.txt" -- "$(wi_ret)" p1
 B20=$(git -C "$WI_R/.bare" branch --list 'words-*' | tr -d ' *+')
 check "20: a dirty pre-merge worktree lands nothing, the land line printed, branch kept, exit 1" "1 1 1 0" \
-  "$WI_RC $(wi_has "^== verdict: stopped, pre-merge's worktree is not clean, nothing landed") $(wi_has "to land it again, paste: bash ops/words-in.sh --land $B20\$") $(wi_landed)"
+  "$WI_RC $(wi_has "^== verdict: stopped, pre-merge's worktree is not clean, nothing landed") $(wi_has "to land it again, paste: cd /[^ ]+ && bash /[^ ]+/ops/words-in\.sh --land $B20\$") $(wi_landed)"
 wi_make
 cat >"$WI_R/.bare/hooks/pre-merge-commit" <<'HOOK'
 #!/bin/sh
@@ -6388,7 +6396,7 @@ T20=$(wi_tip)
 wi_run -- "$(wi_ret)" p1
 B20=$(git -C "$WI_R/.bare" branch --list 'words-*' | tr -d ' *+')
 check "20: a merge that fails lands nothing, leaves pre-merge's worktree as it was, the land line printed, the gate lock released, exit 1" "1 1 1 $T20 0 gone" \
-  "$WI_RC $(wi_has '^== verdict: stopped, the merge on pre-merge failed, nothing landed') $(wi_has "to land it again, paste: bash ops/words-in.sh --land $B20\$") $(wi_tip) $(git -C "$WI_R/pre-merge" status --porcelain | wc -l | tr -d ' ') $([ -e "$WI_R/gl" ] && echo LEFT || echo gone)"
+  "$WI_RC $(wi_has '^== verdict: stopped, the merge on pre-merge failed, nothing landed') $(wi_has "to land it again, paste: cd /[^ ]+ && bash /[^ ]+/ops/words-in\.sh --land $B20\$") $(wi_tip) $(git -C "$WI_R/pre-merge" status --porcelain | wc -l | tr -d ' ') $([ -e "$WI_R/gl" ] && echo LEFT || echo gone)"
 # case 22: --land refuses what is not a kept words branch; exit 2, nothing landed
 wi_make
 wig "$WI_R/.bare" worktree add -q -b feature-x "$WI_R/wip-feature-x" pre-merge
