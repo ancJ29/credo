@@ -1965,7 +1965,7 @@ The design system's first landing adds `ui/src/components/` in three levels besi
 
 ## 505. The gallery's test checks a heading named after each file, not the component drawn (the same review, Low) — the machine; `[DEFERRED]`
 
-`ui/src/design-system/Gallery.test.tsx#L28` looks for a heading named like each component file, and the gallery's `entries` keys are typed by hand, so an entry may draw another component under the right name. A test mounting each entry's component by its export, or a key typed from the folder's exports, would close it.
+The gallery's test (`ui/src/design-system/Gallery.test.tsx`, its cases 4 and 8) looks for a link named like each component file and reads each file's doc comment and props, and `ui/src/design-system/entries.tsx`'s `ENTRIES` keys are typed by hand, so an entry's states may draw another component under the right name. A test mounting each entry's component by its export, or a key typed from the folder's exports, would close it.
 
 ## 506. `ui/CLAUDE.md` states the rule of three twice, never names the six samples as its exception, and leaves C17's sentence unfinished (the same review, Low) — the machine; `[DEFERRED]`
 
@@ -1993,7 +1993,7 @@ The rule of three is written at the `components/` note and again in the levels' 
 
 ## 515. The picture run cannot take one picture per part of the gallery by its address — the machine; *parked* until the first change to a part that no walk's screen shows (the design system's plan, landing 4, 2026-11-16, Low)
 
-A walk opens an address on the front (`walk/playwright.config.ts#L25`) and `shot` writes each picture by screen name (`walk/support.ts#L46`, `#L63`); `visual` takes no picture (`visual/src/capture.ts#L1-L4`). A `walk/specs/gallery.spec.ts` would open each part's address and call `walk/support.ts`'s `shot`. Four things stand in its way: both lanes' fronts serve a build of `index.html` alone (`scripts/src/fake.ts#L17`, `scripts/src/stack.ts#L35`, `ui/vite.config.ts#L13-L17`) and answer `/gallery.html` with the app (`scripts/src/running/front.ts#L98-L109`); every walk has a stack lane and is green only when the fake equals the stack (`walk/run.sh#L45-L58`); every `at` in a spec must be a screen of the walks page (`visual/src/walks.test.ts#L163-L171`), which draws the app's screens, not the gallery; and every spec shoots three widths in two languages (`#L204-L211`), where a part needs one picture.
+A walk opens an address on the front (`walk/playwright.config.ts#L25`) and `shot` writes each picture by screen name (`walk/support.ts#L46`, `#L63`); `visual` takes no picture (`visual/src/capture.ts#L1-L4`). A `walk/specs/gallery.spec.ts` would open each part's address and call `walk/support.ts`'s `shot`. Three things stand in its way (the first, the fronts answering `/gallery.html` with the app, is struck: the gallery left `gallery.html` for `/48b74d079/gallery`, a route of the app, 2026-11-17, the gallery workbench's plan): every walk has a stack lane and is green only when the fake equals the stack (`walk/run.sh#L45-L58`); every `at` in a spec must be a screen of the walks page (`visual/src/walks.test.ts#L163-L171`), which draws the app's screens, not the gallery; and every spec shoots three widths in two languages (`#L204-L211`), where a part needs one picture.
 
 ## 516. The gallery's "Legacy" pane has no picture of a legacy part to show — the machine; `[CLOSED AS MOOT, NOT FIXED]` 2026-11-16: the human said the gallery needs no legacy part, and the pane was taken out (the design system's plan, landing 4, 2026-11-16, Low)
 
@@ -2063,3 +2063,11 @@ The old app's `/login-via-qr-code` (the old repo's `workspace/uis/c-mngt/src/pag
 ## 553. The parts' back link reloads the page under the router, and the band says the company twice to a screen reader — the machine; `[DEFERRED]` (the sign-in parts' review, 2026-11-16, Info)
 
 For the piece that moves the doors onto these parts. `ui/src/components/atoms/BackLink.tsx`'s plain `href` reloads the page where the app routes with react-router, so a door needs it to take the router's own link or a click handler. `ui/src/components/molecules/BrandBand.tsx` gives the logo the company's name as its alt text, beside the same name as text, so a screen reader says it twice; the tile in the band wants an empty alt.
+
+## 555. The app's entry is past the 1,000 kB its build warns at — the machine; *parked* until the next page that adds to the entry (the gallery workbench's plan, 2026-11-17, Low)
+
+A build of `pre-merge` at `a0514569`, made into a scratch folder for that plan, wrote an entry of 1,010.91 kB (297.55 kB gzipped) and printed Vite's "larger than 1000 kB" warning, against the limit `ui/vite.config.ts`'s `chunkSizeWarningLimit` raises. The gallery workbench's piece rewrote the memo's figure in `docs/memo/ui.md`'s bundle section (about 1,010 kB), and that section's trigger, "the entry reaching 1,000 kB, when the build starts warning again", has fired unnoticed: nothing fails on the warning. The gallery workbench adds only its address test to the entry, its page going into a chunk of its own. *Fix:* the memo's numbers rewritten, then either a heavy route split off as the gallery is, or the limit raised with its reason. *Trigger:* the next page that adds to the entry.
+
+## 560. The gallery's frame is `100vh`, which a phone browser's toolbar may cover — the machine; `[DEFERRED]` to the ridge look (the gallery workbench's review, 2026-11-17, Low)
+
+`ui/src/design-system/Gallery.module.css`'s `.root` sets `height: 100vh; overflow: hidden`. On iOS Safari the toolbar may cover the foot of a part's scroll area; `100dvh` is the usual fix. Not changed: no test here measures a layout and the picture run cannot take the gallery, so the change cannot be proved harmless or useful without the human's phone on ridge. *Trigger:* the plan's ridge look; if the end of a part sits under the toolbar, change it to `100dvh`.

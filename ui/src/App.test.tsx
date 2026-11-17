@@ -416,6 +416,25 @@ describe('the app', () => {
     expect(await screen.findByLabelText(/Company name/)).toBeTruthy();
   });
 
+  it('The gallery opens at its own address, asks nobody to sign in and calls no API', async () => {
+    const { api } = setup({}, unlinked, '/48b74d079/gallery');
+
+    expect(await screen.findByRole('heading', { name: 'Design system' })).toBeTruthy();
+    for (const call of Object.values(api)) {
+      if (vi.isMockFunction(call)) expect(call).not.toHaveBeenCalled();
+    }
+  });
+
+  it('A near miss of the gallery’s address is the client’s app', async () => {
+    setup({}, signedIn, '/48b74d079/galleryx');
+    expect(await screen.findAllByRole('heading', { name: 'Orders' })).not.toHaveLength(0);
+    expect(screen.queryByRole('heading', { name: 'Design system' })).toBeNull();
+
+    cleanup();
+    setup({}, signedIn, '/48b74d079');
+    expect(await screen.findAllByRole('heading', { name: 'Orders' })).not.toHaveLength(0);
+  });
+
   it('sends any other path to the first page', async () => {
     const storage = memory({ ...linked, ...signedIn });
     const device = createDeviceStore(storage);

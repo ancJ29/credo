@@ -41,7 +41,7 @@ a directory of your own making is not on this list and is not a directory (vites
 - **`design-system/`**: the look in one place: a token, the app's own theme and the nine palettes
   (`ui/src/design-system/appTheme.ts`'s `themeOf`, `ui/src/design-system/palettes.ts`'s `PALETTES`, and its
   `theme.module.css`), the theme laid over it (`ui/src/design-system/theme.ts`'s `designThemeOf`), and the
-  gallery page that shows the parts (`ui/src/design-system/Gallery.tsx`'s `Gallery`, served at `/gallery.html`).
+  gallery page that shows the parts (`ui/src/design-system/Gallery.tsx`'s `Gallery`, served at `/48b74d079/gallery`; each part's entry is a row of `ui/src/design-system/entries.tsx`'s `ENTRIES`).
 - **`components/`**: a piece of the design system, in a level directory, with its gallery entry. Mantine
   stays the base: a piece joins when it is drawn a third time, never to wrap a Mantine part alone.
   Levels are `atoms/`, `molecules/` and `organisms/`; each is a directory of components, not of its own
