@@ -208,11 +208,12 @@ gallery pages 10 and 14 minutes, three parts at once 20; its review 8, its fix p
       1,010.91), `Mantine, in the theme` only in `Gallery-*.js` of each build; (7) fixed, the pattern
       names `vite\.config\.ts`; (8) fixed, `ui/CLAUDE.md` names `entries.tsx`'s `ENTRIES`; (9)
       deferred to the ridge look as item 560, a layout no test measures.
-- [ ] **5. Recap and the records.** The recap; `docs/products.md#L62`'s row (runs local and ridge,
+- [x] **5. Recap and the records.** The recap; `docs/products.md#L62`'s row (runs local and ridge,
       opened at the address) and a card under "Check a piece on ridge"; one line at the design
       system's landing 4 (`docs/plans/2026-11-12-design-system.md#L130`) saying this plan built it;
       open item 515's first obstacle (the fronts answering `/gallery.html` with the app) struck.
       _Done when:_ the citation test exits 0 and the branch lands on `pre-merge`. **10 min.**
+      _Ticked 2026-11-17:_ `pre-merge` taken in clean, no resolution; the recap at 272 words of its 400, the products row (local and ridge, the address), the card, landing 4's line and item 515's first obstacle struck; the citation test exits 0.
 - [ ] **6. Ridge and your look.** `main` fast-forwarded after the whole check, your push, the
       deploy job green, then point 1; the answer marked in the recap, the plan and the products row.
       _Done when:_ the job's `ops/app.sh ridge` step reads `shipped <sha>`, and the marker is

@@ -129,6 +129,8 @@ legacy's card by hand (`ui/src/parts/Settings.tsx#L122-L131`), the model for the
 
 ## Landing 4: the gallery's final shape, and what was decided for it
 
+*Built 2026-11-17 by the gallery workbench's plan (`docs/plans/2026-11-17-gallery-workbench.md`), at the app's own address and without its search, brought forward by the human's ask.*
+
 - **When: as the components pass 15, which landings 2 and 3 do not.** Landing 2 names no part;
   landing 3's step 10 draws the two organisms already there, so step 2's count,
   `ls ui/src/components/*/*.tsx | grep -vc test`, stays 6. The rest come one at a time, by the rule

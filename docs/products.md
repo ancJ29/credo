@@ -59,7 +59,7 @@ Usage and costs, and Activity, are menu entries with an empty "coming soon" page
 | `ops/full-run.sh` (the full run) | Runs all twelve walks in three lanes (run 1 writes each walk's bases on its own reads, under a lock of its own, and the verdict names what moved), then run 2 as a byte compare of run 1's pictures against the bases; green only when every count is 0. 16 minutes in the adoption run, about 70 the serial way. | local | in `main` | `bash ops/full-run.sh` in the human's terminal | [`recaps/2026-11-04-full-run-speed.md`](recaps/2026-11-04-full-run-speed.md), [`recaps/2026-11-06-walk-machinery.md`](recaps/2026-11-06-walk-machinery.md) |
 | `pnpm report` (the walks page build) | Builds the walks page: 100 screens in two languages, each shown full window, answered yes or no in one key (Yes to all per walk), with a memo on a No. | local | in `main` | `pnpm report`, open the built file from disk | [`recaps/2026-11-03-walks-page.md`](recaps/2026-11-03-walks-page.md) |
 | The deployed walks page | The same page for partners (`p1`, `p2`), behind a sign-in by emailed code; `walks.yml` redeploys it on a push to `main` that touches it. | the walks page's hosting (Cloudflare Pages) | in `main` | the page by name, "walks"; `ops/walks-preview.sh` for a private preview | [`recaps/2026-10-29-walks-share.md`](recaps/2026-10-29-walks-share.md) |
-| The design system's gallery | A page of our own, no Storybook: the legacy app's colours, type and spacing read from the theme, Mantine's button and field in it, then eleven sample components in three levels (atoms, molecules, organisms), each in its states. A lint rule keeps a level importing only from below; no screen of the app changed. | local | landing 2 of 3 (one home for the colours, light only): no picture moved, your run green; in `main`: five sign-in parts added, eleven in all, your look yes; landing 3 still ahead | in `ui/`, `pnpm exec vite --open /gallery.html` (Ctrl-C ends it) | [`recaps/2026-11-16-design-system-skeleton.md`](recaps/2026-11-16-design-system-skeleton.md), [`plans/2026-11-12-design-system.md`](plans/2026-11-12-design-system.md) |
+| The design system's gallery | A page of our own, no Storybook: the legacy app's colours, type and spacing read from the theme, Mantine's button and field in it, then eleven sample components in three levels (atoms, molecules, organisms), each in its states. A lint rule keeps a level importing only from below; no screen of the app changed. | local and ridge | landing 2 of 3 (one home for the colours, light only): no picture moved, your run green; in `main`: five sign-in parts added, eleven in all, your look yes; landing 3 still ahead; on the branch `gallery-workbench`: the gallery at its own address, the parts in a list, one part at a time, your look on ridge still open | `/48b74d079/gallery` at the app's address, on ridge or locally; in `ui/`, `pnpm exec vite --open /48b74d079/gallery` (Ctrl-C ends it) | [`recaps/2026-11-16-design-system-skeleton.md`](recaps/2026-11-16-design-system-skeleton.md), [`recaps/2026-11-17-gallery-workbench.md`](recaps/2026-11-17-gallery-workbench.md), [`plans/2026-11-12-design-system.md`](plans/2026-11-12-design-system.md) |
 
 The human uses the page as the confirmation form: answers are kept in the browser under the name
 typed, and the pasted block is what the machine reads; a No becomes a case
@@ -131,6 +131,19 @@ You should see your own picture under "Proof of delivery", not "The photo did no
 
 **Question: did your photo show on the office's page?** Say yes or no; with a no, say the step
 number where it went wrong.
+
+### The gallery's card
+
+Open the app's ridge address with `/48b74d079/gallery` after it. No sign-in. You need a PC and a phone.
+
+1. On the PC, read the list down the left: Foundations, Atoms, Molecules and Organisms, each with its count.
+2. Press a part, such as "Door card". Its name, description, props and states appear side by side.
+3. Under "Show", press "One state at a time" and pick another state from the row.
+4. Open the same address on the phone.
+
+You should see, on the phone, the list above the part, and nothing scrolling sideways.
+
+**Question: does it read as the mock you said yes to, on both?** Say yes or no; with a no, say the step number where it went wrong.
 
 ## Known gaps
 
