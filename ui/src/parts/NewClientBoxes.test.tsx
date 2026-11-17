@@ -2,7 +2,18 @@ import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { draw } from '../../tests/render';
+import { DICTIONARIES } from '../i18n';
 import { NewClient } from './NewClient';
+
+const words = DICTIONARIES.en.operator;
+/** A label that carries a star is found by its word inside it, as the dictionary spells it. */
+const labelled = (word: string) => new RegExp(word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+/** A box's line as the list draws it. */
+const line = (name: string, free: number, companies: number) =>
+  words.boxLine
+    .replace('{{name}}', name)
+    .replace('{{free}}', String(free))
+    .replace('{{companies}}', String(companies));
 
 const GIB = 1024 ** 3;
 const TWO = [
@@ -11,8 +22,8 @@ const TWO = [
 ];
 
 async function fill() {
-  await userEvent.type(screen.getByLabelText(/Client code/), 'minh-phat');
-  await userEvent.type(screen.getByLabelText(/Company name/), 'Minh Phát');
+  await userEvent.type(screen.getByLabelText(labelled(words.code)), 'minh-phat');
+  await userEvent.type(screen.getByLabelText(labelled(words.companyName)), 'Minh Phát');
 }
 
 describe('NewClient, the list of boxes', () => {
@@ -20,10 +31,10 @@ describe('NewClient, the list of boxes', () => {
     draw(<NewClient status="idle" boxes={TWO} onSubmit={vi.fn()} />);
 
     const home = screen.getByRole<HTMLInputElement>('radio', {
-      name: 'home: 38 GB free, 4 companies',
+      name: line('home', 38, 4),
     });
     const second = screen.getByRole<HTMLInputElement>('radio', {
-      name: 'b2: 112 GB free, 1 companies',
+      name: line('b2', 112, 1),
     });
     expect(home.checked).toBe(true);
     expect(second.checked).toBe(false);
@@ -34,15 +45,15 @@ describe('NewClient, the list of boxes', () => {
     draw(<NewClient status="idle" boxes={TWO} onSubmit={onSubmit} />);
     await fill();
 
-    await userEvent.click(screen.getByRole('button', { name: 'Make the client' }));
+    await userEvent.click(screen.getByRole('button', { name: words.make }));
     expect(onSubmit).toHaveBeenLastCalledWith('minh-phat', 'Minh Phát');
 
     await userEvent.click(screen.getByRole('radio', { name: /^b2/ }));
-    await userEvent.click(screen.getByRole('button', { name: 'Make the client' }));
+    await userEvent.click(screen.getByRole('button', { name: words.make }));
     expect(onSubmit).toHaveBeenLastCalledWith('minh-phat', 'Minh Phát', 'b2');
 
     await userEvent.click(screen.getByRole('radio', { name: /^home/ }));
-    await userEvent.click(screen.getByRole('button', { name: 'Make the client' }));
+    await userEvent.click(screen.getByRole('button', { name: words.make }));
     expect(onSubmit).toHaveBeenLastCalledWith('minh-phat', 'Minh Phát');
   });
 
@@ -55,7 +66,9 @@ describe('NewClient, the list of boxes', () => {
       />,
     );
 
-    const down = screen.getByRole<HTMLInputElement>('radio', { name: 'b2: not answering' });
+    const down = screen.getByRole<HTMLInputElement>('radio', {
+      name: words.boxDown.replace('{{name}}', 'b2'),
+    });
     expect(down.disabled).toBe(true);
   });
 

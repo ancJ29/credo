@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import { draw } from '../../../tests/render';
 import type { Api } from '../../api';
 import { createFakeApi, parseCue } from '../../fake';
+import { DICTIONARIES } from '../../i18n';
 import { ClientsPage } from './ClientsPage';
 
 const base = { name: 'Acme', madeAt: 1, link: '/login' };
@@ -17,7 +18,9 @@ describe('the clients list names the box each company is on', () => {
       ]);
     draw(<ClientsPage api={{ listClients } as unknown as Api} onSignedOut={vi.fn()} />);
 
-    expect(await screen.findByRole('columnheader', { name: 'Box' })).toBeTruthy();
+    expect(
+      await screen.findByRole('columnheader', { name: DICTIONARIES.en.operator.colBox }),
+    ).toBeTruthy();
     const boxOf = (code: string) =>
       within(screen.getByRole('row', { name: new RegExp(code) })).getAllByRole('cell')[2]
         ?.textContent;

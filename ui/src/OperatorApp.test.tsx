@@ -7,7 +7,12 @@ import { type Api, ApiError } from './api';
 import { App } from './App';
 import { PasskeyNotGiven } from './passkeys';
 import { createDeviceStore } from './device';
-import { DICTIONARIES } from './i18n';
+import { DICTIONARIES, LANGUAGE_NAMES } from './i18n';
+
+const words = DICTIONARIES.en;
+const wordsVi = DICTIONARIES.vi;
+/** A label that carries a star is found by its word inside it, as the dictionary spells it. */
+const labelled = (word: string) => new RegExp(word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
 
 const made = {
   link: '/login?client-code=minh-phat',
@@ -94,14 +99,14 @@ const signedIn = { ...english, 'credo.operator': 'd.op' };
 const side = () => within(screen.getAllByRole('navigation', { name: 'Menu' })[0]);
 
 async function signInAsOperator() {
-  await userEvent.click(await screen.findByRole('button', { name: 'Sign in with a passkey' }));
+  await userEvent.click(await screen.findByRole('button', { name: words.passkey.signInButton }));
 }
 
 async function makeAClient(code = 'minh-phat', name = 'Minh Phát') {
-  await userEvent.click(await screen.findByRole('link', { name: 'Add a client' }));
-  await userEvent.type(await screen.findByLabelText(/Client code/), code);
-  await userEvent.type(screen.getByLabelText(/Company name/), name);
-  await userEvent.click(screen.getByRole('button', { name: 'Make the client' }));
+  await userEvent.click(await screen.findByRole('link', { name: words.operator.add }));
+  await userEvent.type(await screen.findByLabelText(labelled(words.operator.code)), code);
+  await userEvent.type(screen.getByLabelText(labelled(words.operator.companyName)), name);
+  await userEvent.click(screen.getByRole('button', { name: words.operator.make }));
 }
 
 describe('the operator’s page', () => {
@@ -109,7 +114,7 @@ describe('the operator’s page', () => {
     const { api } = setup();
 
     expect((await screen.findByRole('heading', { level: 1 })).textContent).toBe('Credo');
-    expect(screen.getByRole('heading', { level: 2 }).textContent).toBe('Operator sign-in');
+    expect(screen.getByRole('heading', { level: 2 }).textContent).toBe(words.operator.signIn);
     expect(
       getComputedStyle(document.documentElement).getPropertyValue('--mantine-color-brand-7'),
     ).toBe('#3e618c');
@@ -119,19 +124,21 @@ describe('the operator’s page', () => {
 
   it('opens at every address under /operator, and nowhere else', async () => {
     setup({}, english, '/operator/clients');
-    expect((await screen.findByRole('heading', { level: 2 })).textContent).toBe('Operator sign-in');
+    expect((await screen.findByRole('heading', { level: 2 })).textContent).toBe(
+      words.operator.signIn,
+    );
   });
 
   it('The operator signs in with a passkey alone, no name and no password typed, and lands on the dashboard: the clients list, the five sections and who is signed in', async () => {
     const { api, device, passkeys } = setup();
-    expect(await screen.findByRole('button', { name: 'Sign in with a passkey' })).toBeTruthy();
+    expect(await screen.findByRole('button', { name: words.passkey.signInButton })).toBeTruthy();
     expect(screen.queryByRole('textbox')).toBeNull();
-    expect(screen.queryByLabelText(/Password/)).toBeNull();
+    expect(screen.queryByLabelText(labelled(words.auth.password))).toBeNull();
     await signInAsOperator();
 
-    expect(await screen.findByRole('heading', { level: 2, name: 'Clients' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { level: 2, name: words.nav.clients })).toBeTruthy();
     expect(await screen.findByText('Bình An')).toBeTruthy();
-    expect(screen.getByText('Operator')).toBeTruthy();
+    expect(screen.getByText(words.operator.badge)).toBeTruthy();
     expect(screen.getByRole('button', { name: 'operator' })).toBeTruthy();
     expect(
       within(screen.getAllByRole('navigation', { name: 'Menu' })[0]).getAllByRole('link'),
@@ -167,7 +174,7 @@ describe('the operator’s page', () => {
     expect(screen.queryByText(DICTIONARIES.en.passkey.refused)).toBeNull();
 
     await userEvent.click(screen.getByRole('button', { name: DICTIONARIES.en.common.retry }));
-    expect(await screen.findByRole('button', { name: 'Sign in with a passkey' })).toBeTruthy();
+    expect(await screen.findByRole('button', { name: words.passkey.signInButton })).toBeTruthy();
   });
 
   it('A passkey that fails in the device for any cause but "not given" says the service is unavailable', async () => {
@@ -218,12 +225,12 @@ describe('the operator’s page', () => {
 
   it('A reload keeps the sign-in; only the BFF’s 401 drops the handle', async () => {
     const first = setup({}, signedIn);
-    expect(await screen.findByRole('heading', { level: 2, name: 'Clients' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { level: 2, name: words.nav.clients })).toBeTruthy();
     expect(first.api.operatorMe).toHaveBeenCalledOnce();
     first.unmount();
 
     const refused = setup({ operatorMe: () => Promise.reject(new ApiError(401)) }, signedIn);
-    expect(await screen.findByRole('button', { name: 'Sign in with a passkey' })).toBeTruthy();
+    expect(await screen.findByRole('button', { name: words.passkey.signInButton })).toBeTruthy();
     expect(refused.device.operatorAuthId()).toBeNull();
     refused.unmount();
 
@@ -238,7 +245,7 @@ describe('the operator’s page', () => {
     expect(down.device.operatorAuthId()).toBe('d.op');
 
     await userEvent.click(screen.getByRole('button', { name: DICTIONARIES.en.common.retry }));
-    expect(await screen.findByRole('heading', { level: 2, name: 'Clients' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { level: 2, name: words.nav.clients })).toBeTruthy();
     expect(operatorMe).toHaveBeenCalledTimes(2);
   });
 
@@ -246,28 +253,35 @@ describe('the operator’s page', () => {
     const { api } = setup({}, signedIn);
     await makeAClient();
 
-    expect(await screen.findByRole('heading', { level: 2, name: 'Client made' })).toBeTruthy();
+    expect(
+      await screen.findByRole('heading', { level: 2, name: words.operator.madeTitle }),
+    ).toBeTruthy();
     expect(api.makeClient).toHaveBeenCalledExactlyOnceWith('minh-phat', 'Minh Phát');
-    expect(screen.getByRole<HTMLInputElement>('textbox', { name: /Link/ }).value).toBe(
-      `${window.location.origin}/login?client-code=minh-phat`,
-    );
-    expect(screen.getByRole<HTMLInputElement>('textbox', { name: /Root name/ }).value).toBe('root');
-    expect(screen.getByRole<HTMLInputElement>('textbox', { name: /First password/ }).value).toBe(
-      made.password,
-    );
+    expect(
+      screen.getByRole<HTMLInputElement>('textbox', { name: labelled(words.operator.link) }).value,
+    ).toBe(`${window.location.origin}/login?client-code=minh-phat`);
+    expect(
+      screen.getByRole<HTMLInputElement>('textbox', { name: labelled(words.operator.rootName) })
+        .value,
+    ).toBe('root');
+    expect(
+      screen.getByRole<HTMLInputElement>('textbox', {
+        name: labelled(words.operator.firstPassword),
+      }).value,
+    ).toBe(made.password);
 
-    await userEvent.click(screen.getByRole('button', { name: 'Add another client' }));
+    await userEvent.click(screen.getByRole('button', { name: words.operator.another }));
 
-    expect(await screen.findByLabelText(/Client code/)).toBeTruthy();
+    expect(await screen.findByLabelText(labelled(words.operator.code))).toBeTruthy();
     expect(document.body.innerHTML).not.toContain(made.password);
-    expect(screen.getByLabelText<HTMLInputElement>(/Client code/).value).toBe('');
+    expect(screen.getByLabelText<HTMLInputElement>(labelled(words.operator.code)).value).toBe('');
   });
 
   it('A code typed in capitals, or with spaces around it, is lowered and trimmed before it is sent', async () => {
     const { api } = setup({}, signedIn);
     await makeAClient('  Minh-PHAT ');
 
-    await screen.findByRole('heading', { level: 2, name: 'Client made' });
+    await screen.findByRole('heading', { level: 2, name: words.operator.madeTitle });
     expect(api.makeClient).toHaveBeenCalledExactlyOnceWith('minh-phat', 'Minh Phát');
   });
 
@@ -275,18 +289,26 @@ describe('the operator’s page', () => {
     setup({ makeClient: () => Promise.resolve({ kind: 'taken' }) }, signedIn);
     await makeAClient();
 
-    expect((await screen.findByRole('alert')).textContent).toContain('nothing was changed');
-    expect(screen.getByLabelText<HTMLInputElement>(/Client code/).value).toBe('minh-phat');
-    expect(screen.getByLabelText<HTMLInputElement>(/Company name/).value).toBe('Minh Phát');
-    expect(screen.queryByRole('textbox', { name: /First password/ })).toBeNull();
+    expect((await screen.findByRole('alert')).textContent).toBe(words.operator.taken);
+    expect(screen.getByLabelText<HTMLInputElement>(labelled(words.operator.code)).value).toBe(
+      'minh-phat',
+    );
+    expect(
+      screen.getByLabelText<HTMLInputElement>(labelled(words.operator.companyName)).value,
+    ).toBe('Minh Phát');
+    expect(
+      screen.queryByRole('textbox', { name: labelled(words.operator.firstPassword) }),
+    ).toBeNull();
   });
 
   it('A make that fails says nothing was made, and what was typed stays', async () => {
     setup({ makeClient: () => Promise.reject(new ApiError(503)) }, signedIn);
     await makeAClient();
 
-    expect((await screen.findByRole('alert')).textContent).toContain('The client was not made');
-    expect(screen.getByLabelText<HTMLInputElement>(/Client code/).value).toBe('minh-phat');
+    expect((await screen.findByRole('alert')).textContent).toBe(words.operator.failed);
+    expect(screen.getByLabelText<HTMLInputElement>(labelled(words.operator.code)).value).toBe(
+      'minh-phat',
+    );
   });
 
   it('A client added leads the list the operator goes back to, and the password is not on it', async () => {
@@ -304,7 +326,7 @@ describe('the operator’s page', () => {
       ]);
     setup({ listClients }, signedIn);
     await makeAClient();
-    await userEvent.click(await screen.findByRole('link', { name: 'Back to the clients' }));
+    await userEvent.click(await screen.findByRole('link', { name: words.operator.back }));
 
     const cells = await screen.findAllByRole('cell');
     expect(cells[0]?.textContent).toBe('Minh Phát');
@@ -321,23 +343,33 @@ describe('the operator’s page', () => {
     const { device, api, passkeys } = setup({ makeClient }, signedIn);
     await makeAClient();
 
-    expect(await screen.findByRole('dialog', { name: 'Your sign-in ended' })).toBeTruthy();
-    expect(screen.getByLabelText<HTMLInputElement>(/Client code/).value).toBe('minh-phat');
-    expect(screen.getByLabelText<HTMLInputElement>(/Company name/).value).toBe('Minh Phát');
+    expect(await screen.findByRole('dialog', { name: words.passkey.endedTitle })).toBeTruthy();
+    expect(screen.getByLabelText<HTMLInputElement>(labelled(words.operator.code)).value).toBe(
+      'minh-phat',
+    );
+    expect(
+      screen.getByLabelText<HTMLInputElement>(labelled(words.operator.companyName)).value,
+    ).toBe('Minh Phát');
     expect(makeClient).toHaveBeenCalledOnce();
     expect(device.operatorAuthId()).toBe('d.op');
 
-    await userEvent.click(screen.getByRole('button', { name: 'Use your passkey' }));
+    await userEvent.click(screen.getByRole('button', { name: words.passkey.endedButton }));
 
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     expect(passkeys.authenticate).toHaveBeenCalledOnce();
     expect(api.operatorPasskeySignIn).toHaveBeenCalledOnce();
     expect(makeClient).toHaveBeenCalledOnce();
-    expect(screen.getByLabelText<HTMLInputElement>(/Client code/).value).toBe('minh-phat');
-    expect(screen.getByLabelText<HTMLInputElement>(/Company name/).value).toBe('Minh Phát');
+    expect(screen.getByLabelText<HTMLInputElement>(labelled(words.operator.code)).value).toBe(
+      'minh-phat',
+    );
+    expect(
+      screen.getByLabelText<HTMLInputElement>(labelled(words.operator.companyName)).value,
+    ).toBe('Minh Phát');
 
-    await userEvent.click(screen.getByRole('button', { name: 'Make the client' }));
-    expect(await screen.findByRole('heading', { level: 2, name: 'Client made' })).toBeTruthy();
+    await userEvent.click(screen.getByRole('button', { name: words.operator.make }));
+    expect(
+      await screen.findByRole('heading', { level: 2, name: words.operator.madeTitle }),
+    ).toBeTruthy();
     expect(makeClient).toHaveBeenCalledTimes(2);
   });
 
@@ -352,11 +384,11 @@ describe('the operator’s page', () => {
       signedIn,
     );
     await makeAClient();
-    await userEvent.click(await screen.findByRole('button', { name: 'Use your passkey' }));
+    await userEvent.click(await screen.findByRole('button', { name: words.passkey.endedButton }));
 
     expect(await screen.findByRole('button', { name: 'Ops Two' })).toBeTruthy();
     await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
-    expect(screen.getByLabelText<HTMLInputElement>(/Client code/).value).toBe('');
+    expect(screen.getByLabelText<HTMLInputElement>(labelled(words.operator.code)).value).toBe('');
     expect(device.operatorAuthId()).toBe('d.other');
   });
 
@@ -370,7 +402,8 @@ describe('the operator’s page', () => {
       signedIn,
     );
     passkeys.authenticate.mockRejectedValueOnce(new PasskeyNotGiven());
-    const press = () => userEvent.click(screen.getByRole('button', { name: 'Use your passkey' }));
+    const press = () =>
+      userEvent.click(screen.getByRole('button', { name: words.passkey.endedButton }));
     const dialog = async () => await screen.findByRole('dialog');
 
     await dialog();
@@ -393,8 +426,8 @@ describe('the operator’s page', () => {
       ),
     );
 
-    await userEvent.click(within(await dialog()).getByRole('button', { name: 'Sign out' }));
-    expect(await screen.findByRole('button', { name: 'Sign in with a passkey' })).toBeTruthy();
+    await userEvent.click(within(await dialog()).getByRole('button', { name: words.user.signOut }));
+    expect(await screen.findByRole('button', { name: words.passkey.signInButton })).toBeTruthy();
     expect(device.operatorAuthId()).toBeNull();
   });
 
@@ -404,12 +437,12 @@ describe('the operator’s page', () => {
       signedIn,
     );
     await makeAClient();
-    await screen.findByRole('textbox', { name: /First password/ });
+    await screen.findByRole('textbox', { name: labelled(words.operator.firstPassword) });
 
     await userEvent.click(screen.getByRole('button', { name: 'operator' }));
-    await userEvent.click(screen.getByRole('menuitem', { name: 'Sign out' }));
+    await userEvent.click(screen.getByRole('menuitem', { name: words.user.signOut }));
 
-    expect(await screen.findByRole('button', { name: 'Sign in with a passkey' })).toBeTruthy();
+    expect(await screen.findByRole('button', { name: words.passkey.signInButton })).toBeTruthy();
     expect(device.operatorAuthId()).toBeNull();
     expect(document.body.innerHTML).not.toContain(made.password);
     expect(api.operatorMe).toHaveBeenCalledOnce();
@@ -437,26 +470,28 @@ describe('the operator’s page', () => {
 
   it('Each section has its own address, and the two not built are one page: the section’s name and “coming soon”, calling nothing', async () => {
     const { api } = setup({}, signedIn, '/operator/usage');
-    expect(await screen.findByRole('heading', { level: 2, name: 'Usage and costs' })).toBeTruthy();
-    expect(screen.getByText('Coming soon')).toBeTruthy();
+    expect(await screen.findByRole('heading', { level: 2, name: words.nav.usage })).toBeTruthy();
+    expect(screen.getByText(words.operator.soon)).toBeTruthy();
     expect(api.listClients).not.toHaveBeenCalled();
 
-    await userEvent.click(side().getByRole('link', { name: 'Activity' }));
-    expect(await screen.findByRole('heading', { level: 2, name: 'Activity' })).toBeTruthy();
-    expect(screen.getByText('Coming soon')).toBeTruthy();
+    await userEvent.click(side().getByRole('link', { name: words.nav.activity }));
+    expect(await screen.findByRole('heading', { level: 2, name: words.nav.activity })).toBeTruthy();
+    expect(screen.getByText(words.operator.soon)).toBeTruthy();
     expect(api.listClients).not.toHaveBeenCalled();
 
-    await userEvent.click(side().getByRole('link', { name: 'Operators' }));
-    expect(await screen.findByRole('heading', { level: 2, name: 'Operators' })).toBeTruthy();
-    expect(screen.getByRole('link', { name: 'Add an operator' })).toBeTruthy();
+    await userEvent.click(side().getByRole('link', { name: words.nav.operators }));
+    expect(
+      await screen.findByRole('heading', { level: 2, name: words.nav.operators }),
+    ).toBeTruthy();
+    expect(screen.getByRole('link', { name: words.team.add })).toBeTruthy();
     expect(api.listOperators).toHaveBeenCalledOnce();
-    expect(screen.queryByText('Coming soon')).toBeNull();
+    expect(screen.queryByText(words.operator.soon)).toBeNull();
 
-    await userEvent.click(side().getByRole('link', { name: 'Services status' }));
-    expect(await screen.findByRole('heading', { level: 2, name: 'Services status' })).toBeTruthy();
-    expect(screen.queryByText('Coming soon')).toBeNull();
+    await userEvent.click(side().getByRole('link', { name: words.nav.services }));
+    expect(await screen.findByRole('heading', { level: 2, name: words.nav.services })).toBeTruthy();
+    expect(screen.queryByText(words.operator.soon)).toBeNull();
 
-    await userEvent.click(side().getByRole('link', { name: 'Clients' }));
+    await userEvent.click(side().getByRole('link', { name: words.nav.clients }));
     expect(await screen.findByText('Bình An')).toBeTruthy();
   });
 
@@ -488,7 +523,7 @@ describe('the operator’s page', () => {
     setup({}, signedIn, '/operator/more');
 
     const main = () => within(document.querySelector('main')!);
-    await screen.findByRole('heading', { level: 2, name: 'More' });
+    await screen.findByRole('heading', { level: 2, name: words.nav.more });
     expect((await main().findAllByRole('link')).map((link) => link.getAttribute('href'))).toEqual([
       '/operator/activity',
       '/operator/passkeys',
@@ -497,19 +532,21 @@ describe('the operator’s page', () => {
 
   it('The language chosen in the header is kept on the device and the page speaks it', async () => {
     const { device } = setup({}, signedIn);
-    await userEvent.click(await screen.findByRole('button', { name: 'Language' }));
-    await userEvent.click(screen.getByRole('menuitem', { name: 'Tiếng Việt' }));
+    await userEvent.click(await screen.findByRole('button', { name: words.user.language }));
+    await userEvent.click(screen.getByRole('menuitem', { name: LANGUAGE_NAMES.vi }));
 
     expect(device.language()).toBe('vi');
-    expect(await screen.findByRole('heading', { level: 2, name: 'Khách hàng' })).toBeTruthy();
+    expect(
+      await screen.findByRole('heading', { level: 2, name: wordsVi.nav.clients }),
+    ).toBeTruthy();
     expect(screen.getByText('21/10/2026')).toBeTruthy();
   });
 
   it('A 401 on the list opens the prompt over the page and keeps the handle until a passkey replaces it', async () => {
     const { device } = setup({ listClients: () => Promise.reject(new ApiError(401)) }, signedIn);
 
-    expect(await screen.findByRole('dialog', { name: 'Your sign-in ended' })).toBeTruthy();
-    expect(screen.getByRole('heading', { level: 2, name: 'Clients' })).toBeTruthy();
+    expect(await screen.findByRole('dialog', { name: words.passkey.endedTitle })).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 2, name: words.nav.clients })).toBeTruthy();
     expect(device.operatorAuthId()).toBe('d.op');
   });
 
@@ -520,9 +557,9 @@ describe('the operator’s page', () => {
       .mockResolvedValue(CLIENTS);
     const { device } = setup({ listClients }, signedIn);
 
-    expect((await screen.findByRole('alert')).textContent).toContain('could not be loaded');
+    expect((await screen.findByRole('alert')).textContent).toBe(words.common.loadFailed);
     expect(device.operatorAuthId()).toBe('d.op');
-    await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    await userEvent.click(screen.getByRole('button', { name: words.common.retry }));
     expect(await screen.findByText('Bình An')).toBeTruthy();
   });
 });

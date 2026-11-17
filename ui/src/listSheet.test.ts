@@ -2,9 +2,21 @@ import { IMPORT_MAX_ROWS } from '@credo/shared';
 import { describe, expect, it } from 'vitest';
 import { headingOf, LISTS, readList, readPrice, templateSheets } from './listSheet';
 import type { Table } from './importSheet';
+import { DICTIONARIES } from './i18n';
 
-const customers = (...rows: string[][]): Table => [['Code', 'Name', 'Phone', 'Address'], ...rows];
-const products = (...rows: string[][]): Table => [['Code', 'Name', 'Unit', 'Price (VND)'], ...rows];
+const C = { en: DICTIONARIES.en.lists, vi: DICTIONARIES.vi.lists };
+/** A word as a person types it without accents, the way a reader must forgive. */
+const unaccented = (text: string) =>
+  text.normalize('NFD').replace(/\p{M}/gu, '').replace(/đ/gi, 'd');
+
+const customers = (...rows: string[][]): Table => [
+  [C.en.columns.code, C.en.columns.name, C.en.columns.phone, C.en.columns.address],
+  ...rows,
+];
+const products = (...rows: string[][]): Table => [
+  [C.en.columns.code, C.en.columns.name, C.en.columns.unit, C.en.columns.price],
+  ...rows,
+];
 const none = new Set<string>();
 
 const problems = (table: Table, kind: 'customers' | 'products' = 'customers', taken = none) => {
@@ -68,7 +80,11 @@ describe('the template', () => {
     expect(products.rows[2]?.[3]).toBe('120.000');
     expect(readPrice(products.rows[2]?.[3])).toBe(120000);
     // the stocked column sits between the price and the note: the first sample Có, the second Không
-    expect(products.rows[0]?.slice(3)).toEqual(['Price (VND)', 'Stocked', 'Note']);
+    expect(products.rows[0]?.slice(3)).toEqual([
+      C.en.columns.price,
+      C.en.columns.stocked,
+      C.en.columns.note,
+    ]);
     expect([products.rows[1]?.[4], products.rows[2]?.[4]]).toEqual(['Có', 'Không']);
   });
 });
@@ -129,7 +145,13 @@ describe('reading a file', () => {
 
   it('A customer’s phone, address and note, and a product’s note, are kept as typed and may be empty', () => {
     const table: Table = [
-      ['Mã', 'Tên', 'Điện thoại', 'Địa chỉ', 'Ghi chú'],
+      [
+        C.vi.columns.code,
+        C.vi.columns.name,
+        C.vi.columns.phone,
+        C.vi.columns.address,
+        C.vi.columns.note,
+      ],
       ['KH-1', 'Đủ', '0909 000 111', '1 Đường Một', 'Ghi chú'],
       ['KH-2', 'Trống', '', '', ''],
     ];
@@ -146,7 +168,13 @@ describe('reading a file', () => {
     const noted = readList(
       'products',
       [
-        ['Code', 'Name', 'Unit', 'Price (VND)', 'Note'],
+        [
+          C.en.columns.code,
+          C.en.columns.name,
+          C.en.columns.unit,
+          C.en.columns.price,
+          C.en.columns.note,
+        ],
         ['SP-1', 'Có chú thích', 'bao', '95.000', 'Bao 50 kg'],
         ['SP-2', 'Không', 'bao', '95000', ''],
       ],
@@ -168,20 +196,26 @@ describe('reading a file', () => {
   it('A product says whether its stock is kept (Quản lý tồn kho / Stocked: Có or Không). An empty cell reads Có. Không, No, 0 or false read Không; Có, Yes, 1 or true read Có. Any other word refuses the row and names the column', () => {
     const typed = [
       '',
-      'Có',
-      'co',
-      'Yes',
+      C.vi.yes,
+      unaccented(C.vi.yes).toLowerCase(),
+      C.en.yes,
       '1',
       'TRUE',
-      'Không',
-      'khong',
-      'No',
+      C.vi.no,
+      unaccented(C.vi.no).toLowerCase(),
+      C.en.no,
       '0',
       'false',
       'có thể',
     ];
     const table: Table = [
-      ['Mã', 'Tên', 'Đơn vị tính', 'Giá (đồng)', 'Quản lý tồn kho'],
+      [
+        C.vi.columns.code,
+        C.vi.columns.name,
+        C.vi.columns.unit,
+        C.vi.columns.price,
+        C.vi.columns.stocked,
+      ],
       ...typed.map((value, at) => [`P-${at}`, 'Hàng', 'bao', '5000', value]),
     ];
     const read = readList('products', table, none);
@@ -227,10 +261,10 @@ describe('reading a file', () => {
       return read.kind === 'failed' ? read.reason : 'read';
     };
 
-    expect(reason([['Name'], ['Một']])).toBe('no-code');
-    expect(reason([['Code'], ['KH-1']])).toBe('no-name');
-    expect(reason([['Code', 'Name']])).toBe('no-rows');
-    expect(reason([[], ['Code', 'Name'], [null, null]])).toBe('no-rows');
+    expect(reason([[C.en.columns.name], ['Một']])).toBe('no-code');
+    expect(reason([[C.en.columns.code], ['KH-1']])).toBe('no-name');
+    expect(reason([[C.en.columns.code, C.en.columns.name]])).toBe('no-rows');
+    expect(reason([[], [C.en.columns.code, C.en.columns.name], [null, null]])).toBe('no-rows');
     expect(reason([])).toBe('no-code');
     expect(
       reason(

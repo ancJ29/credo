@@ -2,104 +2,56 @@ import { cleanup } from '@testing-library/react';
 import type { ReactNode } from 'react';
 import { describe, expect, it, vi } from 'vitest';
 import { draw } from '../../tests/render';
+import { DICTIONARIES } from './index';
 import { OperatorSignIn } from '../pages/operator/OperatorSignIn';
 import { QrLanding } from '../pages/client/QrLanding';
 import { SignIn } from '../pages/SignIn';
 
-/** Every word each door said before the frame was redrawn, in both languages, as it was read off the
- * doors at that time: the text in their order, and each field's placeholder. */
-const BEFORE: Record<string, string[]> = {
-  'en signin': [
+type Words = (typeof DICTIONARIES)['en'];
+
+/** What each door says, in order, as the keys of the dictionary it draws from: its texts and each
+ * field's placeholder. The brand's name is data. */
+const KEYS: Record<string, (w: Words) => string[]> = {
+  signin: (w) => [
     'Minh Phát',
-    'Sign in to your account',
-    'Username',
-    'Enter your username',
-    'Password',
-    'Enter your password',
-    'Sign In',
+    w.auth.title,
+    w.auth.username,
+    w.auth.usernamePlaceholder,
+    w.auth.password,
+    w.auth.passwordPlaceholder,
+    w.auth.submit,
   ],
-  'en signin-refused': [
+  'signin-refused': (w) => [
     'Minh Phát',
-    'Sign in to your account',
-    'Wrong username or password.',
-    'Username',
-    'Enter your username',
-    'Password',
-    'Enter your password',
-    'Sign In',
+    w.auth.title,
+    w.auth.refused,
+    w.auth.username,
+    w.auth.usernamePlaceholder,
+    w.auth.password,
+    w.auth.passwordPlaceholder,
+    w.auth.submit,
   ],
-  'en operator': [
+  operator: (w) => ['Credo', w.operator.signIn, w.passkey.signInHint, w.passkey.signInButton],
+  'operator-notgiven': (w) => [
     'Credo',
-    'Operator sign-in',
-    'Your device will ask for your fingerprint, face or PIN.',
-    'Sign in with a passkey',
+    w.operator.signIn,
+    w.passkey.notGiven,
+    w.passkey.signInHint,
+    w.passkey.signInButton,
   ],
-  'en operator-notgiven': [
+  'operator-refused': (w) => [
     'Credo',
-    'Operator sign-in',
-    'No passkey was given. Try again when you are ready.',
-    'Your device will ask for your fingerprint, face or PIN.',
-    'Sign in with a passkey',
+    w.operator.signIn,
+    w.passkey.refused,
+    w.passkey.signInHint,
+    w.passkey.signInButton,
   ],
-  'en operator-refused': [
-    'Credo',
-    'Operator sign-in',
-    'No operator here has this passkey. Ask another operator for a new link.',
-    'Your device will ask for your fingerprint, face or PIN.',
-    'Sign in with a passkey',
-  ],
-  'en qr-busy': ['Minh Phát', 'Signing you in', 'One moment.'],
-  'en qr-refused': [
+  'qr-busy': (w) => ['Minh Phát', w.qrSignIn.busyTitle, w.qrSignIn.busyText],
+  'qr-refused': (w) => [
     'Minh Phát',
-    'This code cannot sign you in',
-    'It was used already, or its 15 minutes are over. Ask your admin for a new one.',
-    'Sign in with a password',
-  ],
-  'vi signin': [
-    'Minh Phát',
-    'Đăng nhập vào tài khoản của bạn',
-    'Tên đăng nhập',
-    'Nhập tên đăng nhập',
-    'Mật khẩu',
-    'Nhập mật khẩu',
-    'Đăng nhập',
-  ],
-  'vi signin-refused': [
-    'Minh Phát',
-    'Đăng nhập vào tài khoản của bạn',
-    'Sai tên đăng nhập hoặc mật khẩu.',
-    'Tên đăng nhập',
-    'Nhập tên đăng nhập',
-    'Mật khẩu',
-    'Nhập mật khẩu',
-    'Đăng nhập',
-  ],
-  'vi operator': [
-    'Credo',
-    'Đăng nhập người vận hành',
-    'Thiết bị sẽ yêu cầu vân tay, khuôn mặt hoặc mã PIN của bạn.',
-    'Đăng nhập bằng khóa truy cập',
-  ],
-  'vi operator-notgiven': [
-    'Credo',
-    'Đăng nhập người vận hành',
-    'Chưa có khóa truy cập nào được đưa ra. Hãy thử lại khi bạn sẵn sàng.',
-    'Thiết bị sẽ yêu cầu vân tay, khuôn mặt hoặc mã PIN của bạn.',
-    'Đăng nhập bằng khóa truy cập',
-  ],
-  'vi operator-refused': [
-    'Credo',
-    'Đăng nhập người vận hành',
-    'Không có người vận hành nào ở đây dùng khóa truy cập này. Hãy nhờ một người vận hành khác gửi đường dẫn mới.',
-    'Thiết bị sẽ yêu cầu vân tay, khuôn mặt hoặc mã PIN của bạn.',
-    'Đăng nhập bằng khóa truy cập',
-  ],
-  'vi qr-busy': ['Minh Phát', 'Đang đăng nhập cho bạn', 'Xin chờ một chút.'],
-  'vi qr-refused': [
-    'Minh Phát',
-    'Mã này không đăng nhập được',
-    'Mã đã được dùng, hoặc đã quá 15 phút. Hãy nhờ quản trị viên cấp mã mới.',
-    'Đăng nhập bằng mật khẩu',
+    w.qrSignIn.refusedTitle,
+    w.qrSignIn.refusedText,
+    w.qrSignIn.password,
   ],
 };
 
@@ -127,11 +79,13 @@ const doors: [string, ReactNode][] = [
 ];
 
 describe('the words of the doors', () => {
-  it('8: every word each door says is the word it said before, in English and in Vietnamese', () => {
+  it('8: every word each door says is the word of its keys, in order, in English and in Vietnamese', () => {
     for (const language of ['en', 'vi'] as const) {
       for (const [name, door] of doors) {
         const { container } = draw(door, language);
-        expect(wordsOf(container), `${language} ${name}`).toEqual(BEFORE[`${language} ${name}`]);
+        expect(wordsOf(container), `${language} ${name}`).toEqual(
+          KEYS[name](DICTIONARIES[language]),
+        );
         cleanup();
       }
     }

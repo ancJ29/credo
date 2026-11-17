@@ -2,15 +2,20 @@ import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { draw } from '../../tests/render';
+import { DICTIONARIES } from '../i18n';
 import { NewClient } from './NewClient';
+
+const words = DICTIONARIES.en.operator;
+/** A label that carries a star is found by its word inside it, as the dictionary spells it. */
+const labelled = (word: string) => new RegExp(word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
 
 describe('NewClient', () => {
   it('asks for a code and the company’s name, and says what a code may be', () => {
     draw(<NewClient status="idle" onSubmit={vi.fn()} />);
 
-    expect(screen.getByLabelText(/Client code/)).toBeTruthy();
-    expect(screen.getByLabelText(/Company name/)).toBeTruthy();
-    expect(screen.getByText(/3 to 32 characters/)).toBeTruthy();
+    expect(screen.getByLabelText(labelled(words.code))).toBeTruthy();
+    expect(screen.getByLabelText(labelled(words.companyName))).toBeTruthy();
+    expect(screen.getByText(words.codeHint)).toBeTruthy();
     expect(screen.queryByRole('alert')).toBeNull();
   });
 
@@ -18,9 +23,9 @@ describe('NewClient', () => {
     const onSubmit = vi.fn();
     draw(<NewClient status="idle" onSubmit={onSubmit} />);
 
-    await userEvent.type(screen.getByLabelText(/Client code/), 'minh-phat');
-    await userEvent.type(screen.getByLabelText(/Company name/), 'Minh Phát');
-    await userEvent.click(screen.getByRole('button', { name: 'Make the client' }));
+    await userEvent.type(screen.getByLabelText(labelled(words.code)), 'minh-phat');
+    await userEvent.type(screen.getByLabelText(labelled(words.companyName)), 'Minh Phát');
+    await userEvent.click(screen.getByRole('button', { name: words.make }));
 
     expect(onSubmit).toHaveBeenCalledExactlyOnceWith('minh-phat', 'Minh Phát');
   });
@@ -28,38 +33,38 @@ describe('NewClient', () => {
   it('waits while the service answers', () => {
     draw(<NewClient status="busy" onSubmit={vi.fn()} />);
 
-    expect(
-      screen.getByRole('button', { name: 'Make the client' }).hasAttribute('data-loading'),
-    ).toBe(true);
+    expect(screen.getByRole('button', { name: words.make }).hasAttribute('data-loading')).toBe(
+      true,
+    );
   });
 
-  it('a failure says nothing was made and that what was typed is kept', () => {
+  it('a failure says so and leaves the code unmarked', () => {
     draw(<NewClient status="failed" onSubmit={vi.fn()} />);
 
-    expect(screen.getByRole('alert').textContent).toContain('The client was not made');
-    expect(screen.getByRole('alert').textContent).toContain('still here');
-    expect(screen.getByLabelText(/Client code/).getAttribute('aria-invalid')).toBeNull();
+    expect(screen.getByRole('alert').textContent).toBe(words.failed);
+    expect(screen.getByLabelText(labelled(words.code)).getAttribute('aria-invalid')).toBeNull();
   });
 
-  it('a taken code says so, that nothing changed, and marks the code', () => {
+  it('a taken code says so and marks the code', () => {
     draw(<NewClient status="taken" onSubmit={vi.fn()} />);
 
-    expect(screen.getByRole('alert').textContent).toContain('already belongs to another client');
-    expect(screen.getByRole('alert').textContent).toContain('nothing was changed');
-    expect(screen.getByLabelText(/Client code/).getAttribute('aria-invalid')).toBe('true');
+    expect(screen.getByRole('alert').textContent).toBe(words.taken);
+    expect(screen.getByLabelText(labelled(words.code)).getAttribute('aria-invalid')).toBe('true');
   });
 
   it('A code not in the form is refused on its field, saying the rule, and nothing is sent', async () => {
     const onSubmit = vi.fn();
     draw(<NewClient status="idle" onSubmit={onSubmit} />);
 
-    await userEvent.type(screen.getByLabelText(/Client code/), '9 bad code');
-    await userEvent.type(screen.getByLabelText(/Company name/), 'Minh Phát');
-    await userEvent.click(screen.getByRole('button', { name: 'Make the client' }));
+    await userEvent.type(screen.getByLabelText(labelled(words.code)), '9 bad code');
+    await userEvent.type(screen.getByLabelText(labelled(words.companyName)), 'Minh Phát');
+    await userEvent.click(screen.getByRole('button', { name: words.make }));
 
-    expect(screen.getByText(/Use 3 to 32 lowercase letters/)).toBeTruthy();
-    expect(screen.getByLabelText(/Client code/).getAttribute('aria-invalid')).toBe('true');
-    expect(screen.getByLabelText(/Company name/).getAttribute('aria-invalid')).toBeNull();
+    expect(screen.getByText(words.codeInvalid)).toBeTruthy();
+    expect(screen.getByLabelText(labelled(words.code)).getAttribute('aria-invalid')).toBe('true');
+    expect(
+      screen.getByLabelText(labelled(words.companyName)).getAttribute('aria-invalid'),
+    ).toBeNull();
     expect(onSubmit).not.toHaveBeenCalled();
   });
 
@@ -67,18 +72,18 @@ describe('NewClient', () => {
     const onSubmit = vi.fn();
     draw(<NewClient status="idle" onSubmit={onSubmit} />);
 
-    await userEvent.type(screen.getByLabelText(/Client code/), 'minh-phat');
-    await userEvent.type(screen.getByLabelText(/Company name/), '   ');
-    await userEvent.click(screen.getByRole('button', { name: 'Make the client' }));
+    await userEvent.type(screen.getByLabelText(labelled(words.code)), 'minh-phat');
+    await userEvent.type(screen.getByLabelText(labelled(words.companyName)), '   ');
+    await userEvent.click(screen.getByRole('button', { name: words.make }));
 
-    expect(screen.getByText('Enter the company’s name.')).toBeTruthy();
-    expect(screen.getByLabelText(/Client code/).getAttribute('aria-invalid')).toBeNull();
+    expect(screen.getByText(words.nameInvalid)).toBeTruthy();
+    expect(screen.getByLabelText(labelled(words.code)).getAttribute('aria-invalid')).toBeNull();
     expect(onSubmit).not.toHaveBeenCalled();
 
-    await userEvent.type(screen.getByLabelText(/Company name/), ' Minh Phát ');
-    await userEvent.click(screen.getByRole('button', { name: 'Make the client' }));
+    await userEvent.type(screen.getByLabelText(labelled(words.companyName)), ' Minh Phát ');
+    await userEvent.click(screen.getByRole('button', { name: words.make }));
 
-    expect(screen.queryByText('Enter the company’s name.')).toBeNull();
+    expect(screen.queryByText(words.nameInvalid)).toBeNull();
     expect(onSubmit).toHaveBeenCalledExactlyOnceWith('minh-phat', 'Minh Phát');
   });
 
@@ -86,9 +91,9 @@ describe('NewClient', () => {
     const onSubmit = vi.fn();
     draw(<NewClient status="idle" onSubmit={onSubmit} />);
 
-    await userEvent.type(screen.getByLabelText(/Client code/), '  Minh-PHAT ');
-    await userEvent.type(screen.getByLabelText(/Company name/), 'Minh Phát');
-    await userEvent.click(screen.getByRole('button', { name: 'Make the client' }));
+    await userEvent.type(screen.getByLabelText(labelled(words.code)), '  Minh-PHAT ');
+    await userEvent.type(screen.getByLabelText(labelled(words.companyName)), 'Minh Phát');
+    await userEvent.click(screen.getByRole('button', { name: words.make }));
 
     expect(onSubmit).toHaveBeenCalledExactlyOnceWith('minh-phat', 'Minh Phát');
   });

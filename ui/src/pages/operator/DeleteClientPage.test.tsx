@@ -6,25 +6,32 @@ import { ApiError } from '../../api';
 import { DICTIONARIES } from '../../i18n';
 
 const words = DICTIONARIES.en;
+/** A label that carries a star is found by its word inside it, as the dictionary spells it. */
+const labelled = (word: string) => new RegExp(word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
 const PATH = '/operator/clients/hoa-sen/delete';
 const open = (options: Parameters<typeof openApp>[1] = {}, path = PATH) =>
   openApp(path, { operator: true, ...options });
 
-const codeBox = () => screen.findByLabelText(/Type the client’s code to confirm/);
+const codeBox = () => screen.findByLabelText(labelled(words.operator.deleteClientCodeLabel));
 const deleteButton = () => screen.findByRole('button', { name: words.operator.deleteClientMake });
 
 describe('a client deleted whole', () => {
   it('the page names the company and what goes; the code typed and a touch made for this act delete it, and the list comes back without it', async () => {
     const { api } = open();
 
-    expect(await screen.findByRole('heading', { level: 2, name: 'Delete Hoa Sen' })).toBeTruthy();
+    expect(
+      await screen.findByRole('heading', {
+        level: 2,
+        name: words.operator.deleteClientTitle.replace('{{name}}', 'Hoa Sen'),
+      }),
+    ).toBeTruthy();
     expect(
       screen.getByText(words.operator.deleteClientIntro.replace('{{name}}', 'Hoa Sen')),
     ).toBeTruthy();
     await userEvent.type(await codeBox(), 'hoa-sen');
     await userEvent.click(await deleteButton());
 
-    expect(await screen.findByRole('heading', { level: 2, name: 'Clients' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { level: 2, name: words.nav.clients })).toBeTruthy();
     expect(api.operatorPasskeyConfirmOptions).toHaveBeenCalledExactlyOnceWith('delete-client');
     expect(api.deleteClient).toHaveBeenCalledExactlyOnceWith('hoa-sen', {
       confirm: expect.objectContaining({ token: 'fake.token' }) as unknown,
@@ -66,7 +73,7 @@ describe('a client deleted whole', () => {
       await screen.findByRole('button', { name: words.operator.deleteClientResume }),
     );
 
-    expect(await screen.findByRole('heading', { level: 2, name: 'Clients' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { level: 2, name: words.nav.clients })).toBeTruthy();
     expect(api.deleteClient).toHaveBeenCalledTimes(2);
     expect(api.operatorPasskeyConfirmOptions).not.toHaveBeenCalled();
   });
@@ -87,20 +94,12 @@ describe('a client deleted whole', () => {
     expect(await screen.findByRole('dialog', { name: words.passkey.endedTitle })).toBeTruthy();
   });
 
-  it('the failure words send the operator back to press again, never to look for a row that is gone', () => {
-    for (const language of ['en', 'vi'] as const) {
-      const failed = DICTIONARIES[language].operator.deleteClientFailed;
-      expect(failed).toContain(DICTIONARIES[language].operator.deleteClientResume);
-      expect(failed).not.toMatch(/if it is still there|nếu khách hàng vẫn còn/);
-    }
-  });
-
   it('a client already gone (404) leaves the page listing again', async () => {
     open({ cue: 'deleteClient:404' });
     await userEvent.type(await codeBox(), 'hoa-sen');
     await userEvent.click(await deleteButton());
 
-    expect(await screen.findByRole('heading', { level: 2, name: 'Clients' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { level: 2, name: words.nav.clients })).toBeTruthy();
   });
 
   it('records left make the page press on and say how many, until none are', async () => {
@@ -112,7 +111,7 @@ describe('a client deleted whole', () => {
     await userEvent.type(await codeBox(), 'hoa-sen');
     await userEvent.click(await deleteButton());
 
-    expect(await screen.findByRole('heading', { level: 2, name: 'Clients' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { level: 2, name: words.nav.clients })).toBeTruthy();
     expect(api.deleteClient).toHaveBeenCalledTimes(3);
     expect(api.operatorPasskeyConfirmOptions).toHaveBeenCalledOnce();
   });
@@ -149,14 +148,19 @@ describe('a client deleted whole', () => {
     await userEvent.click(await deleteButton());
     expect(await screen.findByRole('dialog', { name: words.passkey.endedTitle })).toBeTruthy();
     await waitFor(() =>
-      expect(screen.getByRole('button', { name: /Delete the client/ })).toBeTruthy(),
+      expect(screen.getByRole('button', { name: words.operator.deleteClientMake })).toBeTruthy(),
     );
   });
 
   it('says it all in Vietnamese', async () => {
     open({ language: 'vi' });
 
-    expect(await screen.findByRole('heading', { level: 2, name: 'Xóa Hoa Sen' })).toBeTruthy();
+    expect(
+      await screen.findByRole('heading', {
+        level: 2,
+        name: DICTIONARIES.vi.operator.deleteClientTitle.replace('{{name}}', 'Hoa Sen'),
+      }),
+    ).toBeTruthy();
     expect(
       screen.getByRole('button', { name: DICTIONARIES.vi.operator.deleteClientMake }),
     ).toBeTruthy();

@@ -13,6 +13,13 @@ import {
   textOf,
 } from './importSheet';
 
+/** The form's own word for each column, in each language: a file's headings. */
+const HEAD = { en: DICTIONARIES.en.addPerson, vi: DICTIONARIES.vi.addPerson };
+/** A word as a person types it without accents, the way a reader must forgive. */
+const unaccented = (text: string) =>
+  text.normalize('NFD').replace(/\p{M}/gu, '').replace(/đ/gi, 'd');
+
+const W = DICTIONARIES.en.import;
 const BARE: StaffSetup = { departments: [], positions: [], extra: {} };
 const TAKEN = new Set(['EMP-0002']);
 
@@ -65,8 +72,8 @@ describe('the staff file’s columns', () => {
   it('are headed by the form’s own words, or the field’s name, in the language', () => {
     const [name, , , , , , , licence] = columnsOf(DEMO_STAFF_SETUP);
 
-    expect(headingOf(name, 'en')).toBe('Name');
-    expect(headingOf(name, 'vi')).toBe('Tên');
+    expect(headingOf(name, 'en')).toBe(HEAD.en.name);
+    expect(headingOf(name, 'vi')).toBe(HEAD.vi.name);
     expect(headingOf(licence, 'en')).toBe('Driving licence');
     expect(headingOf(licence, 'vi')).toBe('Bằng lái xe');
   });
@@ -90,7 +97,7 @@ describe('the template', () => {
       expect(staff?.rows[0]).toEqual(headings);
       expect(staff?.rows).toHaveLength(3);
       expect(notes?.rows.map((row) => row[0])).toEqual([
-        language === 'en' ? 'Column' : 'Cột',
+        DICTIONARIES[language].import.noteColumn,
         ...headings,
       ]);
       // every cell is text, so a phone keeps its leading zero
@@ -102,7 +109,7 @@ describe('the template', () => {
     const [staff, notes] = templateSheets(DEMO_STAFF_SETUP, 'en');
     const [first, second] = staff.rows.slice(1);
     expect(first).toEqual([
-      'Nguyen Van A',
+      W.sampleName1,
       '',
       '0900 000 001',
       '0900 111 001',
@@ -111,38 +118,37 @@ describe('the template', () => {
       '',
       'Class B2',
       '2026-01-15',
-      'Some text',
+      W.sampleText,
       '1',
     ]);
     expect(second?.slice(4, 6)).toEqual(['Văn phòng', 'Nhân viên']);
-    expect(second?.slice(7)).toEqual(['Class C', '2026-02-15', 'Some text', '2']);
-    expect(staff?.name).toBe('Staff');
-    expect(notes?.name).toBe('About the columns');
+    expect(second?.slice(7)).toEqual(['Class C', '2026-02-15', W.sampleText, '2']);
+    expect(staff?.name).toBe(W.sheetStaff);
+    expect(notes?.name).toBe(W.sheetNotes);
   });
 
   it('says on its second sheet what each column takes, and which is needed', () => {
     const rows = templateSheets(DEMO_STAFF_SETUP, 'en')[1].rows;
     const of = (heading: string) => rows.find((row) => row[0] === heading);
 
-    expect(rows[0]).toEqual(['Column', 'Needed?', 'What to write']);
-    expect(of('Name')?.slice(1)).toEqual([
-      'Needed',
-      'The person’s name. The only column every row needs.',
-    ]);
-    expect(of('Code')?.[1]).toBe('Optional');
-    expect(of('Department')?.[2]).toBe('One of: Kho, Văn phòng, Giao hàng. Leave empty for none.');
-    expect(of('Position')?.[2]).toBe('One of: Quản lý, Nhân viên, Thực tập. Leave empty for none.');
-    expect(of('Phone')?.[2]).toBe(
-      'A phone number. Excel drops a leading 0 from a number: format the cell as Text first, or type an apostrophe before it.',
+    expect(rows[0]).toEqual([W.noteColumn, W.noteNeeded, W.noteWrite]);
+    expect(of(HEAD.en.name)?.slice(1)).toEqual([W.needed, W.writeName]);
+    expect(of(HEAD.en.code)?.[1]).toBe(W.optional);
+    expect(of(HEAD.en.department)?.[2]).toBe(
+      W.writeDepartment.replaceAll('{{names}}', 'Kho, Văn phòng, Giao hàng'),
     );
-    expect(of('Second phone')?.[2]).toBe(
-      'A phone number. Excel drops a leading 0 from a number: format the cell as Text first, or type an apostrophe before it.',
+    expect(of(HEAD.en.position)?.[2]).toBe(
+      W.writePosition.replaceAll('{{names}}', 'Quản lý, Nhân viên, Thực tập'),
     );
-    expect(of('Note')?.[2]).toBe('Any note.');
-    expect(of('Driving licence')?.[2]).toBe('One of: Class B2, Class C.');
-    expect(of('Contract date')?.[2]).toBe('A date as year-month-day, for example 2026-10-29.');
-    expect(of('Vehicle plate')?.[2]).toBe('Text of at most 500 characters.');
-    expect(of('Dependants')?.[2]).toBe('A number, for example 3 or 3.5.');
+    expect(of(HEAD.en.phone)?.[2]).toBe(W.writePhone);
+    expect(of(HEAD.en.personalPhone)?.[2]).toBe(W.writePhone);
+    expect(of(HEAD.en.note)?.[2]).toBe(W.writeNote);
+    expect(of('Driving licence')?.[2]).toBe(
+      W.writeChoice.replaceAll('{{names}}', 'Class B2, Class C'),
+    );
+    expect(of('Contract date')?.[2]).toBe(W.writeDate);
+    expect(of('Vehicle plate')?.[2]).toBe(W.writeText);
+    expect(of('Dependants')?.[2]).toBe(W.writeNumber);
   });
 
   it('fills every {{names}} of a word that names the options twice', () => {
@@ -154,10 +160,10 @@ describe('the template', () => {
       }
       const rows = templateSheets(DEMO_STAFF_SETUP, 'en')[1].rows;
       const of = (heading: string) => rows.find((row) => row[0] === heading)?.[2];
-      expect(of('Department')).toBe(
+      expect(of(HEAD.en.department)).toBe(
         'Of: Kho, Văn phòng, Giao hàng. Again: Kho, Văn phòng, Giao hàng.',
       );
-      expect(of('Position')).toBe(
+      expect(of(HEAD.en.position)).toBe(
         'Of: Quản lý, Nhân viên, Thực tập. Again: Quản lý, Nhân viên, Thực tập.',
       );
       expect(of('Driving licence')).toBe('Of: Class B2, Class C. Again: Class B2, Class C.');
@@ -177,17 +183,21 @@ describe('the template', () => {
     const [staff, notes] = templateSheets({ ...BARE, customFields: [choice] }, 'vi');
 
     expect(staff?.rows[0]).toEqual([
-      'Tên',
-      'Mã',
-      'Điện thoại',
-      'Phòng ban',
-      'Chức vụ',
-      'Ghi chú',
+      HEAD.vi.name,
+      HEAD.vi.code,
+      HEAD.vi.phone,
+      HEAD.vi.department,
+      HEAD.vi.position,
+      HEAD.vi.note,
       'Cỡ',
     ]);
     expect(staff?.rows[1]?.slice(4)).toEqual(['', '', 'Vừa']);
     expect(staff?.rows[2]?.slice(6)).toEqual(['Vừa']);
-    expect(notes?.rows.at(-1)).toEqual(['Cỡ', 'Tùy chọn', 'Một trong: Vừa.']);
+    expect(notes?.rows.at(-1)).toEqual([
+      'Cỡ',
+      DICTIONARIES.vi.import.optional,
+      DICTIONARIES.vi.import.writeChoice.replaceAll('{{names}}', 'Vừa'),
+    ]);
   });
 });
 
@@ -242,7 +252,14 @@ describe('the staff file, read', () => {
 
   it('reads headings in either language, in any order, without accents, case or a required star, and a department or a choice by its name', () => {
     const table: Table = [
-      ['ghi chu', 'POSITION *', 'tên', 'Driving licence', 'Phong ban', 'Ma'],
+      [
+        unaccented(HEAD.vi.note).toLowerCase(),
+        `${HEAD.en.position.toUpperCase()} *`,
+        HEAD.vi.name.toLowerCase(),
+        'Driving licence',
+        unaccented(HEAD.vi.department),
+        unaccented(HEAD.vi.code),
+      ],
       ['một ghi chú', 'nhan vien', 'Lê Văn', 'hạng c', 'KHO', 'nv-1'],
       ['', '', 'Hạ', 'Class B2', '', ''],
     ];
@@ -262,7 +279,7 @@ describe('the staff file, read', () => {
 
   it('takes the first of two columns headed alike', () => {
     const [row] = read([
-      ['Tên', 'Name', 'Mã'],
+      [HEAD.vi.name, HEAD.en.name, HEAD.vi.code],
       ['Hạ', 'Bình', 'nv-9'],
     ]);
 
@@ -272,7 +289,7 @@ describe('the staff file, read', () => {
   it('skips empty rows but counts them in the line, and ignores a column the company does not keep', () => {
     const table: Table = [
       [],
-      ['Name', 'Second phone', 'Phone'],
+      [HEAD.en.name, HEAD.en.personalPhone, HEAD.en.phone],
       [null, null, null],
       ['Lan', '0900', 7],
       ['   ', '', ''],
@@ -288,7 +305,7 @@ describe('the staff file, read', () => {
 
   it('refuses a code that is not a code, a name over 200 characters, and a position the company lacks', () => {
     const table: Table = [
-      ['Name', 'Code', 'Position'],
+      [HEAD.en.name, HEAD.en.code, HEAD.en.position],
       ['A', 'a b', ''],
       ['x'.repeat(201), '', ''],
       ['C', '', 'Giám đốc'],
@@ -304,7 +321,7 @@ describe('the staff file, read', () => {
 
   it('gives a code to the first row that holds it: a row refused for another reason does not claim it, and a code is the same in any case', () => {
     const table: Table = [
-      ['Name', 'Code', 'Department'],
+      [HEAD.en.name, HEAD.en.code, HEAD.en.department],
       ['A', 'nv-1', 'Nowhere'],
       ['B', 'NV-1', ''],
       ['C', 'nv-1', ''],
@@ -330,7 +347,7 @@ describe('the staff file, read', () => {
 
     const [row] = read(
       [
-        ['Name', 'Department', 'Old part'],
+        [HEAD.en.name, HEAD.en.department, 'Old part'],
         ['Lan', 'Kho', 'x'],
       ],
       setup,
@@ -345,14 +362,14 @@ describe('the staff file, read', () => {
   it('fails as a whole when the name column is missing, there is no row, or there are more than 500', () => {
     const rows = (count: number): Cell[][] => Array.from({ length: count }, () => ['Lan']);
 
-    expect(readStaff([['Code'], ['A-1']], BARE, TAKEN)).toEqual({
+    expect(readStaff([[HEAD.en.code], ['A-1']], BARE, TAKEN)).toEqual({
       kind: 'failed',
       reason: 'no-name',
     });
     expect(readStaff([], BARE, TAKEN)).toEqual({ kind: 'failed', reason: 'no-name' });
-    expect(readStaff([['Name']], BARE, TAKEN)).toEqual({ kind: 'failed', reason: 'no-rows' });
-    expect(readStaff([['Name'], ...rows(IMPORT_MAX_ROWS)], BARE, TAKEN).kind).toBe('read');
-    expect(readStaff([['Name'], ...rows(IMPORT_MAX_ROWS + 1)], BARE, TAKEN)).toEqual({
+    expect(readStaff([[HEAD.en.name]], BARE, TAKEN)).toEqual({ kind: 'failed', reason: 'no-rows' });
+    expect(readStaff([[HEAD.en.name], ...rows(IMPORT_MAX_ROWS)], BARE, TAKEN).kind).toBe('read');
+    expect(readStaff([[HEAD.en.name], ...rows(IMPORT_MAX_ROWS + 1)], BARE, TAKEN)).toEqual({
       kind: 'failed',
       reason: 'too-many',
     });

@@ -5,6 +5,11 @@ import { draw } from '../../../tests/render';
 import { AddClientPage } from './AddClientPage';
 import { type Api, ApiError } from '../../api';
 
+import { DICTIONARIES } from '../../i18n';
+
+const words = DICTIONARIES.en;
+/** A label that carries a star is found by its word inside it, as the dictionary spells it. */
+const labelled = (word: string) => new RegExp(word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
 const GIB = 1024 ** 3;
 const made = {
   link: '/login?client-code=minh-phat',
@@ -27,9 +32,9 @@ const page = (operatorBoxes: Api['operatorBoxes']) => {
 };
 
 async function fillAndMake() {
-  await userEvent.type(screen.getByLabelText(/Client code/), 'minh-phat');
-  await userEvent.type(screen.getByLabelText(/Company name/), 'Minh Phát');
-  await userEvent.click(screen.getByRole('button', { name: 'Make the client' }));
+  await userEvent.type(screen.getByLabelText(labelled(words.operator.code)), 'minh-phat');
+  await userEvent.type(screen.getByLabelText(labelled(words.operator.companyName)), 'Minh Phát');
+  await userEvent.click(screen.getByRole('button', { name: words.operator.make }));
 }
 
 describe('AddClientPage, the boxes', () => {
@@ -39,7 +44,9 @@ describe('AddClientPage, the boxes', () => {
 
     await fillAndMake();
 
-    expect(await screen.findByRole('heading', { level: 2, name: 'Client made' })).toBeTruthy();
+    expect(
+      await screen.findByRole('heading', { level: 2, name: words.operator.madeTitle }),
+    ).toBeTruthy();
     expect(makeClient).toHaveBeenCalledExactlyOnceWith('minh-phat', 'Minh Phát', 'b2');
   });
 
@@ -49,7 +56,9 @@ describe('AddClientPage, the boxes', () => {
 
     await fillAndMake();
 
-    expect(await screen.findByRole('heading', { level: 2, name: 'Client made' })).toBeTruthy();
+    expect(
+      await screen.findByRole('heading', { level: 2, name: words.operator.madeTitle }),
+    ).toBeTruthy();
     expect(makeClient).toHaveBeenCalledExactlyOnceWith('minh-phat', 'Minh Phát');
   });
 
@@ -58,7 +67,9 @@ describe('AddClientPage, the boxes', () => {
 
     await fillAndMake();
 
-    expect(await screen.findByRole('heading', { level: 2, name: 'Client made' })).toBeTruthy();
+    expect(
+      await screen.findByRole('heading', { level: 2, name: words.operator.madeTitle }),
+    ).toBeTruthy();
     expect(screen.queryAllByRole('radio')).toHaveLength(0);
     expect(makeClient).toHaveBeenCalledExactlyOnceWith('minh-phat', 'Minh Phát');
   });

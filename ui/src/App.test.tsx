@@ -6,8 +6,13 @@ import { drawApp } from '../tests/render';
 import { noPasskeys, passkeyCalls, staffCalls } from '../tests/unused';
 import { type Api, ApiError } from './api';
 import { App } from './App';
-import { DICTIONARIES } from './i18n';
+import { DICTIONARIES, LANGUAGE_NAMES } from './i18n';
 import { createDeviceStore, type DeviceStore } from './device';
+
+const words = DICTIONARIES.en;
+const wordsVi = DICTIONARIES.vi;
+/** A label that carries a star is found by its word inside it, as the dictionary spells it. */
+const labelled = (word: string) => new RegExp(word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
 
 const config: TenantConfig = {
   name: 'Minh Phát',
@@ -87,9 +92,9 @@ const brandColour = () =>
 const signedIn = { 'credo.session': 'd.s' };
 
 async function signInAs(name = 'root', password = 'pw') {
-  await userEvent.type(await screen.findByLabelText(/Username/), name);
-  await userEvent.type(screen.getByLabelText(/Password/), password);
-  await userEvent.click(screen.getByRole('button', { name: 'Sign In' }));
+  await userEvent.type(await screen.findByLabelText(labelled(words.auth.username)), name);
+  await userEvent.type(screen.getByLabelText(labelled(words.auth.password)), password);
+  await userEvent.click(screen.getByRole('button', { name: words.auth.submit }));
 }
 
 describe('the app', () => {
@@ -97,14 +102,14 @@ describe('the app', () => {
     const { api } = setup();
 
     expect((await screen.findByRole('heading', { level: 1 })).textContent).toBe('Minh Phát');
-    expect(screen.getByRole('heading', { level: 2 }).textContent).toBe('Sign in to your account');
+    expect(screen.getByRole('heading', { level: 2 }).textContent).toBe(words.auth.title);
     expect(api.me).not.toHaveBeenCalled();
   });
 
   it('A session lasts a week; a reload keeps it', async () => {
     const { api } = setup({}, signedIn);
 
-    expect((await screen.findAllByText('Settings')).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText(words.nav.settings)).length).toBeGreaterThan(0);
     expect(screen.getByRole('button', { name: 'root' })).toBeTruthy();
     expect(api.me).toHaveBeenCalledOnce();
   });
@@ -112,7 +117,7 @@ describe('the app', () => {
   it('Only the BFF’s 401 signs out: a handle it refuses is dropped', async () => {
     const { device } = setup({ me: () => Promise.reject(new ApiError(401)) }, signedIn);
 
-    expect(await screen.findByLabelText(/Username/)).toBeTruthy();
+    expect(await screen.findByLabelText(labelled(words.auth.username))).toBeTruthy();
     expect(device.authId()).toBeNull();
   });
 
@@ -140,10 +145,10 @@ describe('the app', () => {
     expect((await screen.findByRole('alert')).textContent).toContain(
       DICTIONARIES.vi.common.unavailable,
     );
-    expect(screen.queryByLabelText(/Username/)).toBeNull();
+    expect(screen.queryByLabelText(labelled(words.auth.username))).toBeNull();
 
     await userEvent.click(screen.getByRole('button', { name: DICTIONARIES.vi.common.retry }));
-    expect(await screen.findByLabelText(/Username/)).toBeTruthy();
+    expect(await screen.findByLabelText(labelled(words.auth.username))).toBeTruthy();
     expect(getConfig).toHaveBeenCalledTimes(2);
   });
 
@@ -151,9 +156,9 @@ describe('the app', () => {
     const { api, device } = setup();
     await signInAs();
 
-    expect((await screen.findByRole('heading', { level: 2, name: 'Orders' })).textContent).toBe(
-      'Orders',
-    );
+    expect(
+      (await screen.findByRole('heading', { level: 2, name: words.nav.orders })).textContent,
+    ).toBe(words.nav.orders);
     expect(api.signIn).toHaveBeenCalledExactlyOnceWith('root', 'pw');
     expect(device.authId()).toBe('d.s');
   });
@@ -166,9 +171,9 @@ describe('the app', () => {
     setup({ signIn });
 
     await signInAs();
-    expect((await screen.findByRole('alert')).textContent).toContain('Wrong username or password');
+    expect((await screen.findByRole('alert')).textContent).toBe(words.auth.refused);
 
-    await userEvent.click(screen.getByRole('button', { name: 'Sign In' }));
+    await userEvent.click(screen.getByRole('button', { name: words.auth.submit }));
     expect((await screen.findByRole('alert')).textContent).toContain(
       DICTIONARIES.vi.common.unavailable,
     );
@@ -183,10 +188,10 @@ describe('the app', () => {
 
     await signInAs();
     expect((await screen.findByRole('alert')).textContent).toBe(
-      'Too many wrong tries. Try again in 30 seconds.',
+      words.wait.seconds.replace('{{count}}', '30'),
     );
 
-    await userEvent.click(screen.getByRole('button', { name: 'Sign In' }));
+    await userEvent.click(screen.getByRole('button', { name: words.auth.submit }));
     expect((await screen.findByRole('alert')).textContent).toContain(
       DICTIONARIES.vi.common.unavailable,
     );
@@ -196,33 +201,33 @@ describe('the app', () => {
     const { api, device } = setup({ signOut: () => Promise.reject(new ApiError(null)) }, signedIn);
 
     await userEvent.click(await screen.findByRole('button', { name: 'root' }));
-    await userEvent.click(screen.getByRole('menuitem', { name: 'Sign out' }));
+    await userEvent.click(screen.getByRole('menuitem', { name: words.user.signOut }));
 
-    expect(await screen.findByLabelText(/Username/)).toBeTruthy();
+    expect(await screen.findByLabelText(labelled(words.auth.username))).toBeTruthy();
     expect(device.authId()).toBeNull();
     expect(api.me).toHaveBeenCalledOnce();
   });
 
   it('With both languages each user switches from the header’s button, kept on that device', async () => {
     const first = setup({}, signedIn);
-    expect((await screen.findAllByText('Settings')).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText(words.nav.settings)).length).toBeGreaterThan(0);
 
-    await userEvent.click(screen.getByRole('button', { name: 'Language' }));
-    await userEvent.click(screen.getByRole('menuitem', { name: 'Tiếng Việt' }));
+    await userEvent.click(screen.getByRole('button', { name: words.user.language }));
+    await userEvent.click(screen.getByRole('menuitem', { name: LANGUAGE_NAMES.vi }));
 
-    expect((await screen.findAllByText('Cài đặt')).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText(wordsVi.nav.settings)).length).toBeGreaterThan(0);
     expect(first.device.language()).toBe('vi');
     first.unmount();
 
     const second = createDeviceStore(first.storage);
     drawApp(<App api={first.api} device={second} passkeys={noPasskeys} build="dev" test />);
-    expect((await screen.findAllByText('Cài đặt')).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText(wordsVi.nav.settings)).length).toBeGreaterThan(0);
   });
 
   it('4: More opens at its own address with the other pages, the password and sign-out, and the toggle’s state is kept on the device', async () => {
     const { device } = setup({}, signedIn, '/more');
     const main = () => within(document.querySelector('main')!);
-    await screen.findByRole('heading', { level: 2, name: 'More' });
+    await screen.findByRole('heading', { level: 2, name: words.nav.more });
     expect((await main().findAllByRole('link')).map((link) => link.getAttribute('href'))).toEqual([
       '/staff-setup',
       '/customers',
@@ -231,7 +236,7 @@ describe('the app', () => {
     ]);
     expect(device.menuShown()).toBe(true);
 
-    await userEvent.click(screen.getByRole('button', { name: 'Hide the menu' }));
+    await userEvent.click(screen.getByRole('button', { name: words.nav.hideMenu }));
     expect(device.menuShown()).toBe(false);
   });
 
@@ -242,13 +247,13 @@ describe('the app', () => {
       '/more',
     );
 
-    expect(await screen.findByRole('button', { name: 'Sign out' })).toBeTruthy();
+    expect(await screen.findByRole('button', { name: words.user.signOut })).toBeTruthy();
   });
 
   it('Opens in the company’s default language when the device chose none', async () => {
     setup();
 
-    expect(await screen.findByText('Sign in to your account')).toBeTruthy();
+    expect(await screen.findByText(words.auth.title)).toBeTruthy();
   });
 
   it('A device that has booted before speaks the language it showed while the settings load or fail', async () => {
@@ -269,7 +274,7 @@ describe('the app', () => {
 
   it('Each successful boot keeps the language it showed: the choice, else the company’s default', async () => {
     const first = setup();
-    await screen.findByText('Sign in to your account');
+    await screen.findByText(words.auth.title);
     expect(first.device.shownLanguage()).toBe('en');
     first.unmount();
 
@@ -299,13 +304,13 @@ describe('the app', () => {
       },
       '/settings',
     );
-    await screen.findAllByText('Cài đặt');
+    await screen.findAllByText(wordsVi.nav.settings);
 
     await userEvent.click(
       await screen.findByRole('button', { name: DICTIONARIES.vi.settings.save }),
     );
 
-    expect((await screen.findAllByText('Settings')).length).toBeGreaterThan(0);
+    expect((await screen.findAllByText(words.nav.settings)).length).toBeGreaterThan(0);
   });
 
   it('The root sets the company’s name and colour; every screen shows them', async () => {
@@ -318,13 +323,13 @@ describe('the app', () => {
     );
     setup({ saveConfig }, { ...signedIn, 'credo.language': 'en' }, '/settings');
 
-    const name = await screen.findByLabelText(/Company name/);
+    const name = await screen.findByLabelText(labelled(words.settings.name));
     expect(brandColour()).toBe('#2f7d6d');
     await userEvent.clear(name);
     await userEvent.type(name, 'Minh Phát Sài Gòn');
-    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await userEvent.click(screen.getByRole('button', { name: words.settings.save }));
 
-    expect((await screen.findByRole('alert')).textContent).toContain('Saved');
+    expect((await screen.findByRole('alert')).textContent).toBe(words.settings.saved);
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Minh Phát Sài Gòn');
     expect(saveConfig).toHaveBeenCalledExactlyOnceWith(
       { ...config, name: 'Minh Phát Sài Gòn' },
@@ -337,13 +342,15 @@ describe('the app', () => {
     const saveConfig = vi.fn<Api['saveConfig']>(() => Promise.reject(new ApiError(503)));
     setup({ saveConfig }, signedIn, '/settings');
 
-    const name = await screen.findByLabelText(/Company name/);
+    const name = await screen.findByLabelText(labelled(words.settings.name));
     await userEvent.clear(name);
     await userEvent.type(name, 'Typed and kept');
-    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await userEvent.click(screen.getByRole('button', { name: words.settings.save }));
 
-    expect((await screen.findByRole('alert')).textContent).toContain('were not saved');
-    expect(screen.getByLabelText<HTMLInputElement>(/Company name/).value).toBe('Typed and kept');
+    expect((await screen.findByRole('alert')).textContent).toBe(words.settings.saveFailed);
+    expect(screen.getByLabelText<HTMLInputElement>(labelled(words.settings.name)).value).toBe(
+      'Typed and kept',
+    );
     expect(saveConfig).toHaveBeenCalledOnce();
   });
 
@@ -351,15 +358,16 @@ describe('the app', () => {
     const saveConfig = vi.fn<Api['saveConfig']>(() => Promise.reject(new ApiError(400)));
     setup({ saveConfig }, signedIn, '/settings');
 
-    const name = await screen.findByLabelText(/Company name/);
+    const name = await screen.findByLabelText(labelled(words.settings.name));
     await userEvent.clear(name);
     await userEvent.type(name, 'Typed and kept');
-    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await userEvent.click(screen.getByRole('button', { name: words.settings.save }));
 
     const alert = (await screen.findByRole('alert')).textContent;
-    expect(alert).toContain('were refused');
-    expect(alert).not.toContain('try again');
-    expect(screen.getByLabelText<HTMLInputElement>(/Company name/).value).toBe('Typed and kept');
+    expect(alert).toBe(words.settings.saveRefused);
+    expect(screen.getByLabelText<HTMLInputElement>(labelled(words.settings.name)).value).toBe(
+      'Typed and kept',
+    );
   });
 
   it('A save refused with a 401 signs out', async () => {
@@ -369,9 +377,9 @@ describe('the app', () => {
       '/settings',
     );
 
-    await userEvent.click(await screen.findByRole('button', { name: 'Save' }));
+    await userEvent.click(await screen.findByRole('button', { name: words.settings.save }));
 
-    expect(await screen.findByLabelText(/Username/)).toBeTruthy();
+    expect(await screen.findByLabelText(labelled(words.auth.username))).toBeTruthy();
     expect(device.authId()).toBeNull();
   });
 
@@ -384,17 +392,17 @@ describe('the app', () => {
       '/settings',
     );
 
-    await userEvent.click(await screen.findByRole('button', { name: 'Save' }));
-    expect((await screen.findByRole('alert')).textContent).toContain('Someone saved newer');
+    await userEvent.click(await screen.findByRole('button', { name: words.settings.save }));
+    expect((await screen.findByRole('alert')).textContent).toContain(words.settings.conflict);
 
-    await userEvent.click(screen.getByRole('button', { name: 'Show the newer settings' }));
+    await userEvent.click(screen.getByRole('button', { name: words.settings.conflictReload }));
 
     await waitFor(() =>
-      expect(screen.getByLabelText<HTMLInputElement>(/Company name/).value).toBe(
+      expect(screen.getByLabelText<HTMLInputElement>(labelled(words.settings.name)).value).toBe(
         'Someone else’s name',
       ),
     );
-    expect(screen.queryByText(/Someone saved newer/)).toBeNull();
+    expect(screen.queryByText(words.settings.conflict)).toBeNull();
   });
 
   it('A page that cannot reload the newer settings offers a retry', async () => {
@@ -409,11 +417,13 @@ describe('the app', () => {
       '/settings',
     );
 
-    await userEvent.click(await screen.findByRole('button', { name: 'Save' }));
-    await userEvent.click(await screen.findByRole('button', { name: 'Show the newer settings' }));
-    await userEvent.click(await screen.findByRole('button', { name: 'Try again' }));
+    await userEvent.click(await screen.findByRole('button', { name: words.settings.save }));
+    await userEvent.click(
+      await screen.findByRole('button', { name: words.settings.conflictReload }),
+    );
+    await userEvent.click(await screen.findByRole('button', { name: words.common.retry }));
 
-    expect(await screen.findByLabelText(/Company name/)).toBeTruthy();
+    expect(await screen.findByLabelText(labelled(words.settings.name))).toBeTruthy();
   });
 
   it('The gallery opens at its own address, asks nobody to sign in and calls no API', async () => {
@@ -427,12 +437,12 @@ describe('the app', () => {
 
   it('A near miss of the gallery’s address is the client’s app', async () => {
     setup({}, signedIn, '/48b74d079/galleryx');
-    expect(await screen.findAllByRole('heading', { name: 'Orders' })).not.toHaveLength(0);
+    expect(await screen.findAllByRole('heading', { name: words.nav.orders })).not.toHaveLength(0);
     expect(screen.queryByRole('heading', { name: 'Design system' })).toBeNull();
 
     cleanup();
     setup({}, signedIn, '/48b74d079');
-    expect(await screen.findAllByRole('heading', { name: 'Orders' })).not.toHaveLength(0);
+    expect(await screen.findAllByRole('heading', { name: words.nav.orders })).not.toHaveLength(0);
   });
 
   it('sends any other path to the first page', async () => {
@@ -441,7 +451,7 @@ describe('the app', () => {
     const api = setup().api;
     drawApp(<App api={api} device={device} passkeys={noPasskeys} build="dev" test />, '/nowhere');
 
-    expect(await screen.findAllByRole('heading', { name: 'Orders' })).not.toHaveLength(0);
+    expect(await screen.findAllByRole('heading', { name: words.nav.orders })).not.toHaveLength(0);
   });
 
   it('A client’s link opens its sign-in in its name and colours, and the device keeps the code the link names, lowered and trimmed', async () => {
@@ -458,7 +468,7 @@ describe('the app', () => {
     );
 
     expect((await screen.findByRole('heading', { level: 1 })).textContent).toBe('Minh Phát');
-    expect(screen.getByLabelText(/Username/)).toBeTruthy();
+    expect(screen.getByLabelText(labelled(words.auth.username))).toBeTruthy();
     expect(brandColour()).toBe('#2f7d6d');
     expect(seen).toEqual(['minh-phat']);
     expect(device.clientCode()).toBe('minh-phat');
@@ -495,7 +505,7 @@ describe('the app', () => {
       '/login?client-code=third-co',
       'operator.ridge.example.test',
     );
-    await screen.findByLabelText(/Username/);
+    await screen.findByLabelText(labelled(words.auth.username));
     cleanup();
     setup(
       (device) => ({ getConfig: getConfig(device) }),
@@ -503,7 +513,7 @@ describe('the app', () => {
       '/',
       'localhost',
     );
-    await screen.findByLabelText(/Username/);
+    await screen.findByLabelText(labelled(words.auth.username));
 
     expect(seen).toEqual(['third-co', 'other-co']);
   });
@@ -511,7 +521,7 @@ describe('the app', () => {
   it('Drawn with no address given, the app reads the link alone', async () => {
     const { device } = setup({}, { 'credo.client': 'other-co' }, '/login?client-code=third-co');
 
-    await screen.findByLabelText(/Username/);
+    await screen.findByLabelText(labelled(words.auth.username));
     expect(device.clientCode()).toBe('third-co');
   });
 
@@ -528,7 +538,7 @@ describe('the app', () => {
       '/settings',
     );
 
-    await screen.findByLabelText(/Username/);
+    await screen.findByLabelText(labelled(words.auth.username));
     expect(seen).toEqual(['other-co']);
   });
 
@@ -539,7 +549,7 @@ describe('the app', () => {
       '/login?client-code=second-co',
     );
 
-    expect(await screen.findByLabelText(/Username/)).toBeTruthy();
+    expect(await screen.findByLabelText(labelled(words.auth.username))).toBeTruthy();
     expect(device.clientCode()).toBe('second-co');
     expect(device.authId()).toBeNull();
   });
@@ -568,7 +578,7 @@ describe('the app', () => {
       );
       expect(document.body.textContent, path).not.toContain('Minh Phát');
       expect(brandColour(), path).toBe('#3e618c');
-      expect(screen.queryByLabelText(/Username/), path).toBeNull();
+      expect(screen.queryByLabelText(labelled(words.auth.username)), path).toBeNull();
       // A link that cannot name a client asks the service nothing.
       expect(getConfig).toHaveBeenCalledTimes(path.endsWith('nobody') ? 1 : 0);
       view.unmount();

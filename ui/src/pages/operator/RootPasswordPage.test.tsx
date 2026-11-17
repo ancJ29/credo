@@ -6,13 +6,15 @@ import { ApiError } from '../../api';
 import { DICTIONARIES } from '../../i18n';
 
 const words = DICTIONARIES.en;
+/** A label that carries a star is found by its word inside it, as the dictionary spells it. */
+const labelled = (word: string) => new RegExp(word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
 const PATH = '/operator/clients/hoa-sen/root-password';
 const open = (options: Parameters<typeof openApp>[1] = {}) =>
   openApp(PATH, { operator: true, ...options });
 const GOOD = 'Abcdef1!';
 const MADE = 'Fake-password-1!';
 
-const codeBox = () => screen.findByLabelText(/Type the client’s code to confirm/);
+const codeBox = () => screen.findByLabelText(labelled(words.operator.rootCodeLabel));
 const setButton = () => screen.getByRole('button', { name: words.operator.rootSet });
 
 async function fill({ code = 'hoa-sen', first = '', again = '' } = {}) {
@@ -24,16 +26,23 @@ async function fill({ code = 'hoa-sen', first = '', again = '' } = {}) {
 describe('a client’s root password set anew', () => {
   it('The clients list offers New root password on each row, to a page naming the company, its code and what it ends', async () => {
     openApp('/operator/clients', { operator: true });
-    const link = await screen.findByRole('link', { name: 'New root password: hoa-sen' });
+    const link = await screen.findByRole('link', {
+      name: `${words.operator.rootPassword}: hoa-sen`,
+    });
     expect(link.getAttribute('href')).toBe(PATH);
     await userEvent.click(link);
 
     expect(
-      await screen.findByRole('heading', { level: 2, name: 'New root password for Hoa Sen' }),
+      await screen.findByRole('heading', {
+        level: 2,
+        name: words.operator.rootTitle.replace('{{name}}', 'Hoa Sen'),
+      }),
     ).toBeTruthy();
-    expect(screen.getByText(/signed out on every device/)).toBeTruthy();
-    expect(screen.getByLabelText(/Type the client’s code to confirm/)).toBeTruthy();
-    expect(screen.getByText('This client’s code is hoa-sen.')).toBeTruthy();
+    expect(screen.getByText(words.operator.rootIntro.replace('{{name}}', 'Hoa Sen'))).toBeTruthy();
+    expect(screen.getByLabelText(labelled(words.operator.rootCodeLabel))).toBeTruthy();
+    expect(
+      screen.getByText(words.operator.rootCodeHint.replace('{{code}}', 'hoa-sen')),
+    ).toBeTruthy();
     expect(screen.getByText(words.operator.rootEmptyHint, { exact: false })).toBeTruthy();
   });
 
@@ -127,9 +136,9 @@ describe('a client’s root password set anew', () => {
     await userEvent.click(setButton());
 
     expect((await screen.findByRole('alert')).textContent).toBe(words.operator.rootFailed);
-    expect(screen.getByLabelText<HTMLInputElement>(/Type the client’s code to confirm/).value).toBe(
-      'hoa-sen',
-    );
+    expect(
+      screen.getByLabelText<HTMLInputElement>(labelled(words.operator.rootCodeLabel)).value,
+    ).toBe('hoa-sen');
     expect(screen.getByLabelText<HTMLInputElement>(words.person.passwordNew).value).toBe(GOOD);
     expect(screen.queryByRole('heading', { name: words.operator.rootDoneTitle })).toBeNull();
   });
@@ -166,7 +175,10 @@ describe('a client’s root password set anew', () => {
     open({ language: 'vi' });
 
     expect(
-      await screen.findByRole('heading', { level: 2, name: 'Mật khẩu root mới cho Hoa Sen' }),
+      await screen.findByRole('heading', {
+        level: 2,
+        name: DICTIONARIES.vi.operator.rootTitle.replace('{{name}}', 'Hoa Sen'),
+      }),
     ).toBeTruthy();
   });
 });

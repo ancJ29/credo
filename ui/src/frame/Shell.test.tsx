@@ -4,10 +4,12 @@ import { cleanup, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { draw } from '../../tests/render';
+import { DICTIONARIES, LANGUAGE_NAMES } from '../i18n';
 import { PAGES } from '../nav';
 import { type Look, Shell } from './Shell';
 
 const frameCss = readFileSync(join(import.meta.dirname, 'frameLook.module.css'), 'utf8');
+const words = DICTIONARIES.en;
 const brand = { name: 'Minh Phát', logo: 'data:image/png;base64,AAAA' };
 
 const shell = (
@@ -20,8 +22,8 @@ const shell = (
     </Shell>,
   );
 
-const sideMenu = () => screen.getAllByRole('navigation', { name: 'Menu' })[0];
-const bar = () => screen.getAllByRole('navigation', { name: 'Menu' })[1];
+const sideMenu = () => screen.getAllByRole('navigation', { name: words.nav.menu })[0];
+const bar = () => screen.getAllByRole('navigation', { name: words.nav.menu })[1];
 
 describe('Shell', () => {
   it('shows the company’s name as the first heading, and a page in the middle', () => {
@@ -77,11 +79,11 @@ describe('Shell', () => {
 
     expect(sideMenu().className).toContain('mantine-visible-from-sm');
     expect(bar().parentElement?.className).toContain('mantine-hidden-from-sm');
-    const link = within(sideMenu()).getByRole('link', { name: 'Settings' });
+    const link = within(sideMenu()).getByRole('link', { name: words.nav.settings });
     expect(link.getAttribute('href')).toBe('/settings');
     expect(link.getAttribute('aria-current')).toBe('page');
     expect(
-      within(sideMenu()).getByRole('link', { name: 'Orders' }).getAttribute('aria-current'),
+      within(sideMenu()).getByRole('link', { name: words.nav.orders }).getAttribute('aria-current'),
     ).toBe(null);
   });
 
@@ -99,18 +101,18 @@ describe('Shell', () => {
         <p>the page</p>
       </Shell>,
     );
-    const hide = screen.getByRole('button', { name: 'Hide the menu' });
+    const hide = screen.getByRole('button', { name: words.nav.hideMenu });
     expect(hide.getAttribute('aria-expanded')).toBe('true');
     expect(hide.className).toContain('mantine-visible-from-sm');
 
     await userEvent.click(hide);
-    const show = screen.getByRole('button', { name: 'Show the menu' });
+    const show = screen.getByRole('button', { name: words.nav.showMenu });
     expect(show.getAttribute('aria-expanded')).toBe('false');
-    expect(screen.getAllByRole('navigation', { name: 'Menu' })).toHaveLength(1);
+    expect(screen.getAllByRole('navigation', { name: words.nav.menu })).toHaveLength(1);
     expect(onShown).toHaveBeenLastCalledWith(false);
 
     await userEvent.click(show);
-    expect(screen.getAllByRole('navigation', { name: 'Menu' })).toHaveLength(2);
+    expect(screen.getAllByRole('navigation', { name: words.nav.menu })).toHaveLength(2);
     expect(onShown).toHaveBeenLastCalledWith(true);
   });
 
@@ -129,9 +131,9 @@ describe('Shell', () => {
     );
 
     expect(
-      screen.getByRole('button', { name: 'Show the menu' }).getAttribute('aria-expanded'),
+      screen.getByRole('button', { name: words.nav.showMenu }).getAttribute('aria-expanded'),
     ).toBe('false');
-    expect(screen.getAllByRole('navigation', { name: 'Menu' })).toHaveLength(1);
+    expect(screen.getAllByRole('navigation', { name: words.nav.menu })).toHaveLength(1);
   });
 
   it('3: The bar holds the first four pages in the menu’s order and More, each named, the open page marked', () => {
@@ -139,11 +141,11 @@ describe('Shell', () => {
 
     const links = within(bar()).getAllByRole('link');
     expect(links.map((link) => link.getAttribute('aria-label'))).toEqual([
-      'My deliveries',
-      'Orders',
-      'Delivery requests',
-      'Settings',
-      'More',
+      words.nav.myDeliveries,
+      words.nav.orders,
+      words.nav.deliveries,
+      words.nav.settings,
+      words.nav.more,
     ]);
     expect(links.map((link) => link.getAttribute('href'))).toEqual([
       '/my-deliveries',
@@ -199,7 +201,7 @@ describe('Shell', () => {
       </Shell>,
     );
 
-    expect(within(bar()).getByRole('link', { name: 'More' }).getAttribute('href')).toBe(
+    expect(within(bar()).getByRole('link', { name: words.nav.more }).getAttribute('href')).toBe(
       '/operator/more',
     );
   });
@@ -208,16 +210,16 @@ describe('Shell', () => {
     const onLanguage = vi.fn();
     shell(['vi', 'en'], { onLanguage, onSignOut: vi.fn() });
 
-    const button = screen.getByRole('button', { name: 'Language' });
+    const button = screen.getByRole('button', { name: words.user.language });
     expect(button.textContent).toBe('EN');
     await userEvent.click(button);
-    expect(screen.getByRole('menuitem', { name: 'English' }).getAttribute('aria-current')).toBe(
-      'true',
-    );
-    expect(screen.getByRole('menuitem', { name: 'Tiếng Việt' }).getAttribute('aria-current')).toBe(
-      'false',
-    );
-    await userEvent.click(screen.getByRole('menuitem', { name: 'Tiếng Việt' }));
+    expect(
+      screen.getByRole('menuitem', { name: LANGUAGE_NAMES.en }).getAttribute('aria-current'),
+    ).toBe('true');
+    expect(
+      screen.getByRole('menuitem', { name: LANGUAGE_NAMES.vi }).getAttribute('aria-current'),
+    ).toBe('false');
+    await userEvent.click(screen.getByRole('menuitem', { name: LANGUAGE_NAMES.vi }));
 
     expect(onLanguage).toHaveBeenCalledExactlyOnceWith('vi');
   });
@@ -225,15 +227,15 @@ describe('Shell', () => {
   it('5: The user’s menu no longer holds the language, and one language gives no button', async () => {
     shell(['vi', 'en']);
     await userEvent.click(screen.getByRole('button', { name: 'root' }));
-    expect(screen.queryByRole('menuitem', { name: 'Tiếng Việt' })).toBeNull();
+    expect(screen.queryByRole('menuitem', { name: LANGUAGE_NAMES.vi })).toBeNull();
     cleanup();
 
     const onSignOut = vi.fn();
     shell(['en'], { onLanguage: vi.fn(), onSignOut });
-    expect(screen.queryByRole('button', { name: 'Language' })).toBeNull();
+    expect(screen.queryByRole('button', { name: words.user.language })).toBeNull();
 
     await userEvent.click(screen.getByRole('button', { name: 'root' }));
-    await userEvent.click(screen.getByRole('menuitem', { name: 'Sign out' }));
+    await userEvent.click(screen.getByRole('menuitem', { name: words.user.signOut }));
     expect(onSignOut).toHaveBeenCalledOnce();
   });
 
@@ -251,7 +253,7 @@ describe('Shell', () => {
       </Shell>,
     );
 
-    expect(screen.getByRole('menuitem', { name: 'Sign out' })).toBeTruthy();
+    expect(screen.getByRole('menuitem', { name: words.user.signOut })).toBeTruthy();
   });
 
   it('shows a badge beside the brand only when it is given one, as the operator’s frame does', () => {
@@ -277,7 +279,9 @@ describe('Shell', () => {
   it('lists the pages of the user’s own in the user’s menu, above sign-out, only when it is given some', async () => {
     shell(['en']);
     await userEvent.click(screen.getByRole('button', { name: 'root' }));
-    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual(['Sign out']);
+    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
+      words.user.signOut,
+    ]);
 
     draw(
       <Shell
@@ -293,11 +297,11 @@ describe('Shell', () => {
     );
     await userEvent.click(screen.getByRole('button', { name: 'ops' }));
     const items = screen.getAllByRole('menuitem');
-    expect(items.map((item) => item.textContent).slice(-2)).toEqual(['Mine', 'Sign out']);
+    expect(items.map((item) => item.textContent).slice(-2)).toEqual(['Mine', words.user.signOut]);
     expect(items.at(-2)?.getAttribute('href')).toBe('/mine');
   });
 
-  it('C: The user’s menu lists "Change password" only where the app gives the page, and it opens that page', async () => {
+  it('C: The user’s menu lists the change-password link only where the app gives the page, and it opens that page', async () => {
     draw(
       <Shell
         brand={brand}
@@ -310,7 +314,7 @@ describe('Shell', () => {
         <p>the page</p>
       </Shell>,
     );
-    expect(screen.queryByRole('menuitem', { name: 'Change password' })).toBeNull();
+    expect(screen.queryByRole('menuitem', { name: words.user.password })).toBeNull();
     cleanup();
 
     draw(
@@ -326,7 +330,7 @@ describe('Shell', () => {
       </Shell>,
     );
     await userEvent.click(screen.getByRole('button', { name: 'root' }));
-    expect(screen.getByRole('menuitem', { name: 'Change password' }).getAttribute('href')).toBe(
+    expect(screen.getByRole('menuitem', { name: words.user.password }).getAttribute('href')).toBe(
       '/password',
     );
   });
@@ -412,7 +416,7 @@ describe('Shell', () => {
 
   it('8: Icons on, the hidden PC menu leaves a strip of named icons; off, it hides whole', () => {
     looked({ whiteHeader: false, whiteMenu: false, menuIcons: false }, false);
-    expect(screen.getAllByRole('navigation', { name: 'Menu' })).toHaveLength(1);
+    expect(screen.getAllByRole('navigation', { name: words.nav.menu })).toHaveLength(1);
     cleanup();
 
     looked({ whiteHeader: false, whiteMenu: false, menuIcons: true }, false);
@@ -434,6 +438,8 @@ describe('Shell', () => {
 
     looked({ whiteHeader: false, whiteMenu: false, menuIcons: true }, true);
     expect(sideMenu().hasAttribute('data-strip')).toBe(false);
-    expect(within(sideMenu()).getByRole('link', { name: 'Settings' }).textContent).toBe('Settings');
+    expect(within(sideMenu()).getByRole('link', { name: words.nav.settings }).textContent).toBe(
+      words.nav.settings,
+    );
   });
 });

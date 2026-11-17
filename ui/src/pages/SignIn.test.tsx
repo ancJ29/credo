@@ -7,7 +7,7 @@ import { MemoryRouter } from 'react-router';
 import { describe, expect, it, vi } from 'vitest';
 import { openApp } from '../../tests/open';
 import { draw } from '../../tests/render';
-import { DICTIONARIES } from '../i18n';
+import { DICTIONARIES, LANGUAGE_NAMES } from '../i18n';
 import { OperatorSignIn } from './operator/OperatorSignIn';
 import { Providers } from '../frame/Providers';
 import { QrLanding } from './client/QrLanding';
@@ -15,6 +15,15 @@ import { SignIn, SignInFrame } from './SignIn';
 import { BRAND_GRADIENT, shadesOf } from '../design-system/appTheme';
 
 const brand = { name: 'Minh Phát', logo: null };
+const words = DICTIONARIES.en;
+/** A label that carries a star is found by its word inside it, as the dictionary spells it. */
+const labelled = (word: string) => new RegExp(word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+/** A wait's line as the door says it, the count filled as the door fills it. */
+const waited = (
+  language: 'en' | 'vi',
+  unit: 'second' | 'seconds' | 'minute' | 'minutes',
+  count: number,
+) => DICTIONARIES[language].wait[unit].replace('{{count}}', String(count));
 
 describe('SignIn', () => {
   it('shows the company’s name as the first heading', () => {
@@ -24,7 +33,7 @@ describe('SignIn', () => {
   });
 
   it('16: draws a wait as one red line, in seconds under a minute and in whole minutes from one, in both languages', () => {
-    const words = (seconds: number, language: 'en' | 'vi') => {
+    const shown = (seconds: number, language: 'en' | 'vi') => {
       draw(
         <Providers colour={CREDO_COLOUR} language={language} test>
           <SignIn brand={brand} status="wait" waitSeconds={seconds} onSubmit={vi.fn()} />
@@ -35,28 +44,28 @@ describe('SignIn', () => {
       return text;
     };
 
-    expect(words(30, 'en')).toBe('Too many wrong tries. Try again in 30 seconds.');
-    expect(words(1, 'en')).toBe('Too many wrong tries. Try again in 1 second.');
-    expect(words(60, 'en')).toBe('Too many wrong tries. Try again in 1 minute.');
-    expect(words(840, 'en')).toBe('Too many wrong tries. Try again in 14 minutes.');
-    expect(words(30, 'vi')).toBe('Nhập sai quá nhiều lần. Hãy thử lại sau 30 giây.');
-    expect(words(900, 'vi')).toBe('Nhập sai quá nhiều lần. Hãy thử lại sau 15 phút.');
+    expect(shown(30, 'en')).toBe(waited('en', 'seconds', 30));
+    expect(shown(1, 'en')).toBe(waited('en', 'second', 1));
+    expect(shown(60, 'en')).toBe(waited('en', 'minute', 1));
+    expect(shown(840, 'en')).toBe(waited('en', 'minutes', 14));
+    expect(shown(30, 'vi')).toBe(waited('vi', 'seconds', 30));
+    expect(shown(900, 'vi')).toBe(waited('vi', 'minutes', 15));
   });
 
   it('sends what was typed', async () => {
     const onSubmit = vi.fn();
     draw(<SignIn brand={brand} status="idle" onSubmit={onSubmit} />);
 
-    await userEvent.type(screen.getByLabelText(/Username/), 'root');
-    await userEvent.type(screen.getByLabelText(/Password/), 'secret');
-    await userEvent.click(screen.getByRole('button', { name: 'Sign In' }));
+    await userEvent.type(screen.getByLabelText(labelled(words.auth.username)), 'root');
+    await userEvent.type(screen.getByLabelText(labelled(words.auth.password)), 'secret');
+    await userEvent.click(screen.getByRole('button', { name: words.auth.submit }));
 
     expect(onSubmit).toHaveBeenCalledExactlyOnceWith('root', 'secret');
   });
 
   it('wears the account title over its form, and the frame names its heading as it is told over what it holds', () => {
     draw(<SignIn brand={brand} status="idle" onSubmit={vi.fn()} />);
-    expect(screen.getByRole('heading', { level: 2 }).textContent).toBe('Sign in to your account');
+    expect(screen.getByRole('heading', { level: 2 }).textContent).toBe(words.auth.title);
     cleanup();
 
     draw(
@@ -79,12 +88,14 @@ describe('SignIn', () => {
       />,
     );
 
-    expect(screen.getByLabelText<HTMLInputElement>(/Username/).value).toBe('root');
+    expect(screen.getByLabelText<HTMLInputElement>(labelled(words.auth.username)).value).toBe(
+      'root',
+    );
   });
 
   it('a refusal says what to do, and an idle form says nothing', () => {
     const { rerender } = draw(<SignIn brand={brand} status="refused" onSubmit={vi.fn()} />);
-    expect(screen.getByRole('alert').textContent).toContain('Wrong username or password');
+    expect(screen.getByRole('alert').textContent).toBe(words.auth.refused);
 
     rerender(<SignIn brand={brand} status="idle" onSubmit={vi.fn()} />);
     expect(screen.queryByRole('alert')).toBeNull();
@@ -93,15 +104,17 @@ describe('SignIn', () => {
   it('waits while the service answers', () => {
     draw(<SignIn brand={brand} status="busy" onSubmit={vi.fn()} />);
 
-    expect(screen.getByRole('button', { name: 'Sign In' }).hasAttribute('data-loading')).toBe(true);
+    expect(
+      screen.getByRole('button', { name: words.auth.submit }).hasAttribute('data-loading'),
+    ).toBe(true);
   });
 
   it('is the old card: a title over underlined fields with their placeholders, and no extras', () => {
     draw(<SignIn brand={brand} status="idle" onSubmit={vi.fn()} />);
 
-    expect(screen.getByRole('heading', { level: 2 }).textContent).toBe('Sign in to your account');
-    expect(screen.getByPlaceholderText('Enter your username')).toBeTruthy();
-    expect(screen.getByPlaceholderText('Enter your password')).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 2 }).textContent).toBe(words.auth.title);
+    expect(screen.getByPlaceholderText(words.auth.usernamePlaceholder)).toBeTruthy();
+    expect(screen.getByPlaceholderText(words.auth.passwordPlaceholder)).toBeTruthy();
     expect(screen.queryByRole('checkbox')).toBeNull();
     expect(screen.getAllByRole('button')).toHaveLength(2);
   });
@@ -219,14 +232,14 @@ describe('the frame every door wears', () => {
     for (const offered of [undefined, [], ['en']] as const) {
       for (const [name, door] of doors(offered)) {
         draw(door);
-        expect(screen.queryByRole('group', { name: 'Language' }), name).toBeNull();
-        expect(screen.queryByRole('button', { name: 'Tiếng Việt' }), name).toBeNull();
+        expect(screen.queryByRole('group', { name: words.user.language }), name).toBeNull();
+        expect(screen.queryByRole('button', { name: LANGUAGE_NAMES.vi }), name).toBeNull();
         cleanup();
       }
     }
     for (const [name, door] of doors(['vi', 'en'])) {
       draw(door);
-      expect(screen.getByRole('group', { name: 'Language' }), name).toBeTruthy();
+      expect(screen.getByRole('group', { name: words.user.language }), name).toBeTruthy();
       cleanup();
     }
   });
@@ -243,19 +256,19 @@ describe('the frame every door wears', () => {
         onLanguage={onLanguage}
       />,
     );
-    await userEvent.type(screen.getByLabelText(/Username/), 'root');
-    await userEvent.click(screen.getByRole('button', { name: 'Tiếng Việt' }));
+    await userEvent.type(screen.getByLabelText(labelled(words.auth.username)), 'root');
+    await userEvent.click(screen.getByRole('button', { name: LANGUAGE_NAMES.vi }));
 
     expect(onLanguage).toHaveBeenCalledExactlyOnceWith('vi');
     expect(onSubmit).not.toHaveBeenCalled();
-    expect(screen.getByLabelText<HTMLInputElement>(/Username/).value).toBe('root');
+    expect(screen.getByLabelText<HTMLInputElement>(labelled(words.auth.username)).value).toBe(
+      'root',
+    );
     cleanup();
 
     const { api, device } = openApp('/login?client-code=demo', { out: true });
-    expect((await screen.findByRole('heading', { level: 2 })).textContent).toBe(
-      'Sign in to your account',
-    );
-    await userEvent.click(screen.getByRole('button', { name: 'Tiếng Việt' }));
+    expect((await screen.findByRole('heading', { level: 2 })).textContent).toBe(words.auth.title);
+    await userEvent.click(screen.getByRole('button', { name: LANGUAGE_NAMES.vi }));
     expect((await screen.findByRole('heading', { level: 2 })).textContent).toBe(
       DICTIONARIES.vi.auth.title,
     );
@@ -267,9 +280,9 @@ describe('the frame every door wears', () => {
 describe('the join page in the same frame', () => {
   it('1+2: draws the header and no menu, and the language switch since its caller offers a handler', async () => {
     openApp(`/operator/join#${DEMO_JOIN_TOKEN}`);
-    await screen.findByRole('button', { name: 'Make a passkey' });
+    await screen.findByRole('button', { name: words.passkey.makeButton });
     expect(screen.getByRole('banner')).toBeTruthy();
     expect(document.querySelector('nav')).toBeNull();
-    expect(screen.getByRole('group', { name: 'Language' })).toBeTruthy();
+    expect(screen.getByRole('group', { name: words.user.language })).toBeTruthy();
   });
 });

@@ -6,6 +6,8 @@ import { openApp } from '../../../tests/open';
 import { ApiError } from '../../api';
 import { DICTIONARIES } from '../../i18n';
 
+const wordsVi = DICTIONARIES.vi;
+
 const words = DICTIONARIES.en;
 const open = (options: Parameters<typeof openApp>[1] = {}) =>
   openApp('/operator/passkeys', { operator: true, ...options });
@@ -23,33 +25,37 @@ const rows = () =>
     );
 
 describe('the operator’s own passkeys', () => {
-  it('lists each passkey by when it was added and when last used, and says "not used yet" for one never used; no secret and no name', async () => {
+  it('lists each passkey by when it was added and when last used, and says so for one never used; no secret and no name', async () => {
     open();
 
-    expect(await screen.findByRole('heading', { level: 2, name: 'Your passkeys' })).toBeTruthy();
+    expect(
+      await screen.findByRole('heading', { level: 2, name: words.passkey.title }),
+    ).toBeTruthy();
     await screen.findAllByRole('row');
     expect(rows()).toEqual([
       ['5 Oct 2026', '28 Oct 2026'],
-      ['25 Oct 2026', 'Not used yet'],
+      ['25 Oct 2026', words.passkey.never],
     ]);
-    expect(screen.getAllByRole('button', { name: /^Remove: / })).toHaveLength(2);
-    expect(screen.getByRole('button', { name: 'Add a passkey' })).toBeTruthy();
+    expect(
+      screen.getAllByRole('button', { name: new RegExp(`^${words.passkey.remove}: `) }),
+    ).toHaveLength(2);
+    expect(screen.getByRole('button', { name: words.passkey.add })).toBeTruthy();
   });
 
   it('says it in Vietnamese: the days as the day first, and the words of the language', async () => {
     open({ language: 'vi' });
 
     expect(
-      await screen.findByRole('heading', { level: 2, name: 'Khóa truy cập của bạn' }),
+      await screen.findByRole('heading', { level: 2, name: wordsVi.passkey.title }),
     ).toBeTruthy();
     await screen.findAllByRole('row');
-    expect(rows()[1]).toEqual(['25/10/2026', 'Chưa dùng']);
+    expect(rows()[1]).toEqual(['25/10/2026', wordsVi.passkey.never]);
   });
 
   it('Adding one makes a passkey on this device and lists it beside the others, never used', async () => {
     const { api } = open();
     await screen.findAllByRole('row');
-    await userEvent.click(screen.getByRole('button', { name: 'Add a passkey' }));
+    await userEvent.click(screen.getByRole('button', { name: words.passkey.add }));
 
     await waitFor(() => expect(screen.getAllByRole('row')).toHaveLength(1 + 3));
     expect(api.operatorPasskeyConfirmOptions).toHaveBeenCalledExactlyOnceWith('add');
@@ -58,13 +64,13 @@ describe('the operator’s own passkeys', () => {
     const sent = api.operatorPasskeyAdd.mock.calls[0]?.[0];
     expect(sent?.token).toBe('fake.token');
     expect(sent?.confirm.token).toBe('fake.token');
-    expect(rows()[2]?.[1]).toBe('Not used yet');
+    expect(rows()[2]?.[1]).toBe(words.passkey.never);
   });
 
   it('A passkey not given says so and lists the same; a failure of the service says it was not added', async () => {
     open({ cue: 'passkey:notGiven' });
     await screen.findAllByRole('row');
-    await userEvent.click(screen.getByRole('button', { name: 'Add a passkey' }));
+    await userEvent.click(screen.getByRole('button', { name: words.passkey.add }));
 
     expect((await screen.findByRole('alert')).textContent).toBe(words.passkey.notGiven);
     expect(screen.getAllByRole('row')).toHaveLength(1 + 2);
@@ -73,7 +79,9 @@ describe('the operator’s own passkeys', () => {
   it('The touch is asked before an add and before a remove, and a touch not given sends neither', async () => {
     const { api } = open({ cue: 'passkey:notGiven' });
     await screen.findAllByRole('row');
-    await userEvent.click(screen.getByRole('button', { name: 'Remove: 5 Oct 2026' }));
+    await userEvent.click(
+      screen.getByRole('button', { name: `${words.passkey.remove}: 5 Oct 2026` }),
+    );
 
     expect((await screen.findByRole('alert')).textContent).toBe(words.passkey.notGiven);
     expect(api.operatorPasskeyConfirmOptions).toHaveBeenCalledExactlyOnceWith('remove');
@@ -85,10 +93,10 @@ describe('the operator’s own passkeys', () => {
   it('An add the service fails says the passkey was not added, and the next try clears it', async () => {
     open({ cue: 'operatorPasskeyAdd:503' });
     await screen.findAllByRole('row');
-    await userEvent.click(screen.getByRole('button', { name: 'Add a passkey' }));
+    await userEvent.click(screen.getByRole('button', { name: words.passkey.add }));
     expect((await screen.findByRole('alert')).textContent).toBe(words.passkey.addFailed);
 
-    await userEvent.click(screen.getByRole('button', { name: 'Add a passkey' }));
+    await userEvent.click(screen.getByRole('button', { name: words.passkey.add }));
     await waitFor(() => expect(screen.queryByRole('alert')).toBeNull());
     expect(screen.getAllByRole('row')).toHaveLength(1 + 3);
   });
@@ -96,7 +104,9 @@ describe('the operator’s own passkeys', () => {
   it('Removing one takes it off the list; removing the last says it cannot be removed, and it stays', async () => {
     const { api } = open();
     await screen.findAllByRole('row');
-    await userEvent.click(screen.getByRole('button', { name: 'Remove: 5 Oct 2026' }));
+    await userEvent.click(
+      screen.getByRole('button', { name: `${words.passkey.remove}: 5 Oct 2026` }),
+    );
 
     await waitFor(() => expect(screen.getAllByRole('row')).toHaveLength(1 + 1));
     expect(api.operatorPasskeyConfirmOptions).toHaveBeenCalledWith('remove');
@@ -105,7 +115,9 @@ describe('the operator’s own passkeys', () => {
       expect.objectContaining({ token: 'fake.token' }),
     );
 
-    await userEvent.click(screen.getByRole('button', { name: 'Remove: 25 Oct 2026' }));
+    await userEvent.click(
+      screen.getByRole('button', { name: `${words.passkey.remove}: 25 Oct 2026` }),
+    );
     expect((await screen.findByRole('alert')).textContent).toBe(words.passkey.lastOne);
     expect(screen.getAllByRole('row')).toHaveLength(1 + 1);
   });
@@ -113,7 +125,9 @@ describe('the operator’s own passkeys', () => {
   it('A removal the service fails says it was not removed', async () => {
     open({ cue: 'operatorPasskeyRemove:503' });
     await screen.findAllByRole('row');
-    await userEvent.click(screen.getByRole('button', { name: 'Remove: 5 Oct 2026' }));
+    await userEvent.click(
+      screen.getByRole('button', { name: `${words.passkey.remove}: 5 Oct 2026` }),
+    );
 
     expect((await screen.findByRole('alert')).textContent).toBe(words.passkey.removeFailed);
     expect(screen.getAllByRole('row')).toHaveLength(1 + 2);
@@ -129,16 +143,16 @@ describe('the operator’s own passkeys', () => {
 
   it('A 401 on the list opens the prompt over the page', async () => {
     open({ cue: 'operatorPasskeys:401' });
-    expect(await screen.findByRole('dialog', { name: 'Your sign-in ended' })).toBeTruthy();
+    expect(await screen.findByRole('dialog', { name: words.passkey.endedTitle })).toBeTruthy();
   });
 
   it('An add that meets a 401 opens the prompt, and the page stays', async () => {
     const { api } = open();
     await screen.findAllByRole('row');
     api.operatorPasskeyAdd.mockRejectedValueOnce(new ApiError(401));
-    await userEvent.click(screen.getByRole('button', { name: 'Add a passkey' }));
+    await userEvent.click(screen.getByRole('button', { name: words.passkey.add }));
 
-    expect(await screen.findByRole('dialog', { name: 'Your sign-in ended' })).toBeTruthy();
+    expect(await screen.findByRole('dialog', { name: words.passkey.endedTitle })).toBeTruthy();
     expect(screen.getAllByRole('row')).toHaveLength(1 + 2);
   });
 
@@ -146,9 +160,11 @@ describe('the operator’s own passkeys', () => {
     const { api } = open();
     await screen.findAllByRole('row');
     api.operatorPasskeyRemove.mockRejectedValueOnce(new ApiError(401));
-    await userEvent.click(screen.getByRole('button', { name: 'Remove: 5 Oct 2026' }));
+    await userEvent.click(
+      screen.getByRole('button', { name: `${words.passkey.remove}: 5 Oct 2026` }),
+    );
 
-    expect(await screen.findByRole('dialog', { name: 'Your sign-in ended' })).toBeTruthy();
+    expect(await screen.findByRole('dialog', { name: words.passkey.endedTitle })).toBeTruthy();
     expect(screen.getAllByRole('row')).toHaveLength(1 + 2);
   });
 });

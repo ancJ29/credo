@@ -3,9 +3,11 @@ import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { draw } from '../../tests/render';
 import { MorePage } from './MorePage';
+import { DICTIONARIES } from '../i18n';
 import { PAGES } from '../nav';
 import { Shell } from '../frame/Shell';
 
+const words = DICTIONARIES.en;
 const brand = { name: 'Minh Phát', logo: null };
 
 const more = (props: Partial<Parameters<typeof Shell>[0]> = {}) => {
@@ -32,14 +34,14 @@ describe('MorePage', () => {
   it('4: lists the pages the bar leaves out, then the person’s own links and sign-out', async () => {
     const { onSignOut } = more({ menuLinks: [{ to: '/mine', label: 'Mine' }] });
 
-    expect(main().getByRole('heading', { level: 2 }).textContent).toBe('More');
+    expect(main().getByRole('heading', { level: 2 }).textContent).toBe(words.nav.more);
     const links = main().getAllByRole('link');
     expect(links.map((link) => link.textContent)).toEqual([
-      'Staff',
-      'Departments and positions',
-      'Customers',
-      'Products',
-      'Change password',
+      words.nav.staff,
+      words.nav.staffSetup,
+      words.nav.customers,
+      words.nav.products,
+      words.user.password,
       'Mine',
     ]);
     expect(links.map((link) => link.getAttribute('href'))).toEqual([
@@ -51,7 +53,7 @@ describe('MorePage', () => {
       '/mine',
     ]);
 
-    await userEvent.click(main().getByRole('button', { name: 'Sign out' }));
+    await userEvent.click(main().getByRole('button', { name: words.user.signOut }));
     expect(onSignOut).toHaveBeenCalledOnce();
   });
 
@@ -62,8 +64,8 @@ describe('MorePage', () => {
       main()
         .getAllByRole('link')
         .map((link) => link.textContent),
-    ).toEqual(['Change password']);
-    expect(main().getByRole('button', { name: 'Sign out' })).toBeTruthy();
+    ).toEqual([words.user.password]);
+    expect(main().getByRole('button', { name: words.user.signOut })).toBeTruthy();
   });
 
   it('is drawn only inside the frame', () => {

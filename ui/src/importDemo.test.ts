@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { DICTIONARIES } from './i18n';
 import { demoImportFile, listFile, readListFile } from './importDemo';
 import { readFirstSheet } from './importFile';
 
@@ -9,7 +10,13 @@ describe('a list file made from rows', () => {
       'en',
       [
         { code: 'SP-101', name: 'Cement', unit: 'bag', price: '95.000' },
-        { code: 'sp-102', name: 'Sand', unit: 'm³', price: '180000', stocked: 'No' },
+        {
+          code: 'sp-102',
+          name: 'Sand',
+          unit: 'm³',
+          price: '180000',
+          stocked: DICTIONARIES.en.lists.no,
+        },
         { code: 'SP-002', name: 'Held', unit: 'bag', price: '1000' },
         { code: 'SP-103', name: 'Rebar', unit: 'bar', price: 'negotiable' },
       ],
@@ -20,7 +27,11 @@ describe('a list file made from rows', () => {
     const checked = await readListFile('products', file, new Set(['SP-002']));
 
     expect(file.name).toBe('p.xlsx');
-    expect(table[0]).toEqual(['Code', 'Name', 'Unit', 'Price (VND)', 'Stocked', 'Note']);
+    expect(table[0]).toEqual(
+      (['code', 'name', 'unit', 'price', 'stocked', 'note'] as const).map(
+        (column) => DICTIONARIES.en.lists.columns[column],
+      ),
+    );
     expect(checked).toEqual({ holds: 2, taken: 1, refused: 1 });
   });
 
