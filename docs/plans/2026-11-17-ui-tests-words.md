@@ -81,6 +81,11 @@ built.**
   `words.passkey.joinFor.replace('{{name}}', DEMO_INVITED_NAME)`
   (`ui/src/pages/operator/PasskeyWalk.test.tsx#L34`).
 - A name, a code or a number stays typed: it is data, not a word.
+- A label that carries a star (a required field) is found by `new RegExp` of its dictionary word,
+  escaped, as the old tests forgave it with a regex; an exact string finds nothing (sample,
+  `ui/src/parts/Settings.test.tsx`, `labelled`). A language's own name is `LANGUAGE_NAMES[language]`
+  (`ui/src/i18n/index.ts`), never typed. A name found by a regex stays a query that must also be
+  seen to find something, since `queryBy...` null passes on a label that exact text misses.
 - Where two keys hold the same text, the key is the one the component reads. Its source decides,
   and p1's words prove the choice: 65 English and 72 Vietnamese texts were held by two keys or
   more, and p1 parted 34 and 40 of them.
@@ -140,11 +145,13 @@ at a fifth or less. The review is 13, the median of the last three whole reviews
 fix pass is 17, a code step. The recap is 7, the last one. The landing and the rerun are 5 each,
 about five minutes a step on a first run.
 
-- [ ] **1. The sample: `ui/src/parts/Settings.test.tsx`.** 61 lines, 19 reds. It holds every kind:
+- [x] **1. The sample: `ui/src/parts/Settings.test.tsx`.** 61 lines, 19 reds. It holds every kind:
       a role and a name, a label, an alert's `toBe`, a fragment, a word with a placeholder to fill
       (`settings.logoTooLarge`'s `{{max}}`) and both languages. The pattern above is applied as written, and any change to it is written back into
       this plan in the same commit. _Done when:_ its p1 run exits 0; both checks exit 0; one key
       mutated in `ui/src/parts/Settings.tsx` reddens the file, then is put back. **17 min.**
+      _Done:_ the p1 run exited 0 (21 tests), both checks exited 0 on the committed tree, and the
+      key `settings.name` in `Settings.tsx` changed to `settings.title` reddened the file and was put back.
 - [ ] **2. The words and the frame.** `i18n/words.test.tsx`, `i18n/i18n.test.ts` with case 6,
       `frame/frameKept.test.tsx` and its snapshot, `frame/Shell.test.tsx`,
       `frame/OperatorPage.test.tsx`, `frame/Boot.test.tsx`: about 120 lines. _Done when:_ the p1 run
