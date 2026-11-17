@@ -26,5 +26,4 @@ Opus found no High, one Medium and Lows. [FIXED] The list page's test read a twi
 - The products table changes no row.
 - Walks rerun on the retaken bases: the nine walks that first read red, rerun after the style fix, read green: every comparison from fake to stack read 0 moved, and the bases were written.
 - Pictures retaken and committed: all twelve walks' pictures are committed on the partner's words (three after the first run, nine after the rerun).
-- Landing on `pre-merge`, whole check, `main`: <!-- FILL: the landing, the whole check's verdict, main's tip -->
 - Open: the walks page asks again each screen p1's words moved.
