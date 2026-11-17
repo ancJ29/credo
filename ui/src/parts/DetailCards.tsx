@@ -1,5 +1,6 @@
-import { Grid, Paper, SimpleGrid, Stack, Title } from '@mantine/core';
+import { Grid, SimpleGrid } from '@mantine/core';
 import type { ReactNode } from 'react';
+import { SectionCard } from '../components/organisms/SectionCard';
 
 /** The frame of a detail page, as the old app's: two columns from `md` (992), the details (`main`)
  * seven twelfths and the actions (`side`) five, one column below with `main` first. A later detail
@@ -17,15 +18,21 @@ export function DetailColumns({ main, side }: { main: ReactNode; side?: ReactNod
   );
 }
 
-/** One bordered block with its title; what it holds is stacked. */
-export function DetailCard({ title, children }: { title: string; children: ReactNode }) {
+/** One bordered block with its icon tile and title; what it holds is stacked. The organism
+ * `SectionCard` draws it. */
+export function DetailCard({
+  icon,
+  title,
+  children,
+}: {
+  icon: ReactNode;
+  title: string;
+  children: ReactNode;
+}) {
   return (
-    <Paper component="section" withBorder p="md">
-      <Stack gap="md">
-        <Title order={3}>{title}</Title>
-        {children}
-      </Stack>
-    </Paper>
+    <SectionCard icon={icon} title={title}>
+      {children}
+    </SectionCard>
   );
 }
 

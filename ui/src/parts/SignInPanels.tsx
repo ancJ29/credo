@@ -1,5 +1,6 @@
 import { emailSchema, type EmployeeDoc } from '@credo/shared';
 import { Alert, Button, Group, Stack, Text, TextInput } from '@mantine/core';
+import { IconMail, IconQrcode } from '@tabler/icons-react';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DetailCard } from './DetailCards';
@@ -55,7 +56,7 @@ export function EmailPanel({
   };
 
   return (
-    <DetailCard title={t('person.emailTitle')}>
+    <DetailCard icon={<IconMail size={14} />} title={t('person.emailTitle')}>
       <Text c="dimmed">{t('person.emailText')}</Text>
       <Text>{email ?? t('person.emailNone')}</Text>
       {said !== null && (
@@ -119,7 +120,7 @@ export function QrPanel({ page, id }: { page: PageProps; id: string }) {
   }
 
   return (
-    <DetailCard title={t('person.qrTitle')}>
+    <DetailCard icon={<IconQrcode size={14} />} title={t('person.qrTitle')}>
       <Stack gap="sm" align="flex-start">
         <Text c="dimmed">{t('person.qrText')}</Text>
         {failed && (

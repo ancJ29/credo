@@ -24,6 +24,15 @@ import {
   TextInput,
   Title,
 } from '@mantine/core';
+import {
+  IconArchive,
+  IconKey,
+  IconLock,
+  IconNote,
+  IconPhone,
+  IconShieldCheck,
+  IconUser,
+} from '@tabler/icons-react';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useParams } from 'react-router';
@@ -90,7 +99,7 @@ function PasswordPanel({
   };
 
   return (
-    <DetailCard title={t('person.password')}>
+    <DetailCard icon={<IconLock size={14} />} title={t('person.password')}>
       {shown !== null && (
         <Alert color="green" role="alert">
           <Stack gap="xs">
@@ -183,7 +192,7 @@ function CodePanel({
   }
 
   return (
-    <DetailCard title={t('person.codeTitle')}>
+    <DetailCard icon={<IconKey size={14} />} title={t('person.codeTitle')}>
       <Text c="dimmed">{t('person.codeText')}</Text>
       {changedTo !== null && (
         <Alert color="green" role="alert">
@@ -250,7 +259,7 @@ function ArchivePanel({
         cancel: t('person.archiveCancel'),
       };
   return (
-    <DetailCard title={words.title}>
+    <DetailCard icon={<IconArchive size={14} />} title={words.title}>
       <Stack gap="sm" align="flex-start">
         <Text c="dimmed">{words.text}</Text>
         {failed && (
@@ -433,7 +442,7 @@ function PersonForm({
         main={
           <form onSubmit={submit}>
             <Stack gap="lg">
-              <DetailCard title={t('person.basic')}>
+              <DetailCard icon={<IconUser size={14} />} title={t('person.basic')}>
                 <FieldPair>
                   <TextInput
                     label={t('person.name')}
@@ -488,7 +497,7 @@ function PersonForm({
                       : t('person.signInReady', { code: employee.code })}
                 </Text>
               </DetailCard>
-              <DetailCard title={t('person.contacts')}>
+              <DetailCard icon={<IconPhone size={14} />} title={t('person.contacts')}>
                 <FieldPair>
                   <TextInput
                     label={t('person.phone')}
@@ -508,7 +517,7 @@ function PersonForm({
                   )}
                 </FieldPair>
               </DetailCard>
-              <DetailCard title={t('person.note')}>
+              <DetailCard icon={<IconNote size={14} />} title={t('person.note')}>
                 <Textarea
                   label={t('person.note')}
                   readOnly={!editable}
@@ -527,7 +536,7 @@ function PersonForm({
                 ))}
               </DetailCard>
               {user.root && !employee.archived && (
-                <DetailCard title={t('person.permissions')}>
+                <DetailCard icon={<IconShieldCheck size={14} />} title={t('person.permissions')}>
                   <Text c="dimmed" size="sm">
                     {t('person.permissionsIntro')}
                   </Text>

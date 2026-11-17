@@ -9,6 +9,12 @@ import {
   unitSchema,
 } from '@credo/shared';
 import { Button, NumberInput, Stack, Switch, Textarea, TextInput } from '@mantine/core';
+import {
+  IconAdjustmentsHorizontal,
+  IconBuildingWarehouse,
+  IconInfoCircle,
+  IconNote,
+} from '@tabler/icons-react';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { textIn } from '../listSheet';
@@ -104,7 +110,7 @@ export function ProductForm({
         <DetailColumns
           main={
             <Stack gap="lg">
-              <DetailCard title={t('lists.products.basic')}>
+              <DetailCard icon={<IconInfoCircle size={14} />} title={t('lists.products.basic')}>
                 <FieldPair>
                   <TextInput
                     label={t('lists.columns.code')}
@@ -125,7 +131,10 @@ export function ProductForm({
                   />
                 </FieldPair>
               </DetailCard>
-              <DetailCard title={t('lists.products.unitPrice')}>
+              <DetailCard
+                icon={<IconAdjustmentsHorizontal size={14} />}
+                title={t('lists.products.unitPrice')}
+              >
                 <FieldPair>
                   <TextInput
                     label={t('lists.columns.unit')}
@@ -156,7 +165,10 @@ export function ProductForm({
                   />
                 </FieldPair>
               </DetailCard>
-              <DetailCard title={t('lists.products.stock')}>
+              <DetailCard
+                icon={<IconBuildingWarehouse size={14} />}
+                title={t('lists.products.stock')}
+              >
                 <Switch
                   label={t('lists.columns.stocked')}
                   disabled={!editable}
@@ -168,7 +180,7 @@ export function ProductForm({
           }
           side={
             editable || stored ? (
-              <DetailCard title={t('lists.products.note')}>
+              <DetailCard icon={<IconNote size={14} />} title={t('lists.products.note')}>
                 <Textarea
                   aria-label={t('lists.products.note')}
                   rows={4}

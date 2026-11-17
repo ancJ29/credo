@@ -15,21 +15,20 @@ import {
   Group,
   Image,
   NativeSelect,
-  Paper,
   Radio,
   SimpleGrid,
   Stack,
   Switch,
   Text,
   TextInput,
-  ThemeIcon,
   Title,
 } from '@mantine/core';
-import { IconBuilding } from '@tabler/icons-react';
+import { IconInfoCircle } from '@tabler/icons-react';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LANGUAGE_NAMES } from '../i18n';
 import { Loaded } from '../frame/Loaded';
+import { DetailCard } from './DetailCards';
 import { PALETTES, paletteOfColour } from '../design-system/palettes';
 
 type Props = {
@@ -119,16 +118,8 @@ function SettingsForm({ config, outcome, saving, onSave, onReload, logoRefusal }
             </Stack>
           </Alert>
         )}
-        <Paper withBorder p="md">
+        <DetailCard icon={<IconInfoCircle size={14} />} title={t('settings.basics')}>
           <Stack gap="lg">
-            <Group gap={8} wrap="nowrap">
-              <ThemeIcon variant="light" color="gray" size={22} radius="sm" aria-hidden>
-                <IconBuilding size={14} />
-              </ThemeIcon>
-              <Title order={3} fz="xs" fw={700} tt="uppercase" lts={0.5}>
-                {t('settings.basics')}
-              </Title>
-            </Group>
             <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg" verticalSpacing="lg">
               <TextInput
                 label={t('settings.name')}
@@ -251,7 +242,7 @@ function SettingsForm({ config, outcome, saving, onSave, onReload, logoRefusal }
               />
             </SimpleGrid>
           </Stack>
-        </Paper>
+        </DetailCard>
         <Group>
           <Button type="submit" loading={saving} disabled={!valid}>
             {t('settings.save')}

@@ -1,7 +1,7 @@
 import { screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { draw } from '../../tests/render';
-import { DetailColumns } from './DetailCards';
+import { DetailCard, DetailColumns } from './DetailCards';
 
 const columns = (container: HTMLElement) => [...container.querySelectorAll('.mantine-Grid-col')];
 /** The width rules the grid's columns wrote: one block each, with its media queries. */
@@ -40,4 +40,23 @@ describe('the frame of a detail page', () => {
       expect(widths(container)[0]).not.toContain('@media');
     },
   );
+});
+
+describe('a section card', () => {
+  it('12: shows its icon in a grey tile and its title small, bold, in capitals', () => {
+    draw(
+      <DetailCard icon={<svg data-testid="glyph" />} title="Basics">
+        <p>Inside</p>
+      </DetailCard>,
+    );
+
+    const tile = screen.getByTestId('section-icon');
+    expect(tile.getAttribute('style')).toContain('var(--mantine-color-gray-');
+    expect(tile.contains(screen.getByTestId('glyph'))).toBe(true);
+    const title = screen.getByRole('heading', { name: 'Basics', level: 3 });
+    expect(title.getAttribute('style')).toContain('text-transform: uppercase');
+    expect(title.getAttribute('style')).toContain('font-size: var(--mantine-font-size-xs)');
+    expect(title.getAttribute('style')).toContain('font-weight: 700');
+    expect(screen.getByText('Inside')).toBeTruthy();
+  });
 });

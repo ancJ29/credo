@@ -20,6 +20,7 @@ import {
   TextInput,
   Title,
 } from '@mantine/core';
+import { IconListDetails, IconPackage, IconTruck } from '@tabler/icons-react';
 import { type ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router';
@@ -150,7 +151,7 @@ function FormFields({
         // Only a save of an order already made can meet a newer one.
         onTheirs={(current) => existing!.onTheirs(current)}
       />
-      <DetailCard title={t('orders.details')}>
+      <DetailCard icon={<IconListDetails size={14} />} title={t('orders.details')}>
         <TextInput label={t('orders.day')} readOnly value={shownDay(day, language)} maw={240} />
         <NativeSelect
           label={t('orders.customer')}
@@ -163,7 +164,7 @@ function FormFields({
           ]}
         />
       </DetailCard>
-      <DetailCard title={t('orders.lines')}>
+      <DetailCard icon={<IconPackage size={14} />} title={t('orders.lines')}>
         <Group align="flex-end" wrap="wrap">
           <NativeSelect
             label={t('orders.product')}
@@ -372,18 +373,18 @@ function OrderView({ doc, steps }: { doc: OrderDoc; steps: ReactNode }) {
     <DetailColumns
       main={
         <Stack gap="lg">
-          <DetailCard title={t('orders.details')}>
+          <DetailCard icon={<IconListDetails size={14} />} title={t('orders.details')}>
             <Text>{t('orders.onDay', { day: shownDay(order.day, language) })}</Text>
             <CustomerBlock customer={order.customer} />
           </DetailCard>
-          <DetailCard title={t('orders.lines')}>
+          <DetailCard icon={<IconPackage size={14} />} title={t('orders.lines')}>
             <LinesTable lines={order.lines} total={order.total} />
           </DetailCard>
         </Stack>
       }
       side={
         <Stack gap="lg">
-          <DetailCard title={t('orders.sentTitle')}>
+          <DetailCard icon={<IconTruck size={14} />} title={t('orders.sentTitle')}>
             {order.request ? (
               <Text>
                 <Anchor
