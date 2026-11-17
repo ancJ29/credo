@@ -846,6 +846,8 @@ copy_bucket_guard() {
     '.Resources.CopyBucket | .DeletionPolicy == "Retain" and .UpdateReplacePolicy == "Retain"'
   must "$1" "CopyBucket does not expire copies after seven days" \
     '.Resources.CopyBucket.Properties.LifecycleConfiguration.Rules | length == 1 and .[0].Status == "Enabled" and .[0].ExpirationInDays == 7'
+  must "$1" "CopyBucket declares versioning (the delete of a box's copy would leave old versions behind)" \
+    '.Resources.CopyBucket.Properties | has("VersioningConfiguration") | not'
   must "$1" "CopyBucket is a website, or has a policy of its own" \
     '([.Resources | to_entries[] | select(.value.Type == "AWS::S3::BucketPolicy" and (.value.Properties.Bucket | tostring | contains("CopyBucket")))] | length == 0) and (.Resources.CopyBucket.Properties | has("WebsiteConfiguration") | not)'
 }
@@ -882,6 +884,8 @@ refuses "  a bucket deleted with its stack is refused" "not kept" copy_bucket_gu
 refuses "  a bucket deleted on a replacement is refused" "not kept" copy_bucket_guard "$(mut 'del(.Resources.CopyBucket.UpdateReplacePolicy)')"
 refuses "  a bucket that expires copies after a day is refused" "seven days" \
   copy_bucket_guard "$(mut '.Resources.CopyBucket.Properties.LifecycleConfiguration.Rules[0].ExpirationInDays = 1')"
+refuses "  a bucket given versioning is refused" "declares versioning" \
+  copy_bucket_guard "$(mut '.Resources.CopyBucket.Properties.VersioningConfiguration = {"Status":"Enabled"}')"
 passes "the box's role may put, get and list its own path in its own bucket, and holds no delete (row 3)" box_role_guard "$WORK/env.json"
 refuses "  a role that may delete is refused" "an action other than" \
   box_role_guard "$(mut '.Resources.BoxRole.Properties.Policies[0].PolicyDocument.Statement[0].Action += ["s3:DeleteObject"]')"
@@ -4729,6 +4733,7 @@ case "$*" in
   # the copy bucket's keys (FAKE_COPY_KEYS, a list of keys), kept in the state folder: a listing counts those under --prefix, or gives the newest time; a recursive remove deletes them and reports each
   *"s3api list-objects-v2"*)
     all="$*"; pre=${all##*--prefix }; pre=${pre%% *}
+    [ -z "${FAKE_LIST_FAIL:-}" ] || { echo "stand-in aws: the listing fails" >&2; exit 254; }
     [ -f "${FAKE_STATE:?}/copy.keys" ] || { tr ' ' '\n' <<<"${FAKE_COPY_KEYS:-}" | grep . >"$FAKE_STATE/copy.keys" || true; }
     case "$all" in
       *"max("*) if grep -q "^$pre" "$FAKE_STATE/copy.keys"; then echo 2026-11-17T09:00:00+00:00; else echo None; fi ;;
@@ -4736,8 +4741,10 @@ case "$*" in
     esac ;;
   *"s3 rm s3://"*)
     all="$*"; uri=${all##*s3 rm s3://}; uri=${uri%% *}; pre=${uri#*/}
-    grep "^$pre" "${FAKE_STATE:?}/copy.keys" | while IFS= read -r k; do echo "delete: s3://${uri%%/*}/$k"; done || true
-    { grep -v "^$pre" "$FAKE_STATE/copy.keys" || true; } >"$FAKE_STATE/copy.left"; mv "$FAKE_STATE/copy.left" "$FAKE_STATE/copy.keys" ;;
+    # FAKE_RM_SHORT reports one delete fewer than it makes; FAKE_RM_KEEP reports every delete and leaves the last key
+    grep "^$pre" "${FAKE_STATE:?}/copy.keys" | { if [ -n "${FAKE_RM_SHORT:-}" ]; then tail -n +2; else cat; fi; } | while IFS= read -r k; do echo "delete: s3://${uri%%/*}/$k"; done || true
+    { grep -v "^$pre" "$FAKE_STATE/copy.keys" || true; [ -z "${FAKE_RM_KEEP:-}" ] || grep "^$pre" "$FAKE_STATE/copy.keys" | tail -n 1; } >"$FAKE_STATE/copy.left"; mv "$FAKE_STATE/copy.left" "$FAKE_STATE/copy.keys" ;;
+  *"s3api get-bucket-versioning"*) echo "${FAKE_VERS:-None}" ;;
   *execute-change-set*) : ;;
   *"wait stack-update-complete"*) : ;;
   *"wait change-set-create-complete"*) [ -z "${FAKE_CHANGESET:-}" ] || exit 0; exit 255 ;;
@@ -4906,6 +4913,38 @@ check "  a run naming the list the stack holds, changes executed, makes none" "0
   "$RC $(grep -c 'execute-change-set' "$S/aws.calls" || true) $(grep -c '^aws s3' "$S/aws.calls" || true)"
 FAKE_MOREBOXES=b2 FAKE_BOXOUTS=b2 FAKE_COPY_KEYS=$COPYKEYS stack_run stack-same-list-plan --plan --more-boxes b2
 check "  and the same list with no changes, none" "0 0" "$RC $(grep -c '^aws s3' "$S/aws.calls" || true)"
+
+# Cases 3, 4, 5 and 7 (docs/plans/2026-11-17-move-fixes.md, step 2): the delete's reach and its guards, and the add's leftover.
+FAKE_MOREBOXES=b2 FAKE_BOXOUTS=b2 FAKE_COPY_KEYS=$COPYKEYS FAKE_CHANGESET=$OPS_DIR/testdata/changeset-boxremoved.json stack_run stack-reach --more-boxes none "${TAKE5[@]}"
+check "3: every delete and listing the removal makes names b2/records/ alone, never Box/ or b20/ (and there are some)" "0 5" \
+  "$(grep -F -e ' s3 rm ' -e 'list-objects-v2' "$S/aws.calls" | grep -c -v -e ' s3://credo-test-copy/b2/records/ ' -e '--prefix b2/records/ ' || true) $(grep -c -F -e ' s3 rm ' -e 'list-objects-v2' "$S/aws.calls" || true)"
+FAKE_MOREBOXES=b2 FAKE_BOXOUTS=b2 FAKE_COPY_KEYS=$COPYKEYS FAKE_RM_SHORT=1 FAKE_CHANGESET=$OPS_DIR/testdata/changeset-boxremoved.json stack_run stack-short --more-boxes none "${TAKE5[@]}"
+check "4: a delete that reports fewer deletes than the count ends red naming the path, exit 1" "1 1" \
+  "$RC $(grep -c -F "s3://credo-test-copy/b2/records/: 1 delete(s) reported against 2 file(s) counted before" "$S/out" || true)"
+FAKE_MOREBOXES=b2 FAKE_BOXOUTS=b2 FAKE_COPY_KEYS=$COPYKEYS FAKE_RM_KEEP=1 FAKE_CHANGESET=$OPS_DIR/testdata/changeset-boxremoved.json stack_run stack-left --more-boxes none "${TAKE5[@]}"
+check "  and a read-back that still holds one ends red naming the path, exit 1" "1 1" \
+  "$RC $(grep -c -F "s3://credo-test-copy/b2/records/ still holds 1 file(s) after the delete" "$S/out" || true)"
+for V in Enabled Suspended; do
+  FAKE_VERS=$V FAKE_MOREBOXES=b2 FAKE_BOXOUTS=b2 FAKE_COPY_KEYS=$COPYKEYS FAKE_CHANGESET=$OPS_DIR/testdata/changeset-boxremoved.json stack_run "stack-vers-$V" --more-boxes none "${TAKE5[@]}"
+  check "7: a copy bucket whose versioning reads $V stops the delete before any delete: exit 1, no s3 rm, the refusal said" "1 0 1" \
+    "$RC $(grep -c -F ' s3 rm' "$S/aws.calls" || true) $(grep -c -F "has versioning '$V'" "$S/out" || true)"
+done
+# the add: the stack holds no b2, the list names it, and the bucket holds the leftover of an earlier b2 (and a Box and a b20 beside it)
+FAKE_MOREBOXES=none FAKE_COPY_KEYS=$COPYKEYS FAKE_CHANGESET=$OPS_DIR/testdata/changeset-adds.json stack_run stack-add --more-boxes b2
+check "5: an add of b2 deletes what b2/records/ holds before the change set executes, and the log names the path and 0 left" "0 1 before 1" \
+  "$RC $(grep -c -F -e "aws s3 rm $BUCKETURI --recursive" "$S/aws.calls" || true) $(if [ "$(call_line 's3 rm')" -lt "$(call_line 'execute-change-set')" ] 2>/dev/null; then echo before; else echo not; fi) $(grep -c -F -x "ok   the copy under ${BUCKETURI} is deleted: 2 file(s), 0 left" "$S/out" || true)"
+check "  and the keys under Box/ and b20/ are still there" "Box/records/0009/c b20/records/0009/d" "$(tr '\n' ' ' <"$S/copy.keys" | sed 's/ $//')"
+FAKE_MOREBOXES=none FAKE_COPY_KEYS=$COPYKEYS FAKE_CHANGESET=$OPS_DIR/testdata/changeset-adds.json stack_run stack-add-plan --plan --more-boxes b2
+check "  its --plan names the leftover, its count and the time, and deletes nothing" "0 1 0 4" \
+  "$RC $(grep -c -F -x "  the copy under ${BUCKETURI}: 2 file(s), newest 2026-11-17T09:00:00+00:00, is a leftover of an earlier box of that name, and is deleted before the change set runs" "$S/out" || true) $(grep -c -F ' s3 rm' "$S/aws.calls" || true) $(wc -l <"$S/copy.keys" | tr -d ' ')"
+FAKE_LIST_FAIL=1 FAKE_MOREBOXES=none FAKE_COPY_KEYS=$COPYKEYS FAKE_CHANGESET=$OPS_DIR/testdata/changeset-adds.json stack_run stack-add-listfail --more-boxes b2
+check "  a failed listing stops the run before the change set executes: exit 1, no execute-change-set, no s3 rm" "1 0 0" \
+  "$RC $(grep -c 'execute-change-set' "$S/aws.calls" || true) $(grep -c -F ' s3 rm' "$S/aws.calls" || true)"
+FAKE_MOREBOXES=none FAKE_COPY_KEYS="Box/records/0009/c b20/records/0009/d" FAKE_CHANGESET=$OPS_DIR/testdata/changeset-adds.json stack_run stack-add-clean --more-boxes b2
+check "  an add of b2 with nothing under b2/records/ deletes nothing and executes" "0 0 1" \
+  "$RC $(grep -c -F ' s3 rm' "$S/aws.calls" || true) $(grep -c 'execute-change-set' "$S/aws.calls" || true)"
+FAKE_MOREBOXES=none FAKE_COPY_KEYS=$COPYKEYS FAKE_CHANGESET=$OPS_DIR/testdata/changeset-adds.json stack_run stack-none-run --more-boxes none
+check "  a list of the word none adds no box: no s3 call" "0 0" "$RC $(grep -c '^aws s3' "$S/aws.calls" || true)"
 
 echo "== the front door's key (plan 2026-11-11-front-door-keys, step 1): the template carries it, the deploy role reads it, stack.sh makes, keeps and masks it"
 # row 8: the API's origin carries x-front-door-key from a NoEcho parameter with no default

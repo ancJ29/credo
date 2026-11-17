@@ -126,11 +126,12 @@ code before its fix.
   `s3api list-objects-v2` and `s3 rm`. The cases go in the `--more-boxes` section (`#L4841`).
   *Done when:* cases 1, 2 and 6 each seen red, then both gate rows exit 0. Size 14.
   *Done, 2026-11-17:* cases 1 and 2 seen red on the old code, then green; case 6's cases (no list, the same list) green and seen red by a mutation clearing every held box, reverted; a creation is not on stand-ins. Added `copy_count`, `copy_newest`, `copy_clear` to `ops/lib.sh`; `STEPS=9`.
-- [ ] **2. The add clears a leftover, and the delete's guards (cases 3, 4, 5, 7, 8).** `ops/stack.sh`
+- [x] **2. The add clears a leftover, and the delete's guards (cases 3, 4, 5, 7, 8).** `ops/stack.sh`
   works out the names added and clears each one between the guard and the execute. `copy_clear` gains
   the versioning refusal and the short-count and not-empty reds. Row 2's guard (`ops/test.sh#L841-L851`)
   gains `.Resources.CopyBucket.Properties | has("VersioningConfiguration") | not`, with its refusing
   mutation. *Done when:* each case seen red, then both gate rows exit 0. Size 14.
+  *Done, 2026-11-17:* cases 5 and 7 seen red on the old code, then green; case 8's new guard seen red (its mutation passed the old guard), then green; cases 3 and 4 already held by step 1's `copy_clear`, so each proved by a reverted mutation (no trailing slash on the prefix reddens 3; dropping the count check or the read-back reddens each case 4 one alone). `copy_clear` refuses a versioned bucket; `stack.sh` clears each box added between the guard and the execute, shown first by `--plan`; `STEPS=10`. Both gate rows exit 0.
 - [ ] **3. The restore takes a box, and the refusal names it (cases 9 to 12).** Change `ops/restore.sh`:
   its usage (`#L2`, `#L24`), with `[--box <name>]` last as in the other four, `--box` in the loop, `box_open "$ENVNAME" "" "$BOX_WANTED"`, `box_out
   RecordsVolumeId`, the log's name and the closing line. `ops/release.sh#L226` names `--box

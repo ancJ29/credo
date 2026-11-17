@@ -10,7 +10,8 @@
 # added or taken out by naming the whole list. A box taken out is a removal, which the guard refuses unless it is
 # named with --take (its instance, its records disk, its attachment, its role and its profile).
 # Once the update completes, the copy under each box taken out (its <name>/records/ in the copy bucket) is deleted and read back empty; --plan
-# shows each path, its count and its newest time first. A run with no list, or one that takes out no box, reads no bucket.
+# shows each path, its count and its newest time first. A box added clears what is left under its name before the change set runs. A run with no list, or one that
+# adds or takes out no box, reads no bucket.
 # Run by the human, from a worktree at main, in a terminal holding an AWS session. Never by CI.
 # Expected length: about 5 minutes for network and env (the endpoint and the box take the time),
 # about a minute for github.
@@ -91,7 +92,7 @@ case "$KIND" in
     TEMPLATE=env.yml
     # CAPABILITY_AUTO_EXPAND beside it for the loop's transform: AWS says it has no effect on a change set (docs/plans/2026-11-11-pooled-shape.md, step 6)
     CAPS='CAPABILITY_IAM CAPABILITY_AUTO_EXPAND'
-    STEPS=9
+    STEPS=10
     # A key run (ops/keys.sh front-door) ends at the outputs: it opens no box and writes nothing to GitHub.
     [ -z "${FRONT_DOOR_KEY_FILE:-}" ] || STEPS=6
     ;;
@@ -199,10 +200,14 @@ echo "stack $STACK: $CS_TYPE"
 # The boxes taken out: those the stack holds that the list given leaves out. Each one's copy in the bucket goes after the update
 # (a run with no list keeps it, and a creation holds none).
 TAKEN_OUT=''
+ADDED=''
 COPY_BUCKET=''
 if [ "$KIND" = env ] && [ "$MORE_BOXES_GIVEN" = 1 ] && [ "$CS_TYPE" = UPDATE ]; then
   TAKEN_OUT=$(stack_boxes | grep -vxFf <(tr ',' '\n' <<<"$MORE_BOXES") || true)
-  if [ -n "$TAKEN_OUT" ]; then
+  # The boxes added: those the list names that the stack does not hold (the word none is no box). Anything under an added name's path is a leftover
+  # of an earlier box of that name; nothing writes there, so it is cleared before the change set runs.
+  ADDED=$(tr ',' '\n' <<<"$MORE_BOXES" | grep -vxFf <(stack_boxes; echo none) || true)
+  if [ -n "$TAKEN_OUT" ] || [ -n "$ADDED" ]; then
     COPY_BUCKET=$(out CopyBucketName)
     [ -n "$COPY_BUCKET" ] || die "stack $STACK names no copy bucket (CopyBucketName), so the copy of $(tr '\n' ' ' <<<"$TAKEN_OUT")cannot be found: nothing was changed"
   fi
@@ -349,12 +354,30 @@ else
   # what the run deletes after the update, shown before it is done
   while IFS= read -r name; do
     [ -n "$name" ] || continue
-    echo "  the copy under s3://$COPY_BUCKET/$name/records/: $(copy_count "$COPY_BUCKET" "$name") file(s), newest $(copy_newest "$COPY_BUCKET" "$name"), is deleted after the update"
+    # read first, so a listing that fails ends the run here (a die inside the echo's substitution would not)
+    n=$(copy_count "$COPY_BUCKET" "$name")
+    t=$(copy_newest "$COPY_BUCKET" "$name")
+    echo "  the copy under s3://$COPY_BUCKET/$name/records/: $n file(s), newest $t, is deleted after the update"
   done <<<"$TAKEN_OUT"
+  while IFS= read -r name; do
+    [ -n "$name" ] || continue
+    # read first, so a listing that fails ends the run here (a die inside the echo's substitution would not)
+    n=$(copy_count "$COPY_BUCKET" "$name")
+    t=$(copy_newest "$COPY_BUCKET" "$name")
+    echo "  the copy under s3://$COPY_BUCKET/$name/records/: $n file(s), newest $t, is a leftover of an earlier box of that name, and is deleted before the change set runs"
+  done <<<"$ADDED"
 
   if [ "$PLAN_ONLY" = 1 ]; then
     echo "--plan: the change set is deleted, nothing changed"
     exit 0
+  fi
+
+  if [ -n "$ADDED" ]; then
+    step "the leftover copy of each box added"
+    while IFS= read -r name; do
+      [ -n "$name" ] || continue
+      copy_clear "$COPY_BUCKET" "$name"
+    done <<<"$ADDED"
   fi
 
   step "execute, and wait"

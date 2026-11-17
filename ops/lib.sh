@@ -584,8 +584,11 @@ copy_newest() {
 # reads the path back empty; the deletes AWS reports must equal the count. The copy of the box taken out goes with it.
 # A copy of the pattern of ops/destroy.sh's copy bucket step.
 copy_clear() {
-  local n out deleted left prefix="$2/records/"
+  local n out deleted left vers prefix="$2/records/"
   [ -n "$1" ] || die "no copy bucket named: nothing is deleted under $prefix"
+  # the template has no versioning; with it a delete would leave old versions behind (a copy of ops/destroy.sh's refusal)
+  vers=$(aws s3api get-bucket-versioning --bucket "$1" --query Status --output text 2>/dev/null || true)
+  case "$vers" in "" | None) ;; *) die "bucket $1 has versioning '$vers'; the template has none, so a delete would leave old versions behind: nothing is deleted under $prefix" ;; esac
   n=$(copy_count "$1" "$2")
   if [ "$n" = 0 ]; then
     ok "the copy under s3://$1/$prefix holds nothing"
