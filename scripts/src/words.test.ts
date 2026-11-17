@@ -344,12 +344,12 @@ describe('words in', () => {
       await world.returned(world.edit(key, 1, `${word} {{max}}`)),
     );
     expect(doubled.status).toBe(0);
-    const twice = world.rows.find((row) => /(\{\{\w+\}\})[\s\S]*\1/.test(row[1]))!;
-    const last = twice[1].lastIndexOf('{{');
-    const end = twice[1].indexOf('}}', last) + 2;
-    const dropped = await world.wordsIn(
-      await world.returned(world.edit(twice[0], 1, twice[1].slice(0, last) + twice[1].slice(end))),
+    // the sent sheet now holds the doubled word; the original, repeat dropped, comes back
+    await cp(
+      await world.returned(world.edit(key, 1, `${word} {{max}}`), ',', '\ufeff'),
+      world.sent,
     );
+    const dropped = await world.wordsIn(await world.returned((rows) => rows));
     expect(dropped.status).toBe(0);
     const stray = await world.wordsIn(
       await world.returned(world.edit(key, 1, word.replace('{{max}}', '{{max}}}'))),
