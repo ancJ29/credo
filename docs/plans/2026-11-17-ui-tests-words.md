@@ -183,9 +183,20 @@ commit after it is 5, a first run. The recap is 7, the last one, and the landing
       word in the pattern written back: a placeholder word is filled as the screen fills it by
       `.replace('{{name}}', …)`, and a name found by `getByText` over a word that shares its
       element with a button (a conflict alert) is read by `toContain` of the dictionary word.
-- [ ] **3. The staff pages.** `StaffPages`, `StaffRecord` and `StaffSetupPage` under `pages/client/`:
+- [x] **3. The staff pages.** `StaffPages`, `StaffRecord` and `StaffSetupPage` under `pages/client/`:
       about 510 lines, the detector of case 4 among them. _Done when:_ the batch's checks exit 0,
       and one mutation is seen red, then put back. **71 min:** 46 of work, 25 of lock.
+      _Done:_ the three files' run exited 0 (106 tests), and `pnpm --filter @credo/ui typecheck` and
+      `pnpm exec prettier --check` on them each exited 0, on the tree as committed; the key
+      `setup.save` in `StaffSetupPage.tsx` changed to `setup.saved` reddened `StaffSetupPage.test.tsx`
+      (7 of 11) and was put back. The whole ui check stays red until step 4, by the plan's decision.
+      The detector of case 4 (`StaffPages.test.tsx`, "Every new screen reads fully") now matches
+      only the dictionary's own keys, flattened from `DICTIONARIES.en`. Two things written back: a
+      label found by a star-forgiving regex is `starting(word)`, a `^`-anchored escape of the
+      dictionary word (kept as the old `/^Name/` anchored), and where two keys held one text the
+      page decided: the person's page reads `fields.*` for its start date, birth date and address
+      (not `setup.field*`), the list reads `staff.*`, the add page `addPerson.*`. Every `toContain`
+      of a fragment became the whole dictionary word, none was dropped.
 - [ ] **4. The lists, the orders and the rest of the client's pages, and the whole checks.** This
       batch covers about 660 lines in 10 files: `ListPage`, `OrdersPages`, `MyDeliveries`,
       `Reconcile`, `DeliveriesPages`, `ListImportPage`, `ImportPage`, `Access`, `UnknownClient` and
