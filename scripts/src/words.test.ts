@@ -336,16 +336,21 @@ describe('words in', () => {
     expect((await world.wordsIn(decomposed)).out).toBe(NONE);
   });
 
-  it('refuses a placeholder repeated or a brace left outside one', async () => {
+  it('reads a placeholder repeated or its repeat dropped as the same, and refuses a brace left outside one', async () => {
     const world = await scene();
     const key = world.rows.find((row) => row[1].includes('{{max}}'))![0];
     const word = world.cell(key, 1);
     const doubled = await world.wordsIn(
       await world.returned(world.edit(key, 1, `${word} {{max}}`)),
     );
-    expect(doubled.err).toContain(
-      `${key}: the English placeholders were {{max}}, now {{max}} {{max}}`,
+    expect(doubled.status).toBe(0);
+    const twice = world.rows.find((row) => /(\{\{\w+\}\})[\s\S]*\1/.test(row[1]))!;
+    const last = twice[1].lastIndexOf('{{');
+    const end = twice[1].indexOf('}}', last) + 2;
+    const dropped = await world.wordsIn(
+      await world.returned(world.edit(twice[0], 1, twice[1].slice(0, last) + twice[1].slice(end))),
     );
+    expect(dropped.status).toBe(0);
     const stray = await world.wordsIn(
       await world.returned(world.edit(key, 1, word.replace('{{max}}', '{{max}}}'))),
     );
@@ -434,7 +439,10 @@ describe('words in', () => {
     expect(await runWords(['in', world.sent], {}, io)).toBe(2);
     expect(err[0]).toMatch(/^usage: words out /);
     expect(await runWords(['in', 'sent.csv', 'missing.csv'], {}, io)).toBe(2);
-    expect(err[1]).toBe(`cannot read the file returned: ${join(world.folder, 'missing.csv')}`);
+    const missing = join(world.folder, 'missing.csv');
+    expect(err[1]).toBe(
+      `cannot read the file returned: ${missing} (ENOENT: no such file or directory, open '${missing}')`,
+    );
     await expect(world.wordsIn(world.sent, join(world.folder, 'no-repo'))).rejects.toThrow(
       /ENOENT/,
     );

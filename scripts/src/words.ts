@@ -64,16 +64,16 @@ const LANGUAGES = [
 
 const PLACEHOLDER = /\{\{[^}]*\}\}/g;
 
-/** The placeholders of a word, `{{name}}` each, sorted, a repeated one repeated. */
+/** The distinct placeholders of a word, `{{name}}` each, sorted, a repeated one once. */
 function placeholders(word: string): string[] {
-  return (word.match(PLACEHOLDER) ?? []).sort();
+  return [...new Set(word.match(PLACEHOLDER) ?? [])].sort();
 }
 
 const listOf = (names: string[]) => (names.length > 0 ? names.join(' ') : 'none');
 
 async function readRows(path: string, label: string): Promise<WordsRow[]> {
-  const bytes = await readFile(path).catch(() => {
-    throw new Refused(`cannot read ${label}: ${path}`);
+  const bytes = await readFile(path).catch((error: Error) => {
+    throw new Refused(`cannot read ${label}: ${path} (${error.message})`);
   });
   return readWords(bytes, label);
 }

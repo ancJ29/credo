@@ -1,6 +1,7 @@
 import { type CustomField, IMPORT_MAX_ROWS, type Language, type StaffSetup } from '@credo/shared';
 import { DEMO_IMPORT_ROWS, DEMO_STAFF_SETUP } from '@credo/shared/demo';
 import { describe, expect, it } from 'vitest';
+import { DICTIONARIES } from './i18n';
 import {
   type Cell,
   columnsOf,
@@ -142,6 +143,27 @@ describe('the template', () => {
     expect(of('Contract date')?.[2]).toBe('A date as year-month-day, for example 2026-10-29.');
     expect(of('Vehicle plate')?.[2]).toBe('Text of at most 500 characters.');
     expect(of('Dependants')?.[2]).toBe('A number, for example 3 or 3.5.');
+  });
+
+  it('fills every {{names}} of a word that names the options twice', () => {
+    const words = DICTIONARIES.en.import as Record<string, string>;
+    const was = { ...words };
+    try {
+      for (const key of ['writeChoice', 'writeDepartment', 'writePosition']) {
+        words[key] = 'Of: {{names}}. Again: {{names}}.';
+      }
+      const rows = templateSheets(DEMO_STAFF_SETUP, 'en')[1].rows;
+      const of = (heading: string) => rows.find((row) => row[0] === heading)?.[2];
+      expect(of('Department')).toBe(
+        'Of: Kho, Văn phòng, Giao hàng. Again: Kho, Văn phòng, Giao hàng.',
+      );
+      expect(of('Position')).toBe(
+        'Of: Quản lý, Nhân viên, Thực tập. Again: Quản lý, Nhân viên, Thực tập.',
+      );
+      expect(of('Driving licence')).toBe('Of: Class B2, Class C. Again: Class B2, Class C.');
+    } finally {
+      Object.assign(words, was);
+    }
   });
 
   it('is still a template for a company that keeps nothing besides: no unit to name, a choice of one option sampled twice', () => {

@@ -99,7 +99,7 @@ export function templateSheets(
   const names = (list: readonly { name: string }[]) => list.map((item) => item.name).join(', ');
   const write = (column: Column) => {
     if (column.field?.kind === 'choice') {
-      return words.writeChoice.replace(
+      return words.writeChoice.replaceAll(
         '{{names}}',
         column.field.options.map((option) => option.label[language]).join(', '),
       );
@@ -114,8 +114,8 @@ export function templateSheets(
       code: words.writeCode,
       phone: words.writePhone,
       personalPhone: words.writePhone,
-      department: words.writeDepartment.replace('{{names}}', names(setup.departments)),
-      position: words.writePosition.replace('{{names}}', names(setup.positions)),
+      department: words.writeDepartment.replaceAll('{{names}}', names(setup.departments)),
+      position: words.writePosition.replaceAll('{{names}}', names(setup.positions)),
       note: words.writeNote,
     }[column.key as 'name'];
   };
