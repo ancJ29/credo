@@ -103,6 +103,7 @@ describe('11: the app’s theme is the design system’s, for every company’s 
       });
       expect(components?.Modal?.defaultProps).toMatchObject({ centered: true });
       expect(components?.Modal?.styles).toEqual({
+        header: { padding: 'var(--mantine-spacing-sm) var(--mantine-spacing-md)' },
         title: { fontSize: 'var(--mantine-font-size-lg)', fontWeight: 550 },
       });
       expect(components?.Input).toBeDefined();

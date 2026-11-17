@@ -148,7 +148,7 @@ export const themeOf = (colour: string) =>
       Table: Table.extend({ defaultProps: { highlightOnHoverColor: TOKENS.rowHover } }),
       Modal: Modal.extend({
         defaultProps: { centered: true },
-        styles: { title: TOKENS.dialogTitle },
+        styles: { header: TOKENS.dialogHeader, title: TOKENS.dialogTitle },
       }),
     },
   });

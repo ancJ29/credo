@@ -12,8 +12,8 @@ import { Button, NumberInput, Stack, Switch, Textarea, TextInput } from '@mantin
 import {
   IconAdjustmentsHorizontal,
   IconBuildingWarehouse,
-  IconInfoCircle,
   IconNote,
+  IconPackage,
 } from '@tabler/icons-react';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -110,7 +110,7 @@ export function ProductForm({
         <DetailColumns
           main={
             <Stack gap="lg">
-              <DetailCard icon={<IconInfoCircle size={14} />} title={t('lists.products.basic')}>
+              <DetailCard icon={<IconPackage size={14} />} title={t('lists.products.basic')}>
                 <FieldPair>
                   <TextInput
                     label={t('lists.columns.code')}

@@ -23,7 +23,7 @@ import {
   TextInput,
   Title,
 } from '@mantine/core';
-import { IconInfoCircle } from '@tabler/icons-react';
+import { IconBuilding } from '@tabler/icons-react';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LANGUAGE_NAMES } from '../i18n';
@@ -118,7 +118,7 @@ function SettingsForm({ config, outcome, saving, onSave, onReload, logoRefusal }
             </Stack>
           </Alert>
         )}
-        <DetailCard icon={<IconInfoCircle size={14} />} title={t('settings.basics')}>
+        <DetailCard icon={<IconBuilding size={14} />} title={t('settings.basics')}>
           <Stack gap="lg">
             <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg" verticalSpacing="lg">
               <TextInput
