@@ -178,7 +178,7 @@ gallery pages 10 and 14 minutes, three parts at once 20; its review 8, its fix p
       ui check, the citation test and the visual check exit 0; `build` and `build:fake` exit 0, the
       entry 1,011.41 kB (+0.50), `Mantine, in the theme` only in `Gallery-*.js` of each build; `pnpm
       fake`'s `/48b74d079/gallery` held `<div id="root">`.
-- [ ] **2. The workbench.** `entries.tsx` from `LEVELS`, `Values` and `Mantines` as the Foundations;
+- [x] **2. The workbench.** `entries.tsx` from `LEVELS`, `Values` and `Mantines` as the Foundations;
       the frame, the list, the part, the switch, the phone width, the three states; `Gallery` reads
       the part from `useLocation`. Cases 4 to 12, each red once (a component left out, a count off by
       one, every part drawn at once, the bare address drawing none, an unknown address drawing the
@@ -186,6 +186,14 @@ gallery pages 10 and 14 minutes, three parts at once 20; its review 8, its fix p
       and 11, dark forced for 12). _Done when:_ both checks exit 0 with the nine red receipts in the
       tick, and `git diff --name-only pre-merge...HEAD -- ui walk visual | grep -vcE
       '^ui/(src/(design-system/|App\.)|CLAUDE\.md|gallery\.html)'` counts 0. **20 min.**
+      _Ticked 2026-11-17:_ `entries.tsx` (the table, the two foundations, the three added states) and
+      the frame in `Gallery.tsx` with `Gallery.module.css`; cases 4 to 12 each red once and put back, ten
+      mutations on the worktree copy: a component left out (4, 8), the count one over (4), every part
+      at once (5, 6, 8, 9, 10, 11), the bare address drawing none (6, 11), an unknown address drawing
+      the first part (7), a description changed (8), the switch on a one-state part (9), a state
+      dropped from the page header (9, 10) and from the Mantine part (11), dark forced (12). The
+      path count reads 1, `ui/vite.config.ts`, which step 1 changed for its comment and the
+      pattern does not name.
 - [ ] **3. Review.** Another model than the builder's reads steps 1 and 2 against this page. _Done
       when:_ the review is written, each finding with its line. **8 min.**
 - [ ] **4. One fix pass.** Each finding fixed, rejected or deferred with its reason; `pre-merge`
