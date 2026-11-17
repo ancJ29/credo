@@ -1195,16 +1195,9 @@ describe('the words', () => {
       { path: `/staff/${id}`, ready: 'textbox' },
       { path: `/staff/${person('EMP-0008').id}`, ready: 'textbox' },
     ];
-    // a key with no words shows as the key: one of the dictionary's own dotted names, matched whole
-    const keysOf = (group: object, at = ''): string[] =>
-      Object.entries(group).flatMap(([key, value]) =>
-        typeof value === 'string' ? [`${at}${key}`] : keysOf(value as object, `${at}${key}.`),
-      );
+    // a key with no words shows as the key: a dotted name that starts with one of the dictionary's groups, every part lowercase-first
     const KEY = new RegExp(
-      `(?<![A-Za-z_.])(${keysOf(DICTIONARIES.en)
-        .sort((a, b) => b.length - a.length)
-        .map((key) => key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
-        .join('|')})(?![A-Za-z_])`,
+      `(?<![A-Za-z_.])(${Object.keys(DICTIONARIES.en).join('|')})(\\.[a-z][A-Za-z0-9_]*)+`,
     );
     const missingKey = () => KEY.exec(document.body.textContent)?.[0] ?? null;
     for (const language of ['vi', 'en'] as const) {
