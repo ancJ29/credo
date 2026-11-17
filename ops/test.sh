@@ -6233,5 +6233,343 @@ check "  and the log ends on its exit" "== exit 1" "$(tail -n 1 "$OPS_LOG_DIR"/*
 check "27: the Bruno version is declared once, in lib.sh, and neither check.sh nor remake.sh sets its own" "1 0" \
   "$(grep -c '^WANT_BRUNO=' "$OPS_DIR/lib.sh") $(cat "$OPS_DIR/check.sh" "$OPS_DIR/remake.sh" | grep -c '^[[:space:]]*WANT_BRUNO=' || true)"
 
+# ---- ops/words-in.sh (docs/plans/2026-11-17-words-paste.md, the refusals and stops: cases 1 to 11, 13 to 20, 22 to 24)
+# A throwaway credo root a case: .bare, a main worktree holding ops/ and the two word files, a pre-merge worktree, the
+# lock overrides and OPS_LOG_DIR as the gate's section sets them. pnpm and sleep are stand-ins on PATH; pnpm answers by
+# switches (WI_INSTALL_FAIL, WI_IMPORT, WI_UI, WI_UI_GIVEUP, WI_CITE) and runs a hook on the first (WI_HOOK) and the second (WI_HOOK2) ui check.
+echo "== ops/words-in.sh (the refusals and stops, each on its own throwaway root: the files a partner returns are read in only as the plan says)"
+WI=$WORK/words-in
+mkdir -p "$WI/bin"
+WI=$(cd "$WI" && pwd -P)
+cat >"$WI/bin/pnpm" <<'STUB'
+#!/bin/sh
+echo "$PWD: $*" >>"$WI_CALLS"
+case "$*" in
+  "install "*)
+    [ -z "${WI_INSTALL_FAIL:-}" ] || { echo "ERR_PNPM_NO_OFFLINE_TARBALL"; exit 1; }
+    exit 0 ;;
+  "words in "*)
+    case ${WI_IMPORT:-change} in
+      refuse) echo "row 3: the key is not in the app"; exit 1 ;;
+      readback) echo "nothing written: vi.ts did not read back as intended (a.b)"; exit 1 ;;
+      none) echo "0 changes, 0 clashes, 0 keys gone, 0 notes"; exit 0 ;;
+    esac
+    echo "1 changes, 0 clashes, 0 keys gone, 0 notes"
+    printf 'Write these 1 changes? (y/N) '
+    read -r ans
+    [ "$ans" = y ] || { echo "nothing written"; exit 0; }
+    echo "// a returned word" >>ui/src/i18n/vi.ts
+    [ "${WI_IMPORT:-}" != extra ] || echo stray >stray.txt
+    exit 0 ;;
+  *"@credo/ui check"*)
+    n=$(($(cat "$WI_CALLS.ui" 2>/dev/null || echo 0) + 1))
+    echo "$n" >"$WI_CALLS.ui"
+    if [ "$n" = 1 ] && [ -n "${WI_HOOK:-}" ]; then sh -c "$WI_HOOK"; fi
+    if [ "$n" = 2 ] && [ -n "${WI_HOOK2:-}" ]; then sh -c "$WI_HOOK2"; fi
+    echo "the ui check's own line $n"
+    [ -z "${WI_UI_GIVEUP:-}" ] || { echo "error: gave up after 600s waiting for the lock"; exit 1; }
+    exit "${WI_UI:-0}" ;;
+  *"@credo/scripts exec vitest"*) echo "the citation test's own line"; exit "${WI_CITE:-0}" ;;
+esac
+exit 0
+STUB
+cat >"$WI/bin/sleep" <<'STUB'
+#!/bin/sh
+# a wait: the first call frees WI_REL1, the second WI_REL2 (a lock folder each); with none set, it waits for real
+n=$(($(cat "$WI_CALLS.sleep" 2>/dev/null || echo 0) + 1))
+echo "$n" >"$WI_CALLS.sleep"
+if [ -n "${WI_REL1:-}" ] || [ -n "${WI_REL2:-}" ]; then
+  if [ "$n" = 1 ] && [ -n "${WI_REL1:-}" ]; then rm -rf "$WI_REL1"; fi
+  if [ "$n" = 2 ] && [ -n "${WI_REL2:-}" ]; then rm -rf "$WI_REL2"; fi
+  exit 0
+fi
+exec /bin/sleep "$@"
+STUB
+chmod +x "$WI/bin/pnpm" "$WI/bin/sleep"
+WIN=0 WI_R='' WI_RC=0 WI_OUT='' WI_LOG=''
+wig() { git -C "$1" -c user.name=test -c user.email=test@example.com -c commit.gpgsign=false "${@:2}"; }
+# wi_make: a new root in WI_R; its main worktree holds this tree's ops/words-in.sh and lib.sh
+wi_make() {
+  WIN=$((WIN + 1))
+  WI_R=$WI/r$WIN
+  mkdir -p "$WI_R/seed/ops" "$WI_R/seed/ui/src/i18n" "$WI_R/words-sent"
+  cp "$OPS_DIR/words-in.sh" "$OPS_DIR/lib.sh" "$OPS_DIR"/*.service "$WI_R/seed/ops/"
+  printf 'export const en = {\n  a: "A",\n}\n' >"$WI_R/seed/ui/src/i18n/en.ts"
+  printf 'export const vi = {\n  a: "B",\n}\n' >"$WI_R/seed/ui/src/i18n/vi.ts"
+  git init -q -b main "$WI_R/seed"
+  wig "$WI_R/seed" add ops ui
+  wig "$WI_R/seed" commit -q -m seed
+  git clone -q --bare "$WI_R/seed" "$WI_R/.bare"
+  rm -rf "$WI_R/seed"
+  wig "$WI_R/.bare" worktree add -q "$WI_R/main" main
+  wig "$WI_R/.bare" branch pre-merge main
+  wig "$WI_R/.bare" worktree add -q "$WI_R/pre-merge" pre-merge
+  echo sent >"$WI_R/words-sent/p1.csv"
+  echo returned >"$WI_R/returned.csv"
+}
+# wi_run [VAR=value ...] -- <words-in.sh arguments>: sets WI_RC, WI_OUT (the terminal), WI_LOG (the log); the answer is WI_ANSWER (y)
+wi_run() {
+  local envs=()
+  while [ "$1" != -- ]; do
+    envs+=("$1")
+    shift
+  done
+  shift
+  WI_OUT=$WI_R/out-$((++WIN))
+  WI_RC=0
+  printf '%s\n' "${WI_ANSWER:-y}" | env PATH="$WI/bin:$BASE_PATH" OPS_LOG_DIR="$WI_R/logs" WI_CALLS="$WI_R/calls" WI_PM="$WI_R/pre-merge" \
+    GATE_LOCK="$WI_R/gl" GATE_RUN_LOCK="$WI_R/rl" WORDS_LAND_WAIT=5 WORDS_LAND_POLL=1 OPS_TEST_NO_TTY=1 \
+    GIT_AUTHOR_NAME=test GIT_AUTHOR_EMAIL=test@example.com GIT_COMMITTER_NAME=test GIT_COMMITTER_EMAIL=test@example.com \
+    GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=commit.gpgsign GIT_CONFIG_VALUE_0=false \
+    ${envs[@]+"${envs[@]}"} bash "$WI_R/main/ops/words-in.sh" "$@" >"$WI_OUT" 2>&1 || WI_RC=$?
+  WI_LOG=$(find "$WI_R/logs" -name '*-words-in-all.log' 2>/dev/null | sort | tail -1 || true)
+}
+wi_ret() { echo "$WI_R/returned.csv"; }
+wi_tip() { git -C "$WI_R/.bare" rev-parse pre-merge; }
+wi_has() { grep -cE -- "$1" "${2:-$WI_LOG}" || true; }          # <regex> [file]: the lines that match
+wi_made() { # wip folders and words- branches there now, "none" when no folder and no branch
+  local d b
+  d=$(find "$WI_R" -maxdepth 1 -name 'wip-*' | wc -l | tr -d ' ')
+  b=$(git -C "$WI_R/.bare" branch --list 'words-*' | wc -l | tr -d ' ')
+  if [ "$d $b" = "0 0" ]; then echo none; else echo "$d folders, $b branches"; fi
+}
+wi_stamp() { date "+words-p1-%m%d-%H%M"; }
+wi_next() { local at=$(($(date +%s) + 60)); date -r "$at" "+words-p1-%m%d-%H%M" 2>/dev/null || date -d "@$at" "+words-p1-%m%d-%H%M"; }
+wi_landed() { git -C "$WI_R/.bare" show pre-merge:ui/src/i18n/vi.ts | grep -c 'a returned word' || true; } # 1 when pre-merge holds the stand-in's word
+wi_wtof() { git -C "$WI_R/.bare" worktree list --porcelain | awk -v b="refs/heads/$1" '/^worktree /{w=substr($0,10)} $0=="branch " b{print w}'; }
+# wi_kept_branch: a stopped run's branch with its worktree, for --land: sets WI_B
+wi_kept_branch() {
+  wi_run WI_UI_GIVEUP=1 -- "$(wi_ret)" p1
+  WI_B=$(git -C "$WI_R/.bare" branch --list 'words-*' | tr -d ' *+')
+}
+
+wi_make
+wi_run -- "$(wi_ret)" p1
+check "words-in 0: the stand-in root lands a returned word (the cases below are its refusals and stops)" "0 1" "$WI_RC $(wi_has '^== verdict: landed')"
+
+# case 1: the usage, exit 2, nothing made
+for args in "" "x" "a b c" "--bogus p1" "--land"; do
+  wi_make
+  # shellcheck disable=SC2086
+  wi_run -- $args
+  check "1: '$args' is refused with the usage, exit 2, nothing made" "2 1 none" "$WI_RC $(wi_has '^== refused: usage: ops/words-in.sh') $(wi_made)"
+done
+# case 2: a name, or a label that is not p and a number
+for lab in anna p P1 p1x; do
+  wi_make
+  wi_run -- "$(wi_ret)" "$lab"
+  check "2: the label '$lab' is refused, exit 2, nothing made" "2 1 none" "$WI_RC $(wi_has "^== refused: the label '$lab' is not p and a number") $(wi_made)"
+done
+# case 3: a returned file the script cannot read, with the system's reason
+wi_make
+wi_run -- "$WI_R/nothing.csv" p1
+check "3: a returned file that is not there is refused with the system's reason, before any worktree, exit 2" "2 1 none" "$WI_RC $(wi_has '^== refused: cannot read the returned file .*No such file or directory') $(wi_made)"
+wi_run -- "$WI_R" p1
+check "3: a folder in its place is refused the same way" "2 1" "$WI_RC $(wi_has '^== refused: cannot read the returned file .*Is a directory')"
+# case 4: no sent copy
+wi_make
+rm "$WI_R/words-sent/p1.csv"
+wi_run -- "$(wi_ret)" p1
+check "4: no sent copy is refused, naming its path and the command that makes it, exit 2, nothing made" "2 1 1 none" \
+  "$WI_RC $(wi_has "^== refused: no $WI_R/words-sent/p1.csv") $(wi_has 'made by: pnpm words out') $(wi_made)"
+# case 5: no terminal and no switch
+wi_make
+wi_run OPS_TEST_NO_TTY= -- "$(wi_ret)" p1
+check "5: with no terminal to answer on, and the tests' switch off, it is refused, exit 2, nothing made" "2 1 none" "$WI_RC $(wi_has '^== refused: needs a terminal') $(wi_made)"
+# case 6: the branch or folder of that name is already there; nothing made or removed
+wi_make
+wig "$WI_R/.bare" branch "$(wi_stamp)" main
+wig "$WI_R/.bare" branch "$(wi_next)" main
+wi_run -- "$(wi_ret)" p1
+check "6: a branch of that name already there is refused, exit 2, both branches still there, no folder made" "2 1 2 0" \
+  "$WI_RC $(wi_has '^== refused: the branch or folder words-p1-.* already exists; nothing was made or removed') $(git -C "$WI_R/.bare" branch --list 'words-*' | wc -l | tr -d ' ') $(find "$WI_R" -maxdepth 1 -name 'wip-*' | wc -l | tr -d ' ')"
+wi_make
+mkdir "$WI_R/wip-$(wi_stamp)" "$WI_R/wip-$(wi_next)"
+wi_run -- "$(wi_ret)" p1
+check "6: a folder of that name already there is refused too, left as it was, no branch made" "2 1 2 0" \
+  "$WI_RC $(wi_has '^== refused: the branch or folder words-p1-.* already exists') $(find "$WI_R" -maxdepth 1 -name 'wip-*' | wc -l | tr -d ' ') $(git -C "$WI_R/.bare" branch --list 'words-*' | wc -l | tr -d ' ')"
+# a stop before the commit removes what this run made, and only that (case 24's first half): another piece's worktree and branch stay
+wi_other() {
+  wig "$WI_R/.bare" worktree add -q -b words-p9-0101-0101 "$WI_R/wip-words-p9-0101-0101" pre-merge
+  wig "$WI_R/.bare" branch words-p9-0303-0303 pre-merge
+}
+wi_other_kept() { [ -d "$WI_R/wip-words-p9-0101-0101" ] && git -C "$WI_R/.bare" show-ref --verify --quiet refs/heads/words-p9-0101-0101 && git -C "$WI_R/.bare" show-ref --verify --quiet refs/heads/words-p9-0303-0303 && echo kept || echo GONE; }
+# case 7: the offline install fails
+wi_make
+wi_other
+wi_run WI_INSTALL_FAIL=1 -- "$(wi_ret)" p1
+check "7: a failed offline install stops it, exit 1, the worktree and branch it made removed" "1 1 1 2 kept" \
+  "$WI_RC $(wi_has '^== verdict: the offline install failed') $(find "$WI_R" -maxdepth 1 -name 'wip-*' | wc -l | tr -d ' ') $(git -C "$WI_R/.bare" branch --list 'words-*' | wc -l | tr -d ' ') $(wi_other_kept)"
+# case 8: the import refuses the file
+wi_make
+wi_other
+wi_run WI_IMPORT=refuse -- "$(wi_ret)" p1
+check "8: the import's refusal shows its rows, writes nothing, removes what was made, exit 1" "1 1 1 1 2 kept" \
+  "$WI_RC $(wi_has '^row 3: the key is not in the app') $(wi_has '^== verdict: the import refused the file') $(find "$WI_R" -maxdepth 1 -name 'wip-*' | wc -l | tr -d ' ') $(git -C "$WI_R/.bare" branch --list 'words-*' | wc -l | tr -d ' ') $(wi_other_kept)"
+# case 9: no change, or any answer but y
+wi_make
+wi_run WI_IMPORT=none -- "$(wi_ret)" p1
+check "9: no change says nothing written, nothing to land, removes what was made, exit 0" "0 1 none" "$WI_RC $(wi_has '^== verdict: nothing written, nothing to land') $(wi_made)"
+wi_make
+T9=$(wi_tip)
+WI_ANSWER=n wi_run -- "$(wi_ret)" p1
+check "9: an answer but y writes nothing, removes what was made, exit 0, pre-merge untouched" "0 1 none $T9" "$WI_RC $(wi_has '^== verdict: nothing written, nothing to land') $(wi_made) $(wi_tip)"
+# case 10: the import's read-back fails
+wi_make
+wi_run WI_IMPORT=readback -- "$(wi_ret)" p1
+check "10: a read-back that fails is named a tool fault, nothing kept, exit 1" "1 1 none" "$WI_RC $(wi_has "^== verdict: the import's read-back failed .*a tool fault") $(wi_made)"
+# case 11: after the y, a file beyond the two word files
+wi_make
+T11=$(wi_tip)
+wi_run WI_IMPORT=extra -- "$(wi_ret)" p1
+B11=$(git -C "$WI_R/.bare" branch --list 'words-*' | tr -d ' *+')
+check "11: a changed file beyond the word files is named, nothing committed, the worktree kept, exit 1" "1 1 1 1 $T11 $T11" \
+  "$WI_RC $(wi_has 'a file beyond the two word files changed: stray.txt') $(wi_has '^== verdict: stopped before the commit') $(find "$WI_R" -maxdepth 1 -name 'wip-*' | wc -l | tr -d ' ') $(git -C "$WI_R/.bare" rev-parse "$B11") $(wi_tip)"
+# case 13: a red check, each named, nothing landed, the branch kept
+wi_make
+T13=$(wi_tip)
+wi_run WI_UI=1 -- "$(wi_ret)" p1
+check "13: a red ui check is named red with item 549, the citation test green, nothing landed, branch kept, a session takes it, exit 1" "1 1 1 1 0 1 $T13" \
+  "$WI_RC $(wi_has '^the ui check is red;.*open item 549') $(wi_has '^the ui check exit 1, the citation test exit 0') $(wi_has 'a session takes it from here') $(wi_has 'to land it again') $(git -C "$WI_R/.bare" branch --list 'words-*' | wc -l | tr -d ' ') $(wi_tip)"
+wi_make
+wi_run WI_CITE=1 -- "$(wi_ret)" p1
+check "13: a red citation test is named, the ui check green, nothing landed, branch kept, exit 1" "1 1 1 0 1" \
+  "$WI_RC $(wi_has '^the citation test is red') $(wi_has '^the ui check exit 0, the citation test exit 1') $(wi_has 'the ui check is red') $(git -C "$WI_R/.bare" branch --list 'words-*' | wc -l | tr -d ' ')"
+# case 25: both checks' own lines reach the terminal and the log, each before the line that gives its exit
+wi_make
+wi_run WI_UI=1 WI_CITE=1 -- "$(wi_ret)" p1
+check "25: the ui check's and the citation test's own lines reach the terminal and the log, before the exit line" "1 1 1 1 1" \
+  "$(wi_has "^the ui check's own line 1\$" "$WI_OUT") $(wi_has "^the citation test's own line\$" "$WI_OUT") $(wi_has "^the ui check's own line 1\$") $(wi_has "^the citation test's own line\$") $(awk '/^the ui check.s own line 1$/{u=NR} /^the citation test.s own line$/{c=NR} /^the ui check exit/{e=NR} END{print (u>0 && u<c && c<e) ? 1 : 0}' "$WI_LOG")"
+# case 14: the ui check gives up on the lock: not run, not red, the land line
+wi_make
+T14=$(wi_tip)
+wi_run WI_UI_GIVEUP=1 -- "$(wi_ret)" p1
+B14=$(git -C "$WI_R/.bare" branch --list 'words-*' | tr -d ' *+')
+check "14: a ui check that gave up is said as not run and not red, the branch kept, the land line printed, exit 1" "1 1 0 1 1 $T14" \
+  "$WI_RC $(wi_has '^the ui check did not run: it gave up waiting for the machine.s lock; that is not red') $(wi_has 'the ui check is red') $(wi_has "to land it again, paste: cd /[^ ]+ && bash /[^ ]+/ops/words-in\.sh --land $B14\$") $(git -C "$WI_R/.bare" branch --list 'words-*' | wc -l | tr -d ' ') $(wi_tip)"
+check "14: the printed land line holds the script's absolute path, to paste from anywhere" "1" \
+  "$(wi_has "to land it again, paste: cd $WI_R/main && bash $WI_R/main/ops/words-in\\.sh --land $B14\$")"
+# case 15: before each wait, its bound and the clock time it ends (the ui check's, from case 14's log; the landing's)
+check "15: before the ui check, the bound and the clock time it ends" "1" \
+  "$(wi_has '^the ui check waits at most 600 s for the machine.s lock, until [0-2][0-9]:[0-5][0-9];')"
+wi_make
+wi_run -- "$(wi_ret)" p1
+check "15: before the landing, the bound and the clock time it ends" "1" "$(wi_has '^the landing waits at most 5 s for the gate lock and any full run, until [0-2][0-9]:[0-5][0-9]$')"
+# case 16: both locks held at the landing: waited for, a line a poll naming each holder, then it lands
+wi_make
+mkdir "$WI_R/gl" "$WI_R/rl"
+echo "pid=1 log=/x/gate-ui.log started=2026-11-17 10:00:00" >"$WI_R/gl/owner"
+echo "pid=2 log=/x/full-run.log started=2026-11-17 10:00:00" >"$WI_R/rl/owner"
+wi_run WI_REL1="$WI_R/rl" WI_REL2="$WI_R/gl" -- "$(wi_ret)" p1
+check "16: both locks held at the landing are waited for, each holder named, then it lands, exit 0, pre-merge holds the word" "0 1 1 1 1" \
+  "$WI_RC $(wi_has '^waiting: a full run holds .*rl: pid=2 ') $(wi_has '^waiting: lock .*gl is held by: pid=1 log=/x/gate-ui.log') $(wi_has '^== verdict: landed p1') $(wi_landed)"
+# case 18: at the merge the gate lock was held in the gate's owner form; none of the script's is left
+wi_make
+cat >"$WI_R/.bare/hooks/pre-merge-commit" <<HOOK
+#!/bin/sh
+cat "$WI_R/gl/owner" >"$WI_R/owner-at-merge"
+HOOK
+chmod +x "$WI_R/.bare/hooks/pre-merge-commit"
+wi_run -- "$(wi_ret)" p1
+check "18: at the merge the gate lock was held in the gate's owner form, and none of the script's is left after the landing" "0 1 gone" \
+  "$WI_RC $(grep -cE '^pid=[0-9]+ log=.*-words-in-all\.log started=[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9:]{8}$' "$WI_R/owner-at-merge" || true) $([ -e "$WI_R/gl" ] && echo LEFT || echo gone)"
+# case 17: either still held after the wait: nothing landed, branch kept, the land line, exit 1, a lock that is not its own left as it was
+wi_make
+mkdir "$WI_R/gl"
+echo "pid=1 log=/x/gate-ui.log started=2026-11-17 10:00:00" >"$WI_R/gl/owner"
+T17=$(wi_tip)
+wi_run WORDS_LAND_WAIT=2 -- "$(wi_ret)" p1
+B17=$(git -C "$WI_R/.bare" branch --list 'words-*' | tr -d ' *+')
+check "17: a lock still held after the wait: nothing landed, the land line printed, branch kept, the other's lock untouched, exit 1" "1 1 1 $T17 1" \
+  "$WI_RC $(wi_has '^== verdict: stopped, the locks were still held after 2 s, nothing landed') $(wi_has "to land it again, paste: cd /[^ ]+ && bash /[^ ]+/ops/words-in\.sh --land $B17\$") $(wi_tip) $(grep -c 'pid=1 log=/x/gate-ui.log' "$WI_R/gl/owner")"
+wi_make
+mkdir "$WI_R/rl"
+echo "pid=2 log=/x/full-run.log started=2026-11-17 10:00:00" >"$WI_R/rl/owner"
+wi_run WORDS_LAND_WAIT=2 -- "$(wi_ret)" p1
+check "17: a full run's lock still held after the wait ends the same way, no gate lock of the script's left" "1 1 gone" \
+  "$WI_RC $(wi_has '^== verdict: stopped, the locks were still held after 2 s') $([ -e "$WI_R/gl" ] && echo LEFT || echo gone)"
+# case 19: pre-merge moved: taken in when merge-tree is clean, the checks run again; a conflict is left to a session
+wi_make
+HOOK19="cd \"\$WI_PM\" && echo other >other.txt && git add other.txt && git -c user.name=t -c user.email=t@example.com -c commit.gpgsign=false commit -q -m other"
+wi_run WI_HOOK="$HOOK19" -- "$(wi_ret)" p1
+check "19: pre-merge moved past the base is taken in, the checks run again, then it lands, exit 0, the landing's diff the word files alone" "0 1 2 ui/src/i18n/vi.ts" \
+  "$WI_RC $(wi_has "^pre-merge moved past the branch's base") $(cat "$WI_R/calls.ui") $(git -C "$WI_R/.bare" diff --name-only pre-merge^1 pre-merge | tr '\n' ' ' | sed 's/ $//')"
+wi_make
+HOOK19C="cd \"\$WI_PM\" && echo clash >>ui/src/i18n/vi.ts && git -c user.name=t -c user.email=t@example.com -c commit.gpgsign=false commit -q -am clash"
+wi_run WI_HOOK="$HOOK19C" -- "$(wi_ret)" p1
+check "19: a conflict in taking pre-merge in lands nothing, keeps the branch, hands it to a session, exit 1" "1 1 1 0 1 0" \
+  "$WI_RC $(wi_has '^== verdict: stopped, taking pre-merge in conflicts') $(wi_has 'a session takes it from here') $(wi_has 'to land it again') $(git -C "$WI_R/.bare" branch --list 'words-*' | wc -l | tr -d ' ') $(wi_landed)"
+# case 20: moved again, a dirty pre-merge worktree, or a merge that fails
+wi_make
+HOOK20="cd \"\$WI_PM\" && echo again >again.txt && git add again.txt && git -c user.name=t -c user.email=t@example.com -c commit.gpgsign=false commit -q -m again"
+wi_run WI_HOOK="$HOOK19" WI_HOOK2="$HOOK20" -- "$(wi_ret)" p1
+B20=$(git -C "$WI_R/.bare" branch --list 'words-*' | tr -d ' *+')
+check "20: pre-merge moved again after taking it in lands nothing, the land line printed, branch kept, exit 1" "1 1 1 2 0" \
+  "$WI_RC $(wi_has '^== verdict: stopped, pre-merge moved again, nothing landed') $(wi_has "to land it again, paste: cd /[^ ]+ && bash /[^ ]+/ops/words-in\.sh --land $B20\$") $(cat "$WI_R/calls.ui") $(wi_landed)"
+wi_make
+wi_run WI_HOOK="cd \"\$WI_PM\" && echo dirty >dirty.txt" -- "$(wi_ret)" p1
+B20=$(git -C "$WI_R/.bare" branch --list 'words-*' | tr -d ' *+')
+check "20: a dirty pre-merge worktree lands nothing, the land line printed, branch kept, exit 1" "1 1 1 0" \
+  "$WI_RC $(wi_has "^== verdict: stopped, pre-merge's worktree is not clean, nothing landed") $(wi_has "to land it again, paste: cd /[^ ]+ && bash /[^ ]+/ops/words-in\.sh --land $B20\$") $(wi_landed)"
+wi_make
+cat >"$WI_R/.bare/hooks/pre-merge-commit" <<'HOOK'
+#!/bin/sh
+exit 1
+HOOK
+chmod +x "$WI_R/.bare/hooks/pre-merge-commit"
+T20=$(wi_tip)
+wi_run -- "$(wi_ret)" p1
+B20=$(git -C "$WI_R/.bare" branch --list 'words-*' | tr -d ' *+')
+check "20: a merge that fails lands nothing, leaves pre-merge's worktree as it was, the land line printed, the gate lock released, exit 1" "1 1 1 $T20 0 gone" \
+  "$WI_RC $(wi_has '^== verdict: stopped, the merge on pre-merge failed, nothing landed') $(wi_has "to land it again, paste: cd /[^ ]+ && bash /[^ ]+/ops/words-in\.sh --land $B20\$") $(wi_tip) $(git -C "$WI_R/pre-merge" status --porcelain | wc -l | tr -d ' ') $([ -e "$WI_R/gl" ] && echo LEFT || echo gone)"
+# case 22: --land refuses what is not a kept words branch; exit 2, nothing landed
+wi_make
+wig "$WI_R/.bare" worktree add -q -b feature-x "$WI_R/wip-feature-x" pre-merge
+wi_run -- --land feature-x
+check "22: --land of a branch not words-p<n>-... is refused, exit 2" "2 1" "$WI_RC $(wi_has "^== refused: the branch 'feature-x' is not a words-p<n>")"
+wi_run -- --land words-p1-0101-0101
+check "22: --land of a branch that is not there is refused, exit 2" "2 1" "$WI_RC $(wi_has '^== refused: no branch words-p1-0101-0101')"
+wig "$WI_R/.bare" branch words-p1-0202-0202 pre-merge
+wi_run -- --land words-p1-0202-0202
+check "22: --land of a branch without its worktree is refused, exit 2" "2 1" "$WI_RC $(wi_has '^== refused: the branch words-p1-0202-0202 has no worktree')"
+wi_make
+wi_kept_branch
+echo dirt >"$(wi_wtof "$WI_B")/dirty.txt"
+wi_run -- --land "$WI_B"
+check "22: --land of a dirty worktree is refused, exit 2, nothing landed" "2 1 0" "$WI_RC $(wi_has '^== refused: the worktree .* is not clean') $(wi_landed)"
+wi_make
+wi_kept_branch
+echo stray >"$(wi_wtof "$WI_B")/stray.txt"
+wig "$(wi_wtof "$WI_B")" add stray.txt
+wig "$(wi_wtof "$WI_B")" commit -q -m stray
+wi_run -- --land "$WI_B"
+check "22: --land of a branch changing another file is refused naming it, exit 2, nothing landed" "2 1 0" "$WI_RC $(wi_has '^== refused: the branch .* changes more than the two word files: stray.txt') $(wi_landed)"
+wi_make
+wig "$WI_R/.bare" worktree add -q -b words-p1-0303-0303 "$WI_R/wip-words-p1-0303-0303" pre-merge
+wi_run -- --land words-p1-0303-0303
+check "22: --land of a branch pre-merge already holds is refused, exit 2" "2 1" "$WI_RC $(wi_has '^== refused: pre-merge already holds words-p1-0303-0303')"
+# case 23: --land on a kept branch: taken in, checked and landed as 16 to 21; no install and no import run
+wi_make
+wi_kept_branch
+BEFORE=$(wc -l <"$WI_R/calls" | tr -d ' ')
+rm "$WI_R/calls.ui"
+wi_run WI_HOOK="$HOOK19" -- --land "$WI_B"
+check "23: --land on a kept branch takes pre-merge in, checks again, lands it, exit 0, no install or import run, folder and branch gone" "0 1 1 2 0 none" \
+  "$WI_RC $(wi_has '^== verdict: landed p1') $(wi_has '^pre-merge moved past') $(cat "$WI_R/calls.ui") $(tail -n +$((BEFORE + 1)) "$WI_R/calls" | grep -cE ': (install|words in) ' || true) $(wi_made)"
+# case 24: the branch goes only when pre-merge holds all its commits
+wi_make
+cat >"$WI_R/.bare/hooks/pre-merge-commit" <<HOOK
+#!/bin/sh
+unset GIT_DIR GIT_INDEX_FILE GIT_WORK_TREE
+b=\$(git -C "$WI_R/.bare" branch --list 'words-*' | tr -d ' *+')
+wt=\$(git -C "$WI_R/.bare" worktree list --porcelain | awk -v b="refs/heads/\$b" '/^worktree /{w=substr(\$0,10)} \$0=="branch " b{print w}')
+git -C "\$wt" -c user.name=t -c user.email=t@example.com -c commit.gpgsign=false commit -q --allow-empty -m late
+HOOK
+chmod +x "$WI_R/.bare/hooks/pre-merge-commit"
+wi_run -- "$(wi_ret)" p1
+check "24: a branch pre-merge does not hold whole is kept when the landing ends, said so, exit 0" "0 1 1" \
+  "$WI_RC $(wi_has '^could not delete words-p1-.*: pre-merge does not hold all its commits') $(git -C "$WI_R/.bare" branch --list 'words-*' | wc -l | tr -d ' ')"
+# end of the words-in section
+
 [ "$fail" = 0 ] || { echo "ops/test.sh: FAILURES"; exit 1; }
 echo "ops/test.sh: all checks passed"

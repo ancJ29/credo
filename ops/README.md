@@ -28,6 +28,7 @@ A push to `main` releases c-storage and the activity log, ships the BFF and the 
 | a piece's full run of the walks (two runs, the bases committed between) | `ops/full-run.sh --worktree … --branch … --walks …` ([the full run](#the-full-run)) | the walks' own, 6 to 35 minutes a run |
 | ridge's acts on one page of copy-and-paste blocks: deploy, check, down, back, the operator, the demo copies | [the ridge guide](../docs/ridge-guide.md), which draws on this runbook | the page's own, per act |
 | a copy of the app on this Mac that stays up between commands | [the quick start](../docs/quick-start.md), which holds the five commands, what each prints and which two print a password | the build, then seconds |
+| a partner's returned words read in and landed on `pre-merge`, one paste | `ops/words-in.sh <returned file> p1` ([the section](#a-partners-returned-words), which also holds making the file to send) | about 2 minutes, plus the question |
 | a package's gate (typecheck, eslint, prettier, tests, knip), or the whole repository's | `pnpm --filter @credo/<pkg> check`, or `pnpm check` for all six; each runs `ops/gate.sh`, which waits for the load and the gate lock and writes `logs/<stamp>-gate-<pkg>.log` ending `== exit <code>` (c-storage's own gate is `make check` there) | about 30 seconds a package, about 6 minutes for all |
 | to check an environment | `ops/check.sh <env> [--reads-only]` ([on production](#on-production)) | about 3 minutes |
 | to read ridge's c-storage from this Mac, with Bruno or curl | `ops/tunnel.sh ridge` ([the tunnel](#the-tunnel)) | until Ctrl-C, an hour at most |
@@ -536,6 +537,103 @@ cleared by the script: the refusal names the owner and prints the `rm -rf` that 
   the gate lock held with its owner, another full run's lock held with its owner, the wrong Node). It is in the log too.
 - **== verdict: red: ...:** the run and its failure are named (run 1 not green, more than base pictures in the tree, run 2
   with a count not 0); bring the log and the walk logs back. A good ending is `== verdict: green` and `== done`. The green verdict names, from run 1's compare lines, the screens that moved, the screens that are new and the named screens that moved nothing, beside the list that was asked.
+
+## A partner's returned words
+
+For when a partner (`p1`, `p2`: a label, never a name) is to review the app's words: you send one spreadsheet file, they
+change words in it, you read it back in and it lands on `pre-merge`, one paste, no session needed. Every block below runs in
+a terminal opened in any folder of the project (any worktree); each finds the project's folder itself. The why is in
+[the plan](../docs/plans/2026-11-17-words-paste.md); the import's own rules are `scripts/src/words.ts`.
+
+1. **Make the file to send, once for each partner.**
+
+   ```sh
+   R=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)") && mkdir -p "$R/words-sent" "$R/words-returned" && cd "$R/main" && pnpm words out "$R/words-sent/p1.csv"
+   ```
+
+   You will see `wrote` and the path of `words-sent/p1.csv` in the project's folder; the folder `words-returned` beside it is
+   where a returned file goes (step 3). Send that file to `p1` as it is, and
+   nothing else. Keep your copy and never open it to change it: every return is read against it, so a changed copy
+   would show words as changed that the partner never touched. For another partner write `p2` for `p1`.
+   - **`refused: … already exists; the file you sent is kept, name a new one`:** you already made that partner's file.
+     Send the one that is there; do not delete it. A second round with the same partner is for the orchestrator.
+
+2. **What the partner does.** They open the file in a spreadsheet, change English or Vietnamese cells, save it as **CSV
+   UTF-8** and send it back. They must leave as it is:
+   - the first row's column names (`key`, `English`, `Vietnamese`) and the whole `key` column: no new row, none twice;
+   - every placeholder, such as `{{box}}`: the same ones, spelled the same, in a changed word as in the old one, and
+     no other `{` or `}`;
+   - each English and Vietnamese cell filled, on one line (no line break inside a cell).
+   - The `Note` column is theirs: a note is shown to you and written nowhere. A row they leave out is left alone.
+
+3. **The file comes back: paste this.** Save the returned file as `p1.csv` in the `words-returned` folder of the project's folder, beside
+   `words-sent` (not in Downloads or Documents: macOS guards both, and your terminal may be refused there), then:
+
+   ```sh
+   R=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)") && cd "$R/main" && bash "$R/main/ops/words-in.sh" "$R/words-returned/p1.csv" p1
+   ```
+
+   You will see, after `== 1 refusals`, when `words-sent/p1.csv` was written, then `== 3 the import`: a `change` line for
+   each word with `now:` and `theirs:`, a `clash` line where the app's word moved since you sent the file (not written), a
+   `gone` line for a key no longer in the app, a `note` line each, and `N changes, N clashes, N keys gone, N notes`. Then
+   the question `Write these N changes? (y/N)`: **`y` writes them; anything else writes nothing and ends clean.** After
+   a `y`: `committed`, `== 5 the checks` (it prints how long it waits for the machine and until when; a check takes about
+   a minute and a half), and last `landed: pre-merge is now …`, `== verdict: landed p1's returned words on pre-merge`,
+   `== done`. The log is in the project's `logs/` folder, ending `== exit <n>`.
+
+4. **A refusal or a stop: the line, what it means, what you do.** `== refused:` lines change nothing (exit 2).
+
+   | The line | It means | You do |
+   | --- | --- | --- |
+   | `refused: usage: ops/words-in.sh …` | a value missing or one too many | paste the block above again whole |
+   | `the label '…' is not p and a number (p1)` | a name was typed in the label's place | type `p1` or `p2` |
+   | `cannot read the returned file …` | no file at that path, or the system's `Operation not permitted`: the file sits in a folder macOS guards (Downloads, Documents, Desktop) | move the file into `words-returned/` in the project's folder, named `p1.csv`, paste again |
+   | `no …/words-sent/p1.csv: the file you sent p1 is kept there` | that partner has no sent copy | step 1; if you sent a file before, put that exact file there |
+   | `needs a terminal to answer the import's question on` | not run in a terminal of yours | run it in your own terminal |
+   | `the branch or folder words-p1-… already exists` | the same paste twice in one minute, or a leftover | wait a minute and paste again; if it stays, tell the orchestrator |
+   | `no worktree of pre-merge was found` | the project's folder is not as the script expects | tell the orchestrator |
+   | `refused, nothing read in: N problems`, then a line a row | the partner broke a rule of step 2 (`the key is there twice`, `not in the file you sent`, `the English cell is empty`, `holds a line break`, `has a { or } outside a placeholder`, `the English placeholders were {{box}}, now none`); nothing written | send the lines to the partner for a corrected file |
+   | `… is not UTF-8` or `has no … column` | saved in another encoding, or the first row changed | the partner saves CSV UTF-8 again, first row as it was |
+   | `verdict: nothing written, nothing to land` | no change, or you answered other than `y` | nothing; paste again to answer `y` |
+   | `verdict: the import's read-back failed … a tool fault` | the word files would not read back as intended; nothing written | tell the orchestrator |
+   | `a file beyond the two word files changed` | the import touched something else; nothing committed | tell the orchestrator |
+   | `the ui check is red` or `the citation test is red`, `verdict: stopped, a check is not green` | a check failed; the branch is kept | step 5 |
+   | `the ui check did not run: it gave up waiting for the machine's lock; that is not red` | the machine was busy, the branch is kept | later, step 7 |
+   | `verdict: stopped, the locks were still held after 300 s`, `pre-merge moved again`, `pre-merge's worktree is not clean`, `the merge on pre-merge failed` | not landed; the branch is kept | later, step 7; if it stops the same way again, the orchestrator |
+   | `taking pre-merge in conflicts`, `the landing would conflict` | the words clash with newer work; the branch is kept | tell the orchestrator |
+   | `could not remove …` or `could not delete …` | landed, one leftover kept | tell the orchestrator |
+
+5. **A check is red: tell the orchestrator this, with the branch name from the line `the branch … is kept`:**
+
+   ```text
+   The words check is red for p1; the branch words-p1-MMDD-HHMM is kept.
+   ```
+
+   A red `ui` check is often an English word a test looks for by its text; a session fixes that on the kept branch.
+
+6. **The pictures.** A words change moves the walk's base pictures on each screen whose words changed. They are compared
+   by the walk's full run alone, never by the quick check the script runs, and the walk runs in your terminal, not
+   the script's. Today the script lands on `pre-merge` straight after the ui check, so the pictures are retaken after the
+   landing, not before it: they stay old on `pre-merge` until then, which no check reads before the full run. After
+   `landed`, tell the orchestrator:
+
+   ```text
+   p1's words landed on pre-merge, retake the pictures.
+   ```
+
+   It names the screens that moved and hands you the one `ops/full-run.sh` line ([the full run](#the-full-run)) for your
+   terminal, with its `--moved` list; its `== verdict: green` is what you read back.
+
+7. **The landing again, when a stop kept the branch** (the lock was busy, `pre-merge` moved, the merge failed). The script printed
+   `to land it again, paste: …`, a line you can paste as it stands; the same block, with the branch's name:
+
+   ```sh
+   R=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)") && cd "$R/main" && bash "$R/main/ops/words-in.sh" --land words-p1-MMDD-HHMM
+   ```
+
+   You will see the same `== 5 the checks` to `landed: pre-merge is now …`, and `== done`. It lands only a `words-p<n>-…`
+   branch, and refuses (`== refused:`, nothing changed) one whose worktree is gone or not clean, that changes more than the two
+   word files, or that `pre-merge` already holds: tell the orchestrator.
 
 ## The gate
 

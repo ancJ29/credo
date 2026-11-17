@@ -2090,6 +2090,14 @@ The move fixes make `ops/stack.sh env` delete the copy under a box's name when i
 
 `ops/stack.sh#L392` (at `5efc0f71`): `copy_clear` after the update dies with its own generic text, so a red there does not say that the stack's update completed, that the box is out, or that only the copy remains and a second `copy_clear` by hand or the same run again clears it. *Trigger:* any red of `copy_clear` after the update (a delete count that differs, a read-back that holds a file). *Fix:* a line before the loop naming the update as complete and the leftover's clearing.
 
+## 567. A landing by `ops/words-in.sh` while a whole check waits for the gate lock enters the tree that check runs, after the commit it was read at — the machine; `[OPEN]` (the words paste's plan, 2026-11-17, Low)
+
+The whole check's commit is read by `git rev-parse HEAD` in `pre-merge`'s worktree as the check starts ([QA](conventions/qa.md#the-whole-check-on-pre-merge)), before `ops/gate.sh`'s `take_lock` may wait. The words paste lands only while it holds the gate lock itself (`docs/plans/2026-11-17-words-paste.md`), so a check that holds the lock never meets a landing; but one that is still waiting runs on the landed tree and records the earlier commit, and a green then moves `main` to a commit whose tree it did not check. The orchestrator's own landings cannot fall in that window; a landing from the human's terminal can. Fix: the commit read after `take_lock`, inside the gate, which places item 224's line after the lock rather than in `log_start`. *Trigger:* the first words paste that lands while a whole check waits, or item 224's fix, whichever comes first.
+
+## 568. A new sent file for a partner whose earlier return is still out reads that return against the new file — the machine; *parked* until a second send to one partner (the words paste's plan, 2026-11-17, Low)
+
+`ops/words-in.sh` reads a return against `words-sent/<label>.csv` in the credo root, one sent copy a partner (`docs/plans/2026-11-17-words-paste.md`). Sent a second file before the first comes back, a partner's return of the first is read against the second, and every word changed between the two sends shows as a change back to the old word; the import shows each before the y, so nothing is written unseen, but nothing tells the reader why. Fix, if a second send happens: the sent copy's name carries its date and the returned file names which copy it was made from, or the script refuses a return whose unchanged rows disagree with the sent copy. *Trigger:* a second send to one partner.
+
 ## 575. The env run's step count is 10 where an ordinary run takes 8 — the machine; *parked* until the next edit of `ops/stack.sh`'s steps (the move fixes' review, fix pass, 2026-11-17, Low)
 
 `ops/stack.sh#L95` (at `5efc0f71`): `STEPS=10` counts the two steps the copy adds even on a run that never reaches them, so an ordinary env run (no box added or taken out) ends its step lines at 8 of 10. *Trigger:* any env run with no `--more-boxes` change. *Fix:* count the steps from what the run holds, or word the count as at most.
@@ -2109,3 +2117,31 @@ The move fixes make `ops/stack.sh env` delete the copy under a box's name when i
 ## 579. Without `pipefail`, `copy_newest` returns an empty time with exit 0 where `copy_count` dies — the machine; `[DEFERRED]` (the move fixes' review, second round, 2026-11-17, Low)
 
 `ops/lib.sh#L577` (at `b49f07c0`): `copy_newest` reads the listing through a pipe to `jq`, so a failed `aws` call under a shell without `pipefail` leaves the time empty and the function ends 0, where `copy_count` ends on its number guard. No caller runs without `pipefail` today (`ops/stack.sh#L18`). *Trigger:* a script that sources `ops/lib.sh` without `set -o pipefail` and calls `copy_newest`. *Fix:* guard the time as `copy_count` guards its number, or set `pipefail` inside the function.
+
+## 580. `pre-merge`'s clean check runs before the lock wait, so a merge left open during the wait is aborted — the machine; `[DEFERRED]` (the words paste's review, 2026-11-17, Low)
+
+`ops/words-in.sh#L122` (at `5bdfdba3`) reads `pre-merge`'s worktree as clean, then waits up to 5 minutes for the gate lock; `#L141-L142` runs `git merge --abort` on a failed landing, which also drops a merge someone began in that worktree during the wait. Fix: read the worktree clean again after the lock is taken, and abort only the merge this run began. *Trigger:* a person or session starts a merge in `pre-merge`'s worktree while a landing waits for the lock.
+
+## 581. A failed worktree removal makes the branch delete fail and the printed line blame `pre-merge` — the machine; `[DEFERRED]` (the words paste's review, 2026-11-17, Low)
+
+`ops/words-in.sh#L147-L148`: when `git worktree remove` fails, `branch -d` fails too (the branch is still checked out) and the line says `pre-merge` does not hold all the branch's commits, which is untrue. Fix: delete the branch only when the removal succeeded, and say the real reason. *Trigger:* a worktree that cannot be removed (a file open in it) at a landing's end.
+
+## 582. A Ctrl-C after the worktree is made leaves it and its branch behind, unnamed — the machine; `[DEFERRED]` (the words paste's review, 2026-11-17, Low)
+
+`ops/words-in.sh#L55-L62`: `cleanup_extra` frees the lock but the worktree and branch made in step 2 are removed only on the script's own stops, so an interrupt (exit 130) between the making and the commit leaves `wip-words-p…` and its branch with no line naming them. Fix: `cleanup_extra` drops what a run made before the commit, or prints its names. *Trigger:* Ctrl-C during the offline install or the import's question.
+
+## 583. Any failure of the import without the read-back text reads as "the import refused the file" — the machine; `[DEFERRED]` (the words paste's review, 2026-11-17, Low)
+
+`ops/words-in.sh#L222-L226` tells a read-back failure from every other non-zero exit of `pnpm words in`, and prints the refusal verdict for all the rest, so a crash or a missing tool reads as the partner's file being wrong. Fix: take the refusal verdict only for the import's own refusal line, and say "the import failed" otherwise. *Trigger:* `pnpm words in` dying for a reason that is not a refusal.
+
+## 584. The runbook's table lacks a failed offline install, a failed take-in of `pre-merge` and a failed add or commit — the machine; `[DEFERRED]` (the words paste's review, 2026-11-17, Low)
+
+`ops/README.md`'s table in "A partner's returned words" has no row for `verdict: the offline install failed`, `taking pre-merge in failed` or `git add failed` / `the commit failed`, which the script prints. Fix: three rows, each saying to tell the orchestrator. *Trigger:* the first of those stops in a real paste.
+
+## 585. The plan's "15 minutes at most" is 20 on the take-in path, and nothing is reinstalled after the take-in — the machine; `[DEFERRED]` (the words paste's review, 2026-11-17, Low)
+
+`docs/plans/2026-11-17-words-paste.md` bounds the paste at 15 minutes, but the ui check's wait is 600 s and the take-in's second check 300 s, 20 minutes with the landing's own wait; and `ops/words-in.sh` takes `pre-merge` in without `pnpm install`, so a take-in that adds a workspace package runs its checks on a tree without its install. Fix: say 20 in the plan, and install offline after a take-in that changed `pnpm-lock.yaml`. *Trigger:* a landing while `pre-merge` has moved past the branch's base.
+
+## 586. The printed `--land` line's paths are unquoted, so a credo root whose path holds a space would break it — the machine; `[DEFERRED]` (the words paste's second review round, 2026-11-17, Low)
+
+`ops/words-in.sh#L75` prints `cd $REPO_DIR && bash $OPS_DIR/words-in.sh --land $BRANCH` with the two paths bare, so a credo root with a space in its path pastes as two words. This root has none. Fix: print each path single-quoted. *Trigger:* a credo root moved to a path with a space.
