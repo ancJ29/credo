@@ -103,13 +103,14 @@ act, handed as one script.
   existing rows only the order row changed, to environment, code, description, UI, beside the stand-in's
   own two edits. `shellcheck -x ops/*.sh`, `bash ops/test.sh` and the citation test passed; item 29 is
   deleted, and the header, the step's comments and `docs/client-readiness.md` are rewritten.
-- [ ] **1r. Reviewed, fixed, landed.** A model other than the author's reads one script's order and
+- [x] **1r. Reviewed, fixed, landed.** A model other than the author's reads one script's order and
   its rows; `pre-merge` taken in first; landed there; `main` moves at the whole check. **5**, and **10**
   more if the review asks for a fix pass.
   *Fix pass on the review's three Lows:* case 3 now also expects one count of the stand-in's own
   failure line, so a run that dies earlier no longer passes it (seen red by a mutation that dies before
   the code write); the comment naming deleted item 29 says what the row holds; `ops/app.sh` keeps the
-  VPC settings string and the 120-second bound each in one local variable. Landing is still open.
+  VPC settings string and the 120-second bound each in one local variable. Landed: the branch's tip `39853f12` is an
+  ancestor of `main` (`git merge-base --is-ancestor 39853f12 main` exit 0), and `pre-merge` is taken in.
 - [ ] **2. The harmless line, then its revert.** The line (decision 5) on its own branch, landed, the
   whole check started at once; after your first push, its revert the same way. *Done when:* each
   lands with the gate green and `main` moved. **8.**
