@@ -1,5 +1,5 @@
 #!/bin/bash
-# ops/words-in.sh <returned file> <label>
+# ops/words-in.sh <returned file> <label>   |   ops/words-in.sh --land <branch>
 # Reads a partner's returned words file into the app and lands it on pre-merge, you answering only the import's own y.
 # Run from the credo root's project folder, in any worktree holding this script. <label> is p and a number (p1).
 #
@@ -16,6 +16,8 @@
 #   6 pre-merge is taken in when it moved past the branch's base and merge-tree is clean, and the checks run again.
 #   7 the landing: the gate lock taken for it (5 minutes at most, a line every 30 seconds naming the holder), then
 #     git merge --no-ff in pre-merge's worktree; the worktree removed, the branch deleted.
+#   --land <branch>: lands a kept words-p<n>-... branch (steps 5 to 7 only); refused unless its worktree is clean, it
+#     changes the two word files alone against pre-merge, and pre-merge does not hold it yet.
 # Exit: 0 landed, or nothing to land; 1 stopped after the worktree was made; 2 refused. A stop after the commit keeps the
 #   branch and its worktree, named. Log: <credo root>/logs/<date>-<time>-words-in-all.log, ending == exit <n>.
 # What it changes: the branch and worktree it makes (removed on a landing or a stop before the commit), pre-merge when
@@ -69,12 +71,116 @@ drop_made() {
 # kept <why>: a stop after the commit; the branch and worktree stay, named
 kept() {
   say "verdict: stopped, $1"
-  echo "the branch $BRANCH is kept in $WT; a session takes it from here"
+  if [ "${2:-}" = again ]; then
+    echo "the branch $BRANCH is kept in $WT; to land it again, paste: bash ops/words-in.sh --land $BRANCH"
+  else
+    echo "the branch $BRANCH is kept in $WT; a session takes it from here"
+  fi
   say "done"
   exit 1
 }
 
-if [ $# -ne 2 ]; then refuse "usage: ops/words-in.sh <returned file> <label>"; fi
+# checks <wait seconds>: the ui check and the citation test, each by its own exit
+checks() {
+  local ui cite
+  NOTRUN=no
+  echo "the ui check waits at most $1 s for the machine's lock, until $(clock_at "$1"); not run reads as 'not run', never red"
+  (cd "$WT" && GATE_WAIT_MAX=$1 pnpm --filter @credo/ui check >"$WORK/ui.out" 2>&1)
+  ui=$?
+  cat "$WORK/ui.out" >&3
+  (cd "$WT" && pnpm --filter @credo/scripts exec vitest run src/citations.test.ts >&3 2>&3)
+  cite=$?
+  echo "the ui check exit $ui, the citation test exit $cite"
+  [ "$ui" = 0 ] && [ "$cite" = 0 ] && return 0
+  if [ "$ui" != 0 ]; then
+    if grep -q 'gave up after' "$WORK/ui.out"; then
+      echo "the ui check did not run: it gave up waiting for the machine's lock; that is not red"
+      [ "$cite" = 0 ] && NOTRUN=yes
+    else
+      echo "the ui check is red; a red there may be a changed English word (open item 549), which a session fixes"
+    fi
+  fi
+  [ "$cite" = 0 ] || echo "the citation test is red"
+  return 1
+}
+
+# finish: steps 5 to 7, on the branch and worktree in BRANCH and WT (a run of this script made them, or --land found them)
+finish() {
+  say "5 the checks"
+  checks 600 || { [ "$NOTRUN" = yes ] && kept "the ui check did not run, nothing landed" again; kept "a check is not green, nothing landed"; }
+
+  say "6 pre-merge"
+  pm_tip=$(git -C "$pm" rev-parse HEAD)
+  if ! git -C "$WT" merge-base --is-ancestor "$pm_tip" HEAD; then
+    echo "pre-merge moved past the branch's base"
+    git -C "$WT" merge-tree --write-tree HEAD "$pm_tip" >/dev/null 2>&1 || kept "taking pre-merge in conflicts"
+    git -C "$WT" merge -q --no-edit "$pm_tip" || kept "taking pre-merge in failed"
+    checks 300 || { [ "$NOTRUN" = yes ] && kept "the ui check did not run after taking pre-merge in, nothing landed" again; kept "a check is not green after taking pre-merge in, nothing landed"; }
+  fi
+
+  say "7 the landing"
+  [ -z "$(git -C "$pm" status --porcelain)" ] || kept "pre-merge's worktree is not clean, nothing landed" again
+  start=$(date +%s)
+  echo "the landing waits at most $LAND_WAIT s for the gate lock and any full run, until $(clock_at "$LAND_WAIT")"
+  while :; do
+    if [ -e "$RUN_LOCK" ]; then
+      echo "waiting: a full run holds $RUN_LOCK: $(cat "$RUN_LOCK/owner" 2>/dev/null || echo owner unknown) ($(date '+%H:%M:%S'))"
+    elif mkdir "$LOCK" 2>/dev/null; then
+      HELD=yes
+      printf 'pid=%s log=%s started=%s\n' "$$" "$LOG" "$(date '+%Y-%m-%d %H:%M:%S')" >"$LOCK/owner"
+      echo "lock $LOCK taken $(date '+%H:%M:%S')"
+      break
+    else
+      echo "waiting: lock $LOCK is held by: $(cat "$LOCK/owner" 2>/dev/null || echo owner unknown) ($(date '+%H:%M:%S'))"
+    fi
+    [ $(($(date +%s) - start)) -lt "$LAND_WAIT" ] || kept "the locks were still held after $LAND_WAIT s, nothing landed" again
+    sleep "$LAND_POLL"
+  done
+  [ "$(git -C "$pm" rev-parse HEAD)" = "$pm_tip" ] || kept "pre-merge moved again, nothing landed" again
+  git -C "$pm" merge-tree --write-tree HEAD "$BRANCH" >/dev/null 2>&1 || kept "the landing would conflict, nothing landed"
+  if ! git -C "$pm" merge --no-ff --no-edit "$BRANCH"; then
+    git -C "$pm" merge --abort 2>/dev/null || true
+    kept "the merge on pre-merge failed, nothing landed" again
+  fi
+  echo "landed: pre-merge is now $(git -C "$pm" rev-parse --short HEAD)"
+  cleanup_extra
+  git -C "$REPO_DIR" worktree remove "$WT" || echo "could not remove $WT, it is kept"
+  git -C "$pm" branch -d "$BRANCH" >/dev/null 2>&1 || echo "could not delete $BRANCH: pre-merge does not hold all its commits, so it is kept"
+  say "verdict: landed $label's returned words on pre-merge"
+  say "done"
+  exit 0
+}
+
+# land_refusals <branch>: --land's own refusals; sets BRANCH, WT and label
+land_refusals() {
+  local b=$1 files
+  say "1 refusals"
+  [[ $b =~ ^words-p[0-9]+-.+ ]] || refuse "the branch '$b' is not a words-p<n>-... branch; nothing is landed"
+  git -C "$REPO_DIR" show-ref --verify --quiet "refs/heads/$b" || refuse "no branch $b"
+  WT=$(git -C "$REPO_DIR" worktree list --porcelain | awk -v b="refs/heads/$b" '/^worktree /{w=substr($0,10)} $0=="branch " b{print w}')
+  [ -n "$WT" ] || refuse "the branch $b has no worktree; a session takes it"
+  [ -z "$(git -C "$WT" status --porcelain)" ] || refuse "the worktree $WT is not clean; a session takes it"
+  pm=$(git -C "$REPO_DIR" worktree list --porcelain | awk '/^worktree /{w=substr($0,10)} $0=="branch refs/heads/pre-merge"{print w}')
+  [ -n "$pm" ] || refuse "no worktree of pre-merge was found"
+  ! git -C "$REPO_DIR" merge-base --is-ancestor "$b" pre-merge || refuse "pre-merge already holds $b; nothing to land"
+  files=$(git -C "$REPO_DIR" diff --name-only "pre-merge...$b" | grep -vxE 'ui/src/i18n/(en|vi)\.ts' || true)
+  [ -z "$files" ] || refuse "the branch $b changes more than the two word files: $(printf '%s' "$files" | tr '\n' ' '); a session takes it"
+  BRANCH=$b
+  label=${b#words-}
+  label=${label%%-*}
+}
+
+USAGE="usage: ops/words-in.sh <returned file> <label>   or   ops/words-in.sh --land <branch>"
+LAND=no
+if [ $# -eq 2 ] && [ "$1" = --land ]; then
+  LAND=yes
+elif [ $# -ne 2 ] || [[ $1 == -* ]]; then
+  refuse "$USAGE"
+fi
+if [ "$LAND" = yes ]; then
+  land_refusals "$2"
+  finish
+fi
 returned=$1
 label=$2
 say "1 refusals"
@@ -113,7 +219,11 @@ say "3 the import"
 rc=${PIPESTATUS[0]}
 if [ "$rc" != 0 ]; then
   drop_made
-  say "verdict: the import refused the file (exit $rc), nothing written, nothing kept"
+  if grep -q 'did not read back' "$WORK/import.out"; then
+    say "verdict: the import's read-back failed (exit $rc), a tool fault, nothing written, nothing kept"
+  else
+    say "verdict: the import refused the file (exit $rc), nothing written, nothing kept"
+  fi
   say "done"
   exit 1
 fi
@@ -143,59 +253,4 @@ done
 git -C "$WT" add -- "${paths[@]}" || kept "git add failed"
 git -C "$WT" commit -q -m "feat(ui): $label's returned words read in, $count changes" || kept "the commit failed"
 echo "committed $(git -C "$WT" rev-parse --short HEAD): ${paths[*]}"
-
-# checks <wait seconds>: the ui check and the citation test, each by its own exit
-checks() {
-  local ui cite
-  echo "the ui check waits at most $1 s for the machine's lock, until $(clock_at "$1"); not run reads as 'not run', never red"
-  (cd "$WT" && GATE_WAIT_MAX=$1 pnpm --filter @credo/ui check >&3 2>&3)
-  ui=$?
-  (cd "$WT" && pnpm --filter @credo/scripts exec vitest run src/citations.test.ts >&3 2>&3)
-  cite=$?
-  echo "the ui check exit $ui, the citation test exit $cite"
-  [ "$ui" = 0 ] && [ "$cite" = 0 ] && return 0
-  [ "$ui" = 0 ] || echo "the ui check is not green: red, or it gave up on the lock; a red there may be a changed English word (open item 549)"
-  [ "$cite" = 0 ] || echo "the citation test is red"
-  return 1
-}
-
-say "5 the checks"
-checks 600 || kept "a check is not green, nothing landed"
-
-say "6 pre-merge"
-pm_tip=$(git -C "$pm" rev-parse HEAD)
-if ! git -C "$WT" merge-base --is-ancestor "$pm_tip" HEAD; then
-  echo "pre-merge moved past the branch's base"
-  git -C "$WT" merge-tree --write-tree HEAD "$pm_tip" >/dev/null 2>&1 || kept "taking pre-merge in conflicts"
-  git -C "$WT" merge -q --no-edit "$pm_tip" || kept "taking pre-merge in failed"
-  checks 300 || kept "a check is not green after taking pre-merge in, nothing landed"
-fi
-
-say "7 the landing"
-[ -z "$(git -C "$pm" status --porcelain)" ] || kept "pre-merge's worktree is not clean"
-start=$(date +%s)
-echo "the landing waits at most $LAND_WAIT s for the gate lock and any full run, until $(clock_at "$LAND_WAIT")"
-while :; do
-  if [ -e "$RUN_LOCK" ]; then
-    echo "waiting: a full run holds $RUN_LOCK: $(cat "$RUN_LOCK/owner" 2>/dev/null || echo owner unknown) ($(date '+%H:%M:%S'))"
-  elif mkdir "$LOCK" 2>/dev/null; then
-    HELD=yes
-    printf 'pid=%s log=%s started=%s\n' "$$" "$LOG" "$(date '+%Y-%m-%d %H:%M:%S')" >"$LOCK/owner"
-    echo "lock $LOCK taken $(date '+%H:%M:%S')"
-    break
-  else
-    echo "waiting: lock $LOCK is held by: $(cat "$LOCK/owner" 2>/dev/null || echo owner unknown) ($(date '+%H:%M:%S'))"
-  fi
-  [ $(($(date +%s) - start)) -lt "$LAND_WAIT" ] || kept "the locks were still held after $LAND_WAIT s, nothing landed"
-  sleep "$LAND_POLL"
-done
-[ "$(git -C "$pm" rev-parse HEAD)" = "$pm_tip" ] || kept "pre-merge moved again, nothing landed"
-git -C "$pm" merge-tree --write-tree HEAD "$BRANCH" >/dev/null 2>&1 || kept "the landing would conflict, nothing landed"
-git -C "$pm" merge --no-ff --no-edit "$BRANCH" || kept "the merge on pre-merge failed"
-echo "landed: pre-merge is now $(git -C "$pm" rev-parse --short HEAD)"
-cleanup_extra
-git -C "$REPO_DIR" worktree remove "$WT" || echo "could not remove $WT"
-git -C "$REPO_DIR" branch -d "$BRANCH" >/dev/null 2>&1 || git -C "$REPO_DIR" branch -D "$BRANCH" >/dev/null 2>&1 || echo "could not delete $BRANCH"
-say "verdict: landed $label's returned words on pre-merge"
-say "done"
-exit 0
+finish

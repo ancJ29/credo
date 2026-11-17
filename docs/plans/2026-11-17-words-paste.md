@@ -178,12 +178,20 @@ row, 2 to 3 (piece 143); a review 7 to 16, 8 at the median, a fix pass 12 to 15,
   and branch gone; the scratch `main` worktree's HEAD and status unchanged (case 25); `shellcheck -x ops/words-in.sh` exits 0.
   The ui check waited about 90 seconds for the load, not the lock. Two reds on the way, fixed: BSD `head -c 0` (the read
   test is now `cat`), and a stand-in change to `app.name`, a pinned name, which reddened the ui test (item 549's kind).
-- [ ] **2. Every refusal, red first.** A section `== ops/words-in.sh` in `ops/test.sh` on a
+- [x] **2. Every refusal, red first.** A section `== ops/words-in.sh` in `ops/test.sh` on a
   throwaway root: a bare repository, a stand-in `main` worktree with `ops/` and the two word files, a
   `pre-merge` branch and worktree, a stand-in `pnpm` on `PATH` whose install, import and two checks
   each answer by a switch, the two lock overrides and `OPS_LOG_DIR`, as the gate's own section builds
   them (`ops/test.sh#L5441-L5483`). *Done when:* rows 3 to 5 of the root gate each exit 0; every
   case not read in step 1 red once by one mutation, then put back. *Size:* 15.
+  *Ticked 11-17:* the section `== ops/words-in.sh` is appended to `ops/test.sh` (the gate section's line references held:
+  its stand-in `pnpm`, lock overrides and `OPS_LOG_DIR` are the pattern copied). Cases 1 to 11, 13 to 20 and 22 to 24 are
+  held by 44 checks on a throwaway root a case; 40 mutations of a scratch copy of the script, each in its own run of the
+  section alone, each reddened the checks of its own case and was put back (case 24's second half only after a branch with
+  no worktree was added to the stand-in). To hold them the script gained `--land <branch>` (steps 5 to 7 on a kept branch,
+  five refusals), the land line after a not-run, a lock-wait, a moved-again or a failed merge, `merge --abort` after a failed
+  landing, `branch -d` run in `pre-merge`'s worktree with no `-D` fallback, and a named tool fault for a failed read-back.
+  Cases 12, 21, 25 and 26 stay step 1's.
 - [ ] **3. The line where you find it.** `ops/README.md`'s row and section "A partner's returned
   words" (the block, the send line into `words-sent/`, a one-line branch per refusal, from the
   table's words); `docs/products.md`'s `pnpm words` row. *Done when:* the citation test exits 0;
