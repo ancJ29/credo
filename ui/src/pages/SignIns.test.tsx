@@ -16,7 +16,7 @@ const filled = (text: string, values: Record<string, string>) =>
     text,
   );
 const at = (code: string) => `/staff/${person(code).id}`;
-const menu = () => within(screen.getAllByRole('navigation', { name: 'Menu' })[0]);
+const menu = () => within(screen.getAllByRole('navigation', { name: words.nav.menu })[0]);
 const NEW = 'New-password-2@';
 const OLD = 'Old-password-1!';
 

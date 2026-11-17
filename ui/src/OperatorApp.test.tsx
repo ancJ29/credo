@@ -96,7 +96,7 @@ function setup(
 
 const signedIn = { ...english, 'credo.operator': 'd.op' };
 
-const side = () => within(screen.getAllByRole('navigation', { name: 'Menu' })[0]);
+const side = () => within(screen.getAllByRole('navigation', { name: words.nav.menu })[0]);
 
 async function signInAsOperator() {
   await userEvent.click(await screen.findByRole('button', { name: words.passkey.signInButton }));
@@ -141,7 +141,7 @@ describe('the operator’s page', () => {
     expect(screen.getByText(words.operator.badge)).toBeTruthy();
     expect(screen.getByRole('button', { name: 'operator' })).toBeTruthy();
     expect(
-      within(screen.getAllByRole('navigation', { name: 'Menu' })[0]).getAllByRole('link'),
+      within(screen.getAllByRole('navigation', { name: words.nav.menu })[0]).getAllByRole('link'),
     ).toHaveLength(5);
     expect(api.operatorPasskeyOptions).toHaveBeenCalledOnce();
     expect(passkeys.authenticate).toHaveBeenCalledExactlyOnceWith({ challenge: 'c' });

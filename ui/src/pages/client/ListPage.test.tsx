@@ -30,10 +30,10 @@ describe('the customers and the products', () => {
     const drawn = openApp('/staff');
     const menu = within((await screen.findAllByRole('navigation', { name: words.nav.menu }))[0]);
 
-    await userEvent.click(menu.getByRole('link', { name: words.lists.customers.sheet }));
+    await userEvent.click(menu.getByRole('link', { name: words.nav.customers }));
 
     expect(
-      await screen.findByRole('heading', { level: 2, name: words.lists.customers.sheet }),
+      await screen.findByRole('heading', { level: 2, name: words.nav.customers }),
     ).toBeTruthy();
     const customers = await screen.findAllByRole('row');
     expect(customers).toHaveLength(DEMO_CUSTOMERS.length + 1);
@@ -52,10 +52,10 @@ describe('the customers and the products', () => {
         .map((row) => row[0]),
     ).toEqual([...DEMO_CUSTOMERS.map((one) => one.code)].sort());
 
-    await userEvent.click(menu.getByRole('link', { name: words.lists.products.sheet }));
+    await userEvent.click(menu.getByRole('link', { name: words.nav.products }));
 
     expect(
-      await screen.findByRole('heading', { level: 2, name: words.lists.products.sheet }),
+      await screen.findByRole('heading', { level: 2, name: words.nav.products }),
     ).toBeTruthy();
     await screen.findByText('VT-006');
     expect(cells()[0]).toEqual([
@@ -71,13 +71,13 @@ describe('the customers and the products', () => {
         one.name,
         one.unit,
         new Intl.NumberFormat('en').format(one.price),
-        one.stocked ? words.lists.yes : 'No',
+        one.stocked ? words.lists.yes : words.lists.no,
       ]),
     );
     expect(cells().find((row) => row[0] === 'VT-001')?.[3]).toBe('95,000');
     // the delivery fee, by the trip, is the one not stocked
-    expect(cells().filter((row) => row[4] === 'No')).toEqual([
-      ['DV-001', 'Phí giao hàng theo chuyến', 'chuyến', '150,000', 'No'],
+    expect(cells().filter((row) => row[4] === words.lists.no)).toEqual([
+      ['DV-001', 'Phí giao hàng theo chuyến', 'chuyến', '150,000', words.lists.no],
     ]);
     drawn.unmount();
   });
@@ -86,21 +86,21 @@ describe('the customers and the products', () => {
     openApp('/products', { language: 'vi' });
 
     expect(
-      await screen.findByRole('heading', { level: 2, name: wordsVi.lists.products.sheet }),
+      await screen.findByRole('heading', { level: 2, name: wordsVi.nav.products }),
     ).toBeTruthy();
     await screen.findByText('VT-001');
     expect(cells()[0]).toEqual([
-      'Mã',
+      wordsVi.lists.columns.code,
       wordsVi.lists.columns.name,
       wordsVi.lists.columns.unit,
       wordsVi.lists.columns.price,
-      wordsVi.lists.products.stock,
+      wordsVi.lists.columns.stocked,
     ]);
     expect(
       cells()
         .find((row) => row[0] === 'VT-001')
         ?.slice(3),
-    ).toEqual(['95.000', 'Có']);
+    ).toEqual(['95.000', wordsVi.lists.yes]);
     expect(cells().find((row) => row[0] === 'DV-001')?.[4]).toBe(wordsVi.lists.no);
     expect(screen.getByRole('link', { name: wordsVi.lists.import }).getAttribute('href')).toBe(
       '/products/import',
@@ -148,13 +148,13 @@ describe('the customers and the products', () => {
     const office = openApp('/customers', { as: 'EMP-0001' });
 
     expect(
-      await screen.findByRole('heading', { level: 2, name: words.lists.customers.sheet }),
+      await screen.findByRole('heading', { level: 2, name: words.nav.customers }),
     ).toBeTruthy();
     await screen.findByText('KH-001');
     expect(office.api.listCustomers).toHaveBeenCalledOnce();
     const menu = within(screen.getAllByRole('navigation', { name: words.nav.menu })[0]);
-    expect(menu.getByText(words.lists.customers.sheet)).toBeTruthy();
-    expect(menu.getByText(words.lists.products.sheet)).toBeTruthy();
+    expect(menu.getByText(words.nav.customers)).toBeTruthy();
+    expect(menu.getByText(words.nav.products)).toBeTruthy();
     expect(screen.queryByRole('link', { name: words.lists.import })).toBeNull();
     office.unmount();
 
@@ -171,7 +171,7 @@ describe('the customers and the products', () => {
     expect(warehouse.api.listCustomers).not.toHaveBeenCalled();
     expect(
       within(screen.getAllByRole('navigation', { name: words.nav.menu })[0]).queryByText(
-        words.lists.customers.sheet,
+        words.nav.customers,
       ),
     ).toBeNull();
   });
@@ -186,7 +186,7 @@ describe('the customers and the products', () => {
     expect(screen.queryByRole('table')).toBeNull();
     await userEvent.click(screen.getByRole('link', { name: words.lists.customers.back }));
     expect(
-      await screen.findByRole('heading', { level: 2, name: words.lists.customers.sheet }),
+      await screen.findByRole('heading', { level: 2, name: words.nav.customers }),
     ).toBeTruthy();
     // the heading is outside the list's load; the table waits for it
     expect(await screen.findByRole('table')).toBeTruthy();
@@ -458,7 +458,7 @@ describe('the customers and the products', () => {
     expect(screen.queryByRole('table')).toBeNull();
     await userEvent.click(screen.getByRole('link', { name: words.lists.products.back }));
     expect(
-      await screen.findByRole('heading', { level: 2, name: words.lists.products.sheet }),
+      await screen.findByRole('heading', { level: 2, name: words.nav.products }),
     ).toBeTruthy();
     // the heading is outside the list's load; the table waits for it
     expect(await screen.findByRole('table')).toBeTruthy();
@@ -1182,7 +1182,7 @@ describe('the customers and the products', () => {
     expect(screen.getByRole('button', { name: wordsVi.lists.customers.create })).toBeTruthy();
     await userEvent.click(screen.getByRole('link', { name: wordsVi.lists.customers.back }));
     expect(
-      await screen.findByRole('heading', { level: 2, name: wordsVi.lists.customers.sheet }),
+      await screen.findByRole('heading', { level: 2, name: wordsVi.nav.customers }),
     ).toBeTruthy();
     drawn.unmount();
 
