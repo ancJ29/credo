@@ -159,7 +159,7 @@ commit after it is 5, a first run. The recap is 7, the last one, and the landing
       reddens the file, then is put back. **17 min.**
       _Done:_ the p1 run exited 0 (21 tests), both checks exited 0 on the committed tree, and the
       key `settings.name` in `Settings.tsx` changed to `settings.title` reddened the file and was put back.
-- [ ] **2. The words, the frame, the operator, the doors and the sheets.** This batch covers about
+- [x] **2. The words, the frame, the operator, the doors and the sheets.** This batch covers about
       650 lines in 39 files:
       - `i18n/words.test.tsx` and `i18n/i18n.test.ts`
       - `frame/frameKept.test.tsx` and its snapshot, `frame/Shell.test.tsx`, `OperatorPage.test.tsx`
@@ -174,6 +174,15 @@ commit after it is 5, a first run. The recap is 7, the last one, and the landing
       `pnpm --filter @credo/visual exec vitest run src/scene.test.tsx`. The new snapshot equals the
       old one under the `·` replacement, by `diff` of the two run through one `sed`. One key is
       mutated and seen to redden the file it holds, then put back. **84 min:** 59 of work, 25 of lock.
+      _Done:_ the 37 ui files' run exited 0 (432 tests) and `pnpm --filter @credo/ui typecheck`,
+      `pnpm --filter @credo/visual exec vitest run src/scene.test.tsx` (7 tests) and
+      `pnpm exec prettier --check` on the batch's files each exited 0, on the tree as committed;
+      the new snapshot equals the old one under the `·` sed, `diff` empty; the key
+      `operator.soon` in `SoonPage.tsx` changed to `operator.badge` reddened `SoonPage.test.tsx`
+      and was put back. The whole ui check stays red until step 4, by the plan's decision. One
+      word in the pattern written back: a placeholder word is filled as the screen fills it by
+      `.replace('{{name}}', …)`, and a name found by `getByText` over a word that shares its
+      element with a button (a conflict alert) is read by `toContain` of the dictionary word.
 - [ ] **3. The staff pages.** `StaffPages`, `StaffRecord` and `StaffSetupPage` under `pages/client/`:
       about 510 lines, the detector of case 4 among them. _Done when:_ the batch's checks exit 0,
       and one mutation is seen red, then put back. **71 min:** 46 of work, 25 of lock.
