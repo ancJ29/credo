@@ -114,6 +114,7 @@ act, handed as one script.
 - [ ] **2. The harmless line, then its revert.** The line (decision 5) on its own branch, landed, the
   whole check started at once; after your first push, its revert the same way. *Done when:* each
   lands with the gate green and `main` moved. **8.**
+  *Revert written:* `751bbe8f565c0592d7aaddfc4f191fadb2002bc1` on `production`, one `git revert` of `fcf5ea07`, `ops/app.sh` alone, that file as before the line (`git diff --quiet fcf5ea07^ 751bbe8f -- ops/app.sh` exit 0); it lands in `main` next, the box stays open until then.
 - [ ] 👤 **2h. Your two pushes, by one script.** `<stamp>-way-back.sh`, run once for each: it pushes
   `main`, waits for `ci`'s run on that commit, and prints its conclusion, the deploy's `released <sha>`
   and `== green` lines, and its start and end stamps. *Done when:* `bash -n` and `shellcheck` clean;
