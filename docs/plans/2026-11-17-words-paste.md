@@ -161,7 +161,7 @@ script run whole on stand-ins, 3 to 10 minutes (11-15 to 11-17); an `ops/test.sh
 guards, 13 and 15 (piece 136's steps 1 and 2) and 10 for one row (piece 144); a runbook and products
 row, 2 to 3 (piece 143); a review 7 to 16, 8 at the median, a fix pass 12 to 15, a recap 2 to 5.
 
-- [ ] **1. The paste, end to end, on a scratch copy.** `ops/words-in.sh`, its header, the seven
+- [x] **1. The paste, end to end, on a scratch copy.** `ops/words-in.sh`, its header, the seven
   stages in order on the main path, and the landing's lock. *Done when:* in the step's scratch
   folder, a credo root made from a local clone of the repository, its `pre-merge` at the real tip
   and `words-sent/p1.csv` written by `pnpm words out`, the script run from the clone on a copy with
@@ -171,6 +171,13 @@ row, 2 to 3 (piece 143); a review 7 to 16, 8 at the median, a fix pass 12 to 15,
   alone; the made worktree and its branch gone; cases 12, 21, 25 and 26 read off that run;
   `shellcheck -x ops/words-in.sh` exits 0. *Size:* 10 (the script's shape, plus the real ui check
   near 80 seconds).
+  *Ticked 11-17:* run end to end on a scratch root (a bare clone, `pre-merge` at 6aa25ba1, `words-sent/p1.csv` from
+  `words out`, one vi cell changed, `y` piped, `OPS_TEST_NO_TTY=1`, the real `.gate-lock` and `.full-run-lock`): exit 0, log
+  `== verdict: landed`, `== done`, `== exit 0` (case 26); the new tip a merge, parents the old tip then the commit
+  "p1's returned words read in, 1 changes" (cases 12, 21), `git diff --stat HEAD^1 HEAD` lists `ui/src/i18n/vi.ts` alone; worktree
+  and branch gone; the scratch `main` worktree's HEAD and status unchanged (case 25); `shellcheck -x ops/words-in.sh` exits 0.
+  The ui check waited about 90 seconds for the load, not the lock. Two reds on the way, fixed: BSD `head -c 0` (the read
+  test is now `cat`), and a stand-in change to `app.name`, a pinned name, which reddened the ui test (item 549's kind).
 - [ ] **2. Every refusal, red first.** A section `== ops/words-in.sh` in `ops/test.sh` on a
   throwaway root: a bare repository, a stand-in `main` worktree with `ops/` and the two word files, a
   `pre-merge` branch and worktree, a stand-in `pnpm` on `PATH` whose install, import and two checks
