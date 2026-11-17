@@ -54,9 +54,7 @@ describe('the customers and the products', () => {
 
     await userEvent.click(menu.getByRole('link', { name: words.nav.products }));
 
-    expect(
-      await screen.findByRole('heading', { level: 2, name: words.nav.products }),
-    ).toBeTruthy();
+    expect(await screen.findByRole('heading', { level: 2, name: words.nav.products })).toBeTruthy();
     await screen.findByText('VT-006');
     expect(cells()[0]).toEqual([
       words.lists.columns.code,
@@ -457,9 +455,7 @@ describe('the customers and the products', () => {
     expect(await screen.findByRole('heading', { level: 2, name: first.name })).toBeTruthy();
     expect(screen.queryByRole('table')).toBeNull();
     await userEvent.click(screen.getByRole('link', { name: words.lists.products.back }));
-    expect(
-      await screen.findByRole('heading', { level: 2, name: words.nav.products }),
-    ).toBeTruthy();
+    expect(await screen.findByRole('heading', { level: 2, name: words.nav.products })).toBeTruthy();
     // the heading is outside the list's load; the table waits for it
     expect(await screen.findByRole('table')).toBeTruthy();
   });
