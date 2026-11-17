@@ -85,7 +85,7 @@ How it is built, each line read off the scripts:
   1 GiB free. c-storage keeps the time of its last write in memory only, so after any restart the lag cannot
   be read, and the check's green line then says so and does not claim the copy holds the last write (a
   reading that survives a restart is item 378 below).
-- **The restore:** `ops/restore.sh <env> [--at <time>] [--onto-live | --onto-blank]` (`box_restore` and `box_restore_blank` in `ops/lib.sh`). By
+- **The restore:** `ops/restore.sh <env> [--at <time>] [--onto-live | --onto-blank] [--box <name>]` (`box_restore` and `box_restore_blank` in `ops/lib.sh`). By
   default it writes a new file, `restored-<stamp>.db`, on the records disk and touches nothing live.
   `--onto-live` stops c-storage, moves the live file and its companions aside (never deleted), puts the
   restore on the live path and starts c-storage; it is refused on an environment that may hold real data
@@ -1493,6 +1493,8 @@ soon after a run waits up to two hours before `main` may move. Fix: one line in 
 revert of the commit production runs starts the whole check at once, outside the two-hour cadence.
 *Trigger:* the rehearsal's minutes, or the first real revert of a production release.
 
+*The rehearsal's minutes (the production plan, 2026-11-17):* from the revert's commit to ridge running the code from before, 65 min 58 s. 52 min 41 s of that passed before `main` moved, waiting on `pre-merge`'s whole check; then 2 min 18 s to the human's push and 10 min 59 s from push to ridge green. Whether the whole check was started at once for the revert is not shown by the stamps. The wait for the check is most of the way back, so the fix stands as written; whether this length is acceptable is the plan's point 2.
+
 ## 302. The production lane's read job holds ridge's whole deploy role to read one commit — the machine; *parked* until a second reader of ridge's commit or a review asks for it (the production plan, 2026-11-12)
 
 The lane's first job takes ridge's deploy role, which can also release to ridge, only to read what
@@ -1633,7 +1635,7 @@ When the newest full copy is six days old, the check is red and nothing in the r
 
 ## 382. The destroy's copy-bucket and records-disk steps have run only on stand-ins — the machine; `[DEFERRED]` (the continuous copy's review, fix pass, 2026-11-12, Medium 1)
 
-`ops/destroy.sh` now empties and deletes the copy bucket and reads back the stack delete's snapshot of the records disk (`RecordsVolume` has `DeletionPolicy: Snapshot`, so the stack delete takes one and deletes the disk); it also accepts a box with the records disk attached. All of that is read from AWS's documented behaviour and exercised on `ops/test.sh`'s stand-in for `aws`; it has not run against a real stack. The snapshot the stack delete leaves stays until the human deletes it (a few cents a month). *Fix:* none until seen. *Trigger:* the next `ops/destroy.sh ridge` after ridge holds the copy. Two reread notes, deferred: (a) the destroy counts the copy bucket's files before the prompt, while the box still runs and Litestream still uploads, and compares that count with what `aws s3 rm` reports in 6e2 after the box is terminated; an upload in between makes them differ and the run stops with the box and its root disk already deleted (a rerun counts again and finishes). *Fix:* count again after 6c, or compare with the listing taken after the delete alone. (b) Not read: how the stack delete treats `RecordsAttachment` once 6c has terminated the box, which detaches the disk first; a `DELETE_FAILED` there would show at 6f's read-back.
+`ops/destroy.sh` now empties and deletes the copy bucket and reads back the stack delete's snapshot of the records disk (`RecordsVolume` has `DeletionPolicy: Snapshot`, so the stack delete takes one and deletes the disk); it also accepts a box with the records disk attached. All of that is read from AWS's documented behaviour and exercised on `ops/test.sh`'s stand-in for `aws`; it has not run against a real stack. The snapshot the stack delete leaves stays until the human deletes it (a few cents a month). *Fix:* none until seen. *Trigger:* the next `ops/destroy.sh ridge` after ridge holds the copy. Two reread notes, deferred: (a) the destroy counts the copy bucket's files before the prompt, while the box still runs and Litestream still uploads, and compares that count with what `aws s3 rm` reports in 6e2 after the box is terminated; an upload in between makes them differ and the run stops with the box and its root disk already deleted (a rerun counts again and finishes). *Fix:* count again after 6c, or compare with the listing taken after the delete alone. (b) Not read: how the stack delete treats `RecordsAttachment` once 6c has terminated the box, which detaches the disk first; a `DELETE_FAILED` there would show at 6f's read-back. (c) The same per-page count sits in `ops/destroy.sh` (`#L280`, `#L322`, `#L496`, `#L511`): each reads `list-objects-v2 --query 'length(Contents || `[]`)' --output text`, and the AWS CLI's text output runs the query on each page of 1000 keys, so a bucket of more than 1000 files reads as one number a page; the move fixes' review found it and fixed `copy_count` in `ops/lib.sh` (the json output, which merges the pages first), not these. *Fix:* the same `--output json | jq` read in each.
 
 ## 383. The ci fix's new case tests the error handler, not the new order, and the child ports can still collide — the machine; `[DEFERRED]` (the review of the ci fix, 2026-11-12, Low)
 
@@ -2068,9 +2070,33 @@ For the piece that moves the doors onto these parts. `ui/src/components/atoms/Ba
 
 A build of `pre-merge` at `a0514569`, made into a scratch folder for that plan, wrote an entry of 1,010.91 kB (297.55 kB gzipped) and printed Vite's "larger than 1000 kB" warning, against the limit `ui/vite.config.ts`'s `chunkSizeWarningLimit` raises. The gallery workbench's piece rewrote the memo's figure in `docs/memo/ui.md`'s bundle section (about 1,010 kB), and that section's trigger, "the entry reaching 1,000 kB, when the build starts warning again", has fired unnoticed: nothing fails on the warning. The gallery workbench adds only its address test to the entry, its page going into a chunk of its own. *Fix:* the memo's numbers rewritten, then either a heavy route split off as the gallery is, or the limit raised with its reason. *Trigger:* the next page that adds to the entry.
 
-## 560. The gallery's frame is `100vh`, which a phone browser's toolbar may cover — the machine; `[DEFERRED]` to the ridge look (the gallery workbench's review, 2026-11-17, Low)
+## 560. The gallery's frame is `100vh`, which a phone browser's toolbar may cover — the machine; `[CLOSED BY THE LOOK, NOT CHANGED]` 2026-11-17: the human's look on ridge, 2026-11-17, a part's last line above the phone's bar (the gallery workbench's review, 2026-11-17, Low)
 
 `ui/src/design-system/Gallery.module.css`'s `.root` sets `height: 100vh; overflow: hidden`. On iOS Safari the toolbar may cover the foot of a part's scroll area; `100dvh` is the usual fix. Not changed: no test here measures a layout and the picture run cannot take the gallery, so the change cannot be proved harmless or useful without the human's phone on ridge. *Trigger:* the plan's ridge look; if the end of a part sits under the toolbar, change it to `100dvh`.
+
+## 563. Taking a box out still ends in hand acts after the stack run — the machine; *parked* until the next box taken out (the move fixes' plan, 2026-11-17, Low)
+
+`ops/stack.sh env <env> --more-boxes <list>` with its five `--take` keeps the instance and its root disk (the instance is `RetainExceptOnCreate`) and leaves the records disk's snapshot, so `ops/README.md`'s "Adding a box" step 6 sends the rest to the hand paths: stop the box first, terminate the instance by its recorded id, delete its root disk, keep or delete the snapshot. Each sitting so far (2026-11-15, 2026-11-17) wrote that rest as a one-off and copied it, which `ops/CLAUDE.md`'s OP1 says a one-off should not do. After the move fixes the copy in the bucket is the box command's own; the rest is not. *Fix:* one `ops/` command for the rest, copied from the 2026-11-17 removal one-off with the box's name as its argument, its refusals kept. *Trigger:* the next box taken out.
+
+## 564. A box's copy cleared by the box command has run only on stand-ins — the machine; *parked* until the next box sitting (the move fixes' plan, 2026-11-17, Low)
+
+The move fixes make `ops/stack.sh env` delete the copy under a box's name when it takes the box out, and clear a leftover under a name it adds, through `copy_clear` in `ops/lib.sh` (`aws s3 rm --recursive` under `<name>/records/`, the deletes counted against a listing, read back empty). The ops tests prove the path, the order and every red on stand-ins; S3's own answer is unread, as for the destroy's copy bucket (item 382). The 2026-11-17 removal left that morning's b2 copy under `b2/records/`, which the bucket's rule expires about seven days after its last write. *Trigger:* the next `--more-boxes` add of b2 on ridge: its `--plan` names that leftover and its count, and its run must read the path back empty before the change set executes.
+
+## 565. The copy's versioning read counts a failed read as off — the machine; *parked* until the box command's next run (the move fixes' review, fix pass, 2026-11-17, Low)
+
+`ops/lib.sh#L590` (at `5efc0f71`): `copy_clear` reads the bucket's versioning with `2>/dev/null || true`, so a read that fails (a denied `s3:GetBucketVersioning`, a network error) leaves the answer empty, which the next line takes as no versioning, and the delete goes on. *Trigger:* the deploy role losing that one permission, or a failed call, on a versioned bucket (the template has none). *Fix:* tell a failed read from an empty answer, and die on the first.
+
+## 566. A die after the update says nothing of the update or how the leftover clears — the machine; *parked* until the box command's next run (the move fixes' review, fix pass, 2026-11-17, Low)
+
+`ops/stack.sh#L392` (at `5efc0f71`): `copy_clear` after the update dies with its own generic text, so a red there does not say that the stack's update completed, that the box is out, or that only the copy remains and a second `copy_clear` by hand or the same run again clears it. *Trigger:* any red of `copy_clear` after the update (a delete count that differs, a read-back that holds a file). *Fix:* a line before the loop naming the update as complete and the leftover's clearing.
+
+## 567. A landing by `ops/words-in.sh` while a whole check waits for the gate lock enters the tree that check runs, after the commit it was read at — the machine; `[OPEN]` (the words paste's plan, 2026-11-17, Low)
+
+The whole check's commit is read by `git rev-parse HEAD` in `pre-merge`'s worktree as the check starts ([QA](conventions/qa.md#the-whole-check-on-pre-merge)), before `ops/gate.sh`'s `take_lock` may wait. The words paste lands only while it holds the gate lock itself (`docs/plans/2026-11-17-words-paste.md`), so a check that holds the lock never meets a landing; but one that is still waiting runs on the landed tree and records the earlier commit, and a green then moves `main` to a commit whose tree it did not check. The orchestrator's own landings cannot fall in that window; a landing from the human's terminal can. Fix: the commit read after `take_lock`, inside the gate, which places item 224's line after the lock rather than in `log_start`. *Trigger:* the first words paste that lands while a whole check waits, or item 224's fix, whichever comes first.
+
+## 568. A new sent file for a partner whose earlier return is still out reads that return against the new file — the machine; *parked* until a second send to one partner (the words paste's plan, 2026-11-17, Low)
+
+`ops/words-in.sh` reads a return against `words-sent/<label>.csv` in the credo root, one sent copy a partner (`docs/plans/2026-11-17-words-paste.md`). Sent a second file before the first comes back, a partner's return of the first is read against the second, and every word changed between the two sends shows as a change back to the old word; the import shows each before the y, so nothing is written unseen, but nothing tells the reader why. Fix, if a second send happens: the sent copy's name carries its date and the returned file names which copy it was made from, or the script refuses a return whose unchanged rows disagree with the sent copy. *Trigger:* a second send to one partner.
 
 ## 571. A staff or list file made from a template downloaded before a words change no longer imports — the machine; *parked* until the first real client, or a partner who meets it (the ui tests' words plan, 2026-11-17, Low)
 
@@ -2083,3 +2109,52 @@ The staff import finds each column by the dictionary's word for it in either lan
 ## 573. No mechanical check stops a new ui test from finding a word by its typed text — the machine; *parked* until a returned file reddens on such a test (the ui tests' words plan, 2026-11-17, Low)
 
 After the ui tests' words piece, every ui test reads its words from `DICTIONARIES`, and `ui/CLAUDE.md`'s "The file to copy" says so; nothing else stops the next test from typing one, which then goes red only when a partner changes that word. *Trigger:* a returned file that reddens a test on a typed word; the fix is a run of the ui tests against a dictionary whose every word is altered, or a scan of the test files' literals against the dictionaries.
+
+## 575. The env run's step count is 10 where an ordinary run takes 8 — the machine; *parked* until the next edit of `ops/stack.sh`'s steps (the move fixes' review, fix pass, 2026-11-17, Low)
+
+`ops/stack.sh#L95` (at `5efc0f71`): `STEPS=10` counts the two steps the copy adds even on a run that never reaches them, so an ordinary env run (no box added or taken out) ends its step lines at 8 of 10. *Trigger:* any env run with no `--more-boxes` change. *Fix:* count the steps from what the run holds, or word the count as at most.
+
+## 576. A second `--box` on the restore silently overrides the first — the machine; *parked* until the next edit of `ops/restore.sh` (the move fixes' review, fix pass, 2026-11-17, Low)
+
+`ops/restore.sh#L46-L50` (at `5efc0f71`): `--box` sets `BOX_WANTED` each time it is read, so `--box b2 --box b3` restores onto b3 and says nothing of b2, where `ops/release.sh` and `ops/check.sh` refuse a second one (`[ "$BOX_WANTED" = home ] || usage`). *Trigger:* a hand-typed command with the flag twice. *Fix:* the same guard before the assignment.
+
+## 577. The refusal on a run that only adds a box reads "so the copy of cannot be found" — the machine; *parked* until the next edit of `ops/stack.sh`'s refusals (the move fixes' review, fix pass, 2026-11-17, Low)
+
+`ops/stack.sh#L212` (at `5efc0f71`): the refusal for a stack with no `CopyBucketName` builds its words from the boxes taken out, which a run that only adds a box has none of, so the line reads "so the copy of cannot be found". *Trigger:* an add of a box on a stack whose outputs lack `CopyBucketName`. *Fix:* name the added boxes when none is taken out, or word the line without the list.
+
+## 578. A delete CloudFormation's cleanup cannot make may leave the taken-out box's role able to write after the read-back — the machine; *parked* until the next box taken out, or a fetch of AWS's own wording on cleanup after an update (the move fixes' review, fix pass, 2026-11-17, Low)
+
+`ops/stack.sh#L386` (at `5efc0f71`): the reviewer recalls, unverified, that a delete which fails in CloudFormation's cleanup after an update still ends the stack at `UPDATE_COMPLETE`, so the old box's role (retained, not deleted) might write to `<name>/records/` again after `copy_clear`'s read-back and leave a file the bucket's rule expires in seven days. Not read in AWS's documentation or seen on a real run. *Trigger:* a taken-out box whose role CloudFormation could not delete. *Fix:* none until read; if true, name the leftover in the runbook, or clear again after the role is gone.
+
+## 579. Without `pipefail`, `copy_newest` returns an empty time with exit 0 where `copy_count` dies — the machine; `[DEFERRED]` (the move fixes' review, second round, 2026-11-17, Low)
+
+`ops/lib.sh#L577` (at `b49f07c0`): `copy_newest` reads the listing through a pipe to `jq`, so a failed `aws` call under a shell without `pipefail` leaves the time empty and the function ends 0, where `copy_count` ends on its number guard. No caller runs without `pipefail` today (`ops/stack.sh#L18`). *Trigger:* a script that sources `ops/lib.sh` without `set -o pipefail` and calls `copy_newest`. *Fix:* guard the time as `copy_count` guards its number, or set `pipefail` inside the function.
+
+## 580. `pre-merge`'s clean check runs before the lock wait, so a merge left open during the wait is aborted — the machine; `[DEFERRED]` (the words paste's review, 2026-11-17, Low)
+
+`ops/words-in.sh#L122` (at `5bdfdba3`) reads `pre-merge`'s worktree as clean, then waits up to 5 minutes for the gate lock; `#L141-L142` runs `git merge --abort` on a failed landing, which also drops a merge someone began in that worktree during the wait. Fix: read the worktree clean again after the lock is taken, and abort only the merge this run began. *Trigger:* a person or session starts a merge in `pre-merge`'s worktree while a landing waits for the lock.
+
+## 581. A failed worktree removal makes the branch delete fail and the printed line blame `pre-merge` — the machine; `[DEFERRED]` (the words paste's review, 2026-11-17, Low)
+
+`ops/words-in.sh#L147-L148`: when `git worktree remove` fails, `branch -d` fails too (the branch is still checked out) and the line says `pre-merge` does not hold all the branch's commits, which is untrue. Fix: delete the branch only when the removal succeeded, and say the real reason. *Trigger:* a worktree that cannot be removed (a file open in it) at a landing's end.
+
+## 582. A Ctrl-C after the worktree is made leaves it and its branch behind, unnamed — the machine; `[DEFERRED]` (the words paste's review, 2026-11-17, Low)
+
+`ops/words-in.sh#L55-L62`: `cleanup_extra` frees the lock but the worktree and branch made in step 2 are removed only on the script's own stops, so an interrupt (exit 130) between the making and the commit leaves `wip-words-p…` and its branch with no line naming them. Fix: `cleanup_extra` drops what a run made before the commit, or prints its names. *Trigger:* Ctrl-C during the offline install or the import's question.
+
+## 583. Any failure of the import without the read-back text reads as "the import refused the file" — the machine; `[DEFERRED]` (the words paste's review, 2026-11-17, Low)
+
+`ops/words-in.sh#L222-L226` tells a read-back failure from every other non-zero exit of `pnpm words in`, and prints the refusal verdict for all the rest, so a crash or a missing tool reads as the partner's file being wrong. Fix: take the refusal verdict only for the import's own refusal line, and say "the import failed" otherwise. *Trigger:* `pnpm words in` dying for a reason that is not a refusal.
+
+## 584. The runbook's table lacks a failed offline install, a failed take-in of `pre-merge` and a failed add or commit — the machine; `[DEFERRED]` (the words paste's review, 2026-11-17, Low)
+
+`ops/README.md`'s table in "A partner's returned words" has no row for `verdict: the offline install failed`, `taking pre-merge in failed` or `git add failed` / `the commit failed`, which the script prints. Fix: three rows, each saying to tell the orchestrator. *Trigger:* the first of those stops in a real paste.
+
+## 585. The plan's "15 minutes at most" is 20 on the take-in path, and nothing is reinstalled after the take-in — the machine; `[DEFERRED]` (the words paste's review, 2026-11-17, Low)
+
+`docs/plans/2026-11-17-words-paste.md` bounds the paste at 15 minutes, but the ui check's wait is 600 s and the take-in's second check 300 s, 20 minutes with the landing's own wait; and `ops/words-in.sh` takes `pre-merge` in without `pnpm install`, so a take-in that adds a workspace package runs its checks on a tree without its install. Fix: say 20 in the plan, and install offline after a take-in that changed `pnpm-lock.yaml`. *Trigger:* a landing while `pre-merge` has moved past the branch's base.
+
+## 586. The printed `--land` line's paths are unquoted, so a credo root whose path holds a space would break it — the machine; `[DEFERRED]` (the words paste's second review round, 2026-11-17, Low)
+
+`ops/words-in.sh#L75` prints `cd $REPO_DIR && bash $OPS_DIR/words-in.sh --land $BRANCH` with the two paths bare, so a credo root with a space in its path pastes as two words. This root has none. Fix: print each path single-quoted. *Trigger:* a credo root moved to a path with a space.
+

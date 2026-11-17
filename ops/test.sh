@@ -846,6 +846,8 @@ copy_bucket_guard() {
     '.Resources.CopyBucket | .DeletionPolicy == "Retain" and .UpdateReplacePolicy == "Retain"'
   must "$1" "CopyBucket does not expire copies after seven days" \
     '.Resources.CopyBucket.Properties.LifecycleConfiguration.Rules | length == 1 and .[0].Status == "Enabled" and .[0].ExpirationInDays == 7'
+  must "$1" "CopyBucket declares versioning (the delete of a box's copy would leave old versions behind)" \
+    '.Resources.CopyBucket.Properties | has("VersioningConfiguration") | not'
   must "$1" "CopyBucket is a website, or has a policy of its own" \
     '([.Resources | to_entries[] | select(.value.Type == "AWS::S3::BucketPolicy" and (.value.Properties.Bucket | tostring | contains("CopyBucket")))] | length == 0) and (.Resources.CopyBucket.Properties | has("WebsiteConfiguration") | not)'
 }
@@ -882,6 +884,8 @@ refuses "  a bucket deleted with its stack is refused" "not kept" copy_bucket_gu
 refuses "  a bucket deleted on a replacement is refused" "not kept" copy_bucket_guard "$(mut 'del(.Resources.CopyBucket.UpdateReplacePolicy)')"
 refuses "  a bucket that expires copies after a day is refused" "seven days" \
   copy_bucket_guard "$(mut '.Resources.CopyBucket.Properties.LifecycleConfiguration.Rules[0].ExpirationInDays = 1')"
+refuses "  a bucket given versioning is refused" "declares versioning" \
+  copy_bucket_guard "$(mut '.Resources.CopyBucket.Properties.VersioningConfiguration = {"Status":"Enabled"}')"
 passes "the box's role may put, get and list its own path in its own bucket, and holds no delete (row 3)" box_role_guard "$WORK/env.json"
 refuses "  a role that may delete is refused" "an action other than" \
   box_role_guard "$(mut '.Resources.BoxRole.Properties.Policies[0].PolicyDocument.Statement[0].Action += ["s3:DeleteObject"]')"
@@ -1276,9 +1280,25 @@ blank_guard() { # <release.sh>
   [ "$(grep -c '^ *if \[ ! -e "\$mnt/c-storage.db" \] && copy_held; then refuse_held; fi' "$b")" = 2 ] ||
     die "a disk with no c-storage.db, formatted or mounted by hand, is not refused when the bucket holds a copy (both the mounted case and the check after the mount)"
   need "$1" '4\) die "the records disk holds no c-storage.db and the bucket holds a copy' "the release does not name the refusal"
-  need "$1" 'ops/restore.sh \$ENVNAME --onto-blank' "the release does not name the one scripted restore"
+  need "$1" 'ops/restore.sh \$ENVNAME\$RESTORE_BOX --onto-blank' "the release does not name the one scripted restore"
+  # the box's name goes into that command on a box added, and nothing extra on the home box
+  local def want got w
+  def=$(grep -E '^RESTORE_BOX=.*BOX_WANTED' "$1" || true)
+  [ -n "$def" ] || die "the release does not work out the restore's --box from the box wanted"
+  for w in home b2; do
+    want=''
+    if [ "$w" = b2 ]; then want=' --box b2'; fi
+    got=$(BOX_WANTED=$w bash -c "$def; printf '%s' \"\$RESTORE_BOX\"") || die "the restore's --box line does not run"
+    [ "$got" = "$want" ] || die "the release names '$got' for the restore on box $w, not '$want'"
+  done
 }
 passes "a records disk with no c-storage.db whose box path in the bucket holds a copy refuses a fresh start, blank or mounted by hand, and names ops/restore.sh --onto-blank (row 12)" blank_guard "$OPS_DIR/release.sh"
+# shellcheck disable=SC2016 # sed programs, in single quotes
+refuses "  a release whose refusal drops the box from the restore it names is refused" "does not name the one scripted restore" \
+  blank_guard "$(mutated release-nobox.sh 's#ops/restore.sh $ENVNAME$RESTORE_BOX --onto-blank#ops/restore.sh $ENVNAME --onto-blank#' "$OPS_DIR/release.sh")"
+# shellcheck disable=SC2016 # sed programs, in single quotes
+refuses "  a release that names --box on the home box too is refused" "names ' --box home'" \
+  blank_guard "$(mutated release-homebox.sh 's#^RESTORE_BOX=.*#RESTORE_BOX=" --box $BOX_WANTED"#' "$OPS_DIR/release.sh")"
 refuses "  a release that formats first is refused" "formatted before the bucket" \
   blank_guard "$(awk '/^  if copy_held; then refuse_held; fi/ && !d {print "  mkfs.xfs -q \"$dev\""; d=1} {print}' "$OPS_DIR/release.sh" >"$WORK/release-mkfs.sh"; echo "$WORK/release-mkfs.sh")"
 # shellcheck disable=SC2016 # sed programs, in single quotes
@@ -3692,10 +3712,23 @@ check "  it runs on an environment that may hold real data (nothing live exists 
   "$RC $(sed -n 's/.*bash -s -- blank \/var\/lib\/private\/c-storage //p' "$S/blank.calls" 2>/dev/null | grep -c '^2026-11-12T10:00:00Z vol-0rec$' || true)"
 rc=0
 out=$(bash "$OPS_DIR/restore.sh" ridge --onto-blank --onto-live 2>&1) || rc=$?
-check "  and --onto-blank with --onto-live together is its usage, exit 2, before any call" "2 usage: ops/restore.sh <env> [--at <time>] [--onto-live | --onto-blank]" "$rc $out"
+check "  and --onto-blank with --onto-live together is its usage, exit 2, before any call" "2 usage: ops/restore.sh <env> [--at <time>] [--onto-live | --onto-blank] [--box <name>]" "$rc $out"
 rc=0
 out=$(bash "$OPS_DIR/restore.sh" ridge --at nonsense 2>&1) || rc=$?
-check "  a time that is not an RFC 3339 time is the usage, exit 2" "2 usage: ops/restore.sh <env> [--at <time>] [--onto-live | --onto-blank]" "$rc $out"
+check "  a time that is not an RFC 3339 time is the usage, exit 2" "2 usage: ops/restore.sh <env> [--at <time>] [--onto-live | --onto-blank] [--box <name>]" "$rc $out"
+# the restore takes a box (docs/plans/2026-11-17-move-fixes.md, step 3, cases 10 and 11)
+FAKE_BOX2=1 chk_run rbox restore.sh ridge --box b2 --onto-blank
+check "case 10: the blank-disk restore with --box b2 opens b2's instance, passes b2's disk id and no other, logs as restore-ridge-b2, and its last line names the release for that box" "0 1 0 1 1 1" \
+  "$RC $(sed -n 's/.*bash -s -- blank \/var\/lib\/private\/c-storage //p' "$S/blank.calls" 2>/dev/null | grep -c '^- vol-test-b2$' || true) $(grep -c 'vol-0rec' "$S/blank.calls" 2>/dev/null || true) $([ "$(grep -c 'ec2-user@i-test-b2' "$S/ssh.calls" || true)" -gt 0 ] && echo 1 || echo 0) $(find "$OPS_LOG_DIR" -name '*-restore-ridge-b2.log' | wc -l | tr -d ' ') $(chk_has '^c-storage is not started: release again (the deploy, or ops/release.sh ridge --box b2)' "$S/out")"
+FAKE_BOX2=1 chk_run rboxhome restore.sh ridge --onto-blank
+check "case 12: with b2 in the stack and no --box the restore stays on the home box, its log restore-ridge, its last line the plain release" "0 1 0 1 1" \
+  "$RC $(grep -c -e '- vol-0rec$' "$S/blank.calls" || true) $(grep -c 'i-test-b2' "$S/ssh.calls" || true) $(find "$OPS_LOG_DIR" -name '*-restore-ridge.log' | wc -l | tr -d ' ') $(chk_has '^c-storage is not started: release again (the deploy, or ops/release.sh ridge)' "$S/out")"
+FAKE_BOX2=1 chk_run rboxnope restore.sh ridge --box nope --onto-blank
+check "case 11: a box the stack does not hold is refused by the restore, naming the ones it does, before any call on a box" "1 1 gone" \
+  "$RC $(grep -c "stack ridge holds no box 'nope' (the boxes added: b2 )" "$S/out" || true) $(file_state "$S/ssh.calls")"
+rc=0
+out=$(bash "$OPS_DIR/restore.sh" ridge --box 2>&1) || rc=$?
+check "  --box with no name is the usage, exit 2, naming --box" "2 usage: ops/restore.sh <env> [--at <time>] [--onto-live | --onto-blank] [--box <name>]" "$rc $out"
 # ---- the front door, as the check reads it (docs/plans/2026-11-11-front-door-keys.md, step 3, case 12)
 echo "== ops/check.sh reads the front door: the API's own address refuses, the app answers a wrong key of the caller's own"
 chk_run door check.sh ridge --reads-only
@@ -3837,7 +3870,7 @@ check "  by check.sh" "1 1" "$RC $(grep -c "stack ridge holds no box 'nope'" "$S
 e2e_fresh box-nope-release
 RELEASE_BINARY=$WORK/server-e2e e2e_run release.sh ridge --box nope
 check "  by release.sh, with nothing sent" "1 1 gone" "$RC $(grep -c "stack ridge holds no box 'nope'" "$S/out" || true) $(file_state "$S/ssh.calls")"
-for sc in release check drill tunnel; do
+for sc in release check drill tunnel restore; do
   check "  $sc.sh's usage names --box" 1 "$(grep -c -e "usage: ops/$sc.sh .*--box <name>" "$OPS_DIR/$sc.sh" || true)"
 done
 unset FAKE_BOX2
@@ -4724,7 +4757,39 @@ case "$*" in
   *get-region-opt-status*) echo ENABLED ;;
   *"describe-stacks --stack-name credo-network"*) echo '{"Stacks":[{"StackName":"credo-network","StackStatus":"UPDATE_COMPLETE","Outputs":[{"OutputKey":"VpcId","OutputValue":"vpc-test"}]}]}' ;;
   *"describe-stacks"*)
-    echo '{"Stacks":[{"StackName":"ridge","StackStatus":"UPDATE_COMPLETE","Parameters":[{"ParameterKey":"Repository","ParameterValue":"test-owner/test-repo"},{"ParameterKey":"SubjectPrefix","ParameterValue":"repo:test-owner/test-repo"}'"${FAKE_STACK_EXTRA:-}"'],"Outputs":[{"OutputKey":"BoxId","OutputValue":"i-test"},{"OutputKey":"BoxAddress","OutputValue":"10.9.8.7"},{"OutputKey":"Zone","OutputValue":"z"},{"OutputKey":"DeployRoleArn","OutputValue":"arn:aws:iam::000000000000:role/fake-deploy"},{"OutputKey":"AppAddress","OutputValue":"https://app.example.test"}]}]}' | jq -c --arg m "${FAKE_MOREBOXES-unset}" 'if $m == "unset" then . else .Stacks[0].Parameters += [{ParameterKey: "MoreBoxes", ParameterValue: $m}] end' ;;
+    echo '{"Stacks":[{"StackName":"ridge","StackStatus":"UPDATE_COMPLETE","Parameters":[{"ParameterKey":"Repository","ParameterValue":"test-owner/test-repo"},{"ParameterKey":"SubjectPrefix","ParameterValue":"repo:test-owner/test-repo"}'"${FAKE_STACK_EXTRA:-}"'],"Outputs":[{"OutputKey":"BoxId","OutputValue":"i-test"},{"OutputKey":"BoxAddress","OutputValue":"10.9.8.7"},{"OutputKey":"Zone","OutputValue":"z"},{"OutputKey":"DeployRoleArn","OutputValue":"arn:aws:iam::000000000000:role/fake-deploy"},{"OutputKey":"AppAddress","OutputValue":"https://app.example.test"}]}]}' | jq -c --arg m "${FAKE_MOREBOXES-unset}" 'if $m == "unset" then . else .Stacks[0].Parameters += [{ParameterKey: "MoreBoxes", ParameterValue: $m}] end' |
+      jq -c --arg b "${FAKE_BOXOUTS-}" '.Stacks[0].Outputs += [{OutputKey: "CopyBucketName", OutputValue: "credo-test-copy"}] + ($b | split(",") | map(select(. != "") | {OutputKey: ("MoreBox" + . + "Id"), OutputValue: "i-more"}))' ;;
+  # the copy bucket's keys (FAKE_COPY_KEYS, a list of keys), kept in the state folder: a listing counts those under --prefix, or gives the newest time; a recursive remove deletes them and reports each
+  *"s3api list-objects-v2"*)
+    all="$*"; pre=${all##*--prefix }; pre=${pre%% *}
+    [ -z "${FAKE_LIST_FAIL:-}" ] || { echo "stand-in aws: the listing fails" >&2; exit 254; }
+    [ -f "${FAKE_STATE:?}/copy.keys" ] || { tr ' ' '\n' <<<"${FAKE_COPY_KEYS:-}" | grep . >"$FAKE_STATE/copy.keys" || true; }
+    # FAKE_COPY_BULK=<n> adds n keys under b2/records/ (a prefix holding more than a page)
+    if [ -n "${FAKE_COPY_BULK:-}" ] && [ ! -f "$FAKE_STATE/copy.bulk" ]; then touch "$FAKE_STATE/copy.bulk"; seq 1 "$FAKE_COPY_BULK" | sed 's|^|b2/records/9999/k|' >>"$FAKE_STATE/copy.keys"; fi
+    # the real CLI pages a listing at 1000 keys: its text output runs --query on each page (one line a page), its json output
+    # merges the pages first (awscli/formatter.py, TextFormatter and JSONFormatter)
+    total=$(grep -c "^$pre" "$FAKE_STATE/copy.keys" || true)
+    case "$all" in
+      *"--output json"*) js=1 ;;
+      *) js=0 ;;
+    esac
+    case "$all" in
+      *"max("*)
+        if [ "$total" = 0 ]; then if [ "$js" = 1 ]; then echo null; else echo None; fi
+        else pages=$(((total + 999) / 1000)); while [ "$pages" -gt 0 ]; do if [ "$js" = 1 ]; then echo '"2026-11-17T09:00:00+00:00"'; exit 0; fi; echo 2026-11-17T09:00:00+00:00; pages=$((pages - 1)); done; fi ;;
+      *)
+        if [ "$js" = 1 ]; then echo "$total"; exit 0; fi
+        left=$total; [ "$left" -gt 0 ] || echo 0
+        while [ "$left" -gt 0 ]; do if [ "$left" -gt 1000 ]; then echo 1000; left=$((left - 1000)); else echo "$left"; left=0; fi; done ;;
+    esac ;;
+  *"s3 rm s3://"*)
+    all="$*"; uri=${all##*s3 rm s3://}; uri=${uri%% *}; pre=${uri#*/}
+    # FAKE_RM_SHORT reports one delete fewer than it makes; FAKE_RM_KEEP reports every delete and leaves the last key
+    grep "^$pre" "${FAKE_STATE:?}/copy.keys" | { if [ -n "${FAKE_RM_SHORT:-}" ]; then tail -n +2; else cat; fi; } | while IFS= read -r k; do echo "delete: s3://${uri%%/*}/$k"; done || true
+    { grep -v "^$pre" "$FAKE_STATE/copy.keys" || true; [ -z "${FAKE_RM_KEEP:-}" ] || grep "^$pre" "$FAKE_STATE/copy.keys" | tail -n 1; } >"$FAKE_STATE/copy.left"; mv "$FAKE_STATE/copy.left" "$FAKE_STATE/copy.keys" ;;
+  *"s3api get-bucket-versioning"*) echo "${FAKE_VERS:-None}" ;;
+  *execute-change-set*) : ;;
+  *"wait stack-update-complete"*) : ;;
   *"wait change-set-create-complete"*) [ -z "${FAKE_CHANGESET:-}" ] || exit 0; exit 255 ;;
   *describe-change-set*) if [ -n "${FAKE_CHANGESET:-}" ]; then cat "$FAKE_CHANGESET"; else echo "The submitted information didn't contain changes. Submit different information to create a change set."; fi ;;
   *create-change-set*) all="$*"; p=${all##*--parameters file://}; cp "${p%% *}" "${FAKE_STATE:?}/params.json"; echo "$*" >"${FAKE_STATE:?}/create.args" ;;
@@ -4869,6 +4934,66 @@ MoreRecordsAttachmentb2 (AWS::EC2::VolumeAttachment): Remove, replacement none
 MoreRecordsVolumeb2 (AWS::EC2::Volume): Remove, replacement none" "$(filter changeset-boxremoved.json '[]')"
 check "  and each taken by its own name lets that one through" "MoreBoxRoleb2 (AWS::IAM::Role): Remove, replacement none" \
   "$(filter changeset-boxremoved.json '["MoreBoxb2","MoreBoxProfileb2","MoreRecordsAttachmentb2","MoreRecordsVolumeb2"]')"
+
+# The box taken out takes its copy with it (docs/plans/2026-11-17-move-fixes.md, cases 1, 2 and 6): the stand-in's bucket holds
+# keys under b2, Box and b20, so only the first is the delete's reach.
+TAKE5=(--take MoreBoxb2 --take MoreBoxProfileb2 --take MoreBoxRoleb2 --take MoreRecordsAttachmentb2 --take MoreRecordsVolumeb2)
+COPYKEYS="b2/records/0009/a b2/records/0009/b Box/records/0009/c b20/records/0009/d"
+BUCKETURI=s3://credo-test-copy/b2/records/
+call_line() { grep -n -m1 -e "$1" "$S/aws.calls" | cut -d: -f1; }
+FAKE_MOREBOXES=b2 FAKE_BOXOUTS=b2 FAKE_COPY_KEYS=$COPYKEYS FAKE_CHANGESET=$OPS_DIR/testdata/changeset-boxremoved.json stack_run stack-takeout --more-boxes none "${TAKE5[@]}"
+check "1: a run that takes b2 out deletes under b2/records/ once, after the update completes, and the log names the path and 0 left" "0 1 after 1" \
+  "$RC $(grep -c -F -e "aws s3 rm $BUCKETURI --recursive" "$S/aws.calls" || true) $(if [ "$(call_line 's3 rm')" -gt "$(call_line 'execute-change-set')" ] 2>/dev/null; then echo after; else echo not; fi) $(grep -c -F -x "ok   the copy under ${BUCKETURI} is deleted: 2 file(s), 0 left" "$S/out" || true)"
+check "  and the keys under Box/ and b20/ are still there" "Box/records/0009/c b20/records/0009/d" "$(tr '\n' ' ' <"$S/copy.keys" | sed 's/ $//')"
+FAKE_MOREBOXES=b2 FAKE_BOXOUTS=b2 FAKE_COPY_KEYS=$COPYKEYS FAKE_CHANGESET=$OPS_DIR/testdata/changeset-boxremoved.json stack_run stack-takeout-plan --plan --more-boxes none "${TAKE5[@]}"
+check "2: the --plan of that removal names the path, its count and 'after the update', and deletes nothing" "0 1 0 4" \
+  "$RC $(grep -c -F -x "  the copy under ${BUCKETURI}: 2 file(s), newest 2026-11-17T09:00:00+00:00, is deleted after the update" "$S/out" || true) $(grep -c -F ' s3 rm' "$S/aws.calls" || true) $(wc -l <"$S/copy.keys" | tr -d ' ')"
+FAKE_MOREBOXES=b2 FAKE_BOXOUTS=b2 FAKE_COPY_KEYS=$COPYKEYS FAKE_CHANGESET=$OPS_DIR/testdata/changeset-adds.json stack_run stack-keep-run
+check "6: a run with no --more-boxes, boxes held and changes executed, makes no s3 call" "0 1 0" \
+  "$RC $(grep -c 'execute-change-set' "$S/aws.calls" || true) $(grep -c '^aws s3' "$S/aws.calls" || true)"
+FAKE_MOREBOXES=b2 FAKE_BOXOUTS=b2 FAKE_COPY_KEYS=$COPYKEYS FAKE_CHANGESET=$OPS_DIR/testdata/changeset-adds.json stack_run stack-same-list --more-boxes b2
+check "  a run naming the list the stack holds, changes executed, makes none" "0 1 0" \
+  "$RC $(grep -c 'execute-change-set' "$S/aws.calls" || true) $(grep -c '^aws s3' "$S/aws.calls" || true)"
+FAKE_MOREBOXES=b2 FAKE_BOXOUTS=b2 FAKE_COPY_KEYS=$COPYKEYS stack_run stack-same-list-plan --plan --more-boxes b2
+check "  and the same list with no changes, none" "0 0" "$RC $(grep -c '^aws s3' "$S/aws.calls" || true)"
+
+# Cases 3, 4, 5 and 7 (docs/plans/2026-11-17-move-fixes.md, step 2): the delete's reach and its guards, and the add's leftover.
+FAKE_MOREBOXES=b2 FAKE_BOXOUTS=b2 FAKE_COPY_KEYS=$COPYKEYS FAKE_CHANGESET=$OPS_DIR/testdata/changeset-boxremoved.json stack_run stack-reach --more-boxes none "${TAKE5[@]}"
+check "3: every delete and listing the removal makes names b2/records/ alone, never Box/ or b20/ (and there are some)" "0 5" \
+  "$(grep -F -e ' s3 rm ' -e 'list-objects-v2' "$S/aws.calls" | grep -c -v -e ' s3://credo-test-copy/b2/records/ ' -e '--prefix b2/records/ ' || true) $(grep -c -F -e ' s3 rm ' -e 'list-objects-v2' "$S/aws.calls" || true)"
+FAKE_MOREBOXES=b2 FAKE_BOXOUTS=b2 FAKE_COPY_KEYS=$COPYKEYS FAKE_RM_SHORT=1 FAKE_CHANGESET=$OPS_DIR/testdata/changeset-boxremoved.json stack_run stack-short --more-boxes none "${TAKE5[@]}"
+check "4: a delete that reports fewer deletes than the count ends red naming the path, exit 1" "1 1" \
+  "$RC $(grep -c -F "s3://credo-test-copy/b2/records/: 1 delete(s) reported against 2 file(s) counted before" "$S/out" || true)"
+FAKE_MOREBOXES=b2 FAKE_BOXOUTS=b2 FAKE_COPY_KEYS=$COPYKEYS FAKE_RM_KEEP=1 FAKE_CHANGESET=$OPS_DIR/testdata/changeset-boxremoved.json stack_run stack-left --more-boxes none "${TAKE5[@]}"
+check "  and a read-back that still holds one ends red naming the path, exit 1" "1 1" \
+  "$RC $(grep -c -F "s3://credo-test-copy/b2/records/ still holds 1 file(s) after the delete" "$S/out" || true)"
+FAKE_COPY_BULK=1234 FAKE_MOREBOXES=b2 FAKE_BOXOUTS=b2 FAKE_COPY_KEYS=$COPYKEYS FAKE_CHANGESET=$OPS_DIR/testdata/changeset-boxremoved.json stack_run stack-paged --more-boxes none "${TAKE5[@]}"
+check "9: a copy holding more than a page (1236 keys under b2/records/, listed 1000 then 236) is counted once, deleted, read back empty: exit 0, the count and 0 left in the log, Box/ and b20/ kept" "0 1 Box/records/0009/c b20/records/0009/d" \
+  "$RC $(grep -c -F -x "ok   the copy under ${BUCKETURI} is deleted: 1236 file(s), 0 left" "$S/out" || true) $(tr '\n' ' ' <"$S/copy.keys" | sed 's/ $//')"
+FAKE_COPY_BULK=1234 FAKE_MOREBOXES=b2 FAKE_BOXOUTS=b2 FAKE_COPY_KEYS=$COPYKEYS FAKE_CHANGESET=$OPS_DIR/testdata/changeset-boxremoved.json stack_run stack-paged-plan --plan --more-boxes none "${TAKE5[@]}"
+check "  and its --plan names one count and one newest time for that copy, not one a page" "0 1" \
+  "$RC $(grep -c -F -x "  the copy under ${BUCKETURI}: 1236 file(s), newest 2026-11-17T09:00:00+00:00, is deleted after the update" "$S/out" || true)"
+for V in Enabled Suspended; do
+  FAKE_VERS=$V FAKE_MOREBOXES=b2 FAKE_BOXOUTS=b2 FAKE_COPY_KEYS=$COPYKEYS FAKE_CHANGESET=$OPS_DIR/testdata/changeset-boxremoved.json stack_run "stack-vers-$V" --more-boxes none "${TAKE5[@]}"
+  check "7: a copy bucket whose versioning reads $V stops the delete before any delete: exit 1, no s3 rm, the refusal said" "1 0 1" \
+    "$RC $(grep -c -F ' s3 rm' "$S/aws.calls" || true) $(grep -c -F "has versioning '$V'" "$S/out" || true)"
+done
+# the add: the stack holds no b2, the list names it, and the bucket holds the leftover of an earlier b2 (and a Box and a b20 beside it)
+FAKE_MOREBOXES=none FAKE_COPY_KEYS=$COPYKEYS FAKE_CHANGESET=$OPS_DIR/testdata/changeset-adds.json stack_run stack-add --more-boxes b2
+check "5: an add of b2 deletes what b2/records/ holds before the change set executes, and the log names the path and 0 left" "0 1 before 1" \
+  "$RC $(grep -c -F -e "aws s3 rm $BUCKETURI --recursive" "$S/aws.calls" || true) $(if [ "$(call_line 's3 rm')" -lt "$(call_line 'execute-change-set')" ] 2>/dev/null; then echo before; else echo not; fi) $(grep -c -F -x "ok   the copy under ${BUCKETURI} is deleted: 2 file(s), 0 left" "$S/out" || true)"
+check "  and the keys under Box/ and b20/ are still there" "Box/records/0009/c b20/records/0009/d" "$(tr '\n' ' ' <"$S/copy.keys" | sed 's/ $//')"
+FAKE_MOREBOXES=none FAKE_COPY_KEYS=$COPYKEYS FAKE_CHANGESET=$OPS_DIR/testdata/changeset-adds.json stack_run stack-add-plan --plan --more-boxes b2
+check "  its --plan names the leftover, its count and the time, and deletes nothing" "0 1 0 4" \
+  "$RC $(grep -c -F -x "  the copy under ${BUCKETURI}: 2 file(s), newest 2026-11-17T09:00:00+00:00, is a leftover of an earlier box of that name, and is deleted before the change set runs" "$S/out" || true) $(grep -c -F ' s3 rm' "$S/aws.calls" || true) $(wc -l <"$S/copy.keys" | tr -d ' ')"
+FAKE_LIST_FAIL=1 FAKE_MOREBOXES=none FAKE_COPY_KEYS=$COPYKEYS FAKE_CHANGESET=$OPS_DIR/testdata/changeset-adds.json stack_run stack-add-listfail --more-boxes b2
+check "  a failed listing stops the run before the change set executes: exit 1, no execute-change-set, no s3 rm" "1 0 0" \
+  "$RC $(grep -c 'execute-change-set' "$S/aws.calls" || true) $(grep -c -F ' s3 rm' "$S/aws.calls" || true)"
+FAKE_MOREBOXES=none FAKE_COPY_KEYS="Box/records/0009/c b20/records/0009/d" FAKE_CHANGESET=$OPS_DIR/testdata/changeset-adds.json stack_run stack-add-clean --more-boxes b2
+check "  an add of b2 with nothing under b2/records/ deletes nothing and executes" "0 0 1" \
+  "$RC $(grep -c -F ' s3 rm' "$S/aws.calls" || true) $(grep -c 'execute-change-set' "$S/aws.calls" || true)"
+FAKE_MOREBOXES=none FAKE_COPY_KEYS=$COPYKEYS FAKE_CHANGESET=$OPS_DIR/testdata/changeset-adds.json stack_run stack-none-run --more-boxes none
+check "  a list of the word none adds no box: no s3 call" "0 0" "$RC $(grep -c '^aws s3' "$S/aws.calls" || true)"
 
 echo "== the front door's key (plan 2026-11-11-front-door-keys, step 1): the template carries it, the deploy role reads it, stack.sh makes, keeps and masks it"
 # row 8: the API's origin carries x-front-door-key from a NoEcho parameter with no default
@@ -6107,6 +6232,344 @@ check "26: a gh enable that fails on seed.yml after ci.yml ends it on the stop l
 check "  and the log ends on its exit" "== exit 1" "$(tail -n 1 "$OPS_LOG_DIR"/*-remake-ridge.log)"
 check "27: the Bruno version is declared once, in lib.sh, and neither check.sh nor remake.sh sets its own" "1 0" \
   "$(grep -c '^WANT_BRUNO=' "$OPS_DIR/lib.sh") $(cat "$OPS_DIR/check.sh" "$OPS_DIR/remake.sh" | grep -c '^[[:space:]]*WANT_BRUNO=' || true)"
+
+# ---- ops/words-in.sh (docs/plans/2026-11-17-words-paste.md, the refusals and stops: cases 1 to 11, 13 to 20, 22 to 24)
+# A throwaway credo root a case: .bare, a main worktree holding ops/ and the two word files, a pre-merge worktree, the
+# lock overrides and OPS_LOG_DIR as the gate's section sets them. pnpm and sleep are stand-ins on PATH; pnpm answers by
+# switches (WI_INSTALL_FAIL, WI_IMPORT, WI_UI, WI_UI_GIVEUP, WI_CITE) and runs a hook on the first (WI_HOOK) and the second (WI_HOOK2) ui check.
+echo "== ops/words-in.sh (the refusals and stops, each on its own throwaway root: the files a partner returns are read in only as the plan says)"
+WI=$WORK/words-in
+mkdir -p "$WI/bin"
+WI=$(cd "$WI" && pwd -P)
+cat >"$WI/bin/pnpm" <<'STUB'
+#!/bin/sh
+echo "$PWD: $*" >>"$WI_CALLS"
+case "$*" in
+  "install "*)
+    [ -z "${WI_INSTALL_FAIL:-}" ] || { echo "ERR_PNPM_NO_OFFLINE_TARBALL"; exit 1; }
+    exit 0 ;;
+  "words in "*)
+    case ${WI_IMPORT:-change} in
+      refuse) echo "row 3: the key is not in the app"; exit 1 ;;
+      readback) echo "nothing written: vi.ts did not read back as intended (a.b)"; exit 1 ;;
+      none) echo "0 changes, 0 clashes, 0 keys gone, 0 notes"; exit 0 ;;
+    esac
+    echo "1 changes, 0 clashes, 0 keys gone, 0 notes"
+    printf 'Write these 1 changes? (y/N) '
+    read -r ans
+    [ "$ans" = y ] || { echo "nothing written"; exit 0; }
+    echo "// a returned word" >>ui/src/i18n/vi.ts
+    [ "${WI_IMPORT:-}" != extra ] || echo stray >stray.txt
+    exit 0 ;;
+  *"@credo/ui check"*)
+    n=$(($(cat "$WI_CALLS.ui" 2>/dev/null || echo 0) + 1))
+    echo "$n" >"$WI_CALLS.ui"
+    if [ "$n" = 1 ] && [ -n "${WI_HOOK:-}" ]; then sh -c "$WI_HOOK"; fi
+    if [ "$n" = 2 ] && [ -n "${WI_HOOK2:-}" ]; then sh -c "$WI_HOOK2"; fi
+    echo "the ui check's own line $n"
+    [ -z "${WI_UI_GIVEUP:-}" ] || { echo "error: gave up after 600s waiting for the lock"; exit 1; }
+    exit "${WI_UI:-0}" ;;
+  *"@credo/scripts exec vitest"*) echo "the citation test's own line"; exit "${WI_CITE:-0}" ;;
+esac
+exit 0
+STUB
+cat >"$WI/bin/sleep" <<'STUB'
+#!/bin/sh
+# a wait: the first call frees WI_REL1, the second WI_REL2 (a lock folder each); with none set, it waits for real
+n=$(($(cat "$WI_CALLS.sleep" 2>/dev/null || echo 0) + 1))
+echo "$n" >"$WI_CALLS.sleep"
+if [ -n "${WI_REL1:-}" ] || [ -n "${WI_REL2:-}" ]; then
+  if [ "$n" = 1 ] && [ -n "${WI_REL1:-}" ]; then rm -rf "$WI_REL1"; fi
+  if [ "$n" = 2 ] && [ -n "${WI_REL2:-}" ]; then rm -rf "$WI_REL2"; fi
+  exit 0
+fi
+exec /bin/sleep "$@"
+STUB
+chmod +x "$WI/bin/pnpm" "$WI/bin/sleep"
+WIN=0 WI_R='' WI_RC=0 WI_OUT='' WI_LOG=''
+wig() { git -C "$1" -c user.name=test -c user.email=test@example.com -c commit.gpgsign=false "${@:2}"; }
+# wi_make: a new root in WI_R; its main worktree holds this tree's ops/words-in.sh and lib.sh
+wi_make() {
+  WIN=$((WIN + 1))
+  WI_R=$WI/r$WIN
+  mkdir -p "$WI_R/seed/ops" "$WI_R/seed/ui/src/i18n" "$WI_R/words-sent"
+  cp "$OPS_DIR/words-in.sh" "$OPS_DIR/lib.sh" "$OPS_DIR"/*.service "$WI_R/seed/ops/"
+  printf 'export const en = {\n  a: "A",\n}\n' >"$WI_R/seed/ui/src/i18n/en.ts"
+  printf 'export const vi = {\n  a: "B",\n}\n' >"$WI_R/seed/ui/src/i18n/vi.ts"
+  git init -q -b main "$WI_R/seed"
+  wig "$WI_R/seed" add ops ui
+  wig "$WI_R/seed" commit -q -m seed
+  git clone -q --bare "$WI_R/seed" "$WI_R/.bare"
+  rm -rf "$WI_R/seed"
+  wig "$WI_R/.bare" worktree add -q "$WI_R/main" main
+  wig "$WI_R/.bare" branch pre-merge main
+  wig "$WI_R/.bare" worktree add -q "$WI_R/pre-merge" pre-merge
+  echo sent >"$WI_R/words-sent/p1.csv"
+  echo returned >"$WI_R/returned.csv"
+}
+# wi_run [VAR=value ...] -- <words-in.sh arguments>: sets WI_RC, WI_OUT (the terminal), WI_LOG (the log); the answer is WI_ANSWER (y)
+wi_run() {
+  local envs=()
+  while [ "$1" != -- ]; do
+    envs+=("$1")
+    shift
+  done
+  shift
+  WI_OUT=$WI_R/out-$((++WIN))
+  WI_RC=0
+  printf '%s\n' "${WI_ANSWER:-y}" | env PATH="$WI/bin:$BASE_PATH" OPS_LOG_DIR="$WI_R/logs" WI_CALLS="$WI_R/calls" WI_PM="$WI_R/pre-merge" \
+    GATE_LOCK="$WI_R/gl" GATE_RUN_LOCK="$WI_R/rl" WORDS_LAND_WAIT=5 WORDS_LAND_POLL=1 OPS_TEST_NO_TTY=1 \
+    GIT_AUTHOR_NAME=test GIT_AUTHOR_EMAIL=test@example.com GIT_COMMITTER_NAME=test GIT_COMMITTER_EMAIL=test@example.com \
+    GIT_CONFIG_COUNT=1 GIT_CONFIG_KEY_0=commit.gpgsign GIT_CONFIG_VALUE_0=false \
+    ${envs[@]+"${envs[@]}"} bash "$WI_R/main/ops/words-in.sh" "$@" >"$WI_OUT" 2>&1 || WI_RC=$?
+  WI_LOG=$(find "$WI_R/logs" -name '*-words-in-all.log' 2>/dev/null | sort | tail -1 || true)
+}
+wi_ret() { echo "$WI_R/returned.csv"; }
+wi_tip() { git -C "$WI_R/.bare" rev-parse pre-merge; }
+wi_has() { grep -cE -- "$1" "${2:-$WI_LOG}" || true; }          # <regex> [file]: the lines that match
+wi_made() { # wip folders and words- branches there now, "none" when no folder and no branch
+  local d b
+  d=$(find "$WI_R" -maxdepth 1 -name 'wip-*' | wc -l | tr -d ' ')
+  b=$(git -C "$WI_R/.bare" branch --list 'words-*' | wc -l | tr -d ' ')
+  if [ "$d $b" = "0 0" ]; then echo none; else echo "$d folders, $b branches"; fi
+}
+wi_stamp() { date "+words-p1-%m%d-%H%M"; }
+wi_next() { local at=$(($(date +%s) + 60)); date -r "$at" "+words-p1-%m%d-%H%M" 2>/dev/null || date -d "@$at" "+words-p1-%m%d-%H%M"; }
+wi_landed() { git -C "$WI_R/.bare" show pre-merge:ui/src/i18n/vi.ts | grep -c 'a returned word' || true; } # 1 when pre-merge holds the stand-in's word
+wi_wtof() { git -C "$WI_R/.bare" worktree list --porcelain | awk -v b="refs/heads/$1" '/^worktree /{w=substr($0,10)} $0=="branch " b{print w}'; }
+# wi_kept_branch: a stopped run's branch with its worktree, for --land: sets WI_B
+wi_kept_branch() {
+  wi_run WI_UI_GIVEUP=1 -- "$(wi_ret)" p1
+  WI_B=$(git -C "$WI_R/.bare" branch --list 'words-*' | tr -d ' *+')
+}
+
+wi_make
+wi_run -- "$(wi_ret)" p1
+check "words-in 0: the stand-in root lands a returned word (the cases below are its refusals and stops)" "0 1" "$WI_RC $(wi_has '^== verdict: landed')"
+
+# case 1: the usage, exit 2, nothing made
+for args in "" "x" "a b c" "--bogus p1" "--land"; do
+  wi_make
+  # shellcheck disable=SC2086
+  wi_run -- $args
+  check "1: '$args' is refused with the usage, exit 2, nothing made" "2 1 none" "$WI_RC $(wi_has '^== refused: usage: ops/words-in.sh') $(wi_made)"
+done
+# case 2: a name, or a label that is not p and a number
+for lab in anna p P1 p1x; do
+  wi_make
+  wi_run -- "$(wi_ret)" "$lab"
+  check "2: the label '$lab' is refused, exit 2, nothing made" "2 1 none" "$WI_RC $(wi_has "^== refused: the label '$lab' is not p and a number") $(wi_made)"
+done
+# case 3: a returned file the script cannot read, with the system's reason
+wi_make
+wi_run -- "$WI_R/nothing.csv" p1
+check "3: a returned file that is not there is refused with the system's reason, before any worktree, exit 2" "2 1 none" "$WI_RC $(wi_has '^== refused: cannot read the returned file .*No such file or directory') $(wi_made)"
+wi_run -- "$WI_R" p1
+check "3: a folder in its place is refused the same way" "2 1" "$WI_RC $(wi_has '^== refused: cannot read the returned file .*Is a directory')"
+# case 4: no sent copy
+wi_make
+rm "$WI_R/words-sent/p1.csv"
+wi_run -- "$(wi_ret)" p1
+check "4: no sent copy is refused, naming its path and the command that makes it, exit 2, nothing made" "2 1 1 none" \
+  "$WI_RC $(wi_has "^== refused: no $WI_R/words-sent/p1.csv") $(wi_has 'made by: pnpm words out') $(wi_made)"
+# case 5: no terminal and no switch
+wi_make
+wi_run OPS_TEST_NO_TTY= -- "$(wi_ret)" p1
+check "5: with no terminal to answer on, and the tests' switch off, it is refused, exit 2, nothing made" "2 1 none" "$WI_RC $(wi_has '^== refused: needs a terminal') $(wi_made)"
+# case 6: the branch or folder of that name is already there; nothing made or removed
+wi_make
+wig "$WI_R/.bare" branch "$(wi_stamp)" main
+wig "$WI_R/.bare" branch "$(wi_next)" main
+wi_run -- "$(wi_ret)" p1
+check "6: a branch of that name already there is refused, exit 2, both branches still there, no folder made" "2 1 2 0" \
+  "$WI_RC $(wi_has '^== refused: the branch or folder words-p1-.* already exists; nothing was made or removed') $(git -C "$WI_R/.bare" branch --list 'words-*' | wc -l | tr -d ' ') $(find "$WI_R" -maxdepth 1 -name 'wip-*' | wc -l | tr -d ' ')"
+wi_make
+mkdir "$WI_R/wip-$(wi_stamp)" "$WI_R/wip-$(wi_next)"
+wi_run -- "$(wi_ret)" p1
+check "6: a folder of that name already there is refused too, left as it was, no branch made" "2 1 2 0" \
+  "$WI_RC $(wi_has '^== refused: the branch or folder words-p1-.* already exists') $(find "$WI_R" -maxdepth 1 -name 'wip-*' | wc -l | tr -d ' ') $(git -C "$WI_R/.bare" branch --list 'words-*' | wc -l | tr -d ' ')"
+# a stop before the commit removes what this run made, and only that (case 24's first half): another piece's worktree and branch stay
+wi_other() {
+  wig "$WI_R/.bare" worktree add -q -b words-p9-0101-0101 "$WI_R/wip-words-p9-0101-0101" pre-merge
+  wig "$WI_R/.bare" branch words-p9-0303-0303 pre-merge
+}
+wi_other_kept() { [ -d "$WI_R/wip-words-p9-0101-0101" ] && git -C "$WI_R/.bare" show-ref --verify --quiet refs/heads/words-p9-0101-0101 && git -C "$WI_R/.bare" show-ref --verify --quiet refs/heads/words-p9-0303-0303 && echo kept || echo GONE; }
+# case 7: the offline install fails
+wi_make
+wi_other
+wi_run WI_INSTALL_FAIL=1 -- "$(wi_ret)" p1
+check "7: a failed offline install stops it, exit 1, the worktree and branch it made removed" "1 1 1 2 kept" \
+  "$WI_RC $(wi_has '^== verdict: the offline install failed') $(find "$WI_R" -maxdepth 1 -name 'wip-*' | wc -l | tr -d ' ') $(git -C "$WI_R/.bare" branch --list 'words-*' | wc -l | tr -d ' ') $(wi_other_kept)"
+# case 8: the import refuses the file
+wi_make
+wi_other
+wi_run WI_IMPORT=refuse -- "$(wi_ret)" p1
+check "8: the import's refusal shows its rows, writes nothing, removes what was made, exit 1" "1 1 1 1 2 kept" \
+  "$WI_RC $(wi_has '^row 3: the key is not in the app') $(wi_has '^== verdict: the import refused the file') $(find "$WI_R" -maxdepth 1 -name 'wip-*' | wc -l | tr -d ' ') $(git -C "$WI_R/.bare" branch --list 'words-*' | wc -l | tr -d ' ') $(wi_other_kept)"
+# case 9: no change, or any answer but y
+wi_make
+wi_run WI_IMPORT=none -- "$(wi_ret)" p1
+check "9: no change says nothing written, nothing to land, removes what was made, exit 0" "0 1 none" "$WI_RC $(wi_has '^== verdict: nothing written, nothing to land') $(wi_made)"
+wi_make
+T9=$(wi_tip)
+WI_ANSWER=n wi_run -- "$(wi_ret)" p1
+check "9: an answer but y writes nothing, removes what was made, exit 0, pre-merge untouched" "0 1 none $T9" "$WI_RC $(wi_has '^== verdict: nothing written, nothing to land') $(wi_made) $(wi_tip)"
+# case 10: the import's read-back fails
+wi_make
+wi_run WI_IMPORT=readback -- "$(wi_ret)" p1
+check "10: a read-back that fails is named a tool fault, nothing kept, exit 1" "1 1 none" "$WI_RC $(wi_has "^== verdict: the import's read-back failed .*a tool fault") $(wi_made)"
+# case 11: after the y, a file beyond the two word files
+wi_make
+T11=$(wi_tip)
+wi_run WI_IMPORT=extra -- "$(wi_ret)" p1
+B11=$(git -C "$WI_R/.bare" branch --list 'words-*' | tr -d ' *+')
+check "11: a changed file beyond the word files is named, nothing committed, the worktree kept, exit 1" "1 1 1 1 $T11 $T11" \
+  "$WI_RC $(wi_has 'a file beyond the two word files changed: stray.txt') $(wi_has '^== verdict: stopped before the commit') $(find "$WI_R" -maxdepth 1 -name 'wip-*' | wc -l | tr -d ' ') $(git -C "$WI_R/.bare" rev-parse "$B11") $(wi_tip)"
+# case 13: a red check, each named, nothing landed, the branch kept
+wi_make
+T13=$(wi_tip)
+wi_run WI_UI=1 -- "$(wi_ret)" p1
+check "13: a red ui check is named red with item 549, the citation test green, nothing landed, branch kept, a session takes it, exit 1" "1 1 1 1 0 1 $T13" \
+  "$WI_RC $(wi_has '^the ui check is red;.*open item 549') $(wi_has '^the ui check exit 1, the citation test exit 0') $(wi_has 'a session takes it from here') $(wi_has 'to land it again') $(git -C "$WI_R/.bare" branch --list 'words-*' | wc -l | tr -d ' ') $(wi_tip)"
+wi_make
+wi_run WI_CITE=1 -- "$(wi_ret)" p1
+check "13: a red citation test is named, the ui check green, nothing landed, branch kept, exit 1" "1 1 1 0 1" \
+  "$WI_RC $(wi_has '^the citation test is red') $(wi_has '^the ui check exit 0, the citation test exit 1') $(wi_has 'the ui check is red') $(git -C "$WI_R/.bare" branch --list 'words-*' | wc -l | tr -d ' ')"
+# case 25: both checks' own lines reach the terminal and the log, each before the line that gives its exit
+wi_make
+wi_run WI_UI=1 WI_CITE=1 -- "$(wi_ret)" p1
+check "25: the ui check's and the citation test's own lines reach the terminal and the log, before the exit line" "1 1 1 1 1" \
+  "$(wi_has "^the ui check's own line 1\$" "$WI_OUT") $(wi_has "^the citation test's own line\$" "$WI_OUT") $(wi_has "^the ui check's own line 1\$") $(wi_has "^the citation test's own line\$") $(awk '/^the ui check.s own line 1$/{u=NR} /^the citation test.s own line$/{c=NR} /^the ui check exit/{e=NR} END{print (u>0 && u<c && c<e) ? 1 : 0}' "$WI_LOG")"
+# case 14: the ui check gives up on the lock: not run, not red, the land line
+wi_make
+T14=$(wi_tip)
+wi_run WI_UI_GIVEUP=1 -- "$(wi_ret)" p1
+B14=$(git -C "$WI_R/.bare" branch --list 'words-*' | tr -d ' *+')
+check "14: a ui check that gave up is said as not run and not red, the branch kept, the land line printed, exit 1" "1 1 0 1 1 $T14" \
+  "$WI_RC $(wi_has '^the ui check did not run: it gave up waiting for the machine.s lock; that is not red') $(wi_has 'the ui check is red') $(wi_has "to land it again, paste: cd /[^ ]+ && bash /[^ ]+/ops/words-in\.sh --land $B14\$") $(git -C "$WI_R/.bare" branch --list 'words-*' | wc -l | tr -d ' ') $(wi_tip)"
+check "14: the printed land line holds the script's absolute path, to paste from anywhere" "1" \
+  "$(wi_has "to land it again, paste: cd $WI_R/main && bash $WI_R/main/ops/words-in\\.sh --land $B14\$")"
+# case 15: before each wait, its bound and the clock time it ends (the ui check's, from case 14's log; the landing's)
+check "15: before the ui check, the bound and the clock time it ends" "1" \
+  "$(wi_has '^the ui check waits at most 600 s for the machine.s lock, until [0-2][0-9]:[0-5][0-9];')"
+wi_make
+wi_run -- "$(wi_ret)" p1
+check "15: before the landing, the bound and the clock time it ends" "1" "$(wi_has '^the landing waits at most 5 s for the gate lock and any full run, until [0-2][0-9]:[0-5][0-9]$')"
+# case 16: both locks held at the landing: waited for, a line a poll naming each holder, then it lands
+wi_make
+mkdir "$WI_R/gl" "$WI_R/rl"
+echo "pid=1 log=/x/gate-ui.log started=2026-11-17 10:00:00" >"$WI_R/gl/owner"
+echo "pid=2 log=/x/full-run.log started=2026-11-17 10:00:00" >"$WI_R/rl/owner"
+wi_run WI_REL1="$WI_R/rl" WI_REL2="$WI_R/gl" -- "$(wi_ret)" p1
+check "16: both locks held at the landing are waited for, each holder named, then it lands, exit 0, pre-merge holds the word" "0 1 1 1 1" \
+  "$WI_RC $(wi_has '^waiting: a full run holds .*rl: pid=2 ') $(wi_has '^waiting: lock .*gl is held by: pid=1 log=/x/gate-ui.log') $(wi_has '^== verdict: landed p1') $(wi_landed)"
+# case 18: at the merge the gate lock was held in the gate's owner form; none of the script's is left
+wi_make
+cat >"$WI_R/.bare/hooks/pre-merge-commit" <<HOOK
+#!/bin/sh
+cat "$WI_R/gl/owner" >"$WI_R/owner-at-merge"
+HOOK
+chmod +x "$WI_R/.bare/hooks/pre-merge-commit"
+wi_run -- "$(wi_ret)" p1
+check "18: at the merge the gate lock was held in the gate's owner form, and none of the script's is left after the landing" "0 1 gone" \
+  "$WI_RC $(grep -cE '^pid=[0-9]+ log=.*-words-in-all\.log started=[0-9]{4}-[0-9]{2}-[0-9]{2} [0-9:]{8}$' "$WI_R/owner-at-merge" || true) $([ -e "$WI_R/gl" ] && echo LEFT || echo gone)"
+# case 17: either still held after the wait: nothing landed, branch kept, the land line, exit 1, a lock that is not its own left as it was
+wi_make
+mkdir "$WI_R/gl"
+echo "pid=1 log=/x/gate-ui.log started=2026-11-17 10:00:00" >"$WI_R/gl/owner"
+T17=$(wi_tip)
+wi_run WORDS_LAND_WAIT=2 -- "$(wi_ret)" p1
+B17=$(git -C "$WI_R/.bare" branch --list 'words-*' | tr -d ' *+')
+check "17: a lock still held after the wait: nothing landed, the land line printed, branch kept, the other's lock untouched, exit 1" "1 1 1 $T17 1" \
+  "$WI_RC $(wi_has '^== verdict: stopped, the locks were still held after 2 s, nothing landed') $(wi_has "to land it again, paste: cd /[^ ]+ && bash /[^ ]+/ops/words-in\.sh --land $B17\$") $(wi_tip) $(grep -c 'pid=1 log=/x/gate-ui.log' "$WI_R/gl/owner")"
+wi_make
+mkdir "$WI_R/rl"
+echo "pid=2 log=/x/full-run.log started=2026-11-17 10:00:00" >"$WI_R/rl/owner"
+wi_run WORDS_LAND_WAIT=2 -- "$(wi_ret)" p1
+check "17: a full run's lock still held after the wait ends the same way, no gate lock of the script's left" "1 1 gone" \
+  "$WI_RC $(wi_has '^== verdict: stopped, the locks were still held after 2 s') $([ -e "$WI_R/gl" ] && echo LEFT || echo gone)"
+# case 19: pre-merge moved: taken in when merge-tree is clean, the checks run again; a conflict is left to a session
+wi_make
+HOOK19="cd \"\$WI_PM\" && echo other >other.txt && git add other.txt && git -c user.name=t -c user.email=t@example.com -c commit.gpgsign=false commit -q -m other"
+wi_run WI_HOOK="$HOOK19" -- "$(wi_ret)" p1
+check "19: pre-merge moved past the base is taken in, the checks run again, then it lands, exit 0, the landing's diff the word files alone" "0 1 2 ui/src/i18n/vi.ts" \
+  "$WI_RC $(wi_has "^pre-merge moved past the branch's base") $(cat "$WI_R/calls.ui") $(git -C "$WI_R/.bare" diff --name-only pre-merge^1 pre-merge | tr '\n' ' ' | sed 's/ $//')"
+wi_make
+HOOK19C="cd \"\$WI_PM\" && echo clash >>ui/src/i18n/vi.ts && git -c user.name=t -c user.email=t@example.com -c commit.gpgsign=false commit -q -am clash"
+wi_run WI_HOOK="$HOOK19C" -- "$(wi_ret)" p1
+check "19: a conflict in taking pre-merge in lands nothing, keeps the branch, hands it to a session, exit 1" "1 1 1 0 1 0" \
+  "$WI_RC $(wi_has '^== verdict: stopped, taking pre-merge in conflicts') $(wi_has 'a session takes it from here') $(wi_has 'to land it again') $(git -C "$WI_R/.bare" branch --list 'words-*' | wc -l | tr -d ' ') $(wi_landed)"
+# case 20: moved again, a dirty pre-merge worktree, or a merge that fails
+wi_make
+HOOK20="cd \"\$WI_PM\" && echo again >again.txt && git add again.txt && git -c user.name=t -c user.email=t@example.com -c commit.gpgsign=false commit -q -m again"
+wi_run WI_HOOK="$HOOK19" WI_HOOK2="$HOOK20" -- "$(wi_ret)" p1
+B20=$(git -C "$WI_R/.bare" branch --list 'words-*' | tr -d ' *+')
+check "20: pre-merge moved again after taking it in lands nothing, the land line printed, branch kept, exit 1" "1 1 1 2 0" \
+  "$WI_RC $(wi_has '^== verdict: stopped, pre-merge moved again, nothing landed') $(wi_has "to land it again, paste: cd /[^ ]+ && bash /[^ ]+/ops/words-in\.sh --land $B20\$") $(cat "$WI_R/calls.ui") $(wi_landed)"
+wi_make
+wi_run WI_HOOK="cd \"\$WI_PM\" && echo dirty >dirty.txt" -- "$(wi_ret)" p1
+B20=$(git -C "$WI_R/.bare" branch --list 'words-*' | tr -d ' *+')
+check "20: a dirty pre-merge worktree lands nothing, the land line printed, branch kept, exit 1" "1 1 1 0" \
+  "$WI_RC $(wi_has "^== verdict: stopped, pre-merge's worktree is not clean, nothing landed") $(wi_has "to land it again, paste: cd /[^ ]+ && bash /[^ ]+/ops/words-in\.sh --land $B20\$") $(wi_landed)"
+wi_make
+cat >"$WI_R/.bare/hooks/pre-merge-commit" <<'HOOK'
+#!/bin/sh
+exit 1
+HOOK
+chmod +x "$WI_R/.bare/hooks/pre-merge-commit"
+T20=$(wi_tip)
+wi_run -- "$(wi_ret)" p1
+B20=$(git -C "$WI_R/.bare" branch --list 'words-*' | tr -d ' *+')
+check "20: a merge that fails lands nothing, leaves pre-merge's worktree as it was, the land line printed, the gate lock released, exit 1" "1 1 1 $T20 0 gone" \
+  "$WI_RC $(wi_has '^== verdict: stopped, the merge on pre-merge failed, nothing landed') $(wi_has "to land it again, paste: cd /[^ ]+ && bash /[^ ]+/ops/words-in\.sh --land $B20\$") $(wi_tip) $(git -C "$WI_R/pre-merge" status --porcelain | wc -l | tr -d ' ') $([ -e "$WI_R/gl" ] && echo LEFT || echo gone)"
+# case 22: --land refuses what is not a kept words branch; exit 2, nothing landed
+wi_make
+wig "$WI_R/.bare" worktree add -q -b feature-x "$WI_R/wip-feature-x" pre-merge
+wi_run -- --land feature-x
+check "22: --land of a branch not words-p<n>-... is refused, exit 2" "2 1" "$WI_RC $(wi_has "^== refused: the branch 'feature-x' is not a words-p<n>")"
+wi_run -- --land words-p1-0101-0101
+check "22: --land of a branch that is not there is refused, exit 2" "2 1" "$WI_RC $(wi_has '^== refused: no branch words-p1-0101-0101')"
+wig "$WI_R/.bare" branch words-p1-0202-0202 pre-merge
+wi_run -- --land words-p1-0202-0202
+check "22: --land of a branch without its worktree is refused, exit 2" "2 1" "$WI_RC $(wi_has '^== refused: the branch words-p1-0202-0202 has no worktree')"
+wi_make
+wi_kept_branch
+echo dirt >"$(wi_wtof "$WI_B")/dirty.txt"
+wi_run -- --land "$WI_B"
+check "22: --land of a dirty worktree is refused, exit 2, nothing landed" "2 1 0" "$WI_RC $(wi_has '^== refused: the worktree .* is not clean') $(wi_landed)"
+wi_make
+wi_kept_branch
+echo stray >"$(wi_wtof "$WI_B")/stray.txt"
+wig "$(wi_wtof "$WI_B")" add stray.txt
+wig "$(wi_wtof "$WI_B")" commit -q -m stray
+wi_run -- --land "$WI_B"
+check "22: --land of a branch changing another file is refused naming it, exit 2, nothing landed" "2 1 0" "$WI_RC $(wi_has '^== refused: the branch .* changes more than the two word files: stray.txt') $(wi_landed)"
+wi_make
+wig "$WI_R/.bare" worktree add -q -b words-p1-0303-0303 "$WI_R/wip-words-p1-0303-0303" pre-merge
+wi_run -- --land words-p1-0303-0303
+check "22: --land of a branch pre-merge already holds is refused, exit 2" "2 1" "$WI_RC $(wi_has '^== refused: pre-merge already holds words-p1-0303-0303')"
+# case 23: --land on a kept branch: taken in, checked and landed as 16 to 21; no install and no import run
+wi_make
+wi_kept_branch
+BEFORE=$(wc -l <"$WI_R/calls" | tr -d ' ')
+rm "$WI_R/calls.ui"
+wi_run WI_HOOK="$HOOK19" -- --land "$WI_B"
+check "23: --land on a kept branch takes pre-merge in, checks again, lands it, exit 0, no install or import run, folder and branch gone" "0 1 1 2 0 none" \
+  "$WI_RC $(wi_has '^== verdict: landed p1') $(wi_has '^pre-merge moved past') $(cat "$WI_R/calls.ui") $(tail -n +$((BEFORE + 1)) "$WI_R/calls" | grep -cE ': (install|words in) ' || true) $(wi_made)"
+# case 24: the branch goes only when pre-merge holds all its commits
+wi_make
+cat >"$WI_R/.bare/hooks/pre-merge-commit" <<HOOK
+#!/bin/sh
+unset GIT_DIR GIT_INDEX_FILE GIT_WORK_TREE
+b=\$(git -C "$WI_R/.bare" branch --list 'words-*' | tr -d ' *+')
+wt=\$(git -C "$WI_R/.bare" worktree list --porcelain | awk -v b="refs/heads/\$b" '/^worktree /{w=substr(\$0,10)} \$0=="branch " b{print w}')
+git -C "\$wt" -c user.name=t -c user.email=t@example.com -c commit.gpgsign=false commit -q --allow-empty -m late
+HOOK
+chmod +x "$WI_R/.bare/hooks/pre-merge-commit"
+wi_run -- "$(wi_ret)" p1
+check "24: a branch pre-merge does not hold whole is kept when the landing ends, said so, exit 0" "0 1 1" \
+  "$WI_RC $(wi_has '^could not delete words-p1-.*: pre-merge does not hold all its commits') $(git -C "$WI_R/.bare" branch --list 'words-*' | wc -l | tr -d ' ')"
+# end of the words-in section
 
 [ "$fail" = 0 ] || { echo "ops/test.sh: FAILURES"; exit 1; }
 echo "ops/test.sh: all checks passed"

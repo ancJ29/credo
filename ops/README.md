@@ -28,10 +28,11 @@ A push to `main` releases c-storage and the activity log, ships the BFF and the 
 | a piece's full run of the walks (two runs, the bases committed between) | `ops/full-run.sh --worktree … --branch … --walks …` ([the full run](#the-full-run)) | the walks' own, 6 to 35 minutes a run |
 | ridge's acts on one page of copy-and-paste blocks: deploy, check, down, back, the operator, the demo copies | [the ridge guide](../docs/ridge-guide.md), which draws on this runbook | the page's own, per act |
 | a copy of the app on this Mac that stays up between commands | [the quick start](../docs/quick-start.md), which holds the five commands, what each prints and which two print a password | the build, then seconds |
+| a partner's returned words read in and landed on `pre-merge`, one paste | `ops/words-in.sh <returned file> p1` ([the section](#a-partners-returned-words), which also holds making the file to send) | about 2 minutes, plus the question |
 | a package's gate (typecheck, eslint, prettier, tests, knip), or the whole repository's | `pnpm --filter @credo/<pkg> check`, or `pnpm check` for all six; each runs `ops/gate.sh`, which waits for the load and the gate lock and writes `logs/<stamp>-gate-<pkg>.log` ending `== exit <code>` (c-storage's own gate is `make check` there) | about 30 seconds a package, about 6 minutes for all |
 | to check an environment | `ops/check.sh <env> [--reads-only]` ([on production](#on-production)) | about 3 minutes |
 | to read ridge's c-storage from this Mac, with Bruno or curl | `ops/tunnel.sh ridge` ([the tunnel](#the-tunnel)) | until Ctrl-C, an hour at most |
-| the records back from the copy, to a new file, or onto the live one | `ops/restore.sh <env> [--at <time>] [--onto-live | --onto-blank]` ([restoring the records](#restoring-the-records)) | about a minute |
+| the records back from the copy, to a new file, or onto the live one | `ops/restore.sh <env> [--at <time>] [--onto-live | --onto-blank] [--box <name>]` ([restoring the records](#restoring-the-records)) | about a minute |
 | one demo copy back to the copy's newest moment, alone | `ops/company-restore.sh ridge <code>` ([restoring the records](#restoring-the-records)) | about two minutes |
 | the alarms and their Slack channel | your Slack steps, then `ops/stack.sh env ridge` with the two IDs ([the watch](#the-watch)) | about 5 minutes, plus the Slack steps |
 | the crash and reboot drill | `ops/drill.sh <env>`, then `ops/check.sh <env>` | about 5 minutes |
@@ -537,6 +538,103 @@ cleared by the script: the refusal names the owner and prints the `rm -rf` that 
 - **== verdict: red: ...:** the run and its failure are named (run 1 not green, more than base pictures in the tree, run 2
   with a count not 0); bring the log and the walk logs back. A good ending is `== verdict: green` and `== done`. The green verdict names, from run 1's compare lines, the screens that moved, the screens that are new and the named screens that moved nothing, beside the list that was asked.
 
+## A partner's returned words
+
+For when a partner (`p1`, `p2`: a label, never a name) is to review the app's words: you send one spreadsheet file, they
+change words in it, you read it back in and it lands on `pre-merge`, one paste, no session needed. Every block below runs in
+a terminal opened in any folder of the project (any worktree); each finds the project's folder itself. The why is in
+[the plan](../docs/plans/2026-11-17-words-paste.md); the import's own rules are `scripts/src/words.ts`.
+
+1. **Make the file to send, once for each partner.**
+
+   ```sh
+   R=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)") && mkdir -p "$R/words-sent" "$R/words-returned" && cd "$R/main" && pnpm words out "$R/words-sent/p1.csv"
+   ```
+
+   You will see `wrote` and the path of `words-sent/p1.csv` in the project's folder; the folder `words-returned` beside it is
+   where a returned file goes (step 3). Send that file to `p1` as it is, and
+   nothing else. Keep your copy and never open it to change it: every return is read against it, so a changed copy
+   would show words as changed that the partner never touched. For another partner write `p2` for `p1`.
+   - **`refused: … already exists; the file you sent is kept, name a new one`:** you already made that partner's file.
+     Send the one that is there; do not delete it. A second round with the same partner is for the orchestrator.
+
+2. **What the partner does.** They open the file in a spreadsheet, change English or Vietnamese cells, save it as **CSV
+   UTF-8** and send it back. They must leave as it is:
+   - the first row's column names (`key`, `English`, `Vietnamese`) and the whole `key` column: no new row, none twice;
+   - every placeholder, such as `{{box}}`: the same ones, spelled the same, in a changed word as in the old one, and
+     no other `{` or `}`;
+   - each English and Vietnamese cell filled, on one line (no line break inside a cell).
+   - The `Note` column is theirs: a note is shown to you and written nowhere. A row they leave out is left alone.
+
+3. **The file comes back: paste this.** Save the returned file as `p1.csv` in the `words-returned` folder of the project's folder, beside
+   `words-sent` (not in Downloads or Documents: macOS guards both, and your terminal may be refused there), then:
+
+   ```sh
+   R=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)") && cd "$R/main" && bash "$R/main/ops/words-in.sh" "$R/words-returned/p1.csv" p1
+   ```
+
+   You will see, after `== 1 refusals`, when `words-sent/p1.csv` was written, then `== 3 the import`: a `change` line for
+   each word with `now:` and `theirs:`, a `clash` line where the app's word moved since you sent the file (not written), a
+   `gone` line for a key no longer in the app, a `note` line each, and `N changes, N clashes, N keys gone, N notes`. Then
+   the question `Write these N changes? (y/N)`: **`y` writes them; anything else writes nothing and ends clean.** After
+   a `y`: `committed`, `== 5 the checks` (it prints how long it waits for the machine and until when; a check takes about
+   a minute and a half), and last `landed: pre-merge is now …`, `== verdict: landed p1's returned words on pre-merge`,
+   `== done`. The log is in the project's `logs/` folder, ending `== exit <n>`.
+
+4. **A refusal or a stop: the line, what it means, what you do.** `== refused:` lines change nothing (exit 2).
+
+   | The line | It means | You do |
+   | --- | --- | --- |
+   | `refused: usage: ops/words-in.sh …` | a value missing or one too many | paste the block above again whole |
+   | `the label '…' is not p and a number (p1)` | a name was typed in the label's place | type `p1` or `p2` |
+   | `cannot read the returned file …` | no file at that path, or the system's `Operation not permitted`: the file sits in a folder macOS guards (Downloads, Documents, Desktop) | move the file into `words-returned/` in the project's folder, named `p1.csv`, paste again |
+   | `no …/words-sent/p1.csv: the file you sent p1 is kept there` | that partner has no sent copy | step 1; if you sent a file before, put that exact file there |
+   | `needs a terminal to answer the import's question on` | not run in a terminal of yours | run it in your own terminal |
+   | `the branch or folder words-p1-… already exists` | the same paste twice in one minute, or a leftover | wait a minute and paste again; if it stays, tell the orchestrator |
+   | `no worktree of pre-merge was found` | the project's folder is not as the script expects | tell the orchestrator |
+   | `refused, nothing read in: N problems`, then a line a row | the partner broke a rule of step 2 (`the key is there twice`, `not in the file you sent`, `the English cell is empty`, `holds a line break`, `has a { or } outside a placeholder`, `the English placeholders were {{box}}, now none`); nothing written | send the lines to the partner for a corrected file |
+   | `… is not UTF-8` or `has no … column` | saved in another encoding, or the first row changed | the partner saves CSV UTF-8 again, first row as it was |
+   | `verdict: nothing written, nothing to land` | no change, or you answered other than `y` | nothing; paste again to answer `y` |
+   | `verdict: the import's read-back failed … a tool fault` | the word files would not read back as intended; nothing written | tell the orchestrator |
+   | `a file beyond the two word files changed` | the import touched something else; nothing committed | tell the orchestrator |
+   | `the ui check is red` or `the citation test is red`, `verdict: stopped, a check is not green` | a check failed; the branch is kept | step 5 |
+   | `the ui check did not run: it gave up waiting for the machine's lock; that is not red` | the machine was busy, the branch is kept | later, step 7 |
+   | `verdict: stopped, the locks were still held after 300 s`, `pre-merge moved again`, `pre-merge's worktree is not clean`, `the merge on pre-merge failed` | not landed; the branch is kept | later, step 7; if it stops the same way again, the orchestrator |
+   | `taking pre-merge in conflicts`, `the landing would conflict` | the words clash with newer work; the branch is kept | tell the orchestrator |
+   | `could not remove …` or `could not delete …` | landed, one leftover kept | tell the orchestrator |
+
+5. **A check is red: tell the orchestrator this, with the branch name from the line `the branch … is kept`:**
+
+   ```text
+   The words check is red for p1; the branch words-p1-MMDD-HHMM is kept.
+   ```
+
+   A red `ui` check is often an English word a test looks for by its text; a session fixes that on the kept branch.
+
+6. **The pictures.** A words change moves the walk's base pictures on each screen whose words changed. They are compared
+   by the walk's full run alone, never by the quick check the script runs, and the walk runs in your terminal, not
+   the script's. Today the script lands on `pre-merge` straight after the ui check, so the pictures are retaken after the
+   landing, not before it: they stay old on `pre-merge` until then, which no check reads before the full run. After
+   `landed`, tell the orchestrator:
+
+   ```text
+   p1's words landed on pre-merge, retake the pictures.
+   ```
+
+   It names the screens that moved and hands you the one `ops/full-run.sh` line ([the full run](#the-full-run)) for your
+   terminal, with its `--moved` list; its `== verdict: green` is what you read back.
+
+7. **The landing again, when a stop kept the branch** (the lock was busy, `pre-merge` moved, the merge failed). The script printed
+   `to land it again, paste: …`, a line you can paste as it stands; the same block, with the branch's name:
+
+   ```sh
+   R=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)") && cd "$R/main" && bash "$R/main/ops/words-in.sh" --land words-p1-MMDD-HHMM
+   ```
+
+   You will see the same `== 5 the checks` to `landed: pre-merge is now …`, and `== done`. It lands only a `words-p<n>-…`
+   branch, and refuses (`== refused:`, nothing changed) one whose worktree is gone or not clean, that changes more than the two
+   word files, or that `pre-merge` already holds: tell the orchestrator.
+
 ## The gate
 
 `ops/gate.sh [<pkg>]` is the five steps of one package's check, or of all six: typecheck and test of each
@@ -621,7 +719,10 @@ in the copy's bucket (`<name>/records`).
    adds the box (`MoreBoxb2`), its role and profile, its records disk and the disk's attachment, and three outputs
    (`MoreBoxb2Id`, `MoreBoxb2Address`, `MoreRecordsVolumeb2Id`), and leaves the home box and everything else as they are. Anything
    changed or replaced, stop. The flag names the **whole** list: `--more-boxes b2,b3` on a stack holding `b2` adds `b3`,
-   and a run without the flag keeps the list the stack has.
+   and a run without the flag keeps the list the stack has. A name that comes back may find the copy an earlier box of
+   that name left under `<name>/records/` in the bucket; the run deletes it before the change set executes (a blank disk
+   beside a copy is a restore, never a fresh start, so a release would refuse), and `--plan` shows the path, its count and
+   its newest time first.
 2. Run it again without `--plan`. The new box is empty: no release has been to it.
 3. `ops/release.sh <env>` goes to the home box and then to each box added, each its own run with its own log
    (`...-release-<env>-b2.log`); `ops/release.sh <env> --box b2` is that one box alone.
@@ -630,7 +731,7 @@ in the copy's bucket (`<name>/records`).
    the function is written. **A key run (`ops/keys.sh`) sets the function's environment without `STORAGE_BOXES`**, so
    after one on an environment that holds a box added, run `ops/app.sh <env>` again (open item 448).
 5. `ops/check.sh <env>` reads the home box whole and then each box added, alone; `ops/check.sh <env> --box b2` is one box
-   alone. `ops/tunnel.sh <env> --box b2` and `ops/drill.sh <env> --box b2` take the box in the same way.
+   alone. `ops/tunnel.sh <env> --box b2`, `ops/drill.sh <env> --box b2` and `ops/restore.sh <env> --box b2 --onto-blank` take the box in the same way.
 6. Taking a box out is a removal. First write down the box's id and zone (the stack's output `MoreBox<name>Id`, which
    goes with the box). Then `ops/stack.sh env <env> --more-boxes none --plan` (or the list as it should be): **never a
    blank list**, which AWS reads as one empty name, so no box is the word `none`. The fence refuses the removal and
@@ -638,7 +739,12 @@ in the copy's bucket (`<name>/records`).
    it passes when each is named with `--take`. What is left: the instance and its root disk are kept, and the records
    disk is **snapshotted and then deleted** (its policy is `Snapshot`: AWS, "CloudFormation creates a snapshot for the
    resource before deleting it"), so a snapshot stays and bills until `aws ec2 delete-snapshot` removes it. A company
-   still on the box is not moved by this: move the companies off first. To find the instance left, look it up by **its
+   still on the box is not moved by this: move the companies off first. **The box's copy goes in the same run:** once the
+   stack's update completes, every object under `<name>/records/` in the copy's bucket is deleted and the path is read
+   back empty (a delete that fails ends the run red, naming the path, and the next add of that name clears what is
+   left), and `--plan` shows the path, its count and "is deleted after the update" first; the bucket's own rule would
+   have expired it only seven days after its last write. The snapshot of the records disk is not part of this and
+   stays until you delete it. To find the instance left, look it up by **its
    own tag**, `aws ec2 describe-instances --region ap-southeast-5 --filters Name=tag:Name,Values=credo-<env>-<name> --query 'Reservations[].Instances[].[InstanceId,Placement.AvailabilityZone,State.Name]' --output text`;
    the tag `credo-<env>` alone is the home box, which is running in the stack and is never the one to stop or remove.
    Then follow [a retained box](#a-retained-box) from its step 2, with that instance's id, and
@@ -755,7 +861,8 @@ The drill reads the copy for real.
    restore to the new file there, look at it, and swap it in by hand from the box, with c-storage stopped.
    - **a records disk that holds no `c-storage.db`, while the bucket holds a copy** (a replacement box, or a
      disk made blank): a release refuses it, blank or mounted by hand alike, and names the one path:
-     `ops/restore.sh <env> [--at <time>] --onto-blank`. It formats a disk with no filesystem, mounts it at the
+     `ops/restore.sh <env> [--at <time>] --onto-blank [--box <name>]` (on a box added, the refusal names the
+     box). It formats a disk with no filesystem, mounts it at the
      records path and restores the newest copy (or the copy as of `--at`) onto it, with c-storage stopped and
      never started in between; it runs on any environment, since nothing live exists there, and refuses a
      c-storage that is running, a filesystem other than XFS and a disk that already holds a `c-storage.db`.
