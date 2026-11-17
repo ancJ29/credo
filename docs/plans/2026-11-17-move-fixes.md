@@ -132,11 +132,12 @@ code before its fix.
   gains `.Resources.CopyBucket.Properties | has("VersioningConfiguration") | not`, with its refusing
   mutation. *Done when:* each case seen red, then both gate rows exit 0. Size 14.
   *Done, 2026-11-17:* cases 5 and 7 seen red on the old code, then green; case 8's new guard seen red (its mutation passed the old guard), then green; cases 3 and 4 already held by step 1's `copy_clear`, so each proved by a reverted mutation (no trailing slash on the prefix reddens 3; dropping the count check or the read-back reddens each case 4 one alone). `copy_clear` refuses a versioned bucket; `stack.sh` clears each box added between the guard and the execute, shown first by `--plan`; `STEPS=10`. Both gate rows exit 0.
-- [ ] **3. The restore takes a box, and the refusal names it (cases 9 to 12).** Change `ops/restore.sh`:
+- [x] **3. The restore takes a box, and the refusal names it (cases 9 to 12).** Change `ops/restore.sh`:
   its usage (`#L2`, `#L24`), with `[--box <name>]` last as in the other four, `--box` in the loop, `box_open "$ENVNAME" "" "$BOX_WANTED"`, `box_out
   RecordsVolumeId`, the log's name and the closing line. `ops/release.sh#L226` names `--box
   $BOX_WANTED` when it is not home. The box's line at `#L185` names no command, since the release's own
   line names it. *Done when:* each case seen red, then both gate rows exit 0. Size 14.
+  *Done, 2026-11-17:* cases 9, 10 and 11 seen red on the old code (a partial run cut after the restore cases: row 12's guard, both usage lines, the b2 restore timing out, the `nope` refusal absent, `--box` with no name); case 12 held green on old and new code, its home-box log and closing line pinned. `ops/restore.sh` takes `--box <name>` (last in its usage; `box_open` with the name, `box_out RecordsVolumeId`, log `restore-<env>-<name>`, closing line and swap line name the box); `ops/release.sh` names `--box <name>` in its refusal on a box added, none on the home box, and the box's own line names no command. Both gate rows exit 0.
 - [ ] **4. The runbook and the items (case 13).** In `ops/README.md`:
   - step 1 (`#L620-L625`): an add clears a leftover under its name, and `--plan` shows it first;
   - step 5's list (`#L632-L633`): the restore takes `--box`;

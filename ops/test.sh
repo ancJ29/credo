@@ -1280,9 +1280,25 @@ blank_guard() { # <release.sh>
   [ "$(grep -c '^ *if \[ ! -e "\$mnt/c-storage.db" \] && copy_held; then refuse_held; fi' "$b")" = 2 ] ||
     die "a disk with no c-storage.db, formatted or mounted by hand, is not refused when the bucket holds a copy (both the mounted case and the check after the mount)"
   need "$1" '4\) die "the records disk holds no c-storage.db and the bucket holds a copy' "the release does not name the refusal"
-  need "$1" 'ops/restore.sh \$ENVNAME --onto-blank' "the release does not name the one scripted restore"
+  need "$1" 'ops/restore.sh \$ENVNAME\$RESTORE_BOX --onto-blank' "the release does not name the one scripted restore"
+  # the box's name goes into that command on a box added, and nothing extra on the home box
+  local def want got w
+  def=$(grep -E '^RESTORE_BOX=.*BOX_WANTED' "$1" || true)
+  [ -n "$def" ] || die "the release does not work out the restore's --box from the box wanted"
+  for w in home b2; do
+    want=''
+    if [ "$w" = b2 ]; then want=' --box b2'; fi
+    got=$(BOX_WANTED=$w bash -c "$def; printf '%s' \"\$RESTORE_BOX\"") || die "the restore's --box line does not run"
+    [ "$got" = "$want" ] || die "the release names '$got' for the restore on box $w, not '$want'"
+  done
 }
 passes "a records disk with no c-storage.db whose box path in the bucket holds a copy refuses a fresh start, blank or mounted by hand, and names ops/restore.sh --onto-blank (row 12)" blank_guard "$OPS_DIR/release.sh"
+# shellcheck disable=SC2016 # sed programs, in single quotes
+refuses "  a release whose refusal drops the box from the restore it names is refused" "does not name the one scripted restore" \
+  blank_guard "$(mutated release-nobox.sh 's#ops/restore.sh $ENVNAME$RESTORE_BOX --onto-blank#ops/restore.sh $ENVNAME --onto-blank#' "$OPS_DIR/release.sh")"
+# shellcheck disable=SC2016 # sed programs, in single quotes
+refuses "  a release that names --box on the home box too is refused" "names ' --box home'" \
+  blank_guard "$(mutated release-homebox.sh 's#^RESTORE_BOX=.*#RESTORE_BOX=" --box $BOX_WANTED"#' "$OPS_DIR/release.sh")"
 refuses "  a release that formats first is refused" "formatted before the bucket" \
   blank_guard "$(awk '/^  if copy_held; then refuse_held; fi/ && !d {print "  mkfs.xfs -q \"$dev\""; d=1} {print}' "$OPS_DIR/release.sh" >"$WORK/release-mkfs.sh"; echo "$WORK/release-mkfs.sh")"
 # shellcheck disable=SC2016 # sed programs, in single quotes
@@ -3696,10 +3712,23 @@ check "  it runs on an environment that may hold real data (nothing live exists 
   "$RC $(sed -n 's/.*bash -s -- blank \/var\/lib\/private\/c-storage //p' "$S/blank.calls" 2>/dev/null | grep -c '^2026-11-12T10:00:00Z vol-0rec$' || true)"
 rc=0
 out=$(bash "$OPS_DIR/restore.sh" ridge --onto-blank --onto-live 2>&1) || rc=$?
-check "  and --onto-blank with --onto-live together is its usage, exit 2, before any call" "2 usage: ops/restore.sh <env> [--at <time>] [--onto-live | --onto-blank]" "$rc $out"
+check "  and --onto-blank with --onto-live together is its usage, exit 2, before any call" "2 usage: ops/restore.sh <env> [--at <time>] [--onto-live | --onto-blank] [--box <name>]" "$rc $out"
 rc=0
 out=$(bash "$OPS_DIR/restore.sh" ridge --at nonsense 2>&1) || rc=$?
-check "  a time that is not an RFC 3339 time is the usage, exit 2" "2 usage: ops/restore.sh <env> [--at <time>] [--onto-live | --onto-blank]" "$rc $out"
+check "  a time that is not an RFC 3339 time is the usage, exit 2" "2 usage: ops/restore.sh <env> [--at <time>] [--onto-live | --onto-blank] [--box <name>]" "$rc $out"
+# the restore takes a box (docs/plans/2026-11-17-move-fixes.md, step 3, cases 10 and 11)
+FAKE_BOX2=1 chk_run rbox restore.sh ridge --box b2 --onto-blank
+check "case 10: the blank-disk restore with --box b2 opens b2's instance, passes b2's disk id and no other, logs as restore-ridge-b2, and its last line names the release for that box" "0 1 0 1 1 1" \
+  "$RC $(sed -n 's/.*bash -s -- blank \/var\/lib\/private\/c-storage //p' "$S/blank.calls" 2>/dev/null | grep -c '^- vol-test-b2$' || true) $(grep -c 'vol-0rec' "$S/blank.calls" 2>/dev/null || true) $([ "$(grep -c 'ec2-user@i-test-b2' "$S/ssh.calls" || true)" -gt 0 ] && echo 1 || echo 0) $(find "$OPS_LOG_DIR" -name '*-restore-ridge-b2.log' | wc -l | tr -d ' ') $(chk_has '^c-storage is not started: release again (the deploy, or ops/release.sh ridge --box b2)' "$S/out")"
+FAKE_BOX2=1 chk_run rboxhome restore.sh ridge --onto-blank
+check "case 12: with b2 in the stack and no --box the restore stays on the home box, its log restore-ridge, its last line the plain release" "0 1 0 1 1" \
+  "$RC $(grep -c -e '- vol-0rec$' "$S/blank.calls" || true) $(grep -c 'i-test-b2' "$S/ssh.calls" || true) $(find "$OPS_LOG_DIR" -name '*-restore-ridge.log' | wc -l | tr -d ' ') $(chk_has '^c-storage is not started: release again (the deploy, or ops/release.sh ridge)' "$S/out")"
+FAKE_BOX2=1 chk_run rboxnope restore.sh ridge --box nope --onto-blank
+check "case 11: a box the stack does not hold is refused by the restore, naming the ones it does, before any call on a box" "1 1 gone" \
+  "$RC $(grep -c "stack ridge holds no box 'nope' (the boxes added: b2 )" "$S/out" || true) $(file_state "$S/ssh.calls")"
+rc=0
+out=$(bash "$OPS_DIR/restore.sh" ridge --box 2>&1) || rc=$?
+check "  --box with no name is the usage, exit 2, naming --box" "2 usage: ops/restore.sh <env> [--at <time>] [--onto-live | --onto-blank] [--box <name>]" "$rc $out"
 # ---- the front door, as the check reads it (docs/plans/2026-11-11-front-door-keys.md, step 3, case 12)
 echo "== ops/check.sh reads the front door: the API's own address refuses, the app answers a wrong key of the caller's own"
 chk_run door check.sh ridge --reads-only
@@ -3841,7 +3870,7 @@ check "  by check.sh" "1 1" "$RC $(grep -c "stack ridge holds no box 'nope'" "$S
 e2e_fresh box-nope-release
 RELEASE_BINARY=$WORK/server-e2e e2e_run release.sh ridge --box nope
 check "  by release.sh, with nothing sent" "1 1 gone" "$RC $(grep -c "stack ridge holds no box 'nope'" "$S/out" || true) $(file_state "$S/ssh.calls")"
-for sc in release check drill tunnel; do
+for sc in release check drill tunnel restore; do
   check "  $sc.sh's usage names --box" 1 "$(grep -c -e "usage: ops/$sc.sh .*--box <name>" "$OPS_DIR/$sc.sh" || true)"
 done
 unset FAKE_BOX2

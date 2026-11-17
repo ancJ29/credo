@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ops/restore.sh <env> [--at <time>] [--onto-live | --onto-blank]
+# ops/restore.sh <env> [--at <time>] [--onto-live | --onto-blank] [--box <name>]
 # Restores c-storage's records from the copy in the bucket, on the box, with the box's own role.
 # By default it writes a NEW file beside the live one (restored-<stamp>.db on the records disk) and
 # touches nothing live. --at <time> (RFC 3339, such as 2026-11-12T10:00:00Z) restores the records as
@@ -12,6 +12,8 @@
 # at the records path and restores onto it before c-storage ever starts, so Litestream never sees an empty
 # database to copy over the newest one. Nothing live exists there, so it runs on any environment; it refuses
 # a disk that holds a c-storage.db or a c-storage that is running. Then release again.
+# --box <name> restores on a box added to the stack (its own instance, its own records disk, its own path in the
+# bucket) instead of the home box; a name the stack does not hold is refused, naming the ones it does.
 # Needs keys on the box and a copy in the bucket (a release made them). The runbook: ops/README.md,
 # "Restoring the records".
 # Expected length: about a minute, plus the tunnel.
@@ -21,7 +23,7 @@ set -euo pipefail
 . "$(dirname "$0")/lib.sh"
 
 usage() {
-  echo "usage: ops/restore.sh <env> [--at <time>] [--onto-live | --onto-blank]" >&2
+  echo "usage: ops/restore.sh <env> [--at <time>] [--onto-live | --onto-blank] [--box <name>]" >&2
   exit 2
 }
 [ $# -ge 1 ] || usage
@@ -30,6 +32,7 @@ shift
 AT=-
 ONTO_LIVE=0
 ONTO_BLANK=0
+BOX_WANTED=home
 while [ $# -gt 0 ]; do
   case $1 in
     --onto-live)
@@ -39,6 +42,11 @@ while [ $# -gt 0 ]; do
     --onto-blank)
       ONTO_BLANK=1
       shift
+      ;;
+    --box)
+      [ $# -ge 2 ] || usage
+      BOX_WANTED=$2
+      shift 2
       ;;
     --at)
       [ $# -ge 2 ] || usage
@@ -53,7 +61,8 @@ if [ "$AT" != - ] && ! [[ "$AT" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}
 [ "$ONTO_LIVE$ONTO_BLANK" != 11 ] || usage
 STEPS=4
 
-log_start restore "$ENVNAME"
+log_start restore "$ENVNAME$([ "$BOX_WANTED" = home ] || echo "-$BOX_WANTED")"
+BOXARG=$([ "$BOX_WANTED" = home ] || echo " --box $BOX_WANTED")
 mkwork
 real_ok "$ENVNAME" "by default it writes a new file beside the live one and touches nothing live"
 if [ "$REAL" = 1 ] && [ "$ONTO_LIVE" = 1 ]; then
@@ -62,7 +71,7 @@ fi
 main_synced
 
 step "the tunnel to $ENVNAME's box"
-box_open "$ENVNAME" || die "the box does not answer through the endpoint"
+box_open "$ENVNAME" "" "$BOX_WANTED" || die "the box does not answer through the endpoint"
 echo "box: $BOX_ID"
 
 step "the box's disk and memory, read first"
@@ -74,12 +83,12 @@ if [ "$ONTO_BLANK" = 1 ]; then WHERE='onto the blank records disk'; fi
 step "restoring ($([ "$AT" = - ] && echo 'the newest copy' || echo "as of $AT"), $WHERE)"
 stamp=$(date -u +%Y%m%dT%H%M%SZ)
 if [ "$ONTO_BLANK" = 1 ]; then
-  records_volume=$(out RecordsVolumeId)
+  records_volume=$(box_out RecordsVolumeId)
   [ -n "$records_volume" ] || die "stack $ENVNAME names no records disk (RecordsVolumeId)"
   got=$(box_restore_blank "$AT" "$records_volume") || die "the blank-disk restore failed on the box: c-storage was not started, so nothing was copied over the bucket; the disk may be formatted and mounted, empty, and the same command can be run again (read the box's last words above)"
   echo "$got"
   expect "the restored file stands on the records disk" yes "$(grep -q '^restored=' <<<"$got" && echo yes || echo no)"
-  echo "c-storage is not started: release again (the deploy, or ops/release.sh $ENVNAME) and it starts on the restored file"
+  echo "c-storage is not started: release again (the deploy, or ops/release.sh $ENVNAME$BOXARG) and it starts on the restored file"
 else
   got=$(box_restore "$AT" "$ONTO_LIVE" "$stamp") || die "the restore failed on the box. A restore to a new file touched nothing live; with --onto-live c-storage may be stopped and the live file moved aside (c-storage.db.aside-$stamp and its companions on the records disk): look before anything else"
   echo "$got"
@@ -87,7 +96,7 @@ else
     expect "c-storage answers /health after the swap" answering=yes "$(grep -x 'answering=yes' <<<"$got" || echo no)"
     echo "the old file is kept beside the live one, named c-storage.db.aside-$stamp"
   else
-    swap="ops/restore.sh $ENVNAME"
+    swap="ops/restore.sh $ENVNAME$BOXARG"
     if [ "$AT" != - ]; then swap="$swap --at $AT"; fi
     echo "the live file is untouched; to swap a fresh restore in: $swap --onto-live"
   fi
