@@ -72,6 +72,28 @@ describe('Shell', () => {
     expect(rules).toContain('--app-shell-footer-height:calc(4rem');
   });
 
+  it('13: The menu’s labels are 14 px at 600, the phone’s bar has a line and a soft shadow above, the header a soft shadow below', () => {
+    shell(['en']);
+
+    const rules = [...document.querySelectorAll('style')]
+      .map((style) => style.textContent)
+      .join('');
+    expect(rules).toContain('--credo-menu-size: 14px;');
+    expect(rules).toContain('--credo-menu-weight: 600;');
+    const item = readFileSync(join(import.meta.dirname, 'frame.module.css'), 'utf8')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+      .match(/\n\.item \{[^}]*\}/)![0];
+    expect(item).toContain('font-size: var(--credo-menu-size);');
+    expect(item).toContain('font-weight: var(--credo-menu-weight);');
+
+    const footer = bar().parentElement!;
+    expect(footer.style.borderTop).toBe('var(--credo-bar-line)');
+    expect(footer.style.boxShadow).toBe('var(--credo-bar-shadow)');
+    expect(document.querySelector('header')!.style.boxShadow).toBe('var(--credo-header-shadow)');
+    for (const name of ['bar-line', 'bar-shadow', 'header-shadow'])
+      expect(rules).toMatch(new RegExp(`--credo-${name}: [^;]+;`));
+  });
+
   it('6: One navigation named Menu a width: the side menu from 768, the bar below; the open page washed', () => {
     shell(['en']);
 
