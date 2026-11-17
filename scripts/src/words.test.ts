@@ -440,8 +440,8 @@ describe('words in', () => {
     expect(err[0]).toMatch(/^usage: words out /);
     expect(await runWords(['in', 'sent.csv', 'missing.csv'], {}, io)).toBe(2);
     const missing = join(world.folder, 'missing.csv');
-    expect(err[1]).toMatch(
-      new RegExp(`^cannot read the file returned: ${missing} \\(ENOENT: no such file or directory`),
+    expect(err[1]).toBe(
+      `cannot read the file returned: ${missing} (ENOENT: no such file or directory, open '${missing}')`,
     );
     await expect(world.wordsIn(world.sent, join(world.folder, 'no-repo'))).rejects.toThrow(
       /ENOENT/,
