@@ -162,7 +162,7 @@ the sign-in parts' landing of 2026-11-16 (piece 147), through the same gallery a
 gallery pages 10 and 14 minutes, three parts at once 20; its review 8, its fix pass 22 (and piece
 148's 12), its recap 11 (and 9), its look marker 3.
 
-- [ ] **1. The address, end to end, on the fake.** `App`'s gallery branch, lazy (cases 1, 2, 14);
+- [x] **1. The address, end to end, on the fake.** `App`'s gallery branch, lazy (cases 1, 2, 14);
       the title and the `noindex` (case 3); `ui/gallery.html`, `ui/src/design-system/main.tsx` and
       the entry's test removed. The prose this makes false, in the same commit, or the citation
       test stops: `docs/memo/ui-code.md#L12`, `#L32`, `#L43` and `#L65` (three `main.tsx` become
@@ -173,6 +173,11 @@ gallery pages 10 and 14 minutes, three parts at once 20; its review 8, its fix p
       in the theme'` over each build's `assets/*.js` naming one file that is not the entry; and in
       one invocation, `pnpm fake` started, `curl -sf` of its `/48b74d079/gallery` holding
       `<div id="root">`, then stopped. **14 min.**
+      _Ticked 2026-11-17:_ cases 1, 2 and 3 each red once and put back (the branch disabled, `startsWith`
+      without its slash, the `robots` tag deleted; case 1's "no call" half has no red of its own). The
+      ui check, the citation test and the visual check exit 0; `build` and `build:fake` exit 0, the
+      entry 1,011.41 kB (+0.50), `Mantine, in the theme` only in `Gallery-*.js` of each build; `pnpm
+      fake`'s `/48b74d079/gallery` held `<div id="root">`.
 - [ ] **2. The workbench.** `entries.tsx` from `LEVELS`, `Values` and `Mantines` as the Foundations;
       the frame, the list, the part, the switch, the phone width, the three states; `Gallery` reads
       the part from `useLocation`. Cases 4 to 12, each red once (a component left out, a count off by

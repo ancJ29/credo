@@ -1,4 +1,4 @@
-import { render, screen, waitFor, within } from '@testing-library/react';
+import { render, screen, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { Gallery } from './Gallery';
 
@@ -71,15 +71,13 @@ describe('Gallery', () => {
 
     expect(document.documentElement.getAttribute('data-mantine-color-scheme')).toBe('light');
   });
-});
 
-describe('the entry', () => {
-  it('mounts the gallery on #root', async () => {
-    document.body.innerHTML = '<div id="root"></div>';
-    await import('./main');
+  it('asks search engines not to list it and carries its title', () => {
+    render(<Gallery />);
 
-    await waitFor(() =>
-      expect(document.querySelector('#root')?.textContent).toContain('Design system'),
+    expect(document.head.querySelector('meta[name="robots"]')?.getAttribute('content')).toBe(
+      'noindex',
     );
+    expect(document.title).toBe('Credo: the design system’s gallery');
   });
 });

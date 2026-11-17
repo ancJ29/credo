@@ -12,7 +12,8 @@ export default defineConfig(({ mode }) => ({
   },
   build: {
     outDir: mode === 'fake' ? 'dist/fake' : 'dist/app',
-    // One bundle of React and Mantine, about 650 kB: no route is split off until a page is heavy.
+    // One entry of React and Mantine, past this limit already; the gallery and the spreadsheet
+    // readers are split off, and any heavy page after them is.
     chunkSizeWarningLimit: 1000,
   },
 }));

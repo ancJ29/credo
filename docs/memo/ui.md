@@ -14,7 +14,9 @@ may do; a page reads its data; and then the answer decides what they see.
 
 ```mermaid
 flowchart TD
-  open["a person opens an address"] --> which{"/operator or<br/>/operator/… ?"}
+  open["a person opens an address"] --> gal{"/48b74d079/gallery<br/>or below it?"}
+  gal -- "yes" --> gallery["the design system's gallery:<br/>asks no company, no sign-in"]
+  gal -- "no" --> which{"/operator or<br/>/operator/… ?"}
   which -- "no" --> client["the client app:<br/>the company's settings,<br/>then who is signed in"]
   which -- "yes" --> operator["the operator console:<br/>asks no company"]
   client --> menu["the menu, drawn from<br/>what the person may do"]
@@ -131,21 +133,22 @@ console is not a second deployment. Neither app's boot runs for the other: the c
 company's settings before anything and an operator belongs to no company. The split is reactive
 rather than decided at boot, because the predicate reads the router's location.
 
-- **The consequence a shipper can be surprised by:** there is no route splitting. No `React.lazy`,
-  no `Suspense`, no route-level dynamic import, and `ui/vite.config.ts` declares no manual chunks.
-  A build of this package emits **four** JavaScript files: one entry of **997.05 kB** raw (293.10 kB
-  gzipped) and three spreadsheet readers, fetched the first time an import or export page is used.
+- **The consequence a shipper can be surprised by:** one route is split off, the gallery's
+  (a `React.lazy` in `ui/src/App.tsx`'s `App`), and `ui/vite.config.ts` declares no manual
+  chunks. A build of this package emits **five** JavaScript files: one entry of about 1,010 kB raw
+  (297.55 kB gzipped, measured before the gallery moved, open item 555), the gallery's chunk, and
+  three spreadsheet readers, fetched the first time an import or export page is used.
   **The console's code, its routes and its words are all in the entry file a client's phone
   downloads on first load** — grep that file for `/operator/clients` and it is there sixteen times.
 - *Two corrections to what the code says about itself:* `ui/vite.config.ts`'s own comment reads
-  "about 650 kB", and the entry is 997 kB — half again as large, and 3 kB under the warning limit
-  that same file raises, so the build prints no warning. And "one bundle" is a fair description of
-  the apps and not of the files: there are four.
+  "about 650 kB", and the entry is past 1,000 kB — half again as large, and past the warning limit
+  that same file raises. And "one bundle" is a fair description of
+  the apps and not of the files: there are five.
 - *Rejected, and the reason still holds:* splitting a route off. That comment's own condition is
   "until a page is heavy", and the heavy pages — the spreadsheet import and export — are the three
   that **are** split, by their own dynamic imports.
 - *Hazard no gate catches:* nothing fails when the entry passes the warning limit, because the limit
-  was raised above it. *Trigger:* the entry reaching 1,000 kB, when the build starts warning again.
+  was raised above it. *Trigger:* the entry reaching 1,000 kB, when the build starts warning again: it has (open item 555).
 
 ## The operator's address is matched exactly, and a near miss is a client's app
 

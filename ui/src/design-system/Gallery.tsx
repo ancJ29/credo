@@ -210,6 +210,8 @@ function Mantines() {
 export function Gallery() {
   return (
     <MantineProvider theme={designThemeOf(CREDO_COLOUR)} forceColorScheme="light">
+      <title>Credo: the design system’s gallery</title>
+      <meta name="robots" content="noindex" />
       <Container py="lg">
         <Stack gap="xl">
           <Title order={1}>Design system</Title>
