@@ -182,7 +182,7 @@ copy_held() {
   [ "$have" != 0 ]
 }
 refuse_held() {
-  echo "the records disk holds no c-storage.db, and s3://$bucket/$cpath/ already holds a copy: restoring it is ops/restore.sh --onto-blank, a fresh start would copy an empty file over it" >&2
+  echo "the records disk holds no c-storage.db, and s3://$bucket/$cpath/ already holds a copy: restoring it is a restore onto the blank disk (--onto-blank), a fresh start would copy an empty file over it" >&2
   exit 4
 }
 install -d -m 0700 /var/lib/private "$mnt"
@@ -221,9 +221,10 @@ mount "$mnt"
 if [ ! -e "$mnt/c-storage.db" ] && copy_held; then refuse_held; fi
 echo "records disk: mounted at $mnt"
 REMOTE
+RESTORE_BOX=$([ "$BOX_WANTED" = home ] || echo " --box $BOX_WANTED")
 case $RECORDS_RC in
   0) ;;
-  4) die "the records disk holds no c-storage.db and the bucket holds a copy of this box's records: nothing was started. Run ops/restore.sh $ENVNAME --onto-blank (it formats a blank disk, mounts it and restores onto it before c-storage ever starts), then release again" ;;
+  4) die "the records disk holds no c-storage.db and the bucket holds a copy of this box's records: nothing was started. Run ops/restore.sh $ENVNAME$RESTORE_BOX --onto-blank (it formats a blank disk, mounts it and restores onto it before c-storage ever starts), then release again" ;;
   *) die "the records disk could not be mounted (exit $RECORDS_RC): c-storage was not restarted" ;;
 esac
 box "sudo mountpoint -q $RECORDS_MOUNT" || die "the records disk is not mounted at $RECORDS_MOUNT: c-storage is not restarted"
