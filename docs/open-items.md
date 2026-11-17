@@ -1493,6 +1493,8 @@ soon after a run waits up to two hours before `main` may move. Fix: one line in 
 revert of the commit production runs starts the whole check at once, outside the two-hour cadence.
 *Trigger:* the rehearsal's minutes, or the first real revert of a production release.
 
+*The rehearsal's minutes (the production plan, 2026-11-17):* from the revert's commit to ridge running the code from before, 65 min 58 s. 52 min 41 s of that passed before `main` moved, waiting on `pre-merge`'s whole check; then 2 min 18 s to the human's push and 10 min 59 s from push to ridge green. Whether the whole check was started at once for the revert is not shown by the stamps. The wait for the check is most of the way back, so the fix stands as written; whether this length is acceptable is the plan's point 2.
+
 ## 302. The production lane's read job holds ridge's whole deploy role to read one commit — the machine; *parked* until a second reader of ridge's commit or a review asks for it (the production plan, 2026-11-12)
 
 The lane's first job takes ridge's deploy role, which can also release to ridge, only to read what
