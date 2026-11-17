@@ -185,7 +185,7 @@ gallery pages 10 and 14 minutes, three parts at once 20; its review 8, its fix p
       first part, a description changed, the switch on a one-state part, a state dropped for cases 10
       and 11, dark forced for 12). _Done when:_ both checks exit 0 with the nine red receipts in the
       tick, and `git diff --name-only pre-merge...HEAD -- ui walk visual | grep -vcE
-      '^ui/(src/(design-system/|App\.)|CLAUDE\.md|gallery\.html)'` counts 0. **20 min.**
+      '^ui/(src/(design-system/|App\.)|CLAUDE\.md|gallery\.html|vite\.config\.ts)'` counts 0. **20 min.**
       _Ticked 2026-11-17:_ `entries.tsx` (the table, the two foundations, the three added states) and
       the frame in `Gallery.tsx` with `Gallery.module.css`; cases 4 to 12 each red once and put back, ten
       mutations on the worktree copy: a component left out (4, 8), the count one over (4), every part
@@ -196,8 +196,18 @@ gallery pages 10 and 14 minutes, three parts at once 20; its review 8, its fix p
       pattern does not name.
 - [ ] **3. Review.** Another model than the builder's reads steps 1 and 2 against this page. _Done
       when:_ the review is written, each finding with its line. **8 min.**
-- [ ] **4. One fix pass.** Each finding fixed, rejected or deferred with its reason; `pre-merge`
+- [x] **4. One fix pass.** Each finding fixed, rejected or deferred with its reason; `pre-merge`
       taken in. _Done when:_ both checks exit 0 after the fixes. **17 min.**
+      _Ticked 2026-11-17:_ `pre-merge` (`a0514569`) was already in, nothing to merge. Findings: (1) fixed,
+      the memo's two bullets rewritten to the comment as it now reads and the rule "heavy or never
+      opened by a client"; (2) fixed, item 555 and 515 cite symbols, not lines; (3) fixed, item 505
+      cites cases 4 and 8 and `ENTRIES`; (4) fixed, case 1 runs `unlinked` with no session, not seen
+      red (no mutation widens what it catches); (5) fixed, case 8 names the file in each parse's
+      message, the self-compared line dropped, the message not seen red (it changes the red's text
+      only); (6) done, the build and `build:fake` exit 0, the entry 1,011.51 kB (+0.60 on step 1's
+      1,010.91), `Mantine, in the theme` only in `Gallery-*.js` of each build; (7) fixed, the pattern
+      names `vite\.config\.ts`; (8) fixed, `ui/CLAUDE.md` names `entries.tsx`'s `ENTRIES`; (9)
+      deferred to the ridge look as item 560, a layout no test measures.
 - [ ] **5. Recap and the records.** The recap; `docs/products.md#L62`'s row (runs local and ridge,
       opened at the address) and a card under "Check a piece on ridge"; one line at the design
       system's landing 4 (`docs/plans/2026-11-12-design-system.md#L130`) saying this plan built it;

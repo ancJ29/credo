@@ -417,7 +417,7 @@ describe('the app', () => {
   });
 
   it('The gallery opens at its own address, asks nobody to sign in and calls no API', async () => {
-    const { api } = setup({}, signedIn, '/48b74d079/gallery');
+    const { api } = setup({}, unlinked, '/48b74d079/gallery');
 
     expect(await screen.findByRole('heading', { name: 'Design system' })).toBeTruthy();
     for (const call of Object.values(api)) {

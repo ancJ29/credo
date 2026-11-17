@@ -100,12 +100,15 @@ describe('Gallery', () => {
     const user = userEvent.setup();
     open(BASE);
 
-    expect(Object.keys(SOURCES)).toHaveLength(found.length);
     for (const [path, source] of Object.entries(SOURCES)) {
       const text = source;
       const name = path.split('/').pop()!.replace('.tsx', '');
-      const doc = /\/\*\* ([\s\S]*?) \*\/\nexport function/.exec(text)![1];
-      const typed = /export function \w+\(\{[^}]*\}: \{([\s\S]*?)\}\) \{/.exec(text)![1];
+      const docMatch = /\/\*\* ([\s\S]*?) \*\/\nexport function/.exec(text);
+      expect(docMatch, `${path}: a one-block doc comment over \`export function\``).not.toBeNull();
+      const typedMatch = /export function \w+\(\{[^}]*\}: \{([\s\S]*?)\}\) \{/.exec(text);
+      expect(typedMatch, `${path}: props typed inline as \`({ ... }: { ... })\``).not.toBeNull();
+      const doc = docMatch![1];
+      const typed = typedMatch![1];
       const props = typed
         .split(/;|\n/)
         .map((line) => line.trim())

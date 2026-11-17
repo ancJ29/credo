@@ -140,13 +140,13 @@ rather than decided at boot, because the predicate reads the router's location.
   three spreadsheet readers, fetched the first time an import or export page is used.
   **The console's code, its routes and its words are all in the entry file a client's phone
   downloads on first load** — grep that file for `/operator/clients` and it is there sixteen times.
-- *Two corrections to what the code says about itself:* `ui/vite.config.ts`'s own comment reads
-  "about 650 kB", and the entry is past 1,000 kB — half again as large, and past the warning limit
-  that same file raises. And "one bundle" is a fair description of
-  the apps and not of the files: there are five.
-- *Rejected, and the reason still holds:* splitting a route off. That comment's own condition is
-  "until a page is heavy", and the heavy pages — the spreadsheet import and export — are the three
-  that **are** split, by their own dynamic imports.
+- *What the code says about itself:* `ui/vite.config.ts`'s comment names the split ("One entry of
+  React and Mantine, past this limit already; the gallery and the spreadsheet readers are split off"),
+  and "one bundle" is a fair description of the apps and not of the files: there are five. The entry
+  is past 1,000 kB, the warning limit that same file raises.
+- *The rule:* split off a page that is heavy or that a client never opens: the gallery and the
+  spreadsheet readers, each by its own dynamic import. The console's pages stay in the entry, since
+  the predicate reads the router and an operator's address is the same app.
 - *Hazard no gate catches:* nothing fails when the entry passes the warning limit, because the limit
   was raised above it. *Trigger:* the entry reaching 1,000 kB, when the build starts warning again: it has (open item 555).
 
