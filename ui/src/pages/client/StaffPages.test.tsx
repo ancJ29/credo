@@ -1198,7 +1198,7 @@ describe('the words', () => {
     // a key with no words shows as the key: one of the dictionary's own dotted names, matched whole
     const keysOf = (group: object, at = ''): string[] =>
       Object.entries(group).flatMap(([key, value]) =>
-        typeof value === 'string' ? [`${at}${key}`] : keysOf(value, `${at}${key}.`),
+        typeof value === 'string' ? [`${at}${key}`] : keysOf(value as object, `${at}${key}.`),
       );
     const KEY = new RegExp(
       `(?<![A-Za-z_.])(${keysOf(DICTIONARIES.en)
