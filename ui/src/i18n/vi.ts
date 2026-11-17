@@ -19,7 +19,7 @@ export const vi: Dictionary = {
   },
   nav: {
     menu: 'Menu',
-    hideMenu: 'Ẩn menu',
+    hideMenu: 'Thu gọn menu',
     showMenu: 'Hiện menu',
     more: 'Thêm',
     myDeliveries: 'Giao hàng của tôi',
