@@ -1,30 +1,37 @@
 # The ui tests find a screen's words by their key
 
+> **Amended** 2026-11-17, after step 1, for three decisions of the human's: the partner's
+> words are taken into this branch and land with the tests ("import the new translation from
+> partner on this branch, test and fix the test code"); the eight failure words land as p1 wrote
+> them ("plz trust the text from the partner"); and the walk's pictures are retaken ("fix visual
+> too"). The batches are resized from the sample's minutes.
+
 ## At a glance
 
 p1's returned words file changed 611 English and 565 Vietnamese words of the 759 keys, and the ui
 check on its branch went red: 457 tests in 51 of 89 files. Every one is a test that names a word by
-its text; no key went and no placeholder was lost. This piece turns those tests to read the word
-from the dictionary the screen draws from, `DICTIONARIES[language]`, as four green test files
-already do, so any returned file lands with the ui and visual checks green, whatever English it
-changes. p1's words for eight failure messages now say an act failed where the app only knows it
-may have: those eight stay pinned, as one rule on the words, and are the human's one point. No
-helper is built: test files only, and one line in `ui/CLAUDE.md`. The price: about 166 machine
-minutes in seven build steps, and one yes or no.
+its text; no key went and no placeholder was lost. This branch takes p1's words in, and turns those
+tests to read each word from the dictionary the screen draws from, `DICTIONARIES[language]`, as four
+green test files already do. The code is the source of truth, so the next returned file reddens
+nothing, whatever English it changes. The visual scene test is fixed the same way, and the human's
+one walk run retakes the pictures p1's words move. No helper is built: test files only, the walk's
+base pictures, and one line in `ui/CLAUDE.md`. The price: about 306 machine minutes, about 75 of
+them waiting for the machine's test lock, and one walk run in the human's terminal.
 
 ## The slice
 
-One slice: the tests of the `ui` package and `visual`'s scene test. It is walkable when the plan
-ends. With p1's two word files swapped in for a moment, every ui and visual test is green except
-the one rule on the eight words. Then the words branch takes `pre-merge` in, and its ui check runs
-again: red only on that rule until the human answers, green after. No screen, no word and no
-product line changes, so no walk's base picture moves. That is this piece's null proof.
+One slice: p1's words, with the tests of the `ui` package and `visual`'s scene test that read them.
+It is walkable when the plan ends: on p1's words, the ui and visual checks are green, and the walk
+is green against bases retaken on them. **The first version's null proof no longer holds.** It said
+no screen and no word changed, so no base picture moved. Now p1's words are on this branch, and every
+screen that shows a changed word moves. Those pictures are retaken by the human's walk run (step 5),
+and the walks page asks again each screen whose markup moved.
 
 ## What the reds are, measured
 
 Read off the ui check's run on the words branch at 15:00 on 2026-11-17 ("Failed Tests 457", and
 "51 failed | 38 passed (89)" test files), against `git diff af8971af^ af8971af`, which touches
-`ui/src/i18n/en.ts` and `vi.ts` alone.
+`ui/src/i18n/en.ts` and `vi.ts` alone. That commit is merged into this branch.
 
 - **By the first error of each red:** 231 find no element by role and name, 108 no label, 37 no
   text, 2 no option. 71 compare a text with a typed word (`toBe`, `toContain`, `toEqual` of a
@@ -39,22 +46,19 @@ Read off the ui check's run on the words branch at 15:00 on 2026-11-17 ("Failed 
     "permissions.", and the next cell's "Name" follows it with no space between. The doors' pin
     (`ui/src/i18n/words.test.tsx#L11`, its test at `#L130`) holds every word as it stood before the
     frame was redrawn.
-  - **One break that reads wrong.** Of the 23 English words that said "may", p1's file keeps 2.
-    Eight of the lost ones are failures whose outcome the app cannot know (the service may have
-    acted before it failed), and p1 lost the hedge in both languages in all eight:
-    `operator.deleteClientFailed`, `team.failed`, `team.linkFailed`, `team.deleteFailed`,
-    `import.failed`, `import.failedPart`, `lists.failed` and `lists.failedPart`
-    (`ui/src/i18n/en.ts#L146`, `#L209`, `#L231`, `#L238`, `#L629`, `#L631`, `#L687`, `#L689`). For
-    example, "The operator may not have been added" became "Operator could not be added". And
-    `import.failed` no longer warns that adding the file again adds a second person for each row with
-    no code. Five tests pin these words today, as typed fragments:
-    `ui/src/pages/operator/AddOperatorPage.test.tsx#L121-L122`, `ui/src/pages/operator/DeleteOperatorPage.test.tsx#L65`,
-    `ui/src/pages/operator/OperatorLinkPage.test.tsx#L110-L111`, `ui/src/pages/client/ImportPage.test.tsx#L386` and
-    `ui/src/pages/client/ListImportPage.test.tsx#L212`.
+  - **Eight words that drop a hedge, kept as written.** Of the 23 English words that said "may",
+    p1's file keeps 2. Eight are failures whose outcome the app cannot know: `operator.deleteClientFailed`,
+    `team.failed`, `team.linkFailed`, `team.deleteFailed`, `import.failed`, `import.failedPart`,
+    `lists.failed` and `lists.failedPart`. In all eight, p1 wrote that the act failed, in both
+    languages. **The human decided they land as written.** The five tests that pinned their wording
+    (`ui/src/pages/operator/AddOperatorPage.test.tsx#L121-L122`,
+    `ui/src/pages/operator/DeleteOperatorPage.test.tsx#L65`,
+    `ui/src/pages/operator/OperatorLinkPage.test.tsx#L110-L111`,
+    `ui/src/pages/client/ImportPage.test.tsx#L386`, `ui/src/pages/client/ListImportPage.test.tsx#L212`)
+    read the word by its key instead.
 - **Beyond the ui check.** `visual/src/scene.test.tsx` draws the real app and finds its words
   typed: "Staff" (`#L25`) is now "Staff directory", and "could not be loaded" (`#L85`) is gone.
-  p1's branch never ran the visual check, so its reds would first show at the next whole check on
-  `pre-merge`. This piece takes it.
+  p1's branch never ran the visual check. This piece takes it.
 - **The item's count moved.** Item 549 counted 384 queries by a capitalised literal in 29 files.
   Its own predicate, `git grep` today, matches 1,483 lines in 70 files, names of people included.
   The measure this plan uses is a scan of each literal in the 51 red files against both
@@ -69,7 +73,7 @@ it (`ui/package.json#L45`) to `walk/`, `visual/` and `scripts/`. All 12 walk spe
 their typed literals are data (names, codes), so the premise holds. 25 ui test files import it
 already, and four are wholly green on p1's words. Nothing gives a test a word by a key string except
 `createI18n(language).t(key)` (`ui/src/i18n/i18n.test.ts#L40-L41`). The typed object path is better,
-since `Dictionary` (`ui/src/i18n/en.ts#L925`) makes a key gone a typecheck red. **So no helper is
+since `Dictionary` (`ui/src/i18n/en.ts#L891`) makes a key gone a typecheck red. **So no helper is
 built.**
 
 **The pattern, from `ui/src/pages/operator/OperatorWalk.test.tsx`:**
@@ -101,11 +105,9 @@ built.**
 - **The staff and list files** are made from `headingOf` and the lists' column words. The variations
   a reader must forgive (no accents, capitals, a star) are applied to that word, never typed.
 - **The pins on a word's own wording** go: the three on the session-ended word
-  (`ui/src/parts/SessionEnded.test.tsx#L16-L18`) and every `toContain` of a fragment. The screen
-  shows its word, and the wording is the partners'. The five hedge pins above become one rule in
-  `ui/src/i18n/i18n.test.ts`: the eight keys' words say the act may have happened, in English
-  (`may` or `might`) and in Vietnamese (`có thể`). That is the meaning, not the phrase, beside the
-  file's rule that no Vietnamese word stays English (`#L31`).
+  (`ui/src/parts/SessionEnded.test.tsx#L16-L18`), the five hedge pins above, and every `toContain`
+  of a fragment. The screen shows its word, and the wording is the partners'. The rule that no
+  Vietnamese word stays English (`ui/src/i18n/i18n.test.ts#L31`) stays as it is.
 
 ## The cases
 
@@ -116,121 +118,124 @@ built.**
 | 3 | The screens inside the frame keep their markup, whatever their words | `ui/src/frame/frameKept.test.tsx` |
 | 4 | A key with no word shows as itself and is named; a sentence ending beside another word is not a key | `ui/src/pages/client/StaffPages.test.tsx` |
 | 5 | A staff or list file made from the template's own words is read back, in either language and in the forms a person types | `ui/src/importSheet.test.ts`, `ui/src/listSheet.test.ts` |
-| 6 | A failure whose outcome the app cannot know says the act may have happened, in both languages, for each of the eight keys | `ui/src/i18n/i18n.test.ts` |
-| 7 | A scene on the walks page finds the app's words by key | `visual/src/scene.test.tsx` |
-| 8 | With p1's word files swapped in, every ui and visual test is green but case 6 | each step's p1 run, then the words branch's own check |
+| 6 | A scene on the walks page finds the app's words by key | `visual/src/scene.test.tsx` |
+| 7 | On p1's words, every ui and visual test is green | step 4's whole checks |
+| 8 | On p1's words, every walk is green against its bases, retaken once | the human's walk run, step 5 |
 
-Each case is seen red once. For cases 1 to 5 and 7, one key in the batch's component is changed to
+Each case is seen red once. For cases 1 to 6, one key in the batch's component is changed to
 another and put back, so the converted test still fails when the screen stops showing its word. A
-test that adapts to the change holds nothing. Case 6 is red on p1's words already. Case 8 is the
-proof that the tests follow the dictionary: p1 changed 77 % of the words. The 38 files left
-unchanged were green on p1's words already, so the steps' p1 runs cover the whole suite between
-them.
+test that adapts to the change holds nothing. Case 7 is the proof that the tests follow the
+dictionary, since p1 changed 77 % of the words. It was red at 457 before the first batch.
 
 ## The steps
 
-Each step's gate is `pnpm --filter @credo/ui check` and the citation test,
-`pnpm --filter @credo/scripts exec vitest run src/citations.test.ts`, each by its own exit code.
-`pnpm --filter @credo/visual check` is added where a step touches `visual/`. Each step also has a
-**p1 run**. A copy of the two word files is taken first. Then `git show af8971af:ui/src/i18n/en.ts`
-and `vi.ts` are written over them, the step's files are run by
-`pnpm --filter @credo/ui exec vitest run <files>`, and the copies are put back before the gate, so
-the gate reads the committed tree. The candidate keys for each line come from a scan of its
-literals against both dictionaries, a script in the builder's scratch folder, never committed.
+**Each batch's check.** This branch holds p1's words, so the whole ui check is red until the last
+batch lands. A batch before the last cannot be read by it. **Decided:** batches 2 and 3 are read by
+their own files' run, `pnpm --filter @credo/ui exec vitest run <its files>`, by the package's
+`pnpm --filter @credo/ui typecheck`, and by `pnpm exec prettier --check <its files>`, each at exit
+0. They commit on those checks, because the whole check is red by design until then. The last
+batch, step 4, is read by `pnpm --filter @credo/ui check`, `pnpm --filter @credo/visual check` and
+the citation test, `pnpm --filter @credo/scripts exec vitest run src/citations.test.ts`, each by its
+own exit code. That gate covers the whole committed tree. Each batch's test runs wait for the
+machine's test lock first. The candidate keys for each line come from a scan of its literals
+against both dictionaries, a script in the builder's scratch folder, never committed.
 
-**Sizes.** No row of this shape exists. `glance.sh --size build` gives a code step 17 minutes
-(the median of its last three: 15, 30, 17), so the sample and each batch are 17 until the sample's
-own minutes resize the batches. The convention says a step transcribed from a settled design runs
-at a fifth or less. The review is 13, the median of the last three whole reviews (16, 8, 13). The
-fix pass is 17, a code step. The recap is 7, the last one. The landing and the rerun are 5 each,
-about five minutes a step on a first run.
+**Sizes.** Measured from the sample: about 3 to 8 minutes of work on its 61 lines, about 11 lines a
+minute at the middle, and about 25 minutes waiting for the machine's test lock, which other pieces'
+whole `ops/test.sh` runs held. **Decided: three batches, not six.** Each batch pays one lock wait,
+so fewer batches wait less. Three, not two: the three staff files alone are about 510 lines, and one
+session reading those files with the lists' and the orders' pages would be past what one context
+holds. A batch's size is its lines at the sample's rate, plus one lock wait of 25. At 3 or 8 minutes
+for 61 lines, the three batches' work runs from about 90 to 240 minutes. The review is 13, the
+median of the last three whole reviews (16, 8, 13). The fix pass is 17, a code step. The walk run
+is 18: the last run of all twelve walks took 18 minutes 26 seconds, on 2026-11-16. The bases'
+commit after it is 5, a first run. The recap is 7, the last one, and the landing is 5.
 
 - [x] **1. The sample: `ui/src/parts/Settings.test.tsx`.** 61 lines, 19 reds. It holds every kind:
       a role and a name, a label, an alert's `toBe`, a fragment, a word with a placeholder to fill
-      (`settings.logoTooLarge`'s `{{max}}`) and both languages. The pattern above is applied as written, and any change to it is written back into
-      this plan in the same commit. _Done when:_ its p1 run exits 0; both checks exit 0; one key
-      mutated in `ui/src/parts/Settings.tsx` reddens the file, then is put back. **17 min.**
+      (`settings.logoTooLarge`'s `{{max}}`) and both languages. The pattern above is applied as
+      written, and any change to it is written back into this plan in the same commit. _Done when:_
+      its p1 run exits 0; both checks exit 0; one key mutated in `ui/src/parts/Settings.tsx`
+      reddens the file, then is put back. **17 min.**
       _Done:_ the p1 run exited 0 (21 tests), both checks exited 0 on the committed tree, and the
       key `settings.name` in `Settings.tsx` changed to `settings.title` reddened the file and was put back.
-- [ ] **2. The words and the frame.** `i18n/words.test.tsx`, `i18n/i18n.test.ts` with case 6,
-      `frame/frameKept.test.tsx` and its snapshot, `frame/Shell.test.tsx`,
-      `frame/OperatorPage.test.tsx`, `frame/Boot.test.tsx`: about 120 lines. _Done when:_ the p1 run
-      reds only case 6, naming the eight keys in each language; the new snapshot equals the old one
-      under the `·` replacement, by `diff` of the two run through one `sed`; both checks exit 0.
-      **17 min.**
-- [ ] **3. The operator's pages and the parts.** The 17 red files under `pages/operator/`,
-      `parts/NewClient`, `NewClientBoxes`, `SessionEnded`, `ClientMade`, and `OperatorApp.test.tsx`:
-      about 245 lines in 22 files. The hedge pins in three of them give way to case 6. _Done when:_
-      the p1 run exits 0; both checks exit 0. **17 min.**
-- [ ] **4. The doors, the sheets, the fake and the walks page.** `App`, `pages/SignIns`, `SignIn`,
-      `MorePage`, `fake`, `scene`, `importSheet`, `listSheet`, `importDemo`, and
-      `visual/src/scene.test.tsx`: about 285 lines. _Done when:_ the p1 run exits 0, with the
-      visual file run under `pnpm --filter @credo/visual exec vitest run`; the three checks exit 0.
-      **17 min.**
-- [ ] **5. The staff pages.** `StaffPages`, `StaffRecord`, `StaffSetupPage` under `pages/client/`:
-      about 510 lines, the detector of case 4 among them. _Done when:_ the p1 run exits 0; both checks
-      exit 0. **17 min.**
-- [ ] **6. The lists and the orders.** `ListPage`, `OrdersPages`: about 375 lines. _Done when:_ as
-      step 5. **17 min.**
-- [ ] **7. The rest of the client's pages.** `MyDeliveries`, `Reconcile`,
-      `DeliveriesPages`, `ListImportPage`, `ImportPage`, `Access`, `UnknownClient`, `SettingsPage`:
-      about 285 lines, two of them hedge pins. Item 549 is marked fixed, and `ui/CLAUDE.md#L82` gains
-      the test's half: a word a test finds is `DICTIONARIES[language]`'s, never typed. _Done when:_
-      the p1 run exits 0; both checks exit 0. **17 min.**
-- [ ] **8. The review, on another model.** It reads the diff against the case table. For each
+- [ ] **2. The words, the frame, the operator, the doors and the sheets.** This batch covers about
+      650 lines in 39 files:
+      - `i18n/words.test.tsx` and `i18n/i18n.test.ts`
+      - `frame/frameKept.test.tsx` and its snapshot, `frame/Shell.test.tsx`, `OperatorPage.test.tsx`
+        and `Boot.test.tsx`
+      - the 17 red files under `pages/operator/`, and `OperatorApp.test.tsx`
+      - `parts/NewClient`, `NewClientBoxes`, `SessionEnded` and `ClientMade`
+      - `App`, `pages/SignIns`, `SignIn`, `MorePage`, `fake`, `scene`, `importSheet`, `listSheet`
+        and `importDemo`
+      - `visual/src/scene.test.tsx`
+
+      _Done when:_ the batch's checks above exit 0, with the visual file run by
+      `pnpm --filter @credo/visual exec vitest run src/scene.test.tsx`. The new snapshot equals the
+      old one under the `·` replacement, by `diff` of the two run through one `sed`. One key is
+      mutated and seen to redden the file it holds, then put back. **84 min:** 59 of work, 25 of lock.
+- [ ] **3. The staff pages.** `StaffPages`, `StaffRecord` and `StaffSetupPage` under `pages/client/`:
+      about 510 lines, the detector of case 4 among them. _Done when:_ the batch's checks exit 0,
+      and one mutation is seen red, then put back. **71 min:** 46 of work, 25 of lock.
+- [ ] **4. The lists, the orders and the rest of the client's pages, and the whole checks.** This
+      batch covers about 660 lines in 10 files: `ListPage`, `OrdersPages`, `MyDeliveries`,
+      `Reconcile`, `DeliveriesPages`, `ListImportPage`, `ImportPage`, `Access`, `UnknownClient` and
+      `SettingsPage`. Item 549 is marked fixed. `ui/CLAUDE.md#L82`
+      gains the test's half: a word a test finds is `DICTIONARIES[language]`'s, never typed.
+      _Done when:_ one mutation is seen red, then put back, and `pnpm --filter @credo/ui check`,
+      `pnpm --filter @credo/visual check` and the citation test each exit 0. That is case 7.
+      **86 min:** 59 of work, 25 of lock, 2 for the two checks.
+- [ ] **5. The walk's pictures, retaken: the human's run.** The orchestrator hands the human one
+      command, run from this worktree in the human's terminal while the review reads:
+      `bash walk/run.sh piece-1 piece-2 admin-lists office-orders driver-deliveries office-reconcile operator passkeys services root-password team delete-client --moved all --write`.
+      Its usage is in `walk/run.sh#L4`, `--moved` and `--write` at `#L12-L14`. The bases live in each
+      walk's `walk/specs/<spec>-snapshots` folder (`walk/run.sh#L46-L57`), and `--write` replaces
+      them only after a green run (`walk/CLAUDE.md#L65`). What the human will see: `== verdict:
+      green` and `== done`, exit 0. Then the machine reads git's diff of the bases, every moved one
+      a screen p1's words touch, and commits them. _Done when:_ the run's log ends green with exit
+      0; `git status --short` shows only files under `walk/specs/*-snapshots/`, and they are
+      committed. **18 min** for the run, **5** for the commit.
+- [ ] **6. The review, on another model.** It reads the diff against the case table. For each
       converted test, it asks whether that key is the one the component reads. **13 min.** Then the
-      fix pass, by its own gate (**17 min**), and the recap (**7 min**).
-- [ ] **9. The landing on `pre-merge`, then the words branch.** The orchestrator lands the piece
-      (**5 min**). The words branch then takes `pre-merge` in and its ui check runs again: red on
-      case 6 alone until the human's point is answered (**5 min**).
+      fix pass, by step 4's checks (**17 min**), and the recap (**7 min**).
+- [ ] **7. The landing on `pre-merge`.** The orchestrator lands this branch, p1's words with it.
+      `ops/words-in.sh` and its section of `ops/test.sh` stay as they are, and `--land` is not used.
+      The words branch, `words-p1-1117-1459`, is untouched here. Once `pre-merge` holds its commit,
+      what becomes of it and its worktree is the orchestrator's. **5 min.**
 
-**Total: about 166 minutes.** The seven build steps are 119, and the rest is the review, the fix
-pass, the recap and the two landings.
-
-## How the words branch lands
-
-The words branch, `words-p1-1117-1459` at `af8971af`, changes only the two word files, so taking
-`pre-merge` in after this piece meets no conflict. `ops/words-in.sh` and its section of
-`ops/test.sh` stay as they are. **Decided:** the orchestrator lands it by `bash ops/words-in.sh
---land words-p1-1117-1459` if the words paste's step 2 is on `pre-merge` by then, since `--land`
-takes `pre-merge` in and checks again (the words paste's plan, its cases 22 and 23). Otherwise it lands by hand,
-in that script's own order: the take-in, the ui check, the citation test, then `git merge --no-ff`.
-`--land` refuses a branch whose diff against `pre-merge` holds any file but the word files. If it
-reads that diff before the take-in, two-dot, this piece's test files show in it, so the hand
-landing is the fallback, not a fault. The script runs only the ui check, and the visual scene test
-is proven by step 4's p1 run, so the next whole check on `pre-merge` sees no new red.
+**Total: about 306 minutes.** Step 1 took 17. The three batches are 241, 75 of that lock waits.
+The walk run and its commit are 23, the review, fix pass and recap 37, and the landing 5. The
+walk run and the review run side by side, so the day's span is about 18 shorter.
 
 ## What still catches a word missing or wrong
 
 Once the tests read the dictionary the screen reads, a test no longer checks the wording. That is by
-design, since the wording is the partners'. These remain:
-- **A key gone or added:** the typecheck (`Dictionary`, `ui/src/i18n/en.ts#L925`, and every
+design: the wording is the partners', and the human trusts it. These remain:
+- **A key gone or added:** the typecheck (`Dictionary`, `ui/src/i18n/en.ts#L891`, and every
   `words.a.b` a test reads), and the words tool's refusal of a key not in the sent file.
 - **A placeholder lost:** the words tool refuses the whole file (`scripts/src/words.ts#L100`).
 - **A key shown raw:** case 4. i18next shows a missing key as the key.
 - **A Vietnamese word left in English:** `ui/src/i18n/i18n.test.ts#L31`.
-- **A failure that claims more than the app knows:** case 6, for the eight keys.
 - **A word that reads wrong on its screen:** a reading, not a test. The words tool shows every change
   before its question. The walks page asks again every screen whose markup moved, in either language
   (`versionOf`, `visual/src/capture.ts#L260`).
 - **Not caught:** a new test that types a word, until the next return that changes that word. Its
-  guard is the `ui/CLAUDE.md` line of step 7. A mechanical check is item 573, parked until a return
+  guard is the `ui/CLAUDE.md` line of step 4. A mechanical check is item 573, parked until a return
   reddens on such a test.
 
 ## The human's points
 
-1. **p1's eight failure words (after step 9).** For adding or deleting an operator, a join link,
-   deleting a client and importing, p1's words say the act failed where the app only knows it may
-   have, so a second import could add people twice. The orchestrator shows the eight beside the
-   old ones. Yes: "may" goes back in, in p1's style (recommended). No: they land as written, and
-   case 6 goes.
+None is asked. The eight failure words were the first version's point, and the human answered it:
+they land as p1 wrote them. The human's one act is step 5's walk run. The walks page then asks again
+each screen p1's words moved, as rule 7 does for any change. That is a look, not a gate: the
+landing does not wait for it.
 
 ## Not in this piece, and named rather than dropped
 
 - **Item 571.** A staff or list file made from a template downloaded before a words change has the
   old headings, and it fails as "no Name column" after the change. Parked until the first real
   client, or a partner who meets it.
-- **Item 572.** The words file goes out with no note on the eight words whose meaning a case needs,
-  so a partner cannot see why they read as they do. Parked until the next file sent.
+- **Item 572,** closed as moot with this amendment. It asked for a note on the eight words whose
+  meaning a case needed, and the human said to trust the partner's text.
 - **Item 573.** No mechanical check stops a new ui test from typing a word. Parked until a return
   reddens on one.

@@ -2076,9 +2076,9 @@ A build of `pre-merge` at `a0514569`, made into a scratch folder for that plan, 
 
 The staff import finds each column by the dictionary's word for it in either language (`ui/src/importSheet.ts#L48`), and a file without the name column fails whole (`#L202`); the lists read their columns the same way. A template downloaded before a returned words file lands carries the old headings: after p1's file, `addPerson.name` reads "Full name" and "Họ và tên" where it read "Name" and "Tên", so a file filled from the earlier template fails as having no name column. Nothing is lost, and a fresh template imports. *Trigger:* the first real client, or a partner who reports it; the likely fix is to also accept the headings the template had before a change.
 
-## 572. The words file goes out with no note on the words whose meaning a case needs — the machine; *parked* until the next words file sent (the ui tests' words plan, 2026-11-17, Low)
+## 572. The words file goes out with no note on the words whose meaning a case needs — the machine; `[CLOSED AS MOOT, NOT FIXED]` 2026-11-17: the human said to trust the partner's text, so the eight words land as p1 wrote them and no case pins their meaning (the ui tests' words plan, 2026-11-17, Low)
 
-`pnpm words out` writes an empty Note for every row, so a partner cannot see that eight failure words must say the act may have happened (`docs/plans/2026-11-17-ui-tests-words.md`'s case 6); p1's file dropped the hedge from all eight. *Trigger:* the next file sent to a partner; the fix is a note on those eight rows, written by `out`.
+`pnpm words out` writes an empty Note for every row, so a partner could not see that eight failure words said the act may have happened; p1's file dropped the hedge from all eight. Closed: the human decided the partner's text stands, and the plan's rule on those eight was taken out.
 
 ## 573. No mechanical check stops a new ui test from finding a word by its typed text — the machine; *parked* until a returned file reddens on such a test (the ui tests' words plan, 2026-11-17, Low)
 
