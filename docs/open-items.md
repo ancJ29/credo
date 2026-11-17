@@ -2146,6 +2146,6 @@ The whole check's commit is read by `git rev-parse HEAD` in `pre-merge`'s worktr
 
 `ops/words-in.sh#L75` prints `cd $REPO_DIR && bash $OPS_DIR/words-in.sh --land $BRANCH` with the two paths bare, so a credo root with a space in its path pastes as two words. This root has none. Fix: print each path single-quoted. *Trigger:* a credo root moved to a path with a space.
 
-## 587. `frameKept.test.tsx`'s id mask needs nine characters, and Mantine's random id is sometimes eight — a snapshot taken then holds a live id and fails the next run — the machine; `[DEFERRED]` (design system step 10, 2026-11-17, Low)
+## 590. `frameKept.test.tsx`'s id mask needs nine characters, and Mantine's random id is sometimes eight — a snapshot taken then holds a live id and fails the next run — the machine; `[DEFERRED]` (design system step 10, 2026-11-17, Low)
 
 `ui/src/frame/frameKept.test.tsx#L13` masks `mantine-[a-z0-9]{9}`, but Mantine's fallback id is `Math.random().toString(36).slice(2, 11)`, which is eight characters about one time in thirty-six; the first `-u` rewrite of the ways snapshot took `mantine-nevtwxk2` as it was, and a second rewrite masked it. Fix: mask `{8,9}`. *Trigger:* a snapshot red on an id nobody changed.
