@@ -267,7 +267,10 @@ export function Shell({
       <AppShell.Main>
         <FrameContext value={{ pages, links, onSignOut }}>{children}</FrameContext>
       </AppShell.Main>
-      <AppShell.Footer hiddenFrom="sm">
+      <AppShell.Footer
+        hiddenFrom="sm"
+        style={{ borderTop: 'var(--credo-bar-line)', boxShadow: 'var(--credo-bar-shadow)' }}
+      >
         <nav className={classes.bar} aria-label={t('nav.menu')}>
           {barPages.map(({ id, path, label, icon: Icon }) => (
             <Link

@@ -6,6 +6,14 @@
   border: 0;
 }
 
+/* The phone's header alone has a soft shadow below, as the legacy's; the PC's has none. Below
+   Mantine's `sm`, 48em. */
+@media (max-width: 47.99em) {
+  .header {
+    box-shadow: var(--credo-header-shadow);
+  }
+}
+
 .brand {
   color: inherit;
 }
@@ -76,8 +84,8 @@
   min-height: 50px;
   padding: 0 12px;
   color: var(--credo-white);
-  font-size: 16px;
-  font-weight: 500;
+  font-size: var(--credo-menu-size);
+  font-weight: var(--credo-menu-weight);
   text-decoration: none;
 }
 
