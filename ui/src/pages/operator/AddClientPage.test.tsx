@@ -5,6 +5,11 @@ import { draw } from '../../../tests/render';
 import { AddClientPage } from './AddClientPage';
 import { type Api, ApiError } from '../../api';
 
+import { DICTIONARIES } from '../../i18n';
+
+const words = DICTIONARIES.en;
+/** A label that carries a star is found by its word inside it, as the dictionary spells it. */
+const labelled = (word: string) => new RegExp(word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
 const made = {
   link: '/login?client-code=minh-phat',
   rootName: 'root',
@@ -19,9 +24,9 @@ const page = (makeClient: Api['makeClient'], onSignedOut = vi.fn()) => {
 };
 
 async function fillAndMake(code = 'minh-phat', name = 'Minh Phát') {
-  await userEvent.type(screen.getByLabelText(/Client code/), code);
-  await userEvent.type(screen.getByLabelText(/Company name/), name);
-  await userEvent.click(screen.getByRole('button', { name: 'Make the client' }));
+  await userEvent.type(screen.getByLabelText(labelled(words.operator.code)), code);
+  await userEvent.type(screen.getByLabelText(labelled(words.operator.companyName)), name);
+  await userEvent.click(screen.getByRole('button', { name: words.operator.make }));
 }
 
 describe('AddClientPage', () => {
@@ -32,19 +37,26 @@ describe('AddClientPage', () => {
     page(makeClient);
     await fillAndMake('  Minh-PHAT ');
 
-    expect(await screen.findByRole('heading', { level: 2, name: 'Client made' })).toBeTruthy();
+    expect(
+      await screen.findByRole('heading', { level: 2, name: words.operator.madeTitle }),
+    ).toBeTruthy();
     expect(makeClient).toHaveBeenCalledExactlyOnceWith('minh-phat', 'Minh Phát');
-    expect(screen.getByRole<HTMLInputElement>('textbox', { name: /Link/ }).value).toBe(
-      `${window.location.origin}/login?client-code=minh-phat`,
-    );
-    expect(screen.getByRole<HTMLInputElement>('textbox', { name: /Root name/ }).value).toBe('root');
-    expect(screen.getByRole<HTMLInputElement>('textbox', { name: /First password/ }).value).toBe(
-      made.password,
-    );
+    expect(
+      screen.getByRole<HTMLInputElement>('textbox', { name: labelled(words.operator.link) }).value,
+    ).toBe(`${window.location.origin}/login?client-code=minh-phat`);
+    expect(
+      screen.getByRole<HTMLInputElement>('textbox', { name: labelled(words.operator.rootName) })
+        .value,
+    ).toBe('root');
+    expect(
+      screen.getByRole<HTMLInputElement>('textbox', {
+        name: labelled(words.operator.firstPassword),
+      }).value,
+    ).toBe(made.password);
 
-    await userEvent.click(screen.getByRole('button', { name: 'Add another client' }));
+    await userEvent.click(screen.getByRole('button', { name: words.operator.another }));
 
-    expect(screen.getByLabelText<HTMLInputElement>(/Client code/).value).toBe('');
+    expect(screen.getByLabelText<HTMLInputElement>(labelled(words.operator.code)).value).toBe('');
     expect(document.body.innerHTML).not.toContain(made.password);
   });
 
@@ -54,9 +66,13 @@ describe('AddClientPage', () => {
       page(vi.fn<Api['makeClient']>(() => Promise.resolve({ kind: 'made', client: made })));
       await fillAndMake();
 
-      expect((await screen.findByRole<HTMLInputElement>('textbox', { name: /Link/ })).value).toBe(
-        'https://minh-phat.ridge.example.test/login',
-      );
+      expect(
+        (
+          await screen.findByRole<HTMLInputElement>('textbox', {
+            name: labelled(words.operator.link),
+          })
+        ).value,
+      ).toBe('https://minh-phat.ridge.example.test/login');
     } finally {
       vi.unstubAllGlobals();
     }
@@ -68,12 +84,14 @@ describe('AddClientPage', () => {
     );
     page(makeClient);
     await fillAndMake();
-    await screen.findByRole('heading', { level: 2, name: 'Client made' });
-    await userEvent.click(screen.getByRole('button', { name: 'Add another client' }));
+    await screen.findByRole('heading', { level: 2, name: words.operator.madeTitle });
+    await userEvent.click(screen.getByRole('button', { name: words.operator.another }));
 
     await fillAndMake('hoa-moc', 'Hoa Mộc');
 
-    expect(await screen.findByRole('heading', { level: 2, name: 'Client made' })).toBeTruthy();
+    expect(
+      await screen.findByRole('heading', { level: 2, name: words.operator.madeTitle }),
+    ).toBeTruthy();
     expect(makeClient).toHaveBeenCalledTimes(2);
     expect(makeClient).toHaveBeenLastCalledWith('hoa-moc', 'Hoa Mộc');
   });
@@ -82,17 +100,23 @@ describe('AddClientPage', () => {
     page(() => Promise.resolve({ kind: 'taken' }));
     await fillAndMake();
 
-    expect((await screen.findByRole('alert')).textContent).toContain('nothing was changed');
-    expect(screen.getByLabelText<HTMLInputElement>(/Client code/).value).toBe('minh-phat');
-    expect(screen.getByLabelText<HTMLInputElement>(/Company name/).value).toBe('Minh Phát');
+    expect((await screen.findByRole('alert')).textContent).toBe(words.operator.taken);
+    expect(screen.getByLabelText<HTMLInputElement>(labelled(words.operator.code)).value).toBe(
+      'minh-phat',
+    );
+    expect(
+      screen.getByLabelText<HTMLInputElement>(labelled(words.operator.companyName)).value,
+    ).toBe('Minh Phát');
   });
 
   it('A make that fails says nothing was made, and what was typed stays', async () => {
     const { onSignedOut } = page(() => Promise.reject(new ApiError(503)));
     await fillAndMake();
 
-    expect((await screen.findByRole('alert')).textContent).toContain('The client was not made');
-    expect(screen.getByLabelText<HTMLInputElement>(/Client code/).value).toBe('minh-phat');
+    expect((await screen.findByRole('alert')).textContent).toBe(words.operator.failed);
+    expect(screen.getByLabelText<HTMLInputElement>(labelled(words.operator.code)).value).toBe(
+      'minh-phat',
+    );
     expect(onSignedOut).not.toHaveBeenCalled();
   });
 
@@ -101,7 +125,7 @@ describe('AddClientPage', () => {
     page(makeClient);
     await fillAndMake('x');
 
-    expect(screen.getByText(/Use 3 to 32 lowercase letters/)).toBeTruthy();
+    expect(screen.getByText(words.operator.codeInvalid)).toBeTruthy();
     expect(makeClient).not.toHaveBeenCalled();
   });
 

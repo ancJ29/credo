@@ -1,9 +1,11 @@
 import { Stage } from '@credo/ui/mock';
+import { DICTIONARIES } from '@credo/ui/words';
 import { render, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { SceneView } from './scene';
 import type { Scene } from './walks';
 
+const words = DICTIONARIES.en;
 const QUICK = { findFor: 150, stillFor: 10, stillAtMost: 100 };
 
 const scene = (view: Scene, language: 'vi' | 'en' = 'en', quick = QUICK) =>
@@ -22,10 +24,12 @@ describe('a scene on the walks page', () => {
     const { container } = scene({ path: '/staff', as: 'EMP-0001' });
 
     expect(phase(container)).toBe('running');
-    expect(await screen.findByRole('heading', { level: 2, name: 'Staff' }, ENDS)).toBeTruthy();
+    expect(
+      await screen.findByRole('heading', { level: 2, name: words.staff.title }, ENDS),
+    ).toBeTruthy();
     await waitFor(() => expect(phase(container)).toBe('done'), ENDS);
-    expect(screen.getByRole('link', { name: 'Add a person' })).toBeTruthy();
-    expect(screen.queryByRole('link', { name: 'Settings' })).toBeNull();
+    expect(screen.getByRole('link', { name: words.staff.add })).toBeTruthy();
+    expect(screen.queryByRole('link', { name: words.nav.settings })).toBeNull();
   });
 
   it('speaks the language it is given, and does its steps with that language’s words', async () => {
@@ -44,7 +48,11 @@ describe('a scene on the walks page', () => {
     await waitFor(() => expect(phase(container)).toBe('done'), ENDS);
 
     expect(
-      await screen.findByRole('heading', { level: 2, name: 'Đã thêm nhân viên' }, ENDS),
+      await screen.findByRole(
+        'heading',
+        { level: 2, name: DICTIONARIES.vi.addPerson.madeTitle },
+        ENDS,
+      ),
     ).toBeTruthy();
   });
 
@@ -57,7 +65,7 @@ describe('a scene on the walks page', () => {
     await waitFor(() => expect(phase(container)).toBe('failed'), ENDS);
 
     expect(container.querySelector('[data-scene-failed]')!.textContent).toBe(
-      'step 1 ({"press":"staff.empty"}): found no button, link or choice named “No one is on the list yet.”',
+      `step 1 ({"press":"staff.empty"}): found no button, link or choice named “${words.staff.empty}”`,
     );
   });
 
@@ -66,14 +74,14 @@ describe('a scene on the walks page', () => {
 
     await waitFor(() => expect(phase(container)).toBe('done'), ENDS);
     expect(await screen.findByText('Bình An', {}, ENDS)).toBeTruthy();
-    expect(screen.getByRole('heading', { level: 2, name: 'Clients' })).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 2, name: words.nav.clients })).toBeTruthy();
     unmount();
 
     scene({ path: '/operator/clients' });
     expect(
-      (await screen.findByRole('heading', { level: 2, name: 'Operator sign-in' }, ENDS))
+      (await screen.findByRole('heading', { level: 2, name: words.operator.signIn }, ENDS))
         .textContent,
-    ).toBe('Operator sign-in');
+    ).toBe(words.operator.signIn);
   });
 
   it('shows the failure of a call the scene cues, as the app does', async () => {
@@ -81,9 +89,7 @@ describe('a scene on the walks page', () => {
 
     await waitFor(() => expect(phase(container)).toBe('done'), ENDS);
 
-    expect((await screen.findByRole('alert', {}, ENDS)).textContent).toContain(
-      'could not be loaded',
-    );
+    expect((await screen.findByRole('alert', {}, ENDS)).textContent).toBe(words.common.loadFailed);
   });
 
   it('draws nothing more once it is gone, whether its steps ended or failed', async () => {

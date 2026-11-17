@@ -12,8 +12,15 @@ import { describe, expect, it } from 'vitest';
 import { openApp } from '../../../tests/open';
 import { ApiError } from '../../api';
 
+import { DICTIONARIES } from '../../i18n';
+
+const words = DICTIONARIES.en;
+/** A word at the start of a label, the star of a required field allowed after it. */
+const starting = (word: string) => new RegExp(`^${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`);
+const wordsVi = DICTIONARIES.vi;
 const LAN = 'EMP-0001';
-const money = (amount: number) => `${new Intl.NumberFormat('en').format(amount)} VND`;
+const money = (amount: number) =>
+  words.orders.money.replace('{{amount}}', new Intl.NumberFormat('en').format(amount));
 const day = (value: string) =>
   new Intl.DateTimeFormat('en-GB', {
     day: 'numeric',
@@ -35,22 +42,31 @@ const unsent = DEMO_ORDERS.find((one) => one.state === 'confirmed' && one.reques
 const cancelledOrder = DEMO_ORDERS.find((one) => one.state === 'cancelled')!;
 const at = (order: { day: string; id: string }) => `/orders/${order.day}/${order.id}`;
 
+const orderTitle = (number: string) => words.orders.orderTitle.replace('{{number}}', number);
+
 const heading = (name: string | RegExp, level = 2) => screen.findByRole('heading', { level, name });
 
 /** The draft's form is drawn once the two lists are in. */
-const formReady = () => screen.findByRole('button', { name: 'Save draft' });
+const formReady = () => screen.findByRole('button', { name: words.orders.saveDraft });
 
 /** A form field by its label, the star of a required one allowed. */
 const field = (label: string) =>
-  screen.getByLabelText(new RegExp(`^${label}`), { selector: 'input, select, textarea' });
+  screen.getByLabelText(starting(label), { selector: 'input, select, textarea' });
 
 describe('the orders list', () => {
   it('Someone who may see orders lands on them after signing in: the last 7 days’, newest first, each with its number, day, customer, total, state, and the driver of one sent; the 7 days before are one click away', async () => {
     const drawn = openApp('/', { as: LAN });
 
-    expect(await heading('Orders')).toBeTruthy();
+    expect(await heading(words.nav.orders)).toBeTruthy();
     expect((await screen.findAllByRole('row')).length).toBe(DEMO_ORDERS.length + 1);
-    expect(rows()[0]).toEqual(['Order', 'Day', 'Customer', 'Total', 'State', 'Driver']);
+    expect(rows()[0]).toEqual([
+      words.orders.number,
+      words.orders.day,
+      words.orders.customer,
+      words.orders.total,
+      words.orders.stateHeading,
+      words.orders.driver,
+    ]);
     const newest = [...DEMO_ORDERS].sort(newestOrdersFirst);
     expect(rows().slice(1)).toEqual(
       newest.map((one) => [
@@ -59,10 +75,10 @@ describe('the orders list', () => {
         one.customer.name,
         money(one.total),
         {
-          draft: 'Draft',
-          confirmed: 'Confirmed',
-          fulfilled: 'Fulfilled',
-          cancelled: 'Cancelled',
+          draft: words.orders.state.draft,
+          confirmed: words.orders.state.confirmed,
+          fulfilled: words.orders.state.fulfilled,
+          cancelled: words.orders.state.cancelled,
         }[one.state],
         one.request?.driver.name ?? '',
       ]),
@@ -73,16 +89,16 @@ describe('the orders list', () => {
       DEMO_TODAY,
     );
     expect(
-      screen.getByText(`Orders from ${day(addDays(DEMO_TODAY, -6))} to today, newest first.`),
+      screen.getByText(words.orders.since.replace('{{day}}', day(addDays(DEMO_TODAY, -6)))),
     ).toBeTruthy();
     expect(
-      within(screen.getAllByRole('navigation', { name: 'Menu' })[0])
+      within(screen.getAllByRole('navigation', { name: words.nav.menu })[0])
         .getAllByRole('link')
         .map((link) => link.textContent)
         .slice(0, 2),
-    ).toEqual(['Orders', 'Delivery requests']);
+    ).toEqual([words.nav.orders, words.nav.deliveries]);
 
-    await userEvent.click(screen.getByRole('button', { name: 'Show the 7 days before' }));
+    await userEvent.click(screen.getByRole('button', { name: words.orders.earlier }));
 
     await waitFor(() => expect(drawn.api.listOrders).toHaveBeenCalledTimes(3));
     expect(drawn.api.listOrders).toHaveBeenCalledWith(
@@ -90,9 +106,7 @@ describe('the orders list', () => {
       addDays(DEMO_TODAY, -7),
     );
     expect(
-      await screen.findByText(
-        `Orders from ${day(addDays(DEMO_TODAY, -13))} to today, newest first.`,
-      ),
+      await screen.findByText(words.orders.since.replace('{{day}}', day(addDays(DEMO_TODAY, -13)))),
     ).toBeTruthy();
     expect(rows().length).toBe(DEMO_ORDERS.length + 1);
   });
@@ -102,7 +116,7 @@ describe('the orders list', () => {
 
     const link = await screen.findByRole('link', { name: draftToday.number });
     expect(link.getAttribute('href')).toBe(at(draftToday));
-    expect(screen.getByRole('link', { name: 'New order' }).getAttribute('href')).toBe(
+    expect(screen.getByRole('link', { name: words.orders.new }).getAttribute('href')).toBe(
       '/orders/new',
     );
   });
@@ -118,8 +132,8 @@ describe('the orders list', () => {
       },
     });
 
-    expect(await screen.findByText('Chưa có đơn hàng nào trong những ngày này.')).toBeTruthy();
-    expect(screen.queryByRole('link', { name: 'Tạo đơn hàng' })).toBeNull();
+    expect(await screen.findByText(wordsVi.orders.empty)).toBeTruthy();
+    expect(screen.queryByRole('link', { name: wordsVi.orders.new })).toBeNull();
   });
 
   it('says it could not load and tries again', async () => {
@@ -131,8 +145,8 @@ describe('the orders list', () => {
       },
     });
 
-    expect((await screen.findByRole('alert')).textContent).toContain('could not be loaded');
-    await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expect((await screen.findByRole('alert')).textContent).toContain(words.common.loadFailed);
+    await userEvent.click(screen.getByRole('button', { name: words.common.retry }));
     expect(await screen.findByText(draftToday.number)).toBeTruthy();
     expect(drawn.api.listOrders).toHaveBeenCalledTimes(2);
   });
@@ -151,52 +165,66 @@ describe('the orders list', () => {
 describe('a new order', () => {
   const chooseProduct = async (code: string, quantity: number) => {
     const product = DEMO_PRODUCTS.find((one) => one.code === code)!;
-    await userEvent.selectOptions(field('Product'), product.id);
-    fireEvent.change(field('Quantity'), { target: { value: String(quantity) } });
-    await userEvent.click(screen.getByRole('button', { name: 'Add line' }));
+    await userEvent.selectOptions(field(words.orders.product), product.id);
+    fireEvent.change(field(words.orders.quantity), { target: { value: String(quantity) } });
+    await userEvent.click(screen.getByRole('button', { name: words.orders.addLine }));
   };
 
   it('A new order: the office picks a customer from the list and products from the list, each with a quantity in whole units; a product added twice is one line; each line shows its unit, price and amount, the order its total in đồng', async () => {
     openApp('/orders/new', { as: LAN });
-    await heading('New order');
+    await heading(words.orders.newTitle);
     await screen.findByRole('option', { name: /KH-001/ });
 
-    await userEvent.selectOptions(field('Customer'), DEMO_CUSTOMERS[0].id);
+    await userEvent.selectOptions(field(words.orders.customer), DEMO_CUSTOMERS[0].id);
     await chooseProduct('VT-001', 40);
     await chooseProduct('VT-002', 3);
     await chooseProduct('VT-001', 10);
 
     // the customer and the products come from the two lists, in code order
     expect(
-      within(field('Customer'))
+      within(field(words.orders.customer))
         .getAllByRole('option')
         .map((option) => option.textContent),
-    ).toEqual(['Choose a customer', ...DEMO_CUSTOMERS.map((one) => `${one.code} · ${one.name}`)]);
+    ).toEqual([
+      words.orders.chooseCustomer,
+      ...DEMO_CUSTOMERS.map((one) => `${one.code} · ${one.name}`),
+    ]);
     expect(rows()).toEqual([
-      ['Product', 'Unit', 'Price (VND)', 'Quantity', 'Amount (VND)', ''],
-      ['VT-001 · Xi măng PCB40', 'bao', '95,000', '50', '4,750,000', 'Remove'],
-      ['VT-002 · Cát xây tô', 'm³', '320,000', '3', '960,000', 'Remove'],
-      ['Total', money(5_710_000), ''],
+      [
+        words.orders.product,
+        words.orders.unit,
+        words.orders.price,
+        words.orders.quantity,
+        words.orders.amount,
+        '',
+      ],
+      ['VT-001 · Xi măng PCB40', 'bao', '95,000', '50', '4,750,000', words.orders.remove],
+      ['VT-002 · Cát xây tô', 'm³', '320,000', '3', '960,000', words.orders.remove],
+      [words.orders.total, money(5_710_000), ''],
     ]);
     // a quantity is in whole units, and no price is typed anywhere
-    expect(screen.getByText('Whole units')).toBeTruthy();
-    expect(screen.queryByLabelText(/^Price/)).toBeNull();
+    expect(screen.getByText(words.orders.wholeUnits)).toBeTruthy();
+    expect(screen.queryByLabelText(starting(words.orders.price))).toBeNull();
 
-    await userEvent.click(screen.getByRole('button', { name: 'Remove Cát xây tô' }));
-    expect(rows().at(-1)).toEqual(['Total', money(4_750_000), '']);
+    await userEvent.click(
+      screen.getByRole('button', {
+        name: words.orders.removeLine.replace('{{name}}', 'Cát xây tô'),
+      }),
+    );
+    expect(rows().at(-1)).toEqual([words.orders.total, money(4_750_000), '']);
   });
 
   it('A line’s price is the product’s, set by the app, never typed; the total is the sum of the lines, with no VAT, discount or fee beyond a product’s own line (S1’s transport fee is one); a confirmed order keeps its prices and its customer’s name, phone and address as they were', async () => {
     const changed = { ...sentToday, lines: sentToday.lines.map((line) => ({ ...line, price: 1 })) };
     openApp('/orders/new', { as: LAN });
-    await heading('New order');
+    await heading(words.orders.newTitle);
     await screen.findByRole('option', { name: /KH-001/ });
-    await userEvent.selectOptions(field('Customer'), DEMO_CUSTOMERS[0].id);
+    await userEvent.selectOptions(field(words.orders.customer), DEMO_CUSTOMERS[0].id);
     await chooseProduct('VT-001', 1);
     await chooseProduct('DV-001', 1);
 
     // the product's price, and the fee as a line of its own, and nothing else added
-    expect(rows().at(-1)).toEqual(['Total', money(95_000 + 150_000), '']);
+    expect(rows().at(-1)).toEqual([words.orders.total, money(95_000 + 150_000), '']);
     expect(
       rows()
         .slice(1, 3)
@@ -213,21 +241,23 @@ describe('a new order', () => {
           version: 'o1',
         }),
     });
-    await heading(`Order ${sentToday.number}`);
+    await heading(orderTitle(sentToday.number));
     expect(screen.getByText('Tên cũ')).toBeTruthy();
     expect(rows()[1]?.[2]).toBe('1');
-    expect(rows().at(-1)).toEqual(['Total', money(sentToday.total)]);
+    expect(rows().at(-1)).toEqual([words.orders.total, money(sentToday.total)]);
   });
 
   it('An order is saved as a draft and changed again, or confirmed; once confirmed it is not changed', async () => {
     const drawn = openApp('/orders/new', { as: LAN });
-    await heading('New order');
+    await heading(words.orders.newTitle);
     await screen.findByRole('option', { name: /KH-001/ });
-    expect(screen.getByRole('button', { name: 'Save draft' }).hasAttribute('disabled')).toBe(true);
-    await userEvent.selectOptions(field('Customer'), DEMO_CUSTOMERS[0].id);
+    expect(
+      screen.getByRole('button', { name: words.orders.saveDraft }).hasAttribute('disabled'),
+    ).toBe(true);
+    await userEvent.selectOptions(field(words.orders.customer), DEMO_CUSTOMERS[0].id);
     await chooseProduct('VT-001', 2);
 
-    await userEvent.click(screen.getByRole('button', { name: 'Save draft' }));
+    await userEvent.click(screen.getByRole('button', { name: words.orders.saveDraft }));
 
     // saved: no price and no total in the request, and the order's own page opens with its number
     expect(drawn.api.createOrder).toHaveBeenCalledExactlyOnceWith({
@@ -237,29 +267,29 @@ describe('a new order', () => {
       extra: {},
     });
     const number = `DH-${String(DEMO_ORDERS.length + 1).padStart(5, '0')}`;
-    expect(await heading(`Order ${number}`)).toBeTruthy();
-    expect(screen.getByText('Draft')).toBeTruthy();
+    expect(await heading(orderTitle(number))).toBeTruthy();
+    expect(screen.getByText(words.orders.state.draft)).toBeTruthy();
 
     // changed again: the save names the version it was read at, and is not offered while nothing changed
-    const save = await screen.findByRole('button', { name: 'Save draft' });
+    const save = await screen.findByRole('button', { name: words.orders.saveDraft });
     expect(save.hasAttribute('disabled')).toBe(true);
     await chooseProduct('VT-002', 1);
     expect(save.hasAttribute('disabled')).toBe(false);
     await userEvent.click(save);
-    expect(await screen.findByText('Saved.')).toBeTruthy();
+    expect(await screen.findByText(words.orders.done.saved)).toBeTruthy();
     expect(drawn.api.saveOrder).toHaveBeenCalledOnce();
     expect(drawn.api.saveOrder.mock.calls[0]?.[2].version).toBe('o1');
 
     // confirmed: the page reads, and offers no change
     await userEvent.selectOptions(
-      await screen.findByLabelText('Driver'),
+      await screen.findByLabelText(words.orders.driver),
       'EMP-0005 · Võ Thanh Tùng',
     );
-    await userEvent.click(screen.getByRole('button', { name: 'Confirm' }));
-    expect(await screen.findByText('Confirmed')).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Save draft' })).toBeNull();
-    expect(screen.queryByRole('button', { name: 'Add line' })).toBeNull();
-    expect(screen.queryByLabelText('Quantity')).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: words.orders.confirmSubmit }));
+    expect(await screen.findByText(words.orders.state.confirmed)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: words.orders.saveDraft })).toBeNull();
+    expect(screen.queryByRole('button', { name: words.orders.addLine })).toBeNull();
+    expect(screen.queryByLabelText(words.orders.quantity)).toBeNull();
   });
 
   it('refuses a save over a customer or lines that are not there yet, and keeps New order for those who may make one', async () => {
@@ -270,9 +300,7 @@ describe('a new order', () => {
         }),
     });
 
-    expect((await heading('You cannot open this page')).textContent).toBe(
-      'You cannot open this page',
-    );
+    expect((await heading(words.forbidden.title)).textContent).toBe(words.forbidden.title);
   });
 
   it('says the lists could not be loaded, and that nothing is chosen yet', async () => {
@@ -281,16 +309,16 @@ describe('a new order', () => {
       override: (spied) => spied.listProducts.mockRejectedValue(new ApiError(503)),
     });
 
-    expect((await screen.findByRole('alert')).textContent).toContain('could not be loaded');
+    expect((await screen.findByRole('alert')).textContent).toContain(words.common.loadFailed);
   });
 
   it('a quantity cleared before the line is added counts as one, and a line whose product the list no longer holds is not drawn', async () => {
     openApp('/orders/new', { as: LAN });
-    await heading('New order');
+    await heading(words.orders.newTitle);
     await screen.findByRole('option', { name: /KH-001/ });
-    await userEvent.selectOptions(field('Product'), DEMO_PRODUCTS[1].id);
-    await userEvent.clear(field('Quantity'));
-    await userEvent.click(screen.getByRole('button', { name: 'Add line' }));
+    await userEvent.selectOptions(field(words.orders.product), DEMO_PRODUCTS[1].id);
+    await userEvent.clear(field(words.orders.quantity));
+    await userEvent.click(screen.getByRole('button', { name: words.orders.addLine }));
     expect(rows()[1]?.[3]).toBe('1');
     document.body.innerHTML = '';
 
@@ -301,19 +329,15 @@ describe('a new order', () => {
           (await original.listProducts()).filter((one) => one.id !== draftToday.lines[0].productId),
         ),
     });
-    await heading(`Order ${draftToday.number}`);
+    await heading(orderTitle(draftToday.number));
     await formReady();
-    expect(
-      screen.getByText('No lines yet. Choose a product and a quantity, then add the line.'),
-    ).toBeTruthy();
+    expect(screen.getByText(words.orders.noLines)).toBeTruthy();
   });
 
   it('says there are no lines before one is added', async () => {
     openApp('/orders/new', { as: LAN });
 
-    expect(
-      await screen.findByText('No lines yet. Choose a product and a quantity, then add the line.'),
-    ).toBeTruthy();
+    expect(await screen.findByText(words.orders.noLines)).toBeTruthy();
   });
 
   it('a save that fails says so and keeps what was typed', async () => {
@@ -321,21 +345,21 @@ describe('a new order', () => {
       as: LAN,
       override: (spied) => spied.createOrder.mockRejectedValue(new ApiError(503)),
     });
-    await heading('New order');
+    await heading(words.orders.newTitle);
     await screen.findByRole('option', { name: /KH-001/ });
-    await userEvent.selectOptions(field('Customer'), DEMO_CUSTOMERS[1].id);
+    await userEvent.selectOptions(field(words.orders.customer), DEMO_CUSTOMERS[1].id);
     await chooseProduct('VT-003', 4);
 
-    await userEvent.click(screen.getByRole('button', { name: 'Save draft' }));
+    await userEvent.click(screen.getByRole('button', { name: words.orders.saveDraft }));
 
-    expect((await screen.findByRole('alert')).textContent).toContain('was not saved');
-    expect((field('Customer') as HTMLSelectElement).value).toBe(DEMO_CUSTOMERS[1].id);
+    expect((await screen.findByRole('alert')).textContent).toContain(words.orders.saveFailed);
+    expect((field(words.orders.customer) as HTMLSelectElement).value).toBe(DEMO_CUSTOMERS[1].id);
     expect(rows()[1]?.[3]).toBe('4');
   });
 
   it('keeps a quantity within the most a line takes, and a line added again grows to it and no further', async () => {
     openApp('/orders/new', { as: LAN });
-    await heading('New order');
+    await heading(words.orders.newTitle);
     await screen.findByRole('option', { name: /KH-001/ });
 
     await chooseProduct('VT-001', 99_999);
@@ -358,14 +382,14 @@ describe('the order’s page on the cards', () => {
     openApp(at(draftToday), { as: LAN });
     await formReady();
     // the confirm panel draws after the drivers load, a call of its own the form does not wait for
-    await screen.findByRole('heading', { level: 3, name: 'Confirm the order' });
+    await screen.findByRole('heading', { level: 3, name: words.orders.confirm });
 
     expect(columnCount()).toBe(2);
-    expect(columnOf(block('Details'))).toBe(0);
-    expect(columnOf(block('Lines'))).toBe(0);
-    expect(columnOf(screen.getByRole('button', { name: 'Save draft' }))).toBe(0);
-    expect(columnOf(block('Confirm the order'))).toBe(1);
-    expect(columnOf(block('Cancel the order'))).toBe(1);
+    expect(columnOf(block(words.orders.details))).toBe(0);
+    expect(columnOf(block(words.orders.lines))).toBe(0);
+    expect(columnOf(screen.getByRole('button', { name: words.orders.saveDraft }))).toBe(0);
+    expect(columnOf(block(words.orders.confirm))).toBe(1);
+    expect(columnOf(block(words.orders.cancelOrder))).toBe(1);
   });
 
   it('A new order offers no step, so it is one column at the full width', async () => {
@@ -373,24 +397,28 @@ describe('the order’s page on the cards', () => {
     await formReady();
 
     expect(columnCount()).toBe(1);
-    expect(columnOf(block('Details'))).toBe(0);
-    expect(columnOf(block('Lines'))).toBe(0);
+    expect(columnOf(block(words.orders.details))).toBe(0);
+    expect(columnOf(block(words.orders.lines))).toBe(0);
   });
 
   it.each([
-    ['a confirmed order sent', sentToday, ['Cancel the order']],
-    ['a confirmed order whose request is gone', unsent, ['Send it again', 'Cancel the order']],
+    ['a confirmed order sent', sentToday, [words.orders.cancelOrder]],
+    [
+      'a confirmed order whose request is gone',
+      unsent,
+      [words.orders.sendAgain, words.orders.cancelOrder],
+    ],
     ['a cancelled order', cancelledOrder, []],
   ])(
     '%s puts its facts and lines left, its request and its steps right',
     async (_, order, steps) => {
       openApp(at(order), { as: LAN });
-      await heading(`Order ${order.number}`);
+      await heading(orderTitle(order.number));
 
       expect(columnCount()).toBe(2);
-      expect(columnOf(block('Details'))).toBe(0);
-      expect(columnOf(block('Lines'))).toBe(0);
-      expect(columnOf(block('Delivery request'))).toBe(1);
+      expect(columnOf(block(words.orders.details))).toBe(0);
+      expect(columnOf(block(words.orders.lines))).toBe(0);
+      expect(columnOf(block(words.orders.sentTitle))).toBe(1);
       // a step's panel draws after the drivers load, a call of its own the order's heading does not wait for
       for (const step of steps) {
         await screen.findByRole('heading', { level: 3, name: step });
@@ -406,10 +434,10 @@ describe('the order’s page on the cards', () => {
           user: { name: 'Xem', root: false, permissions: { 'orders.canView': true } },
         }),
     });
-    await heading(`Order ${draftToday.number}`);
+    await heading(orderTitle(draftToday.number));
 
-    expect(columnOf(block('Details'))).toBe(0);
-    expect(columnOf(block('Delivery request'))).toBe(1);
+    expect(columnOf(block(words.orders.details))).toBe(0);
+    expect(columnOf(block(words.orders.sentTitle))).toBe(1);
   });
 });
 
@@ -421,36 +449,44 @@ function cleanupPage() {
 describe('an order read', () => {
   it('A draft is shown in a form to change, with its confirm and its cancel; a confirmed order with its request, number, driver and day', async () => {
     openApp(at(draftToday), { as: LAN });
-    expect(await heading(`Order ${draftToday.number}`)).toBeTruthy();
+    expect(await heading(orderTitle(draftToday.number))).toBeTruthy();
     await formReady();
-    expect((field('Customer') as HTMLSelectElement).value).toBe(draftToday.customer.id);
+    expect((field(words.orders.customer) as HTMLSelectElement).value).toBe(draftToday.customer.id);
     expect(rows()[1]?.[0]).toContain(draftToday.lines[0].name);
     expect(
-      await screen.findByRole('heading', { level: 3, name: 'Confirm the order' }),
+      await screen.findByRole('heading', { level: 3, name: words.orders.confirm }),
     ).toBeTruthy();
-    expect(screen.getByRole('heading', { level: 3, name: 'Cancel the order' })).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 3, name: words.orders.cancelOrder })).toBeTruthy();
     cleanupPage();
 
     openApp(at(sentToday), { as: LAN });
-    expect(await heading(`Order ${sentToday.number}`)).toBeTruthy();
-    expect(screen.getByText('Confirmed')).toBeTruthy();
+    expect(await heading(orderTitle(sentToday.number))).toBeTruthy();
+    expect(screen.getByText(words.orders.state.confirmed)).toBeTruthy();
     expect(screen.getByText(sentToday.customer.name)).toBeTruthy();
-    expect(screen.getByText(`Phone: ${sentToday.customer.extra['phone'] as string}`)).toBeTruthy();
+    expect(
+      screen.getByText(
+        words.orders.phone.replace('{{phone}}', sentToday.customer.extra['phone'] as string),
+      ),
+    ).toBeTruthy();
     const link = screen.getByRole('link', { name: sentToday.request!.number });
     expect(link.getAttribute('href')).toBe(
       `/deliveries/${sentToday.request!.day}/${sentToday.request!.id}`,
     );
-    expect(screen.getByText(new RegExp(`Driver: ${sentToday.request!.driver.name}`))).toBeTruthy();
+    expect(
+      screen.getByText(words.orders.byDriver.replace('{{name}}', sentToday.request!.driver.name), {
+        exact: false,
+      }),
+    ).toBeTruthy();
     // it has a live request, so no second one is offered
-    expect(screen.queryByRole('heading', { level: 3, name: 'Send it again' })).toBeNull();
+    expect(screen.queryByRole('heading', { level: 3, name: words.orders.sendAgain })).toBeNull();
   });
 
   it('shows a cancelled order and a draft to someone who may only see as read, without a step to take', async () => {
     openApp(at(cancelledOrder), { as: LAN });
-    expect(await heading(`Order ${cancelledOrder.number}`)).toBeTruthy();
-    expect(screen.getByText('Cancelled')).toBeTruthy();
-    expect(screen.getByText('No delivery request.')).toBeTruthy();
-    expect(screen.queryByRole('button', { name: /^Cancel/ })).toBeNull();
+    expect(await heading(orderTitle(cancelledOrder.number))).toBeTruthy();
+    expect(screen.getByText(words.orders.state.cancelled)).toBeTruthy();
+    expect(screen.getByText(words.orders.noRequest)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: starting(words.orders.cancelOrder) })).toBeNull();
     cleanupPage();
 
     openApp(at(draftToday), {
@@ -460,25 +496,27 @@ describe('an order read', () => {
           user: { name: 'Xem', root: false, permissions: { 'orders.canView': true } },
         }),
     });
-    expect(await heading(`Đơn hàng ${draftToday.number}`)).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Lưu nháp' })).toBeNull();
-    expect(screen.queryByRole('heading', { level: 3, name: 'Xác nhận đơn hàng' })).toBeNull();
+    expect(
+      await heading(wordsVi.orders.orderTitle.replace('{{number}}', draftToday.number)),
+    ).toBeTruthy();
+    expect(screen.queryByRole('button', { name: wordsVi.orders.saveDraft })).toBeNull();
+    expect(screen.queryByRole('heading', { level: 3, name: wordsVi.orders.confirm })).toBeNull();
   });
 
   it('says it could not be loaded when the order is not there', async () => {
     openApp(`/orders/${DEMO_TODAY}/00000000-0000-4000-8000-000000000999`, { as: LAN });
 
-    expect((await screen.findByRole('alert')).textContent).toContain('could not be loaded');
+    expect((await screen.findByRole('alert')).textContent).toContain(words.common.loadFailed);
   });
 });
 
 describe('confirming an order', () => {
-  const driverField = () => screen.findByLabelText('Driver');
-  const confirmButton = () => screen.getByRole('button', { name: 'Confirm' });
+  const driverField = () => screen.findByLabelText(words.orders.driver);
+  const confirmButton = () => screen.getByRole('button', { name: words.orders.confirmSubmit });
 
   it('Confirm asks for the driver, among the people allowed to deliver who have not left, and the day, today unless another is picked, never before the order’s; the order is confirmed and its request made, and the order shows the request’s number, driver and day', async () => {
     const drawn = openApp(at(draftToday), { as: LAN });
-    await heading(`Order ${draftToday.number}`);
+    await heading(orderTitle(draftToday.number));
     await formReady();
 
     // the drivers: those allowed to deliver, not the office, the warehouse or the one who left
@@ -486,9 +524,9 @@ describe('confirming an order', () => {
       within(await driverField())
         .getAllByRole('option')
         .map((option) => option.textContent),
-    ).toEqual(['Choose a driver', 'EMP-0005 · Võ Thanh Tùng', 'EMP-0006 · Đặng Hoài Nam']);
+    ).toEqual([words.orders.chooseDriver, 'EMP-0005 · Võ Thanh Tùng', 'EMP-0006 · Đặng Hoài Nam']);
     // today is chosen, and nothing is sent before a driver is
-    const dayField = await screen.findByLabelText<HTMLInputElement>('Delivery day');
+    const dayField = await screen.findByLabelText<HTMLInputElement>(words.orders.sendDay);
     expect(dayField.value).toBe(DEMO_TODAY);
     expect(confirmButton().hasAttribute('disabled')).toBe(true);
 
@@ -508,19 +546,25 @@ describe('confirming an order', () => {
     });
     const number = `GH-${String(DEMO_DELIVERIES.length + 1).padStart(5, '0')}`;
     expect((await screen.findByRole('alert')).textContent).toBe(
-      `Confirmed. Delivery request ${number} is made.`,
+      words.orders.done.confirmed.replace('{{number}}', number),
     );
-    expect(screen.getByText('Confirmed')).toBeTruthy();
+    expect(screen.getByText(words.orders.state.confirmed)).toBeTruthy();
     expect(screen.getByRole('link', { name: number })).toBeTruthy();
-    expect(screen.getByText(new RegExp(`Driver: ${driver.name}`))).toBeTruthy();
-    expect(screen.getByText(new RegExp(`For ${day(addDays(DEMO_TODAY, 1))}`))).toBeTruthy();
+    expect(
+      screen.getByText(words.orders.byDriver.replace('{{name}}', driver.name), { exact: false }),
+    ).toBeTruthy();
+    expect(
+      screen.getByText(words.orders.forDay.replace('{{day}}', day(addDays(DEMO_TODAY, 1))), {
+        exact: false,
+      }),
+    ).toBeTruthy();
   });
 
   it('keeps the order’s own day as the least when it is later than today, and a day that is cleared sends nothing', async () => {
     openApp(at(draftOlder), { as: LAN });
-    await heading(`Order ${draftOlder.number}`);
+    await heading(orderTitle(draftOlder.number));
     await formReady();
-    const dayField = await screen.findByLabelText<HTMLInputElement>('Delivery day');
+    const dayField = await screen.findByLabelText<HTMLInputElement>(words.orders.sendDay);
     expect(dayField.min).toBe(draftOlder.day);
     expect(dayField.value).toBe(DEMO_TODAY);
     await userEvent.selectOptions(await driverField(), 'EMP-0005 · Võ Thanh Tùng');
@@ -537,10 +581,10 @@ describe('confirming an order', () => {
       override: (spied) =>
         spied.getOrder.mockResolvedValue({ order: { ...draftToday, day: later }, version: 'o1' }),
     });
-    await heading(`Order ${draftToday.number}`);
+    await heading(orderTitle(draftToday.number));
     await formReady();
 
-    const dayField = await screen.findByLabelText<HTMLInputElement>('Delivery day');
+    const dayField = await screen.findByLabelText<HTMLInputElement>(words.orders.sendDay);
     expect(dayField.value).toBe(later);
     fireEvent.submit(dayField.closest('form')!);
 
@@ -549,67 +593,67 @@ describe('confirming an order', () => {
 
   it('holds Confirm until what was changed is saved', async () => {
     openApp(at(draftToday), { as: LAN });
-    await heading(`Order ${draftToday.number}`);
+    await heading(orderTitle(draftToday.number));
     await formReady();
     await userEvent.selectOptions(await driverField(), 'EMP-0005 · Võ Thanh Tùng');
     expect(confirmButton().hasAttribute('disabled')).toBe(false);
 
     await userEvent.click(
-      await screen.findByRole('button', { name: 'Remove ' + draftToday.lines[0].name }),
+      await screen.findByRole('button', {
+        name: words.orders.removeLine.replace('{{name}}', draftToday.lines[0].name),
+      }),
     );
-    await userEvent.selectOptions(field('Product'), DEMO_PRODUCTS[1].id);
-    await userEvent.click(screen.getByRole('button', { name: 'Add line' }));
+    await userEvent.selectOptions(field(words.orders.product), DEMO_PRODUCTS[1].id);
+    await userEvent.click(screen.getByRole('button', { name: words.orders.addLine }));
 
     expect(confirmButton().hasAttribute('disabled')).toBe(true);
-    expect(screen.getByText('Save your changes first.')).toBeTruthy();
+    expect(screen.getByText(words.orders.saveFirst)).toBeTruthy();
   });
 
   it('With no one allowed to deliver, Confirm says to ask the admin', async () => {
     const drawn = openApp(at(draftToday), { as: LAN, noDrivers: true });
-    await heading(`Order ${draftToday.number}`);
+    await heading(orderTitle(draftToday.number));
     await formReady();
 
-    expect((await screen.findByText(/No one is allowed to deliver yet/)).textContent).toContain(
-      'Ask the admin',
-    );
-    expect(screen.queryByRole('button', { name: 'Confirm' })).toBeNull();
+    expect(await screen.findByText(words.orders.noDrivers)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: words.orders.confirmSubmit })).toBeNull();
     expect(drawn.api.confirmOrder).not.toHaveBeenCalled();
   });
 
   it('A confirm that fails says so and keeps what was typed', async () => {
     openApp(at(draftToday), { as: LAN, cue: 'confirmOrder:503' });
-    await heading(`Order ${draftToday.number}`);
+    await heading(orderTitle(draftToday.number));
     await formReady();
     await userEvent.selectOptions(await driverField(), 'EMP-0005 · Võ Thanh Tùng');
 
     await userEvent.click(confirmButton());
 
-    expect((await screen.findByRole('alert')).textContent).toContain('Nothing was changed');
+    expect((await screen.findByRole('alert')).textContent).toContain(words.orders.stepFailed);
     expect(((await driverField()) as HTMLSelectElement).selectedOptions[0]?.textContent).toBe(
       'EMP-0005 · Võ Thanh Tùng',
     );
-    expect(screen.getByText('Draft')).toBeTruthy();
+    expect(screen.getByText(words.orders.state.draft)).toBeTruthy();
   });
 
   it('A save or a confirm over someone else’s newer one is refused, what was typed kept, and the page offers theirs', async () => {
     openApp(at(draftToday), { as: LAN, cue: 'saveOrder:409' });
-    await heading(`Order ${draftToday.number}`);
+    await heading(orderTitle(draftToday.number));
     await formReady();
     await userEvent.click(
-      await screen.findByRole('button', { name: 'Remove ' + draftToday.lines[0].name }),
+      await screen.findByRole('button', {
+        name: words.orders.removeLine.replace('{{name}}', draftToday.lines[0].name),
+      }),
     );
-    await userEvent.selectOptions(field('Product'), DEMO_PRODUCTS[2].id);
-    await userEvent.click(screen.getByRole('button', { name: 'Add line' }));
+    await userEvent.selectOptions(field(words.orders.product), DEMO_PRODUCTS[2].id);
+    await userEvent.click(screen.getByRole('button', { name: words.orders.addLine }));
 
-    await userEvent.click(screen.getByRole('button', { name: 'Save draft' }));
+    await userEvent.click(screen.getByRole('button', { name: words.orders.saveDraft }));
 
-    expect((await screen.findByRole('alert')).textContent).toContain(
-      'Someone saved this order first',
-    );
+    expect((await screen.findByRole('alert')).textContent).toContain(words.orders.conflict);
     // what was typed is still in the form
     expect(rows()[1]?.[0]).toContain(DEMO_PRODUCTS[2].name);
 
-    await userEvent.click(screen.getByRole('button', { name: 'Show theirs' }));
+    await userEvent.click(screen.getByRole('button', { name: words.orders.showTheirs }));
 
     await waitFor(() => expect(screen.queryByRole('alert')).toBeNull());
     // the form is drawn again once the customers and the products are read again
@@ -618,18 +662,16 @@ describe('confirming an order', () => {
 
   it('A confirm over someone else’s newer one is refused too, and theirs is offered', async () => {
     openApp(at(draftToday), { as: LAN, cue: 'confirmOrder:409' });
-    await heading(`Order ${draftToday.number}`);
+    await heading(orderTitle(draftToday.number));
     await formReady();
     await userEvent.selectOptions(await driverField(), 'EMP-0005 · Võ Thanh Tùng');
 
     await userEvent.click(confirmButton());
 
-    expect((await screen.findByRole('alert')).textContent).toContain(
-      'Someone saved this order first',
-    );
-    await userEvent.click(screen.getByRole('button', { name: 'Show theirs' }));
+    expect((await screen.findByRole('alert')).textContent).toContain(words.orders.conflict);
+    await userEvent.click(screen.getByRole('button', { name: words.orders.showTheirs }));
     await waitFor(() => expect(screen.queryByRole('alert')).toBeNull());
-    expect(screen.getByText('Draft')).toBeTruthy();
+    expect(screen.getByText(words.orders.state.draft)).toBeTruthy();
   });
 
   it('reads the order again when the refusal carried no newer one', async () => {
@@ -637,16 +679,18 @@ describe('confirming an order', () => {
       as: LAN,
       override: (spied) => spied.saveOrder.mockResolvedValue({ kind: 'conflict', current: null }),
     });
-    await heading(`Order ${draftToday.number}`);
+    await heading(orderTitle(draftToday.number));
     await formReady();
     await userEvent.click(
-      await screen.findByRole('button', { name: 'Remove ' + draftToday.lines[0].name }),
+      await screen.findByRole('button', {
+        name: words.orders.removeLine.replace('{{name}}', draftToday.lines[0].name),
+      }),
     );
-    await userEvent.selectOptions(field('Product'), DEMO_PRODUCTS[2].id);
-    await userEvent.click(screen.getByRole('button', { name: 'Add line' }));
-    await userEvent.click(screen.getByRole('button', { name: 'Save draft' }));
+    await userEvent.selectOptions(field(words.orders.product), DEMO_PRODUCTS[2].id);
+    await userEvent.click(screen.getByRole('button', { name: words.orders.addLine }));
+    await userEvent.click(screen.getByRole('button', { name: words.orders.saveDraft }));
 
-    await userEvent.click(await screen.findByRole('button', { name: 'Show theirs' }));
+    await userEvent.click(await screen.findByRole('button', { name: words.orders.showTheirs }));
 
     await waitFor(() => expect(drawn.api.getOrder).toHaveBeenCalledTimes(2));
     // the form is drawn again once the customers and the products are read again
@@ -655,17 +699,19 @@ describe('confirming an order', () => {
 
   it('A save that fails keeps what was typed', async () => {
     openApp(at(draftToday), { as: LAN, cue: 'saveOrder:503' });
-    await heading(`Order ${draftToday.number}`);
+    await heading(orderTitle(draftToday.number));
     await formReady();
     await userEvent.click(
-      await screen.findByRole('button', { name: 'Remove ' + draftToday.lines[0].name }),
+      await screen.findByRole('button', {
+        name: words.orders.removeLine.replace('{{name}}', draftToday.lines[0].name),
+      }),
     );
-    await userEvent.selectOptions(field('Product'), DEMO_PRODUCTS[2].id);
-    await userEvent.click(screen.getByRole('button', { name: 'Add line' }));
+    await userEvent.selectOptions(field(words.orders.product), DEMO_PRODUCTS[2].id);
+    await userEvent.click(screen.getByRole('button', { name: words.orders.addLine }));
 
-    await userEvent.click(screen.getByRole('button', { name: 'Save draft' }));
+    await userEvent.click(screen.getByRole('button', { name: words.orders.saveDraft }));
 
-    expect((await screen.findByRole('alert')).textContent).toContain('was not saved');
+    expect((await screen.findByRole('alert')).textContent).toContain(words.orders.saveFailed);
     expect(rows()[1]?.[0]).toContain(DEMO_PRODUCTS[2].name);
   });
 });
@@ -673,20 +719,24 @@ describe('confirming an order', () => {
 describe('cancelling and sending again', () => {
   it('The office cancels a draft, or a confirmed order whose request still waits, after a check; its request is cancelled with it, and the order stays in the list as cancelled, under its number', async () => {
     const drawn = openApp(at(sentToday), { as: LAN });
-    await heading(`Order ${sentToday.number}`);
+    await heading(orderTitle(sentToday.number));
 
     // a check first: nothing is cancelled by the first press
-    await userEvent.click(screen.getByRole('button', { name: 'Cancel the order' }));
+    await userEvent.click(screen.getByRole('button', { name: words.orders.cancelOrder }));
     expect(drawn.api.cancelOrder).not.toHaveBeenCalled();
-    await userEvent.click(screen.getByRole('button', { name: 'No, keep it' }));
-    await userEvent.click(screen.getByRole('button', { name: 'Cancel the order' }));
-    await userEvent.click(screen.getByRole('button', { name: `Yes, cancel ${sentToday.number}` }));
+    await userEvent.click(screen.getByRole('button', { name: words.orders.keep }));
+    await userEvent.click(screen.getByRole('button', { name: words.orders.cancelOrder }));
+    await userEvent.click(
+      screen.getByRole('button', {
+        name: words.orders.cancelOrderConfirm.replace('{{number}}', sentToday.number),
+      }),
+    );
 
     expect(drawn.api.cancelOrder).toHaveBeenCalledExactlyOnceWith(sentToday.day, sentToday.id, {
       version: 'o1',
     });
-    expect((await screen.findByRole('alert')).textContent).toBe('The order is cancelled.');
-    expect(screen.getByText('Cancelled')).toBeTruthy();
+    expect((await screen.findByRole('alert')).textContent).toBe(words.orders.done.cancelled);
+    expect(screen.getByText(words.orders.state.cancelled)).toBeTruthy();
     // its request was cancelled with it
     const request = await drawn.api.getDelivery(sentToday.request!.day, sentToday.request!.id);
     expect(request.request.state).toBe('cancelled');
@@ -698,34 +748,36 @@ describe('cancelling and sending again', () => {
 
   it('cancels a draft the same way, and says when the cancel did not go through', async () => {
     openApp(at(draftToday), { as: LAN, cue: 'cancelOrder:503' });
-    await heading(`Order ${draftToday.number}`);
+    await heading(orderTitle(draftToday.number));
     await formReady();
-    await userEvent.click(screen.getByRole('button', { name: 'Cancel the order' }));
+    await userEvent.click(screen.getByRole('button', { name: words.orders.cancelOrder }));
 
-    await userEvent.click(screen.getByRole('button', { name: `Yes, cancel ${draftToday.number}` }));
+    await userEvent.click(
+      screen.getByRole('button', {
+        name: words.orders.cancelOrderConfirm.replace('{{number}}', draftToday.number),
+      }),
+    );
 
-    expect((await screen.findByRole('alert')).textContent).toContain('Nothing was changed');
-    expect(screen.getByText('Draft')).toBeTruthy();
+    expect((await screen.findByRole('alert')).textContent).toContain(words.orders.stepFailed);
+    expect(screen.getByText(words.orders.state.draft)).toBeTruthy();
   });
 
   it('The office cancels a waiting request after a check; the order stays confirmed and offers to send it again, to a driver and a day, as a new request with a new number', async () => {
     const drawn = openApp(at(unsent), { as: LAN });
-    await heading(`Order ${unsent.number}`);
+    await heading(orderTitle(unsent.number));
 
-    expect(screen.getByText('Confirmed')).toBeTruthy();
-    expect(
-      screen.getByText('Its delivery request was cancelled. Send it again to a driver and a day.'),
-    ).toBeTruthy();
+    expect(screen.getByText(words.orders.state.confirmed)).toBeTruthy();
+    expect(screen.getByText(words.orders.notSent)).toBeTruthy();
     await userEvent.selectOptions(
-      await screen.findByLabelText('Driver'),
+      await screen.findByLabelText(words.orders.driver),
       'EMP-0006 · Đặng Hoài Nam',
     );
-    await userEvent.click(screen.getByRole('button', { name: 'Send again' }));
+    await userEvent.click(screen.getByRole('button', { name: words.orders.sendAgainSubmit }));
 
     const number = `GH-${String(DEMO_DELIVERIES.length + 1).padStart(5, '0')}`;
     expect(drawn.api.sendOrder).toHaveBeenCalledOnce();
     expect((await screen.findByRole('alert')).textContent).toBe(
-      `Sent again. Delivery request ${number} is made.`,
+      words.orders.done.sent.replace('{{number}}', number),
     );
     expect(screen.getByRole('link', { name: number })).toBeTruthy();
     // the old request keeps its own number
@@ -733,7 +785,7 @@ describe('cancelling and sending again', () => {
     expect(
       DEMO_DELIVERIES.some((one) => one.order.id === unsent.id && one.state === 'cancelled'),
     ).toBe(true);
-    expect(screen.queryByRole('heading', { level: 3, name: 'Send it again' })).toBeNull();
+    expect(screen.queryByRole('heading', { level: 3, name: words.orders.sendAgain })).toBeNull();
   });
 });
 
@@ -741,22 +793,22 @@ describe('a draft read at the prices it was saved at', () => {
   const draftYesterday = DEMO_ORDERS.find(
     (one) => one.day === addDays(DEMO_TODAY, -1) && one.state === 'draft',
   )!;
-  const MOVED = 'Now 95,000: saving takes the new price.';
+  const MOVED = words.orders.priceMoved.replace('{{price}}', '95,000');
 
   it('A saved draft’s lines are drawn at the prices they were saved at, never at the list’s prices today, and its total is theirs', async () => {
     openApp(at(draftYesterday), { as: LAN });
-    await heading(`Order ${draftYesterday.number}`);
+    await heading(orderTitle(draftYesterday.number));
     await formReady();
 
     // the cement was saved at 90,000 and the list now says 95,000
     expect(rows()[1]?.slice(0, 5)).toEqual([
       'VT-001 · Xi măng PCB40',
       'bao',
-      '90,000Now 95,000: saving takes the new price.',
+      `90,000${MOVED}`,
       '20',
       '1,800,000',
     ]);
-    expect(rows().at(-1)).toEqual(['Total', money(draftYesterday.total), '']);
+    expect(rows().at(-1)).toEqual([words.orders.total, money(draftYesterday.total), '']);
     expect(draftYesterday.total).toBe(1_800_000 + 5 * 410_000);
   });
 
@@ -768,13 +820,17 @@ describe('a draft read at the prices it was saved at', () => {
     expect(rows()[1]?.[2]).toContain(MOVED);
     expect(rows()[2]?.[2]).toBe('410,000');
     // a moved price is a change a save makes, though nothing was typed
-    expect(screen.getByRole('button', { name: 'Save draft' }).hasAttribute('disabled')).toBe(false);
+    expect(
+      screen.getByRole('button', { name: words.orders.saveDraft }).hasAttribute('disabled'),
+    ).toBe(false);
     cleanupPage();
 
     openApp(at(draftToday), { as: LAN });
     await formReady();
-    expect(screen.queryByText(/saving takes the new price/)).toBeNull();
-    expect(screen.getByRole('button', { name: 'Save draft' }).hasAttribute('disabled')).toBe(true);
+    expect(screen.queryByText(MOVED)).toBeNull();
+    expect(
+      screen.getByRole('button', { name: words.orders.saveDraft }).hasAttribute('disabled'),
+    ).toBe(true);
   });
 
   it('A save keeps the extra keys the form never shows', async () => {
@@ -787,13 +843,13 @@ describe('a draft read at the prices it was saved at', () => {
           return { ...doc, order: { ...doc.order, extra: kept } };
         }),
     });
-    await heading(`Order ${draftToday.number}`);
+    await heading(orderTitle(draftToday.number));
     await formReady();
-    await userEvent.selectOptions(field('Customer'), DEMO_CUSTOMERS[1].id);
+    await userEvent.selectOptions(field(words.orders.customer), DEMO_CUSTOMERS[1].id);
 
-    await userEvent.click(screen.getByRole('button', { name: 'Save draft' }));
+    await userEvent.click(screen.getByRole('button', { name: words.orders.saveDraft }));
 
-    expect(await screen.findByText('Saved.')).toBeTruthy();
+    expect(await screen.findByText(words.orders.done.saved)).toBeTruthy();
     expect(drawn.api.saveOrder.mock.calls[0]?.[2].extra).toEqual(kept);
   });
 
@@ -801,10 +857,13 @@ describe('a draft read at the prices it was saved at', () => {
     const fulfilled = DEMO_ORDERS.find((one) => one.state === 'fulfilled')!;
     for (const order of [sentToday, fulfilled, cancelledOrder]) {
       openApp(at(order), { as: LAN });
-      await heading(`Order ${order.number}`);
-      expect(screen.queryByRole('button', { name: 'Save draft' }), order.state).toBeNull();
-      expect(screen.queryByRole('button', { name: 'Add line' }), order.state).toBeNull();
-      expect(screen.queryByText(/saving takes the new price/), order.state).toBeNull();
+      await heading(orderTitle(order.number));
+      expect(
+        screen.queryByRole('button', { name: words.orders.saveDraft }),
+        order.state,
+      ).toBeNull();
+      expect(screen.queryByRole('button', { name: words.orders.addLine }), order.state).toBeNull();
+      expect(screen.queryByText(MOVED), order.state).toBeNull();
       cleanupPage();
     }
   });

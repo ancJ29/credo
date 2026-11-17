@@ -10,8 +10,25 @@ import { demoImportFile } from '../../importDemo';
 import { readFirstSheet, writeWorkbook } from '../../importFile';
 import { columnsOf, headingOf } from '../../importSheet';
 
+const words = DICTIONARIES.en;
+const wordsVi = DICTIONARIES.vi;
+/** A word at the start of a label, the star of a required field allowed after it. */
+const escaped = (text: string) => text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+const starting = (word: string) => new RegExp(`^${escaped(word)}`);
+/** A word with a count in it, the count any number. */
+const withCount = (word: string) =>
+  new RegExp(`^${escaped(word).replace('\\{\\{count\\}\\}', '\\d+')}$`);
+/** A word that begins with a count, the count any number. */
+const counted = (word: string) => new RegExp(`^\\d+${escaped(word.split('{{count}}')[1] ?? '')}$`);
+const summary = (held: number, total: number, refused: number) =>
+  words.import.summary
+    .replace('{{held}}', String(held))
+    .replace('{{total}}', String(total))
+    .replace('{{refused}}', String(refused));
+const chosen = (name: string) => words.import.chosen.replace('{{name}}', name);
+
 /** The file field's input. */
-const field = () => screen.getByLabelText<HTMLInputElement>(/^Excel file/);
+const field = () => screen.getByLabelText<HTMLInputElement>(starting(words.import.file));
 
 /** A file of staff in English: the company's headings, then these rows by column key. */
 async function staffFile(rows: Record<string, string>[], name = 'staff.xlsx') {
@@ -31,7 +48,7 @@ async function staffFile(rows: Record<string, string>[], name = 'staff.xlsx') {
 /** Chooses the file and presses “Read the file”. */
 async function chooseAndRead(file: File) {
   await userEvent.upload(await waitFor(field), file);
-  await userEvent.click(screen.getByRole('button', { name: 'Read the file' }));
+  await userEvent.click(screen.getByRole('button', { name: words.import.read }));
 }
 
 const saved: { blob: Blob; name: string }[] = [];
@@ -62,7 +79,7 @@ describe('the import page', () => {
       saved.length = 0;
       const drawn = openApp('/staff/import', { language });
       const button = await screen.findByRole('button', {
-        name: language === 'en' ? 'Download the template' : 'Tải tệp mẫu',
+        name: language === 'en' ? words.import.template : wordsVi.import.template,
       });
       await userEvent.click(button);
 
@@ -81,26 +98,35 @@ describe('the import page', () => {
     const { api } = openApp('/staff/import');
     await chooseAndRead(await demoImportFile('en', 'import'));
 
-    expect(await screen.findByRole('heading', { level: 2, name: 'Check the rows' })).toBeTruthy();
-    expect(screen.getByText(/3 of 8 rows will be added\. 5 will not/)).toBeTruthy();
+    expect(
+      await screen.findByRole('heading', { level: 2, name: words.import.previewTitle }),
+    ).toBeTruthy();
+    expect(screen.getByText(summary(3, 8, 5))).toBeTruthy();
     expect(api.importEmployees).not.toHaveBeenCalled();
     const text = screen.getByRole('table').textContent ?? '';
     for (const reason of [
-      'The code “EMP-0002” already belongs to someone in the company.',
-      'The name is empty or longer than 200 characters.',
-      'The company has no department “Kế toán”.',
-      'The code “EMP-0100” is given by an earlier row of this file.',
-      '“Dependants” does not fit',
+      words.import.refusedCodeTaken.replace('{{code}}', 'EMP-0002'),
+      words.import.refusedName,
+      words.import.refusedDepartment.replace('{{name}}', 'Kế toán'),
+      words.import.refusedCodeTwice.replace('{{code}}', 'EMP-0100'),
+      words.import.refusedField
+        .replace('{{field}}', 'Dependants')
+        .replace('{{why}}', words.fields.invalidNumber),
     ]) {
       expect(text).toContain(reason);
     }
-    expect(text).toContain('Numbered when added');
+    expect(text).toContain(words.import.numbered);
 
-    await userEvent.click(screen.getByRole('button', { name: 'Add the people (3)' }));
+    await userEvent.click(
+      screen.getByRole('button', { name: words.import.add.replace('{{count}}', '3') }),
+    );
 
-    expect(await screen.findByRole('heading', { level: 2, name: 'People added' })).toBeTruthy();
-    expect(screen.getByText('3 people were added.')).toBeTruthy();
-    expect(screen.queryByText(/rows were not added/)).toBeNull();
+    expect(
+      await screen.findByRole('heading', { level: 2, name: words.import.doneTitle }),
+    ).toBeTruthy();
+    expect(screen.getByText(words.import.doneAdded.replace('{{count}}', '3'))).toBeTruthy();
+    expect(screen.queryByText(counted(words.import.doneRefused))).toBeNull();
+    expect(screen.queryByText(counted(words.import.doneInvalid))).toBeNull();
     expect(api.importEmployees).toHaveBeenCalledTimes(1);
     expect(vi.mocked(api.importEmployees).mock.calls[0]?.[0].map((row) => row.name)).toEqual([
       'Mai Linh',
@@ -120,22 +146,24 @@ describe('the import page', () => {
     );
 
     const text = (await screen.findByRole('table')).textContent ?? '';
-    expect(text).toContain('The code “a b” is not 2 to 20 letters A to Z, digits or hyphens.');
-    expect(text).toContain('The company has no position “Sếp”.');
+    expect(text).toContain(words.import.refusedCodeInvalid.replace('{{code}}', 'a b'));
+    expect(text).toContain(words.import.refusedPosition.replace('{{name}}', 'Sếp'));
     expect(
-      screen.getByRole('button', { name: 'Add the people (0)' }).hasAttribute('disabled'),
+      screen
+        .getByRole('button', { name: words.import.add.replace('{{count}}', '0') })
+        .hasAttribute('disabled'),
     ).toBe(true);
   });
 
   it('A file taken back out of the field leaves nothing chosen', async () => {
     openApp('/staff/import');
     await userEvent.upload(await waitFor(field), await demoImportFile('en', 'import'));
-    expect(screen.getByText('Chosen: import.xlsx')).toBeTruthy();
+    expect(screen.getByText(chosen('import.xlsx'))).toBeTruthy();
 
     await userEvent.upload(field(), []);
 
-    expect(screen.queryByText(/^Chosen:/)).toBeNull();
-    expect(screen.getByRole('button', { name: 'Read the file' }).hasAttribute('disabled')).toBe(
+    expect(screen.queryByText(starting(chosen('')))).toBeNull();
+    expect(screen.getByRole('button', { name: words.import.read }).hasAttribute('disabled')).toBe(
       true,
     );
   });
@@ -156,12 +184,14 @@ describe('the import page', () => {
     });
     const many = Array.from({ length: 150 }, (_, at) => ({ name: `Người ${at}` }));
     await chooseAndRead(await staffFile(many));
-    await userEvent.click(await screen.findByRole('button', { name: 'Add the people (150)' }));
+    await userEvent.click(
+      await screen.findByRole('button', { name: words.import.add.replace('{{count}}', '150') }),
+    );
 
-    expect(await screen.findByText('149 people were added.')).toBeTruthy();
     expect(
-      screen.getByText('1 rows were not added: their codes were taken meanwhile.'),
+      await screen.findByText(words.import.doneAdded.replace('{{count}}', '149')),
     ).toBeTruthy();
+    expect(screen.getByText(words.import.doneRefused.replace('{{count}}', '1'))).toBeTruthy();
     expect(vi.mocked(api.importEmployees).mock.calls.map((call) => call[0].length)).toEqual([
       100, 50,
     ]);
@@ -186,16 +216,16 @@ describe('the import page', () => {
     await chooseAndRead(
       await staffFile([{ name: 'Một' }, { name: 'Hai' }, { name: 'Ba' }, { name: 'Bốn' }]),
     );
-    await userEvent.click(await screen.findByRole('button', { name: 'Add the people (4)' }));
+    await userEvent.click(
+      await screen.findByRole('button', { name: words.import.add.replace('{{count}}', '4') }),
+    );
 
-    expect(await screen.findByText('2 people were added.')).toBeTruthy();
-    expect(
-      screen.getByText('1 rows were not added: their codes were taken meanwhile.'),
-    ).toBeTruthy();
+    expect(await screen.findByText(words.import.doneAdded.replace('{{count}}', '2'))).toBeTruthy();
+    expect(screen.getByText(words.import.doneRefused.replace('{{count}}', '1'))).toBeTruthy();
     const busy = within(screen.getByRole('table'));
     expect(busy.getByText('Hai')).toBeTruthy();
     expect(busy.getByText('3')).toBeTruthy();
-    expect(busy.getByText('Not added: the system was busy. Try this row again.')).toBeTruthy();
+    expect(busy.getByText(words.import.busy)).toBeTruthy();
     expect(busy.queryByText('Một')).toBeNull();
     expect(busy.queryByText('Ba')).toBeNull();
   });
@@ -220,9 +250,13 @@ describe('the import page', () => {
       ...Array.from({ length: 150 }, (_, at) => ({ name: `Người ${at}` })),
     ];
     await chooseAndRead(await staffFile(rows));
-    await userEvent.click(await screen.findByRole('button', { name: 'Add the people (150)' }));
+    await userEvent.click(
+      await screen.findByRole('button', { name: words.import.add.replace('{{count}}', '150') }),
+    );
 
-    expect(await screen.findByText('149 people were added.')).toBeTruthy();
+    expect(
+      await screen.findByText(words.import.doneAdded.replace('{{count}}', '149')),
+    ).toBeTruthy();
     const busy = within(screen.getByRole('table'));
     expect(busy.getByText('Người 105')).toBeTruthy();
     expect(busy.getByText('108')).toBeTruthy();
@@ -244,19 +278,25 @@ describe('the import page', () => {
     await chooseAndRead(
       await staffFile(Array.from({ length: 150 }, (_, at) => ({ name: `Người ${at}` }))),
     );
-    await userEvent.click(await screen.findByRole('button', { name: 'Add the people (150)' }));
-
-    expect(await screen.findByText('100 people were added.')).toBeTruthy();
-    expect(screen.getByText(/will not be sent again/).textContent).toMatch(
-      /adds a second person for each row that has no code/,
+    await userEvent.click(
+      await screen.findByRole('button', { name: words.import.add.replace('{{count}}', '150') }),
     );
-    expect(screen.queryByRole('button', { name: /^Add the people/ })).toBeNull();
 
-    await userEvent.click(screen.getByRole('button', { name: 'Add the rest (50)' }));
+    expect(
+      await screen.findByText(words.import.doneAdded.replace('{{count}}', '100')),
+    ).toBeTruthy();
+    expect(screen.getByText(words.import.failedPart)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: withCount(words.import.add) })).toBeNull();
 
-    expect(await screen.findByText('150 people were added.')).toBeTruthy();
-    expect(screen.queryByText(/will not be sent again/)).toBeNull();
-    expect(screen.queryByRole('button', { name: /^Add the rest/ })).toBeNull();
+    await userEvent.click(
+      screen.getByRole('button', { name: words.import.addRest.replace('{{count}}', '50') }),
+    );
+
+    expect(
+      await screen.findByText(words.import.doneAdded.replace('{{count}}', '150')),
+    ).toBeTruthy();
+    expect(screen.queryByText(words.import.failedPart)).toBeNull();
+    expect(screen.queryByRole('button', { name: withCount(words.import.addRest) })).toBeNull();
     const sent = vi.mocked(api.importEmployees).mock.calls.map((call) => call[0]);
     expect(sent.map((rows) => rows.length)).toEqual([100, 50, 50]);
     expect(sent[2]?.[0]?.name).toBe('Người 100');
@@ -267,38 +307,44 @@ describe('the import page', () => {
     await chooseAndRead(await staffFile([{ name: 'Một', code: 'root' }, { name: 'Hai' }]));
 
     const text = (await screen.findByRole('table')).textContent ?? '';
-    expect(text).toContain('The code “ROOT” already belongs to someone in the company.');
-    expect(screen.getByRole('button', { name: 'Add the people (1)' })).toBeTruthy();
+    expect(text).toContain(words.import.refusedCodeTaken.replace('{{code}}', 'ROOT'));
+    expect(
+      screen.getByRole('button', { name: words.import.add.replace('{{count}}', '1') }),
+    ).toBeTruthy();
   });
 
   it('Choose another file is disabled while a send runs', async () => {
     const send = pendingSend();
     openApp('/staff/import', { override: send.override });
     await chooseAndRead(await staffFile([{ name: 'Một' }, { name: 'Hai' }]));
-    await userEvent.click(await screen.findByRole('button', { name: 'Add the people (2)' }));
+    await userEvent.click(
+      await screen.findByRole('button', { name: words.import.add.replace('{{count}}', '2') }),
+    );
     await waitFor(() => expect(send.calls).toHaveLength(1));
 
     expect(
-      screen.getByRole('button', { name: 'Choose another file' }).hasAttribute('disabled'),
+      screen.getByRole('button', { name: words.import.another }).hasAttribute('disabled'),
     ).toBe(true);
     send.answer(0);
-    await screen.findByText('2 people were added.');
+    await screen.findByText(words.import.doneAdded.replace('{{count}}', '2'));
   });
 
   it('A press on Choose another file while a send runs leaves the file held on screen, and the results are read against the rows sent', async () => {
     const send = pendingSend((row) => row.name === 'Hai');
     openApp('/staff/import', { override: send.override });
     await chooseAndRead(await staffFile([{ name: 'Một' }, { name: 'Hai' }, { name: 'Ba' }]));
-    await userEvent.click(await screen.findByRole('button', { name: 'Add the people (3)' }));
+    await userEvent.click(
+      await screen.findByRole('button', { name: words.import.add.replace('{{count}}', '3') }),
+    );
     await waitFor(() => expect(send.calls).toHaveLength(1));
 
     // A disabled button takes no click; the click is sent so that an enabled one would be pressed.
-    fireEvent.click(screen.getByRole('button', { name: 'Choose another file' }));
+    fireEvent.click(screen.getByRole('button', { name: words.import.another }));
 
     expect(within(screen.getByRole('table')).getAllByRole('row')).toHaveLength(4);
-    expect(screen.queryByLabelText(/^Excel file/)).toBeNull();
+    expect(screen.queryByLabelText(starting(words.import.file))).toBeNull();
     send.answer(0);
-    expect(await screen.findByText('2 people were added.')).toBeTruthy();
+    expect(await screen.findByText(words.import.doneAdded.replace('{{count}}', '2'))).toBeTruthy();
     const busy = within(screen.getByRole('table'));
     expect(busy.getByText('Hai')).toBeTruthy();
     expect(busy.getByText('3')).toBeTruthy();
@@ -308,33 +354,45 @@ describe('the import page', () => {
   it('A double click on Add the rest sends the rest once', async () => {
     const send = await failedAfterFirstCall();
 
-    await userEvent.dblClick(screen.getByRole('button', { name: 'Add the rest (50)' }));
+    await userEvent.dblClick(
+      screen.getByRole('button', { name: words.import.addRest.replace('{{count}}', '50') }),
+    );
 
     expect(send.calls.map((rows) => rows.length)).toEqual([100, 50, 50]);
     send.answer(2);
-    expect(await screen.findByText('150 people were added.')).toBeTruthy();
+    expect(
+      await screen.findByText(words.import.doneAdded.replace('{{count}}', '150')),
+    ).toBeTruthy();
   });
 
   it('The results stay on screen while the rest is sent', async () => {
     const send = await failedAfterFirstCall();
 
-    await userEvent.click(screen.getByRole('button', { name: 'Add the rest (50)' }));
+    await userEvent.click(
+      screen.getByRole('button', { name: words.import.addRest.replace('{{count}}', '50') }),
+    );
 
-    expect(screen.getByRole('heading', { level: 2, name: 'People added' })).toBeTruthy();
-    expect(screen.queryByRole('heading', { level: 2, name: 'Check the rows' })).toBeNull();
+    expect(screen.getByRole('heading', { level: 2, name: words.import.doneTitle })).toBeTruthy();
+    expect(screen.queryByRole('heading', { level: 2, name: words.import.previewTitle })).toBeNull();
     send.answer(2);
-    expect(await screen.findByText('150 people were added.')).toBeTruthy();
+    expect(
+      await screen.findByText(words.import.doneAdded.replace('{{count}}', '150')),
+    ).toBeTruthy();
   });
 
   it('The warning that the system stopped partway is not shown while the rest is sent', async () => {
     const send = await failedAfterFirstCall();
-    expect(screen.getByText(/will not be sent again/)).toBeTruthy();
+    expect(screen.getByText(words.import.failedPart)).toBeTruthy();
 
-    await userEvent.click(screen.getByRole('button', { name: 'Add the rest (50)' }));
+    await userEvent.click(
+      screen.getByRole('button', { name: words.import.addRest.replace('{{count}}', '50') }),
+    );
 
-    expect(screen.queryByText(/will not be sent again/)).toBeNull();
+    expect(screen.queryByText(words.import.failedPart)).toBeNull();
     send.answer(2);
-    expect(await screen.findByText('150 people were added.')).toBeTruthy();
+    expect(
+      await screen.findByText(words.import.doneAdded.replace('{{count}}', '150')),
+    ).toBeTruthy();
   });
 
   it('says a row the add refused as invalid apart from one whose code was taken', async () => {
@@ -354,13 +412,13 @@ describe('the import page', () => {
       },
     });
     await chooseAndRead(await staffFile([{ name: 'Một' }, { name: 'Hai' }, { name: 'Ba' }]));
-    await userEvent.click(await screen.findByRole('button', { name: 'Add the people (3)' }));
+    await userEvent.click(
+      await screen.findByRole('button', { name: words.import.add.replace('{{count}}', '3') }),
+    );
 
-    expect(await screen.findByText('1 people were added.')).toBeTruthy();
-    expect(
-      screen.getByText('1 rows were not added: their codes were taken meanwhile.'),
-    ).toBeTruthy();
-    expect(screen.getByText(/1 rows were not added: what they hold no longer fits/)).toBeTruthy();
+    expect(await screen.findByText(words.import.doneAdded.replace('{{count}}', '1'))).toBeTruthy();
+    expect(screen.getByText(words.import.doneRefused.replace('{{count}}', '1'))).toBeTruthy();
+    expect(screen.getByText(words.import.doneInvalid.replace('{{count}}', '1'))).toBeTruthy();
   });
 
   it('refuses in the preview a row whose details together are too long, as the add would', async () => {
@@ -369,9 +427,11 @@ describe('the import page', () => {
       await staffFile([{ name: 'Một', note: 'x'.repeat(9000) }, { name: 'Hai' }]),
     );
 
-    expect(await screen.findByText(/1 of 2 rows will be added/)).toBeTruthy();
-    expect(screen.getByText('The details of this row together are too long to save.')).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Add the people (1)' })).toBeTruthy();
+    expect(await screen.findByText(summary(1, 2, 1))).toBeTruthy();
+    expect(screen.getByText(words.import.refusedRow)).toBeTruthy();
+    expect(
+      screen.getByRole('button', { name: words.import.add.replace('{{count}}', '1') }),
+    ).toBeTruthy();
   });
 
   it('A save that fails says the people may not all have been added, and offers the file again', async () => {
@@ -381,27 +441,26 @@ describe('the import page', () => {
       },
     });
     await chooseAndRead(await demoImportFile('en', 'import'));
-    await userEvent.click(await screen.findByRole('button', { name: 'Add the people (3)' }));
-
-    expect((await screen.findByRole('alert')).textContent).toMatch(/may not all have been added/);
-    expect(screen.getByRole('alert').textContent).toMatch(
-      /adds a second person for each row that has no code/,
+    await userEvent.click(
+      await screen.findByRole('button', { name: words.import.add.replace('{{count}}', '3') }),
     );
-    expect(screen.getByRole('button', { name: 'Add the people (3)' })).toBeTruthy();
+
+    expect((await screen.findByRole('alert')).textContent).toContain(words.import.failed);
+    expect(
+      screen.getByRole('button', { name: words.import.add.replace('{{count}}', '3') }),
+    ).toBeTruthy();
   });
 
   it('A file the root chooses again starts the page over', async () => {
     openApp('/staff/import');
     await chooseAndRead(await demoImportFile('en', 'import'));
-    await userEvent.click(await screen.findByRole('button', { name: 'Choose another file' }));
+    await userEvent.click(await screen.findByRole('button', { name: words.import.another }));
 
-    expect(
-      await screen.findByRole('heading', { level: 2, name: 'Add staff from Excel' }),
-    ).toBeTruthy();
-    expect(screen.getByRole('button', { name: 'Read the file' }).hasAttribute('disabled')).toBe(
+    expect(await screen.findByRole('heading', { level: 2, name: words.import.title })).toBeTruthy();
+    expect(screen.getByRole('button', { name: words.import.read }).hasAttribute('disabled')).toBe(
       true,
     );
-    expect(screen.queryByText(/^Chosen:/)).toBeNull();
+    expect(screen.queryByText(starting(chosen('')))).toBeNull();
   });
 
   it('A file over 2 MB or 500 rows is refused before reading, and one that is not an Excel file or has no name column or no row says what to fix', async () => {
@@ -410,21 +469,25 @@ describe('the import page', () => {
 
     expect(IMPORT_MAX_BYTES).toBe(2 * 1024 * 1024);
     await chooseAndRead(new File([new Uint8Array(IMPORT_MAX_BYTES + 1)], 'big.xlsx'));
-    expect(await alertText()).toMatch(/over 2 MB/);
+    expect(await alertText()).toBe(words.import.tooBig);
 
     await chooseAndRead(new File(['not a workbook'], 'text.xlsx'));
-    await waitFor(async () => expect(await alertText()).toMatch(/could not be read as an Excel/));
+    await waitFor(async () => expect(await alertText()).toBe(words.import.unreadable));
 
     await chooseAndRead(await demoImportFile('en', 'import-no-name'));
-    await waitFor(async () => expect(await alertText()).toContain('has no “Name” column'));
+    await waitFor(async () =>
+      expect(await alertText()).toBe(
+        words.import.noName.replace('{{name}}', headingOf(columnsOf(DEMO_STAFF_SETUP)[0], 'en')),
+      ),
+    );
 
     const headingsOnly = await staffFile([]);
     await chooseAndRead(headingsOnly);
-    await waitFor(async () => expect(await alertText()).toMatch(/no rows to add/));
+    await waitFor(async () => expect(await alertText()).toBe(words.import.noRows));
 
     const crowd = Array.from({ length: IMPORT_MAX_ROWS + 1 }, (_, at) => ({ name: `Người ${at}` }));
     await chooseAndRead(await staffFile(crowd));
-    await waitFor(async () => expect(await alertText()).toMatch(/more than 500 rows/));
+    await waitFor(async () => expect(await alertText()).toBe(words.import.tooMany));
   });
 
   it('A page whose data cannot be read offers another try', async () => {
@@ -434,19 +497,19 @@ describe('the import page', () => {
       },
     });
 
-    await userEvent.click(await screen.findByRole('button', { name: 'Try again' }));
+    await userEvent.click(await screen.findByRole('button', { name: words.common.retry }));
 
-    expect(await screen.findByRole('button', { name: 'Download the template' })).toBeTruthy();
+    expect(await screen.findByRole('button', { name: words.import.template })).toBeTruthy();
   });
 
   it('Only the root imports: someone allowed every staff right is shown the page that says they may not open it, and nothing is asked', async () => {
     const { api } = openApp('/staff/import', { as: 'EMP-0001' });
 
     expect(
-      await screen.findByRole('heading', { level: 2, name: 'You cannot open this page' }),
+      await screen.findByRole('heading', { level: 2, name: words.forbidden.title }),
     ).toBeTruthy();
     expect(api.getStaffSetup).not.toHaveBeenCalled();
-    expect(within(document.body).queryByText('Add staff from Excel')).toBeNull();
+    expect(within(document.body).queryByText(words.import.title)).toBeNull();
   });
 });
 
@@ -534,10 +597,12 @@ async function failedAfterFirstCall() {
   await chooseAndRead(
     await staffFile(Array.from({ length: 150 }, (_, at) => ({ name: `Người ${at}` }))),
   );
-  await userEvent.click(await screen.findByRole('button', { name: 'Add the people (150)' }));
+  await userEvent.click(
+    await screen.findByRole('button', { name: words.import.add.replace('{{count}}', '150') }),
+  );
   await waitFor(() => expect(send.calls).toHaveLength(1));
   send.answer(0);
-  await screen.findByText('100 people were added.');
+  await screen.findByText(words.import.doneAdded.replace('{{count}}', '100'));
   return send;
 }
 

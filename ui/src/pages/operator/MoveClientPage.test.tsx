@@ -78,9 +78,14 @@ describe('the page that moves a company to another box', () => {
     page();
 
     expect(
-      await screen.findByRole('heading', { level: 2, name: 'Move Hoa Sen to another box' }),
+      await screen.findByRole('heading', {
+        level: 2,
+        name: words.moveTitle.replace('{{name}}', 'Hoa Sen'),
+      }),
     ).toBeTruthy();
-    expect(screen.getByText('Hoa Sen is on the box home.')).toBeTruthy();
+    expect(
+      screen.getByText(words.moveHere.replace('{{name}}', 'Hoa Sen').replace('{{box}}', 'home')),
+    ).toBeTruthy();
     expect(screen.getByRole('radio', { name: 'b2: 112 GB free, 0 companies' })).toBeTruthy();
     expect(screen.queryByRole('radio', { name: /^home/ })).toBeNull();
     expect(screen.getByRole('button', { name: words.moveMake }).hasAttribute('disabled')).toBe(
@@ -192,7 +197,6 @@ describe('the page that moves a company to another box', () => {
     await userEvent.click(await screen.findByRole('button', { name: words.moveStop }));
 
     const alert = (await screen.findByRole('alert')).textContent;
-    expect(alert).toContain('works on home');
     expect(alert).toBe(boxes(words.moveFailedAfter, 'home', 'b2'));
     expect(screen.queryByRole('button', { name: words.moveStop })).toBeNull();
   });
@@ -338,7 +342,11 @@ describe('the page that moves a company to another box', () => {
     await choose();
 
     expect(
-      await screen.findByRole('heading', { level: 2, name: 'Clients' }, { timeout: 4000 }),
+      await screen.findByRole(
+        'heading',
+        { level: 2, name: DICTIONARIES.en.nav.clients },
+        { timeout: 4000 },
+      ),
     ).toBeTruthy();
     expect(Date.now() - began).toBeGreaterThanOrEqual(900);
     expect(api.moveClient).toHaveBeenCalledTimes(2);

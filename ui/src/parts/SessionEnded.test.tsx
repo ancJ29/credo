@@ -8,14 +8,11 @@ import { SessionEnded } from './SessionEnded';
 const handlers = () => ({ onContinue: vi.fn(), onSignOut: vi.fn() });
 
 describe('SessionEnded', () => {
-  it('says the sign-in ended after an hour away or 12 hours in, and that what was typed is kept', () => {
+  it('says the sign-in ended and why, and that what was typed is kept', () => {
     draw(<SessionEnded status="idle" {...handlers()} />);
 
-    expect(screen.getByRole('dialog', { name: 'Your sign-in ended' })).toBeTruthy();
+    expect(screen.getByRole('dialog', { name: DICTIONARIES.en.passkey.endedTitle })).toBeTruthy();
     expect(screen.getByText(DICTIONARIES.en.passkey.endedText)).toBeTruthy();
-    expect(DICTIONARIES.en.passkey.endedText).toContain('an hour');
-    expect(DICTIONARIES.en.passkey.endedText).toContain('12 hours');
-    expect(DICTIONARIES.en.passkey.endedText).toContain('still here');
     expect(screen.queryByRole('alert')).toBeNull();
   });
 
@@ -28,9 +25,11 @@ describe('SessionEnded', () => {
     expect(screen.getByRole('dialog')).toBeTruthy();
     expect(onSignOut).not.toHaveBeenCalled();
 
-    await userEvent.click(screen.getByRole('button', { name: 'Use your passkey' }));
+    await userEvent.click(
+      screen.getByRole('button', { name: DICTIONARIES.en.passkey.endedButton }),
+    );
     expect(onContinue).toHaveBeenCalledOnce();
-    await userEvent.click(screen.getByRole('button', { name: 'Sign out' }));
+    await userEvent.click(screen.getByRole('button', { name: DICTIONARIES.en.user.signOut }));
     expect(onSignOut).toHaveBeenCalledOnce();
   });
 

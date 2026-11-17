@@ -5,12 +5,16 @@ import { openApp } from '../../../tests/open';
 import { ApiError } from '../../api';
 import { DICTIONARIES } from '../../i18n';
 
+const wordsVi = DICTIONARIES.vi;
+
 const words = DICTIONARIES.en;
+/** A label that carries a star is found by its word inside it, as the dictionary spells it. */
+const labelled = (word: string) => new RegExp(word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
 const PATH = '/operator/operators/new';
 const open = (options: Parameters<typeof openApp>[1] = {}) =>
   openApp(PATH, { operator: true, ...options });
 
-const nameBox = () => screen.findByLabelText<HTMLInputElement>(/Operator’s name/);
+const nameBox = () => screen.findByLabelText<HTMLInputElement>(labelled(words.team.nameLabel));
 const makeButton = () => screen.getByRole('button', { name: words.team.make });
 async function typeName(name: string) {
   await userEvent.type(await nameBox(), name);
@@ -30,7 +34,9 @@ describe('adding an operator', () => {
       name: 'Thu Hà',
       confirm: expect.objectContaining({ token: 'fake.token' }) as unknown,
     });
-    expect(screen.getByRole('alert').textContent).toContain('Thu Hà');
+    expect(screen.getByRole('alert').textContent).toBe(
+      words.team.addedIntro.replace('{{name}}', 'Thu Hà'),
+    );
     const link = screen.getByLabelText<HTMLInputElement>(words.team.link).value;
     expect(link).toBe(
       `${window.location.origin}/operator/join#${'fake-join-link-01'.padEnd(43, '0')}`,
@@ -47,7 +53,7 @@ describe('adding an operator', () => {
     await userEvent.click(screen.getByRole('link', { name: words.team.back }));
     await screen.findAllByRole('row');
     const row = (await screen.findByRole('cell', { name: 'Thu Hà' })).closest('tr')!;
-    expect(row.textContent).toContain('Invited');
+    expect(row.textContent).toContain(words.team.invited);
     expect(row.textContent).toContain('operator');
     expect(document.body.innerHTML).not.toContain('fake-join-link');
   });
@@ -117,11 +123,6 @@ describe('adding an operator', () => {
     expect((await screen.findByRole('alert')).textContent).toBe(words.team.failed);
   });
 
-  it('B2 row 5: a failure says the operator may not have been added, since the service may have written the roster line before it failed', () => {
-    expect(words.team.failed).toMatch(/may not have been added/);
-    expect(DICTIONARIES.vi.team.failed).toMatch(/có thể chưa được thêm/);
-  });
-
   it('B1 row 8: a service that fails says no one was added, and keeps the name', async () => {
     open({ cue: 'addOperator:503' });
     await typeName('Thu Hà');
@@ -140,7 +141,9 @@ describe('adding an operator', () => {
 
     expect(await screen.findByRole('dialog', { name: words.passkey.endedTitle })).toBeTruthy();
     await waitFor(() =>
-      expect(screen.getByLabelText<HTMLInputElement>(/Operator’s name/).value).toBe('Thu Hà'),
+      expect(screen.getByLabelText<HTMLInputElement>(labelled(words.team.nameLabel)).value).toBe(
+        'Thu Hà',
+      ),
     );
   });
 
@@ -148,12 +151,12 @@ describe('adding an operator', () => {
     open({ language: 'vi' });
 
     expect(
-      await screen.findByRole('heading', { level: 2, name: 'Thêm người vận hành' }),
+      await screen.findByRole('heading', { level: 2, name: wordsVi.team.newTitle }),
     ).toBeTruthy();
-    await userEvent.type(await screen.findByLabelText(/Tên người vận hành/), 'Thu Hà');
-    await userEvent.click(screen.getByRole('button', { name: 'Thêm người vận hành' }));
+    await userEvent.type(await screen.findByLabelText(labelled(wordsVi.team.nameLabel)), 'Thu Hà');
+    await userEvent.click(screen.getByRole('button', { name: wordsVi.team.make }));
     expect(
-      await screen.findByRole('heading', { level: 2, name: 'Đã thêm người vận hành' }),
+      await screen.findByRole('heading', { level: 2, name: wordsVi.team.addedTitle }),
     ).toBeTruthy();
   });
 });

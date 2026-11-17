@@ -9,7 +9,12 @@ import { App } from '../../App';
 import { sceneParts } from '../../scene';
 import { StaffListPage } from './StaffListPage';
 import { shrinkToPhoto } from '../../photo';
+import { DICTIONARIES } from '../../i18n';
 
+const words = DICTIONARIES.en;
+const wordsVi = DICTIONARIES.vi;
+/** A label that carries a star is found by its word at the start, as the dictionary spells it. */
+const starting = (word: string) => new RegExp(`^${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`);
 vi.mock('../../photo', () => ({ shrinkToPhoto: vi.fn(), shrinkToProof: vi.fn() }));
 
 /** One user for the file, with no wait on the event loop between the actions it makes: the default
@@ -18,7 +23,7 @@ vi.mock('../../photo', () => ({ shrinkToPhoto: vi.fn(), shrinkToProof: vi.fn() }
 const user = userEvent.setup({ delay: null });
 
 const PHOTO = Object.values(DEMO_PHOTOS)[0];
-const menu = () => within(screen.getAllByRole('navigation', { name: 'Menu' })[0]);
+const menu = () => within(screen.getAllByRole('navigation', { name: words.nav.menu })[0]);
 const at = (code: string) => `/staff/${person(code).id}`;
 
 /** The staff setup page's last field editor: the one a click on "Add a field" just made. */
@@ -46,14 +51,16 @@ describe('the company’s optional fields', () => {
       const { api } = openApp(at('EMP-0004'));
       // on in the data set: the second phone with its value, the photo panel
       expect(await screen.findByDisplayValue('0903 222 004')).toBeTruthy();
-      expect(screen.getByRole('heading', { level: 3, name: 'Photo' })).toBeTruthy();
+      expect(screen.getByRole('heading', { level: 3, name: words.person.photo })).toBeTruthy();
 
       // the root turns both off on the setup page and saves
-      await user.click(menu().getByRole('link', { name: 'Departments and positions' }));
-      await user.click(await screen.findByRole('checkbox', { name: 'A second phone' }));
-      await user.click(screen.getByRole('checkbox', { name: 'A photo' }));
-      await user.click(screen.getByRole('button', { name: 'Save' }));
-      expect(await screen.findByText('Saved.')).toBeTruthy();
+      await user.click(menu().getByRole('link', { name: words.nav.staffSetup }));
+      await user.click(
+        await screen.findByRole('checkbox', { name: words.setup.fieldPersonalPhone }),
+      );
+      await user.click(screen.getByRole('checkbox', { name: words.setup.fieldPhoto }));
+      await user.click(screen.getByRole('button', { name: words.setup.save }));
+      expect(await screen.findByText(words.setup.saved)).toBeTruthy();
       expect((await api.getStaffSetup()).setup.fields).toEqual({
         personalPhone: false,
         photo: false,
@@ -66,29 +73,29 @@ describe('the company’s optional fields', () => {
 
       // hidden everywhere: the person's page, the add form, the list's initials
       api.getPhoto.mockClear();
-      await user.click(menu().getByRole('link', { name: 'Staff' }));
+      await user.click(menu().getByRole('link', { name: words.nav.staff }));
       const lanRow = (await screen.findAllByText('Nguyễn Thị Lan'))
         .at(-1)
         ?.closest('tr') as HTMLElement;
       expect(lanRow.textContent).not.toContain('NT');
       await user.click(screen.getAllByRole('link', { name: 'Phạm Quốc Bảo' })[0]);
-      await screen.findByLabelText(/^Name/);
-      expect(screen.queryByLabelText('Second phone')).toBeNull();
-      expect(screen.queryByRole('heading', { level: 3, name: 'Photo' })).toBeNull();
+      await screen.findByLabelText(starting(words.person.name));
+      expect(screen.queryByLabelText(words.person.personalPhone)).toBeNull();
+      expect(screen.queryByRole('heading', { level: 3, name: words.person.photo })).toBeNull();
       expect(api.getPhoto).not.toHaveBeenCalled();
 
       // and what was stored stays: a save of the name keeps the second phone
-      await user.clear(screen.getByLabelText(/^Name/));
-      await enter(screen.getByLabelText(/^Name/), 'Bảo');
-      await user.click(screen.getByRole('button', { name: 'Save' }));
-      await screen.findByText('Saved.');
+      await user.clear(screen.getByLabelText(starting(words.person.name)));
+      await enter(screen.getByLabelText(starting(words.person.name)), 'Bảo');
+      await user.click(screen.getByRole('button', { name: words.person.save }));
+      await screen.findByText(words.person.saved);
       expect((await api.getEmployee(person('EMP-0004').id)).employee.extra).toMatchObject({
         personalPhone: '0903 222 004',
       });
-      await user.click(menu().getByRole('link', { name: 'Staff' }));
-      await user.click(await screen.findByRole('link', { name: 'Add a person' }));
-      await screen.findByLabelText(/^Name/);
-      expect(screen.queryByLabelText('Second phone')).toBeNull();
+      await user.click(menu().getByRole('link', { name: words.nav.staff }));
+      await user.click(await screen.findByRole('link', { name: words.staff.add }));
+      await screen.findByLabelText(starting(words.addPerson.name));
+      expect(screen.queryByLabelText(words.addPerson.personalPhone)).toBeNull();
     },
   );
 
@@ -111,11 +118,11 @@ describe('the company’s optional fields', () => {
         });
       },
     });
-    await user.type(await screen.findByLabelText(/^Name/), 'Mai Linh');
-    expect(screen.queryByLabelText('Second phone')).toBeNull();
+    await user.type(await screen.findByLabelText(starting(words.addPerson.name)), 'Mai Linh');
+    expect(screen.queryByLabelText(words.addPerson.personalPhone)).toBeNull();
     expect(screen.queryByLabelText('Driving licence')).toBeNull();
 
-    await user.click(screen.getByRole('button', { name: 'Add' }));
+    await user.click(screen.getByRole('button', { name: words.addPerson.submit }));
 
     await waitFor(() =>
       expect(api.addEmployee).toHaveBeenCalledWith({ name: 'Mai Linh', extra: {} }),
@@ -123,7 +130,7 @@ describe('the company’s optional fields', () => {
     expect(api.getStaffSetup).not.toHaveBeenCalled();
     // the new person's page is not theirs to open: the guard says so
     expect(
-      await screen.findByRole('heading', { level: 2, name: 'You cannot open this page' }),
+      await screen.findByRole('heading', { level: 2, name: words.forbidden.title }),
     ).toBeTruthy();
   });
 
@@ -138,23 +145,24 @@ describe('the company’s optional fields', () => {
       },
     });
 
-    await screen.findByLabelText(/^Name/);
-    expect(screen.queryByLabelText('Second phone')).toBeNull();
+    await screen.findByLabelText(starting(words.person.name));
+    expect(screen.queryByLabelText(words.person.personalPhone)).toBeNull();
     expect(screen.queryByLabelText('Driving licence')).toBeNull();
-    expect(screen.queryByRole('heading', { level: 3, name: 'Photo' })).toBeNull();
+    expect(screen.queryByRole('heading', { level: 3, name: words.person.photo })).toBeNull();
     expect(api.getPhoto).not.toHaveBeenCalled();
   });
 
   it('The setup page shows each switch as the company holds it, and keeps the fields and the numbering through a save of the departments', async () => {
     const { api } = openApp('/staff-setup');
-    await screen.findByRole('heading', { level: 2, name: 'Departments and positions' });
-    expect(screen.getByRole<HTMLInputElement>('checkbox', { name: 'A second phone' }).checked).toBe(
-      true,
-    );
+    await screen.findByRole('heading', { level: 2, name: words.setup.title });
+    expect(
+      screen.getByRole<HTMLInputElement>('checkbox', { name: words.setup.fieldPersonalPhone })
+        .checked,
+    ).toBe(true);
 
-    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await user.click(screen.getByRole('button', { name: words.setup.save }));
 
-    await screen.findByText('Saved.');
+    await screen.findByText(words.setup.saved);
     const saved = (await api.getStaffSetup()).setup;
     expect(saved.fields).toEqual({ ...DEMO_STAFF_SETUP.fields, email: false, qr: false });
     expect(saved.customFields).toEqual(DEMO_STAFF_SETUP.customFields);
@@ -165,17 +173,17 @@ describe('the company’s optional fields', () => {
 describe('the company’s own fields', () => {
   it('The second phone is asked when a person is added and when one is changed, and kept as typed', async () => {
     const { api } = openApp('/staff/new');
-    await user.type(await screen.findByLabelText(/^Name/), 'Mai Linh');
-    await user.type(screen.getByLabelText('Second phone'), ' 0909 000 111 ');
-    await user.click(screen.getByRole('button', { name: 'Add' }));
-    await user.click(await screen.findByRole('link', { name: 'Open their page' }));
+    await user.type(await screen.findByLabelText(starting(words.addPerson.name)), 'Mai Linh');
+    await user.type(screen.getByLabelText(words.addPerson.personalPhone), ' 0909 000 111 ');
+    await user.click(screen.getByRole('button', { name: words.addPerson.submit }));
+    await user.click(await screen.findByRole('link', { name: words.addPerson.open }));
 
-    const second = await screen.findByLabelText<HTMLInputElement>('Second phone');
+    const second = await screen.findByLabelText<HTMLInputElement>(words.person.personalPhone);
     expect(second.value).toBe('0909 000 111');
     await user.clear(second);
     await user.type(second, '0909 000 222');
-    await user.click(screen.getByRole('button', { name: 'Save' }));
-    await screen.findByText('Saved.');
+    await user.click(screen.getByRole('button', { name: words.person.save }));
+    await screen.findByText(words.person.saved);
     expect(api.saveEmployee).toHaveBeenCalledWith(
       expect.any(String),
       expect.objectContaining({ extra: { personalPhone: '0909 000 222' } }),
@@ -187,16 +195,16 @@ describe('the company’s own fields', () => {
     SLOW,
     async () => {
       const { api } = openApp('/staff-setup');
-      await screen.findByRole('heading', { level: 2, name: 'Departments and positions' });
+      await screen.findByRole('heading', { level: 2, name: words.setup.title });
 
-      await user.click(screen.getByRole('button', { name: 'Add a field' }));
-      await enter(lastOf(/^Key/), 'shoe');
-      await enter(lastOf(/^Name in Vietnamese/), 'Cỡ giày');
-      await enter(lastOf(/^Name in English/), 'Shoe size');
-      await user.selectOptions(lastOf('Kind'), 'Number');
-      await user.click(lastOf('Show in the staff list'));
-      await user.click(screen.getByRole('button', { name: 'Save' }));
-      await screen.findByText('Saved.');
+      await user.click(screen.getByRole('button', { name: words.setup.ownAdd }));
+      await enter(lastOf(starting(words.setup.ownKey)), 'shoe');
+      await enter(lastOf(starting(words.setup.ownNameVi)), 'Cỡ giày');
+      await enter(lastOf(starting(words.setup.ownNameEn)), 'Shoe size');
+      await user.selectOptions(lastOf(words.setup.ownKind), words.setup.ownKindNumber);
+      await user.click(lastOf(words.setup.ownInList));
+      await user.click(screen.getByRole('button', { name: words.setup.save }));
+      await screen.findByText(words.setup.saved);
       expect((await api.getStaffSetup()).setup.customFields?.at(-1)).toEqual({
         key: 'shoe',
         label: { vi: 'Cỡ giày', en: 'Shoe size' },
@@ -206,12 +214,12 @@ describe('the company’s own fields', () => {
       });
 
       // on the form: a value that is no number is refused, what was typed kept
-      await user.click(menu().getByRole('link', { name: 'Staff' }));
-      await user.click(await screen.findByRole('link', { name: 'Add a person' }));
-      await enter(await screen.findByLabelText(/^Name/), 'Mai Linh');
+      await user.click(menu().getByRole('link', { name: words.nav.staff }));
+      await user.click(await screen.findByRole('link', { name: words.staff.add }));
+      await enter(await screen.findByLabelText(starting(words.addPerson.name)), 'Mai Linh');
       await user.type(screen.getByLabelText('Shoe size'), 'abc');
-      await user.click(screen.getByRole('button', { name: 'Add' }));
-      expect(await screen.findByText('A number, for example 3 or 3.5.')).toBeTruthy();
+      await user.click(screen.getByRole('button', { name: words.addPerson.submit }));
+      expect(await screen.findByText(words.fields.invalidNumber)).toBeTruthy();
       expect(api.addEmployee).not.toHaveBeenCalled();
       expect(screen.getByLabelText<HTMLInputElement>('Shoe size').value).toBe('abc');
 
@@ -220,8 +228,8 @@ describe('the company’s own fields', () => {
       await user.type(screen.getByLabelText('Shoe size'), '41,5');
       await user.selectOptions(screen.getByLabelText('Driving licence'), 'Class C');
       await user.type(screen.getByLabelText('Vehicle plate'), '51C-999.99');
-      await user.click(screen.getByRole('button', { name: 'Add' }));
-      await user.click(await screen.findByRole('link', { name: 'Open their page' }));
+      await user.click(screen.getByRole('button', { name: words.addPerson.submit }));
+      await user.click(await screen.findByRole('link', { name: words.addPerson.open }));
 
       // on the person's page and in the list
       expect(await screen.findByDisplayValue('41.5')).toBeTruthy();
@@ -231,19 +239,19 @@ describe('the company’s own fields', () => {
       expect(api.addEmployee).toHaveBeenCalledWith(
         expect.objectContaining({ extra: { shoe: 41.5, licence: 'c', plate: '51C-999.99' } }),
       );
-      await user.click(screen.getByRole('link', { name: 'Back to the staff list' }));
+      await user.click(screen.getByRole('link', { name: words.staff.back }));
       const row = (await screen.findAllByText('Mai Linh')).at(-1)?.closest('tr') as HTMLElement;
       const headers = screen.getAllByRole('columnheader').map((cell) => cell.textContent);
       expect(headers).toEqual([
-        'Name',
-        'Code',
-        'Department',
-        'Position',
-        'Phone',
+        words.staff.colName,
+        words.staff.colCode,
+        words.staff.colDepartment,
+        words.staff.colPosition,
+        words.staff.colPhone,
         'Driving licence',
         'Contract date',
         'Shoe size',
-        'Status',
+        words.staff.colStatus,
       ]);
       expect(within(row).getAllByRole('cell').at(-4)?.textContent).toBe('Class C');
       expect(within(row).getAllByRole('cell').at(-2)?.textContent).toBe('41.5');
@@ -256,7 +264,7 @@ describe('the company’s own fields', () => {
     const licence = await screen.findByLabelText<HTMLSelectElement>('Bằng lái xe');
     expect(licence.value).toBe('c');
     expect([...licence.options].map((option) => option.text)).toEqual([
-      'Không có',
+      wordsVi.fields.noneChosen,
       'Hạng B2',
       'Hạng C',
     ]);
@@ -274,15 +282,15 @@ describe('the company’s own fields', () => {
     fireEvent.change(screen.getByLabelText('Vehicle plate'), {
       target: { value: 'x'.repeat(501) },
     });
-    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await user.click(screen.getByRole('button', { name: words.person.save }));
 
-    expect(await screen.findByText('A number, for example 3 or 3.5.')).toBeTruthy();
-    expect(screen.getByText('Too long: at most 500 characters.')).toBeTruthy();
+    expect(await screen.findByText(words.fields.invalidNumber)).toBeTruthy();
+    expect(screen.getByText(words.fields.invalidText)).toBeTruthy();
     expect(api.saveEmployee).not.toHaveBeenCalled();
     // the refusal goes as the value fits
     await user.clear(dependants);
     await user.type(dependants, '3');
-    expect(screen.queryByText('A number, for example 3 or 3.5.')).toBeNull();
+    expect(screen.queryByText(words.fields.invalidNumber)).toBeNull();
   });
 
   it('A form that drops a key it does not show erases it: this one keeps a key it does not know and a field turned off, and an emptied field removes its key', async () => {
@@ -301,8 +309,8 @@ describe('the company’s own fields', () => {
     });
     const plate = await screen.findByLabelText('Vehicle plate');
     await user.clear(plate);
-    await user.click(screen.getByRole('button', { name: 'Save' }));
-    await screen.findByText('Saved.');
+    await user.click(screen.getByRole('button', { name: words.person.save }));
+    await screen.findByText(words.person.saved);
 
     const extra = api.saveEmployee.mock.calls[0]?.[1].extra;
     expect(extra).toEqual({
@@ -322,14 +330,14 @@ describe('the company’s own fields', () => {
   });
 
   describe('The staff setup editor refuses fields it cannot take', () => {
-    const refusedAs = 'A field needs a key nobody else has';
+    const refusedAs = words.setup.ownInvalid;
 
     /** The setup page, opened once; its Save button is looked up once, since a role query walks
      * the whole page's accessibility tree. */
     const openSetup = async () => {
       const { api } = openApp('/staff-setup');
-      await screen.findByRole('heading', { level: 2, name: 'Departments and positions' });
-      const saveButton = screen.getByRole('button', { name: 'Save' });
+      await screen.findByRole('heading', { level: 2, name: words.setup.title });
+      const saveButton = screen.getByRole('button', { name: words.setup.save });
       return { api, save: () => user.click(saveButton) };
     };
 
@@ -348,10 +356,10 @@ describe('the company’s own fields', () => {
 
     /** A new field with its key and both names filled in. */
     const addNamedField = async (key: string) => {
-      await user.click(screen.getByText('Add a field'));
-      set(lastOf(/^Key/), key);
-      set(lastOf(/^Name in Vietnamese/), 'Tên');
-      set(lastOf(/^Name in English/), 'Name');
+      await user.click(screen.getByText(words.setup.ownAdd));
+      set(lastOf(starting(words.setup.ownKey)), key);
+      set(lastOf(starting(words.setup.ownNameVi)), 'Tên');
+      set(lastOf(starting(words.setup.ownNameEn)), 'Name');
     };
 
     it('A field with no key is refused, and the page says so', async () => {
@@ -374,16 +382,16 @@ describe('the company’s own fields', () => {
     it('A choice with no options is refused, and saved once it has one', async () => {
       const { api, save } = await openSetup();
       await addNamedField('colour');
-      await user.selectOptions(lastOf('Kind'), 'A choice from a list');
+      await user.selectOptions(lastOf(words.setup.ownKind), words.setup.ownKindChoice);
       await save();
       expect(await alertText()).toContain(refusedAs);
-      await user.click(screen.getAllByText('Add an option').at(-1) as HTMLElement);
-      set(lastOf('Option key'), 'red');
-      set(lastOf('Option in Vietnamese'), 'Đỏ');
-      set(lastOf('Option in English'), 'Red');
+      await user.click(screen.getAllByText(words.setup.ownOptionAdd).at(-1) as HTMLElement);
+      set(lastOf(words.setup.ownOptionValue), 'red');
+      set(lastOf(words.setup.ownOptionVi), 'Đỏ');
+      set(lastOf(words.setup.ownOptionEn), 'Red');
       expect(api.saveStaffSetup).not.toHaveBeenCalled();
       await save();
-      await screen.findByText('Saved.');
+      await screen.findByText(words.setup.saved);
       expect((await api.getStaffSetup()).setup.customFields?.at(-1)?.options).toEqual([
         { value: 'red', label: { vi: 'Đỏ', en: 'Red' } },
       ]);
@@ -392,56 +400,58 @@ describe('the company’s own fields', () => {
     it('An option and a field are removed from the editor', async () => {
       await openSetup();
       await addNamedField('colour');
-      await user.selectOptions(lastOf('Kind'), 'A choice from a list');
-      await user.click(screen.getAllByText('Add an option').at(-1) as HTMLElement);
-      set(lastOf('Option key'), 'red');
-      await user.click(screen.getByLabelText('Remove the option red'));
+      await user.selectOptions(lastOf(words.setup.ownKind), words.setup.ownKindChoice);
+      await user.click(screen.getAllByText(words.setup.ownOptionAdd).at(-1) as HTMLElement);
+      set(lastOf(words.setup.ownOptionValue), 'red');
+      await user.click(screen.getByLabelText(`${words.setup.ownOptionRemove} red`));
       expect(screen.queryByDisplayValue('red')).toBeNull();
-      await user.click(screen.getByLabelText('Remove colour'));
+      await user.click(screen.getByLabelText(`${words.setup.remove} colour`));
       expect(screen.queryByDisplayValue('colour')).toBeNull();
     });
   });
 
   it('An option is renamed in the language shown, and a company with no field of its own says so', async () => {
     const { api } = openApp('/staff-setup');
-    await screen.findByRole('heading', { level: 2, name: 'Departments and positions' });
+    await screen.findByRole('heading', { level: 2, name: words.setup.title });
 
-    await user.clear(screen.getAllByLabelText('Option in English')[0]);
-    await enter(screen.getAllByLabelText('Option in English')[0], 'B2 class');
-    await user.click(screen.getByRole('button', { name: 'Save' }));
-    await screen.findByText('Saved.');
+    await user.clear(screen.getAllByLabelText(words.setup.ownOptionEn)[0]);
+    await enter(screen.getAllByLabelText(words.setup.ownOptionEn)[0], 'B2 class');
+    await user.click(screen.getByRole('button', { name: words.setup.save }));
+    await screen.findByText(words.setup.saved);
     const licence = (await api.getStaffSetup()).setup.customFields?.[0];
     expect(licence?.options.map((option) => option.label.en)).toEqual(['B2 class', 'Class C']);
 
     for (const key of ['licence', 'started', 'plate', 'dependants']) {
-      await user.click(screen.getByRole('button', { name: `Remove ${key}` }));
+      await user.click(screen.getByRole('button', { name: `${words.setup.remove} ${key}` }));
     }
-    expect(screen.getAllByText('None yet.').length).toBeGreaterThan(0);
-    await user.click(screen.getByRole('button', { name: 'Save' }));
-    await screen.findByText('Saved.');
+    expect(screen.getAllByText(words.setup.none).length).toBeGreaterThan(0);
+    await user.click(screen.getByRole('button', { name: words.setup.save }));
+    await screen.findByText(words.setup.saved);
     expect((await api.getStaffSetup()).setup.customFields).toEqual([]);
   });
 
   it('A field’s key is fixed once it is saved', async () => {
     openApp('/staff-setup');
-    await screen.findByRole('heading', { level: 2, name: 'Departments and positions' });
+    await screen.findByRole('heading', { level: 2, name: words.setup.title });
 
     expect(screen.getByDisplayValue('licence').hasAttribute('readonly')).toBe(true);
-    await user.click(screen.getByRole('button', { name: 'Add a field' }));
-    expect(lastOf(/^Key/).hasAttribute('readonly')).toBe(false);
+    await user.click(screen.getByRole('button', { name: words.setup.ownAdd }));
+    expect(lastOf(starting(words.setup.ownKey)).hasAttribute('readonly')).toBe(false);
   });
 });
 
 describe('the numbering', () => {
   it('A code left empty is the next number under the company’s prefix and length (`EMP-` and 4 digits until the root sets them), counted past every code ever given, people who left included', async () => {
     const { api } = openApp('/staff/new');
-    const code = await screen.findByLabelText<HTMLInputElement>(/^Code/);
+    const code = await screen.findByLabelText<HTMLInputElement>(starting(words.addPerson.code));
     expect(code.required).toBe(false);
-    await user.type(screen.getByLabelText(/^Name/), 'Mai Linh');
+    await user.type(screen.getByLabelText(starting(words.addPerson.name)), 'Mai Linh');
 
-    await user.click(screen.getByRole('button', { name: 'Add' }));
+    await user.click(screen.getByRole('button', { name: words.addPerson.submit }));
 
-    expect(await screen.findByLabelText<HTMLInputElement>('Sign-in name')).toMatchObject({
+    expect(
+      await screen.findByLabelText<HTMLInputElement>(words.addPerson.signInName),
+    ).toMatchObject({
       value: 'EMP-0009',
     });
     expect(api.addEmployee).toHaveBeenCalledWith({
@@ -454,23 +464,29 @@ describe('the numbering', () => {
 
   it('The root sets the prefix and the digits, sees the first code they give, and a numbering the BFF would refuse is said and not sent', async () => {
     const { api } = openApp('/staff-setup');
-    await screen.findByRole('heading', { level: 2, name: 'Departments and positions' });
-    expect(screen.getByText('The first code would be EMP-0001.')).toBeTruthy();
+    await screen.findByRole('heading', { level: 2, name: words.setup.title });
+    expect(
+      screen.getByText(words.setup.numberingExample.replace('{{code}}', 'EMP-0001')),
+    ).toBeTruthy();
 
-    await user.clear(screen.getByLabelText('Prefix'));
-    await user.type(screen.getByLabelText('Prefix'), 'nv');
-    await user.clear(screen.getByLabelText('Digits'));
-    await user.type(screen.getByLabelText('Digits'), '0');
-    expect(screen.queryByText(/The first code would be/)).toBeNull();
-    await user.click(screen.getByRole('button', { name: 'Save' }));
-    expect((await screen.findByRole('alert')).textContent).toContain('A prefix is up to 10');
+    await user.clear(screen.getByLabelText(words.setup.numberingPrefix));
+    await user.type(screen.getByLabelText(words.setup.numberingPrefix), 'nv');
+    await user.clear(screen.getByLabelText(words.setup.numberingDigits));
+    await user.type(screen.getByLabelText(words.setup.numberingDigits), '0');
+    expect(
+      screen.queryByText(words.setup.numberingExample.replace('{{code}}', 'EMP-0001')),
+    ).toBeNull();
+    await user.click(screen.getByRole('button', { name: words.setup.save }));
+    expect((await screen.findByRole('alert')).textContent).toContain(words.setup.numberingInvalid);
     expect(api.saveStaffSetup).not.toHaveBeenCalled();
 
-    await user.clear(screen.getByLabelText('Digits'));
-    await user.type(screen.getByLabelText('Digits'), '3');
-    expect(screen.getByText('The first code would be NV001.')).toBeTruthy();
-    await user.click(screen.getByRole('button', { name: 'Save' }));
-    await screen.findByText('Saved.');
+    await user.clear(screen.getByLabelText(words.setup.numberingDigits));
+    await user.type(screen.getByLabelText(words.setup.numberingDigits), '3');
+    expect(
+      screen.getByText(words.setup.numberingExample.replace('{{code}}', 'NV001')),
+    ).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: words.setup.save }));
+    await screen.findByText(words.setup.saved);
     expect((await api.getStaffSetup()).setup.numbering).toEqual({ prefix: 'NV', digits: 3 });
   });
 });
@@ -478,68 +494,64 @@ describe('the numbering', () => {
 describe('a code changed', () => {
   it('The root changes a person’s code: from then on they sign in with the new one, they are signed out everywhere, and nothing that names the person changes', async () => {
     const { api } = openApp(at('EMP-0004'));
-    await user.type(await screen.findByLabelText('New code'), 'nv-12');
+    await user.type(await screen.findByLabelText(words.person.codeNew), 'nv-12');
 
-    await user.click(screen.getByRole('button', { name: 'Change the code' }));
+    await user.click(screen.getByRole('button', { name: words.person.codeSet }));
 
     expect(
-      await screen.findByText(/The code is now NV-12\. The person signs in with it/),
+      await screen.findByText(words.person.codeChanged.replace('{{code}}', 'NV-12')),
     ).toBeTruthy();
     expect(api.changeCode).toHaveBeenCalledWith(person('EMP-0004').id, {
       version: 'e1',
       code: 'nv-12',
     });
     expect(screen.getByText('NV-12')).toBeTruthy();
-    expect(screen.getByText('Signs in with the code NV-12 and a password.')).toBeTruthy();
+    expect(screen.getByText(words.person.signInReady.replace('{{code}}', 'NV-12'))).toBeTruthy();
     // the same person, by id: their department is still theirs
-    expect(screen.getByLabelText<HTMLSelectElement>('Department').selectedOptions[0]?.text).toBe(
-      'Kho',
-    );
+    expect(
+      screen.getByLabelText<HTMLSelectElement>(words.person.department).selectedOptions[0]?.text,
+    ).toBe('Kho');
   });
 
   it('A code already taken or not a code is said, and the person’s code is as it was', async () => {
     const { api } = openApp(at('EMP-0004'));
-    const field = await screen.findByLabelText('New code');
-    const change = () => user.click(screen.getByRole('button', { name: 'Change the code' }));
+    const field = await screen.findByLabelText(words.person.codeNew);
+    const change = () => user.click(screen.getByRole('button', { name: words.person.codeSet }));
 
     await user.type(field, 'x');
     await change();
-    expect(
-      await screen.findByText('A code is 2 to 20 letters A to Z, digits or hyphens.'),
-    ).toBeTruthy();
+    expect(await screen.findByText(words.person.codeInvalid)).toBeTruthy();
     expect(api.changeCode).not.toHaveBeenCalled();
 
     await user.clear(field);
     await user.type(field, 'emp-0008');
     await change();
-    expect(await screen.findByText(/already belongs to someone/)).toBeTruthy();
+    expect(await screen.findByText(words.person.codeTaken)).toBeTruthy();
     expect(screen.getByText('EMP-0004')).toBeTruthy();
   });
 
   it('A code change that fails says so, and one over someone else’s newer save offers the newer details', async () => {
     const failing = openApp(at('EMP-0004'), { cue: 'changeCode:503' });
-    await user.type(await screen.findByLabelText('New code'), 'nv-12');
-    await user.click(screen.getByRole('button', { name: 'Change the code' }));
-    expect(await screen.findByText('The code was not changed: try again.')).toBeTruthy();
+    await user.type(await screen.findByLabelText(words.person.codeNew), 'nv-12');
+    await user.click(screen.getByRole('button', { name: words.person.codeSet }));
+    expect(await screen.findByText(words.person.codeFailed)).toBeTruthy();
     failing.unmount();
 
     openApp(at('EMP-0004'), { cue: 'changeCode:409' });
-    await user.type(await screen.findByLabelText('New code'), 'nv-12');
-    await user.click(screen.getByRole('button', { name: 'Change the code' }));
-    expect(await screen.findByText(/Someone saved newer details first/)).toBeTruthy();
+    await user.type(await screen.findByLabelText(words.person.codeNew), 'nv-12');
+    await user.click(screen.getByRole('button', { name: words.person.codeSet }));
+    expect(await screen.findByText(words.person.conflict)).toBeTruthy();
   });
 
   it('Only the root changes a code: no one else is offered it, nor is a person who left', async () => {
     const office = openApp(at('EMP-0002'), { as: 'EMP-0001' });
-    await screen.findByLabelText(/^Name/);
-    expect(screen.queryByLabelText('New code')).toBeNull();
+    await screen.findByLabelText(starting(words.person.name));
+    expect(screen.queryByLabelText(words.person.codeNew)).toBeNull();
     office.unmount();
 
     openApp(at('EMP-0008'));
-    await screen.findByText(
-      'This person left. Their record and code are kept, and they can come back.',
-    );
-    expect(screen.queryByLabelText('New code')).toBeNull();
+    await screen.findByText(words.person.archived);
+    expect(screen.queryByLabelText(words.person.codeNew)).toBeNull();
   });
 });
 
@@ -550,17 +562,17 @@ describe('a photo', () => {
   it('Someone allowed to change a person crops and saves a square photo, made small by the app, shown on the person’s page; the list shows initials', async () => {
     vi.mocked(shrinkToPhoto).mockResolvedValue(PHOTO);
     const { api } = openApp(at('EMP-0002'));
-    expect(await screen.findByText('No photo yet.')).toBeTruthy();
+    expect(await screen.findByText(words.person.photoNone)).toBeTruthy();
 
     await choose();
 
-    expect(await screen.findByText('The photo is saved.')).toBeTruthy();
+    expect(await screen.findByText(words.person.photoSaved)).toBeTruthy();
     expect(api.savePhoto).toHaveBeenCalledWith(person('EMP-0002').id, {
       photo: PHOTO,
       version: '',
     });
     expect(screen.getByRole('img', { name: 'Trần Văn Hùng' }).getAttribute('src')).toBe(PHOTO);
-    expect(screen.queryByText('No photo yet.')).toBeNull();
+    expect(screen.queryByText(words.person.photoNone)).toBeNull();
     // a second photo goes over the first, at the version it was saved at
     await choose();
     await waitFor(() => expect(api.savePhoto).toHaveBeenCalledTimes(2));
@@ -569,7 +581,7 @@ describe('a photo', () => {
       version: 'p1',
     });
     // the list shows initials, not the picture
-    await user.click(menu().getByRole('link', { name: 'Staff' }));
+    await user.click(menu().getByRole('link', { name: words.nav.staff }));
     const row = (await screen.findAllByText('Trần Văn Hùng')).at(-1)?.closest('tr') as HTMLElement;
     expect(row.textContent).toContain('TV');
     expect(within(row).queryByRole('img')).toBeNull();
@@ -581,10 +593,10 @@ describe('a photo', () => {
     expect((await screen.findByRole('img', { name: 'Lê Minh Châu' })).getAttribute('src')).toBe(
       PHOTO,
     );
-    expect(screen.queryByText('No photo yet.')).toBeNull();
+    expect(screen.queryByText(words.person.photoNone)).toBeNull();
 
     await choose();
-    expect(await screen.findByText('That file could not be used as a photo.')).toBeTruthy();
+    expect(await screen.findByText(words.person.photoUnusable)).toBeTruthy();
   });
 
   it('A photo that fails to save says so, and one over someone else’s newer photo says that', async () => {
@@ -592,13 +604,13 @@ describe('a photo', () => {
     const failing = openApp(at('EMP-0003'), { cue: 'savePhoto:503' });
     await screen.findByRole('img', { name: 'Lê Minh Châu' });
     await choose();
-    expect(await screen.findByText('The photo was not saved: try again.')).toBeTruthy();
+    expect(await screen.findByText(words.person.photoFailed)).toBeTruthy();
     failing.unmount();
 
     openApp(at('EMP-0003'), { cue: 'savePhoto:409' });
     await screen.findByRole('img', { name: 'Lê Minh Châu' });
     await choose();
-    expect(await screen.findByText(/Someone saved a photo first/)).toBeTruthy();
+    expect(await screen.findByText(words.person.photoConflict)).toBeTruthy();
   });
 
   it('A cancelled choice saves nothing', async () => {
@@ -616,7 +628,7 @@ describe('a photo', () => {
     const { api } = openApp(at('EMP-0003'), { as: 'EMP-0004' });
 
     expect(await screen.findByRole('img', { name: 'Lê Minh Châu' })).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Choose a photo' })).toBeNull();
+    expect(screen.queryByRole('button', { name: words.person.photoChoose })).toBeNull();
     expect(api.savePhoto).not.toHaveBeenCalled();
   });
 });
@@ -630,7 +642,7 @@ describe('search and filters', () => {
 
   it('Search finds a person by any word the list shows, the company’s own fields included, with or without accents and in any case', async () => {
     openApp('/staff');
-    const search = await screen.findByLabelText('Search');
+    const search = await screen.findByLabelText(words.staff.search);
     await screen.findAllByText('Nguyễn Thị Lan');
 
     // a name without its marks, in any case
@@ -653,14 +665,12 @@ describe('search and filters', () => {
     // nothing matches: the list says so, and a field not shown in the list is not searched
     await user.clear(search);
     await enter(search, '51C-123.45');
-    expect(
-      await screen.findByText('No one matches. Change the search or the filters.'),
-    ).toBeTruthy();
+    expect(await screen.findByText(words.staff.noMatch)).toBeTruthy();
   });
 
   it('Search reads the language shown: a choice’s Vietnamese name finds it, and đ is d', async () => {
     openApp('/staff', { language: 'vi' });
-    const search = await screen.findByLabelText('Tìm kiếm');
+    const search = await screen.findByLabelText(wordsVi.staff.search);
     await screen.findAllByText('Nguyễn Thị Lan');
 
     await user.type(search, 'hang b2');
@@ -674,21 +684,30 @@ describe('search and filters', () => {
     openApp('/staff');
     await screen.findAllByText('Nguyễn Thị Lan');
 
-    await user.selectOptions(screen.getByLabelText('Department'), 'Kho');
+    await user.selectOptions(screen.getByLabelText(words.staff.filterDepartment), 'Kho');
     expect(names()).toEqual(['Lê Minh Châu', 'Phạm Quốc Bảo']);
-    await user.selectOptions(screen.getByLabelText('Position'), 'Quản lý');
+    await user.selectOptions(screen.getByLabelText(words.staff.filterPosition), 'Quản lý');
     expect(names()).toEqual(['Lê Minh Châu']);
     // people who left show with the status All, inside the others
-    await user.selectOptions(screen.getByLabelText('Position'), 'Nhân viên');
-    await user.selectOptions(screen.getByLabelText('Status'), 'All');
+    await user.selectOptions(screen.getByLabelText(words.staff.filterPosition), 'Nhân viên');
+    await user.selectOptions(screen.getByLabelText(words.staff.status), words.staff.statusAll);
     expect(names()).toEqual(['Phạm Quốc Bảo', 'Hoàng Gia Huy']);
-    await user.selectOptions(screen.getByLabelText('Department'), 'All departments');
-    await user.selectOptions(screen.getByLabelText('Position'), 'All positions');
-    await user.selectOptions(screen.getByLabelText('Status'), 'Active');
+    await user.selectOptions(
+      screen.getByLabelText(words.staff.filterDepartment),
+      words.staff.filterAllDepartments,
+    );
+    await user.selectOptions(
+      screen.getByLabelText(words.staff.filterPosition),
+      words.staff.filterAllPositions,
+    );
+    await user.selectOptions(screen.getByLabelText(words.staff.status), words.staff.statusActive);
     // a choice field shown in the list
     await user.selectOptions(screen.getByLabelText('Driving licence'), 'Class B2');
     expect(names()).toEqual(['Đặng Hoài Nam']);
-    await user.selectOptions(screen.getByLabelText('Driving licence'), 'All driving licence');
+    await user.selectOptions(
+      screen.getByLabelText('Driving licence'),
+      words.staff.filterAllOf.replace('{{field}}', 'driving licence'),
+    );
     expect(names()).toHaveLength(7);
     // a field that is not a choice, or not shown in the list, has no filter
     expect(screen.queryByLabelText('Vehicle plate')).toBeNull();
@@ -699,10 +718,10 @@ describe('search and filters', () => {
     const kho = DEMO_STAFF_SETUP.departments[0]?.id;
     openApp(`/staff?q=${encodeURIComponent('bảo')}&department=${kho}&status=all&f.licence=`);
 
-    expect((await screen.findByLabelText<HTMLInputElement>('Search')).value).toBe('bảo');
+    expect((await screen.findByLabelText<HTMLInputElement>(words.staff.search)).value).toBe('bảo');
     expect(names()).toEqual(['Phạm Quốc Bảo']);
-    expect(screen.getByLabelText<HTMLSelectElement>('Department').value).toBe(kho);
-    expect(screen.getByLabelText<HTMLSelectElement>('Status').value).toBe('all');
+    expect(screen.getByLabelText<HTMLSelectElement>(words.staff.filterDepartment).value).toBe(kho);
+    expect(screen.getByLabelText<HTMLSelectElement>(words.staff.status).value).toBe('all');
     expect(screen.getByLabelText<HTMLSelectElement>('Driving licence').value).toBe('');
   });
 });
@@ -714,7 +733,7 @@ describe('the person’s page keeps what the person did', () => {
       new File(['x'], 'face.png', { type: 'image/png' }),
     );
   const typePhone = async (value: string) => {
-    const phone = await screen.findByRole('textbox', { name: 'Phone' });
+    const phone = await screen.findByRole('textbox', { name: words.person.phone });
     await user.clear(phone);
     await user.type(phone, value);
   };
@@ -722,22 +741,22 @@ describe('the person’s page keeps what the person did', () => {
   it('A photo just saved stays shown after the details are saved, and the next photo goes over it at its version', async () => {
     vi.mocked(shrinkToPhoto).mockResolvedValue(PHOTO);
     const { api } = openApp(at('EMP-0002'));
-    await screen.findByText('No photo yet.');
+    await screen.findByText(words.person.photoNone);
     await choose();
-    await screen.findByText('The photo is saved.');
+    await screen.findByText(words.person.photoSaved);
 
     await typePhone('0903 999 000');
-    await user.click(screen.getByRole('button', { name: 'Save' }));
-    await screen.findByText('Saved.');
+    await user.click(screen.getByRole('button', { name: words.person.save }));
+    await screen.findByText(words.person.saved);
 
-    expect(screen.queryByText('No photo yet.')).toBeNull();
+    expect(screen.queryByText(words.person.photoNone)).toBeNull();
     await choose();
     await waitFor(() => expect(api.savePhoto).toHaveBeenCalledTimes(2));
     expect(api.savePhoto).toHaveBeenLastCalledWith(person('EMP-0002').id, {
       photo: PHOTO,
       version: 'p1',
     });
-    expect(screen.queryByText(/Someone saved a photo first/)).toBeNull();
+    expect(screen.queryByText(words.person.photoConflict)).toBeNull();
   });
 
   it('A photo over someone else’s newer one says so and takes the newer photo, so the next try goes over it', async () => {
@@ -749,10 +768,10 @@ describe('the person’s page keeps what the person did', () => {
         void original;
       },
     });
-    await screen.findByText('No photo yet.');
+    await screen.findByText(words.person.photoNone);
 
     await choose();
-    expect(await screen.findByText(/Someone saved a photo first/)).toBeTruthy();
+    expect(await screen.findByText(words.person.photoConflict)).toBeTruthy();
     await choose();
 
     await waitFor(() => expect(api.savePhoto).toHaveBeenCalledTimes(2));
@@ -764,7 +783,7 @@ describe('the person’s page keeps what the person did', () => {
       photo: PHOTO,
       version: '',
     });
-    expect(await screen.findByText('The photo is saved.')).toBeTruthy();
+    expect(await screen.findByText(words.person.photoSaved)).toBeTruthy();
   });
 
   it('A photo conflict that carries no newer photo is said all the same', async () => {
@@ -774,46 +793,46 @@ describe('the person’s page keeps what the person did', () => {
         spied.savePhoto.mockResolvedValue({ kind: 'conflict', current: null });
       },
     });
-    await screen.findByText('No photo yet.');
+    await screen.findByText(words.person.photoNone);
 
     await choose();
 
-    expect(await screen.findByText(/Someone saved a photo first/)).toBeTruthy();
-    expect(screen.getByText('No photo yet.')).toBeTruthy();
+    expect(await screen.findByText(words.person.photoConflict)).toBeTruthy();
+    expect(screen.getByText(words.person.photoNone)).toBeTruthy();
   });
 
   it('A person who left has no way to change the photo', async () => {
     openApp(at('EMP-0008'));
-    await screen.findByText(
-      'This person left. Their record and code are kept, and they can come back.',
-    );
+    await screen.findByText(words.person.archived);
 
-    expect(screen.getByRole('heading', { level: 3, name: 'Photo' })).toBeTruthy();
-    expect(screen.queryByRole('button', { name: 'Choose a photo' })).toBeNull();
+    expect(screen.getByRole('heading', { level: 3, name: words.person.photo })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: words.person.photoChoose })).toBeNull();
   });
 
   it('What was typed in the details survives a code change, and a problem said about one try is gone at the next', async () => {
     const { api } = openApp(at('EMP-0004'));
     await typePhone('0903 999 000');
-    const field = screen.getByLabelText('New code');
-    const change = () => user.click(screen.getByRole('button', { name: 'Change the code' }));
+    const field = screen.getByLabelText(words.person.codeNew);
+    const change = () => user.click(screen.getByRole('button', { name: words.person.codeSet }));
     await user.type(field, 'emp-0008');
     await change();
-    expect(await screen.findByText(/already belongs to someone/)).toBeTruthy();
+    expect(await screen.findByText(words.person.codeTaken)).toBeTruthy();
 
     await user.clear(field);
     await user.type(field, 'nv-12');
     await change();
 
-    expect(await screen.findByText(/The code is now NV-12/)).toBeTruthy();
-    expect(screen.queryByText(/already belongs to someone/)).toBeNull();
-    expect(screen.getByLabelText<HTMLInputElement>('New code').value).toBe('');
-    expect(screen.getByRole<HTMLInputElement>('textbox', { name: 'Phone' }).value).toBe(
+    expect(
+      await screen.findByText(words.person.codeChanged.replace('{{code}}', 'NV-12')),
+    ).toBeTruthy();
+    expect(screen.queryByText(words.person.codeTaken)).toBeNull();
+    expect(screen.getByLabelText<HTMLInputElement>(words.person.codeNew).value).toBe('');
+    expect(screen.getByRole<HTMLInputElement>('textbox', { name: words.person.phone }).value).toBe(
       '0903 999 000',
     );
     // the save after it goes over the version the code change made
-    await user.click(screen.getByRole('button', { name: 'Save' }));
-    await screen.findByText('Saved.');
+    await user.click(screen.getByRole('button', { name: words.person.save }));
+    await screen.findByText(words.person.saved);
     expect(api.saveEmployee).toHaveBeenCalledWith(
       person('EMP-0004').id,
       expect.objectContaining({ version: 'e2' }),
@@ -822,16 +841,16 @@ describe('the person’s page keeps what the person did', () => {
 
   it('The words about a new code go when the newer details are read', async () => {
     const { api } = openApp(at('EMP-0004'));
-    await user.type(await screen.findByLabelText('New code'), 'nv-12');
-    await user.click(screen.getByRole('button', { name: 'Change the code' }));
-    await screen.findByText(/The code is now NV-12/);
+    await user.type(await screen.findByLabelText(words.person.codeNew), 'nv-12');
+    await user.click(screen.getByRole('button', { name: words.person.codeSet }));
+    await screen.findByText(words.person.codeChanged.replace('{{code}}', 'NV-12'));
     api.saveEmployee.mockResolvedValueOnce({ kind: 'conflict' });
 
-    await user.click(screen.getByRole('button', { name: 'Save' }));
-    await user.click(await screen.findByRole('button', { name: 'Show the newer details' }));
+    await user.click(screen.getByRole('button', { name: words.person.save }));
+    await user.click(await screen.findByRole('button', { name: words.person.conflictReload }));
 
-    await screen.findByLabelText(/^Name/);
-    expect(screen.queryByText(/The code is now NV-12/)).toBeNull();
+    await screen.findByLabelText(starting(words.person.name));
+    expect(screen.queryByText(words.person.codeChanged.replace('{{code}}', 'NV-12'))).toBeNull();
   });
 
   it('A value kept on a person that no longer fits its field is theirs until another is typed: a removed choice is listed as itself, and only a changed value is refused', async () => {
@@ -865,9 +884,9 @@ describe('the person’s page keeps what the person did', () => {
     expect(licence.selectedOptions[0]?.textContent).toBe('b2');
     await typePhone('0903 999 000');
 
-    await user.click(screen.getByRole('button', { name: 'Save' }));
+    await user.click(screen.getByRole('button', { name: words.person.save }));
 
-    await screen.findByText('Saved.');
+    await screen.findByText(words.person.saved);
     expect(api.saveEmployee).toHaveBeenCalledTimes(1);
     expect(api.saveEmployee.mock.calls[0]?.[1].extra).toMatchObject({
       licence: 'b2',
@@ -878,8 +897,8 @@ describe('the person’s page keeps what the person did', () => {
     const dependants = screen.getByLabelText('Dependants');
     await user.clear(dependants);
     await user.type(dependants, 'two');
-    await user.click(screen.getByRole('button', { name: 'Save' }));
-    expect(await screen.findByText('A number, for example 3 or 3.5.')).toBeTruthy();
+    await user.click(screen.getByRole('button', { name: words.person.save }));
+    expect(await screen.findByText(words.fields.invalidNumber)).toBeTruthy();
     expect(api.saveEmployee).toHaveBeenCalledTimes(1);
   });
 });
@@ -912,8 +931,8 @@ describe('the list and its address', () => {
 
   it('A search or a filter replaces the address, so back leaves the list and does not step through its narrowings', async () => {
     appAt('/staff-setup', '/staff');
-    await user.type(await screen.findByLabelText('Search'), 'lan');
-    await user.selectOptions(screen.getByLabelText('Position'), 'Quản lý');
+    await user.type(await screen.findByLabelText(words.staff.search), 'lan');
+    await user.selectOptions(screen.getByLabelText(words.staff.filterPosition), 'Quản lý');
     await waitFor(() => expect(address()).toContain('q=lan&position='));
 
     await user.click(screen.getByRole('button', { name: 'history back' }));
@@ -923,11 +942,11 @@ describe('the list and its address', () => {
 
   it('The menu’s Staff link clears the list’s address and the search box with it; history back to a searched list puts its word in the box', async () => {
     appAt('/staff?q=lan');
-    const search = await screen.findByLabelText<HTMLInputElement>('Search');
+    const search = await screen.findByLabelText<HTMLInputElement>(words.staff.search);
     await screen.findAllByText('Nguyễn Thị Lan');
     expect(search.value).toBe('lan');
 
-    await user.click(menu().getByRole('link', { name: 'Staff' }));
+    await user.click(menu().getByRole('link', { name: words.nav.staff }));
     await screen.findAllByText('Trần Văn Hùng');
     expect(address()).toBe('/staff');
     expect(search.value).toBe('');
@@ -935,7 +954,7 @@ describe('the list and its address', () => {
     await user.click(screen.getByRole('button', { name: 'history back' }));
     await waitFor(() => expect(address()).toBe('/staff?q=lan'));
     await waitFor(() => expect(screen.queryByText('Trần Văn Hùng')).toBeNull());
-    expect(screen.getByLabelText<HTMLInputElement>('Search').value).toBe('lan');
+    expect(screen.getByLabelText<HTMLInputElement>(words.staff.search).value).toBe('lan');
   });
 
   it('Two narrowings before the router commits the first keep both', async () => {
@@ -954,9 +973,9 @@ describe('the list and its address', () => {
         <Probe />
       </>,
     );
-    const search = await screen.findByLabelText<HTMLInputElement>('Search');
+    const search = await screen.findByLabelText<HTMLInputElement>(words.staff.search);
     await screen.findAllByText('Nguyễn Thị Lan');
-    const position = screen.getByLabelText<HTMLSelectElement>('Position');
+    const position = screen.getByLabelText<HTMLSelectElement>(words.staff.filterPosition);
     const manager = DEMO_STAFF_SETUP.positions[0].id;
     // Two discrete events with no render between, as two actions arriving inside one transition.
     const valueSetter = (prototype: object) =>
@@ -989,7 +1008,7 @@ describe('the list and its address', () => {
         <Probe />
       </MemoryRouter>,
     );
-    const search = await screen.findByLabelText<HTMLInputElement>('Search');
+    const search = await screen.findByLabelText<HTMLInputElement>(words.staff.search);
     await screen.findAllByText('Nguyễn Thị Lan');
     // The native setter, called on the element.
     // eslint-disable-next-line @typescript-eslint/unbound-method
@@ -1008,23 +1027,23 @@ describe('the list and its address', () => {
     await act(async () => {});
     expect(search.value).toBe('a');
 
-    await user.click(menu().getByRole('link', { name: 'Staff' }));
+    await user.click(menu().getByRole('link', { name: words.nav.staff }));
 
     await screen.findAllByText('Trần Văn Hùng');
     expect(address()).toBe('/staff');
-    expect(screen.getByLabelText<HTMLInputElement>('Search').value).toBe('');
+    expect(screen.getByLabelText<HTMLInputElement>(words.staff.search).value).toBe('');
   });
 
   it('A criterion the page cannot show, a removed department or a field it does not list, narrows nothing', async () => {
     appAt('/staff?department=gone&position=gone&f.plate=51C&f.licence=zzz');
-    await screen.findByLabelText('Search');
+    await screen.findByLabelText(words.staff.search);
     await screen.findAllByText('Nguyễn Thị Lan');
 
-    expect(screen.getByLabelText<HTMLSelectElement>('Department').value).toBe('');
+    expect(screen.getByLabelText<HTMLSelectElement>(words.staff.filterDepartment).value).toBe('');
     expect(screen.getByLabelText<HTMLSelectElement>('Driving licence').value).toBe('');
-    expect(screen.queryByText('No one matches. Change the search or the filters.')).toBeNull();
+    expect(screen.queryByText(words.staff.noMatch)).toBeNull();
     // the next narrowing drops them from the address
-    await user.type(screen.getByLabelText('Search'), 'lan');
+    await user.type(screen.getByLabelText(words.staff.search), 'lan');
     await waitFor(() => expect(address()).toBe('/staff?q=lan'));
   });
 
@@ -1055,9 +1074,9 @@ describe('the list and its address', () => {
     await user.click((await screen.findAllByRole('link', { name: 'Nguyễn Thị Lan' }))[0]);
     await screen.findByRole('heading', { level: 2, name: 'Nguyễn Thị Lan' });
 
-    await user.click(screen.getByRole('link', { name: /Back/ }));
+    await user.click(screen.getByRole('link', { name: words.staff.back }));
 
-    expect((await screen.findByLabelText<HTMLInputElement>('Search')).value).toBe('lan');
+    expect((await screen.findByLabelText<HTMLInputElement>(words.staff.search)).value).toBe('lan');
     expect(address()).toBe('/staff?q=lan');
   });
 
@@ -1070,9 +1089,9 @@ describe('the list and its address', () => {
     await user.click(tableLink);
     await screen.findByRole('heading', { level: 2, name: 'Nguyễn Thị Lan' });
 
-    await user.click(screen.getByRole('link', { name: /Back/ }));
+    await user.click(screen.getByRole('link', { name: words.staff.back }));
 
-    expect((await screen.findByLabelText<HTMLInputElement>('Search')).value).toBe('lan');
+    expect((await screen.findByLabelText<HTMLInputElement>(words.staff.search)).value).toBe('lan');
     expect(address()).toBe('/staff?q=lan');
   });
 
@@ -1080,9 +1099,9 @@ describe('the list and its address', () => {
     appAt(at('EMP-0001'));
     await screen.findByRole('heading', { level: 2, name: 'Nguyễn Thị Lan' });
 
-    await user.click(screen.getByRole('link', { name: /Back/ }));
+    await user.click(screen.getByRole('link', { name: words.staff.back }));
 
-    await screen.findByLabelText('Search');
+    await screen.findByLabelText(words.staff.search);
     expect(address()).toBe('/staff');
   });
 });

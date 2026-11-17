@@ -4,6 +4,8 @@ import { describe, expect, it } from 'vitest';
 import { openApp } from '../../../tests/open';
 import { DICTIONARIES } from '../../i18n';
 
+const wordsVi = DICTIONARIES.vi;
+
 const words = DICTIONARIES.en;
 const open = (options: Parameters<typeof openApp>[1] = {}) =>
   openApp('/operator/operators', { operator: true, ...options });
@@ -23,23 +25,49 @@ describe('the operators of the console', () => {
   it('B1 row 1: lists everyone who may sign in, the last added first: name, state, adder, day added, passkeys, last sign-in; the reader marked “you”', async () => {
     const { api } = open();
 
-    expect(await screen.findByRole('heading', { level: 2, name: 'Operators' })).toBeTruthy();
+    expect(
+      await screen.findByRole('heading', { level: 2, name: words.nav.operators }),
+    ).toBeTruthy();
     await screen.findAllByRole('row');
     expect(screen.getAllByRole('columnheader').map((header) => header.textContent)).toEqual([
-      'Name',
-      'State',
-      'Added by',
-      'Added on',
-      'Passkeys',
-      'Last sign-in',
+      words.team.colName,
+      words.team.colState,
+      words.team.colAddedBy,
+      words.team.colAddedOn,
+      words.team.colPasskeys,
+      words.team.colSignedIn,
       '',
     ]);
     expect(rows()).toEqual([
-      ['Lan Anh', 'Invited', 'operator', '29 Oct 2026', '0', '—', 'New linkDelete'],
-      ['Minh Quân', 'Active', '—', '12 Oct 2026', '1', '27 Oct 2026', 'New linkDelete'],
-      ['operatoryou', 'Active', 'the command line', '5 Oct 2026', '2', '30 Oct 2026', ''],
+      [
+        'Lan Anh',
+        words.team.invited,
+        'operator',
+        '29 Oct 2026',
+        '0',
+        '—',
+        `${words.team.newLink}${words.team.delete}`,
+      ],
+      [
+        'Minh Quân',
+        words.team.active,
+        '—',
+        '12 Oct 2026',
+        '1',
+        '27 Oct 2026',
+        `${words.team.newLink}${words.team.delete}`,
+      ],
+      [
+        `operator${words.team.you}`,
+        words.team.active,
+        words.team.terminal,
+        '5 Oct 2026',
+        '2',
+        '30 Oct 2026',
+        '',
+      ],
     ]);
-    expect(screen.getAllByText('you')).toHaveLength(1);
+    expect(screen.getAllByText(words.team.you)).toHaveLength(1);
     expect(api.listOperators).toHaveBeenCalledOnce();
     // no client’s data is read for this page
     expect(api.listClients).not.toHaveBeenCalled();
@@ -48,26 +76,31 @@ describe('the operators of the console', () => {
   it('B1 row 1: says it in Vietnamese, the days as the day first', async () => {
     open({ language: 'vi' });
 
-    expect(await screen.findByRole('heading', { level: 2, name: 'Người vận hành' })).toBeTruthy();
+    expect(
+      await screen.findByRole('heading', { level: 2, name: wordsVi.nav.operators }),
+    ).toBeTruthy();
     await screen.findAllByRole('row');
     expect(rows()[0]?.slice(0, 6)).toEqual([
       'Lan Anh',
-      'Đã mời',
+      wordsVi.team.invited,
       'operator',
       '29/10/2026',
       '0',
       '—',
     ]);
-    expect(rows()[2]?.[0]).toBe('operatorbạn');
-    expect(rows()[2]?.[2]).toBe('dòng lệnh');
+    expect(rows()[2]?.[0]).toBe(`operator${wordsVi.team.you}`);
+    expect(rows()[2]?.[2]).toBe(wordsVi.team.terminal);
   });
 
   it('B1 row 1: the menu’s Operators opens it, and Add an operator leads to the create page', async () => {
     openApp('/operator/clients', { operator: true });
     await userEvent.click(
-      within((await screen.findAllByRole('navigation', { name: 'Menu' }))[0]).getByRole('link', {
-        name: 'Operators',
-      }),
+      within((await screen.findAllByRole('navigation', { name: words.nav.menu }))[0]).getByRole(
+        'link',
+        {
+          name: words.nav.operators,
+        },
+      ),
     );
 
     expect(await screen.findByRole('cell', { name: 'Minh Quân' })).toBeTruthy();

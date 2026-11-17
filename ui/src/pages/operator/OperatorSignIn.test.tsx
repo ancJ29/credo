@@ -5,18 +5,21 @@ import { draw } from '../../../tests/render';
 import { DICTIONARIES } from '../../i18n';
 import { OperatorSignIn } from './OperatorSignIn';
 
+const words = DICTIONARIES.en;
+const wordsVi = DICTIONARIES.vi;
+
 describe('OperatorSignIn', () => {
   it('is credo’s own door: its name over the form, and a title no client’s sign-in has', () => {
     draw(<OperatorSignIn status="idle" onSubmit={vi.fn()} />);
 
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Credo');
-    expect(screen.getByRole('heading', { level: 2 }).textContent).toBe('Operator sign-in');
+    expect(screen.getByRole('heading', { level: 2 }).textContent).toBe(words.operator.signIn);
   });
 
   it('says it in Vietnamese too', () => {
     draw(<OperatorSignIn status="idle" onSubmit={vi.fn()} />, 'vi');
 
-    expect(screen.getByRole('heading', { level: 2 }).textContent).toBe('Đăng nhập người vận hành');
+    expect(screen.getByRole('heading', { level: 2 }).textContent).toBe(wordsVi.operator.signIn);
     expect(screen.getByRole('button').textContent).toBe(DICTIONARIES.vi.passkey.signInButton);
   });
 
@@ -26,7 +29,7 @@ describe('OperatorSignIn', () => {
 
     expect(screen.queryByRole('textbox')).toBeNull();
     expect(screen.getByText(DICTIONARIES.en.passkey.signInHint)).toBeTruthy();
-    await userEvent.click(screen.getByRole('button', { name: 'Sign in with a passkey' }));
+    await userEvent.click(screen.getByRole('button', { name: words.passkey.signInButton }));
 
     expect(onSubmit).toHaveBeenCalledOnce();
   });
@@ -44,7 +47,7 @@ describe('OperatorSignIn', () => {
     rerender(<OperatorSignIn status="busy" onSubmit={vi.fn()} />);
     expect(screen.queryByRole('alert')).toBeNull();
     expect(
-      screen.getByRole('button', { name: 'Sign in with a passkey' }).hasAttribute('data-loading'),
+      screen.getByRole('button', { name: words.passkey.signInButton }).hasAttribute('data-loading'),
     ).toBe(true);
   });
 });
