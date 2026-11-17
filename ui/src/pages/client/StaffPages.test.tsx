@@ -1195,9 +1195,9 @@ describe('the words', () => {
       { path: `/staff/${id}`, ready: 'textbox' },
       { path: `/staff/${person('EMP-0008').id}`, ready: 'textbox' },
     ];
-    // a key with no words shows as the key: a dotted name that starts with a dictionary group
+    // a key with no words shows as the key: a dotted name that starts with a group, bar a file name
     const KEY = new RegExp(
-      `(?<![A-Za-z_.])(${Object.keys(DICTIONARIES.en).join('|')})(\\.[a-z][A-Za-z0-9_]*)+`,
+      `(?<![A-Za-z_.])(${Object.keys(DICTIONARIES.en).join('|')})(?!\\.(?:xlsx|csv)\\b)(\\.[a-z][A-Za-z0-9_]*)+`,
     );
     const missingKey = () => KEY.exec(document.body.textContent)?.[0] ?? null;
     for (const language of ['vi', 'en'] as const) {

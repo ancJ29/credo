@@ -838,7 +838,7 @@ describe('the customers and the products', () => {
   });
 
   // Adding: the same record the import would put in, from the same two schemas (case-table 7 to 11)
-  const codeWord = words.lists.products.codeInvalid;
+  const codeWord = (kind: 'customers' | 'products') => words.lists[kind].codeInvalid;
   const taken = (kind: 'customers' | 'products') => words.lists[kind].codeTaken;
   const viewer = {
     override: (spied: Spied) => {
@@ -856,7 +856,7 @@ describe('the customers and the products', () => {
 
     // nothing typed: no code and no name
     await add();
-    expect(await screen.findByText(codeWord)).toBeTruthy();
+    expect(await screen.findByText(codeWord('customers'))).toBeTruthy();
     expect(screen.getByText(words.lists.customers.nameNeeded)).toBeTruthy();
     // a code of the wrong shape, with a name
     await userEvent.type(
@@ -865,7 +865,7 @@ describe('the customers and the products', () => {
     );
     await userEvent.type(screen.getByRole('textbox', { name: words.lists.columns.code }), 'a b');
     await add();
-    expect(screen.getByText(codeWord)).toBeTruthy();
+    expect(screen.getByText(codeWord('customers'))).toBeTruthy();
     expect(screen.queryByText(words.lists.customers.nameNeeded)).toBeNull();
     // a good code and a name of spaces
     await userEvent.clear(screen.getByRole('textbox', { name: words.lists.columns.code }));
@@ -874,7 +874,7 @@ describe('the customers and the products', () => {
     await userEvent.type(screen.getByRole('textbox', { name: words.lists.columns.name }), '   ');
     await add();
     expect(screen.getByText(words.lists.customers.nameNeeded)).toBeTruthy();
-    expect(screen.queryByText(codeWord)).toBeNull();
+    expect(screen.queryByText(codeWord('customers'))).toBeNull();
     expect(drawn.api.addCustomer).not.toHaveBeenCalled();
   });
 
@@ -922,7 +922,7 @@ describe('the customers and the products', () => {
     const word = words.lists.products.priceInvalid;
     // no code: its own word
     await add();
-    expect(await screen.findByText(codeWord)).toBeTruthy();
+    expect(await screen.findByText(codeWord('products'))).toBeTruthy();
     await userEvent.type(screen.getByRole('textbox', { name: words.lists.columns.code }), 'VT-90');
     await userEvent.type(
       screen.getByRole('textbox', { name: words.lists.columns.name }),
