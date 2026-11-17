@@ -25,7 +25,7 @@ const dom = (markup: string) => {
 };
 
 /** Whether a record has a note the page draws: a text that is not empty, never an array index. */
-/** A key with no words shows as the key: a dotted name that starts with one of the dictionary's groups, every part lowercase-first. */
+/** A key with no words shows as the key: a dotted name that starts with a dictionary group. */
 const KEY = new RegExp(
   `(?<![A-Za-z_.])(${Object.keys(DICTIONARIES.en).join('|')})(\\.[a-z][A-Za-z0-9_]*)+`,
 );

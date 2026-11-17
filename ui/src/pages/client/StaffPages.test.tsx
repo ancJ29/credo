@@ -1195,7 +1195,7 @@ describe('the words', () => {
       { path: `/staff/${id}`, ready: 'textbox' },
       { path: `/staff/${person('EMP-0008').id}`, ready: 'textbox' },
     ];
-    // a key with no words shows as the key: a dotted name that starts with one of the dictionary's groups, every part lowercase-first
+    // a key with no words shows as the key: a dotted name that starts with a dictionary group
     const KEY = new RegExp(
       `(?<![A-Za-z_.])(${Object.keys(DICTIONARIES.en).join('|')})(\\.[a-z][A-Za-z0-9_]*)+`,
     );
