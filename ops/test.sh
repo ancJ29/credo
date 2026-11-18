@@ -1984,7 +1984,7 @@ refuses "  an app-bff job that never names Node 24 is refused" "node-version: 24
 # shellcheck disable=SC2016 # the workflow's literal text
 sed 's#BUNDLE_NODE=\$(command -v node)#BUNDLE=\$(command -v node)#' "$WORKFLOW" >"$WORK/wf-nobn.yml"
 refuses "  and one that does not hand it to the bundle's test" "BUNDLE_NODE" app_guards "$WORK/wf-nobn.yml"
-sed 's#^    needs: \[app-bff, app-scripts, app-shared, app-ui, app-visual, app-walk\]$#    needs: [app-bff, app-scripts, app-shared, app-ui, app-visual]#' "$WORKFLOW" >"$WORK/wf-appneeds.yml"
+sed '/^  app:$/,/^    needs:/s#^\(    needs: \[.*\), app-walk\]$#\1]#' "$WORKFLOW" >"$WORK/wf-appneeds.yml"
 refuses "  an app job that does not wait on every package job is refused" "app: needs: [app-bff" app_guards "$WORK/wf-appneeds.yml"
 awk '$0 == "  app:" {print; print "    if: always()"; next} 1' "$WORKFLOW" >"$WORK/wf-appalways.yml"
 refuses "  an app job with an if of its own (always() would let the deploy start over a red package) is refused" "app: no if of its own" app_guards "$WORK/wf-appalways.yml"
@@ -5596,13 +5596,13 @@ check "  and walk's test script was never called" 0 "$(hits "$GCALLS" '@credo/wa
 # case 7: no package, every package's typecheck and test, none hiding the rest
 gate_run -- 
 check "case 7: the whole-tree call exits 0" 0 "$GRC"
-check "  names six typecheck results" 6 "$(grep -c '^ok   typecheck @credo/' "$GLOG" || true)"
-check "  and five test results" 5 "$(grep -c '^ok   test @credo/' "$GLOG" || true)"
+check "  names seven typecheck results" 7 "$(grep -c '^ok   typecheck @credo/' "$GLOG" || true)"
+check "  and six test results" 6 "$(grep -c '^ok   test @credo/' "$GLOG" || true)"
 check "  and the repo-wide steps once" 1 "$(hits "$GCALLS" 'exec knip')"
 check "  and the skipped package shows beside the passes in the summary" 1 "$(grep -c '^== steps:.* test 0+1skipped ' "$GLOG" || true)"
 gate_run GATE_FAIL="@credo/ui run typecheck" -- 
-check "  and a red package typecheck does not stop the others (6 ran)" 6 "$(grep -c 'run typecheck' "$GCALLS" || true)"
-check "  and the other five tests still ran" 5 "$(grep -c 'run test' "$GCALLS" || true)"
+check "  and a red package typecheck does not stop the others (7 ran)" 7 "$(grep -c 'run typecheck' "$GCALLS" || true)"
+check "  and the other six tests still ran" 6 "$(grep -c 'run test' "$GCALLS" || true)"
 check "  and the red package is named" 1 "$(hits "$GLOG" 'RED  typecheck @credo/ui exit 1')"
 gate_run -- a b
 check "a call with two packages is a usage refusal, exit 2" 2 "$GRC"
