@@ -22,3 +22,21 @@ something goes wrong.
 | [`docs/operator-guide.md`](docs/operator-guide.md) | once, the first time · everyday · a change to ship · a client · operators · ridge down and back · something wrong · restore · more boxes |
 | [`docs/open-items.md`](docs/open-items.md) | everything still to do, numbered |
 | [`CLAUDE.md`](CLAUDE.md) | for coding sessions · the gate's seven checks · the facts the code does not show |
+
+## What each folder is
+
+Each folder at the root is part of the app that ships, the tooling around it, or its tests.
+
+| Folder | Kind | What it is |
+| --- | --- | --- |
+| [`ui/`](ui) | app | the browser (ships) |
+| [`bff/`](bff) | app | the UI's one back end (ships) |
+| [`services/`](services) | app | the Go services (ship) |
+| [`shared/`](shared) | app | the wire contract |
+| [`ops/`](ops) | tooling | ridge, the hosting account, the gate |
+| [`scripts/`](scripts) | tooling | the machine's own commands |
+| [`.github/`](.github) | tooling | the CI workflows |
+| [`.claude/`](.claude) | tooling | the coding sessions' skills |
+| [`walk/`](walk) | tests | the browser walks |
+| [`visual/`](visual) | tests | the walks page |
+| [`docs/`](docs) | pages | the conventions, memos, plans and recaps |
