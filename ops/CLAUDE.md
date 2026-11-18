@@ -12,7 +12,7 @@ What a person or CI runs against ridge and the hosting account. Not product code
 
 - **A script that acts on an environment:** `ops/seed.sh`, on `ops/lib.sh`'s `log_start`, `step`, `ok` and `die`; for the verdict, `ops/check.sh`'s last line.
 - **A script a person runs on this Mac, no environment:** `ops/pages-preview.sh`, with its own `refuse` and `say`.
-- **A filter, no log:** `ops/walks-refused.sh`.
+- **A filter, no log:** `ops/walks-digest.sh`.
 
 ## This package's own rules
 

@@ -10,8 +10,8 @@
 # cannot bind, /health naming a commit of main, the keys file's mode), ops/tunnel.sh and check.sh's port refusal run whole on stand-ins for aws and
 # ssh (every way the tunnel ends), and the release's checks of /health against the real c-storage
 # binary, built here with several stamps and without one (it needs Go): the build it waits for, and
-# the newer build it must never overwrite; and the walks page's three guards (walks-refused.sh,
-# walks-digest.sh, walks-served.sh), which the walks workflow runs; and ops/seed.sh whole (/health must
+# the newer build it must never overwrite; and the walks page's two guards (walks-digest.sh,
+# walks-served.sh), which the walks workflow runs; and ops/seed.sh whole (/health must
 # name its own commit, the box above its floor, no key, address or password in its log) and the seed
 # workflow's guards.
 # Expected length: about a minute with a cold Go cache, about 40 seconds with a warm one.
@@ -5346,7 +5346,7 @@ check "  and the guard sees a key in jq's --arg, and not one in an assignment in
 
 unset FAKE_LAYER4 APP_LOCAL_PORT APP_BUNDLE APP_UI_DIR
 
-echo "== the walks page's deploy: Access's refusal, the folder's digest, the newest deploy (walks.yml reads them)"
+echo "== the walks page's deploy: the folder's digest, the newest deploy (walks.yml reads them)"
 # refuses_quiet <name> <text the refusal names> <command...>: refuses, and what the command says
 # (standard output and error) names no address, no sign-in host and no dashboard link
 refuses_quiet() {
@@ -5360,61 +5360,6 @@ refuses_quiet() {
     fail=1
   fi
 }
-# answer <status> [location]: a server on a free loopback port that answers every fetch so; its
-# address is left in ANSWER_URL
-answer() {
-  python3 -I -c '
-import sys
-from http.server import BaseHTTPRequestHandler, HTTPServer
-
-status, location = int(sys.argv[1]), sys.argv[2]
-
-class Handler(BaseHTTPRequestHandler):
-    def do_GET(self):
-        self.send_response(status)
-        if location:
-            self.send_header("Location", location)
-        self.send_header("Content-Length", "0")
-        self.end_headers()
-
-    def log_message(self, *args):
-        pass
-
-server = HTTPServer(("127.0.0.1", 0), Handler)
-print(server.server_port, flush=True)
-server.serve_forever()
-' "$1" "${2:-}" >"$WORK/answer.port" &
-  PID=$!
-  for _ in $(seq 1 50); do
-    [ -s "$WORK/answer.port" ] && break
-    sleep 0.1
-  done
-  ANSWER_URL="http://127.0.0.1:$(cat "$WORK/answer.port")/"
-}
-stop_answer() {
-  kill "$PID" 2>/dev/null || true
-  wait "$PID" 2>/dev/null || true
-  PID=''
-  rm -f "$WORK/answer.port"
-}
-REFUSED=$OPS_DIR/walks-refused.sh
-answer 200
-refuses_quiet "an address that answers an anonymous fetch with a page is not refused" "answered 200" bash "$REFUSED" "$ANSWER_URL"
-stop_answer
-answer 302 https://team.cloudflareaccess.com/cdn-cgi/access/login/x
-passes "a redirect to a sign-in on cloudflareaccess.com is Access's refusal" bash "$REFUSED" "$ANSWER_URL"
-check "  and it names neither the address nor the team" "refused: a redirect to Access's sign-in" "$(bash "$REFUSED" "$ANSWER_URL" 2>&1)"
-stop_answer
-answer 302 https://evilcloudflareaccess.com/login
-refuses_quiet "a redirect to a look-alike host is not Access's refusal" "not to Access's sign-in" bash "$REFUSED" "$ANSWER_URL"
-stop_answer
-answer 302 https://example.com/login
-refuses_quiet "a redirect elsewhere is not Access's refusal" "not to Access's sign-in" bash "$REFUSED" "$ANSWER_URL"
-stop_answer
-answer 403
-refuses_quiet "a 403 is not Access's refusal" "answered 403" bash "$REFUSED" "$ANSWER_URL"
-stop_answer
-refuses_quiet "an address that gives no answer is not a refusal" "gave no answer" bash "$REFUSED" "http://127.0.0.1:9/"
 
 DIGEST=$OPS_DIR/walks-digest.sh
 mkdir "$WORK/page"
