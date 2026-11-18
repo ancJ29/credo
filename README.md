@@ -1,45 +1,15 @@
 # credo
 
-The new credo app: the same UI and a similar concept, rebuilt as UI → one BFF → c-storage. Piece
-by piece, each walked by the human before the next ([the plan](docs/plans/2026-10-27-app-frame.md)).
+Credo is a web app for a business's office and its drivers: people sign in, take and follow orders,
+send deliveries and reconcile each day. It is rebuilt piece by piece, and each piece is walked by the
+human before the next. It runs on a shared pre-production environment, and no client has a stack of
+its own yet.
 
-## Try the mock
+## Where to look
 
-Piece 1's screens, every state, as one page that needs no server. Needs Node 26 and pnpm 12.
-
-```sh
-pnpm install
-pnpm mock
-```
-
-Then open the page built from `ui/mock.html`, which the build writes under `ui/dist/mock/`, in a browser. The page's filters narrow it to a language, a
-theme or a width.
-
-## Try the stack
-
-The whole app on your machine: c-storage, the BFF and the UI, with a demo company and its root.
-Needs Node 26, pnpm 12 and Go.
-
-```sh
-pnpm install
-pnpm stack
-```
-
-It prints the address and the root's sign-in, once; Ctrl-C takes it all down, the database with it.
-
-## Try the fake
-
-The UI alone over invented data: no BFF, no c-storage, no Go. Needs Node 26 and pnpm 12.
-
-```sh
-pnpm install
-pnpm fake
-```
-
-It prints an address; open it with `?fake` after it, and sign in as `root` with any password.
-Ctrl-C stops it.
-
-## Inside
-
-[`docs/README.md`](docs/README.md) is the index: what is seen when something is wrong and where its
-answer is, then what each document holds and the order to read them.
+- [`docs/quick-start.md`](docs/quick-start.md): run your own copy of the app on this machine.
+- [`docs/products.md`](docs/products.md): what exists today, what each part does and how far it has got.
+- [`docs/README.md`](docs/README.md): the index of every document, and what to open when something is wrong.
+- [`docs/ridge-guide.md`](docs/ridge-guide.md): the shared pre-production environment, how to reach and operate it.
+- [`docs/open-items.md`](docs/open-items.md): everything still to do.
+- [`CLAUDE.md`](CLAUDE.md): what a coding session needs to know, including the commands to run the app and its checks.
