@@ -1,0 +1,92 @@
+# The docs site (site/), built on a runner on every push that changes a page it shows, and on main
+# published to its own Cloudflare Pages project, open by its link. Copied from walks.yml: the build
+# job holds no secret; the deploy job runs in the environment `walks`, whose token reaches every
+# Pages project in the account (docs/recaps/2026-10-29-walks-share.md), and only on main.
+# A red here is a defect to fix, never a run to repeat.
+name: docs
+
+on:
+  push:
+    paths:
+      - "README.md"
+      - "docs/**"
+      - "ops/README.md"
+      - "services/*/README.md"
+      - "services/*/docs/**"
+      - "site/**"
+      - "package.json"
+      - ".node-version"
+      - "pnpm-workspace.yaml"
+      - "pnpm-lock.yaml"
+      - "ops/walks-digest.sh"
+      - "ops/walks-served.sh"
+      - ".github/workflows/docs.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# One run at a time, in order: an older push never deploys after a newer one.
+concurrency:
+  group: docs
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    outputs:
+      digest: ${{ steps.site.outputs.digest }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # The version the toolchain cache below is keyed on: .node-version.
+      - name: The pinned versions
+        id: pins
+        run: |
+          echo "node=$(cat .node-version)" >> "$GITHUB_OUTPUT"
+      # GitHub's cache is optional: a miss, or an unreachable service, leaves the setup actions to download as before.
+      - name: Restore the toolchains
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ${{ runner.tool_cache }}/node/${{ steps.pins.outputs.node }}
+            ~/.npm
+          key: tools-${{ runner.os }}-${{ runner.arch }}-node-${{ steps.pins.outputs.node }}-pnpm-12.10.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+      - name: Install pnpm
+        run: npm install -g --ignore-scripts pnpm@12.10.1
+      - name: The pnpm store's path
+        id: store
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+      # A new lock file restores the nearest older store and adds what it lacks; the store is content-addressed.
+      - name: Restore the pnpm store
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ steps.store.outputs.path }}
+          key: pnpm-store-${{ runner.os }}-${{ runner.arch }}-12.10.1-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            pnpm-store-${{ runner.os }}-${{ runner.arch }}-12.10.1-
+      - name: Install the workspace
+        run: pnpm install --frozen-lockfile
+      # A render failure, a broken link or a broken anchor fails the build, as in the site's gate.
+      - name: Build the site
+        id: site
+        shell: bash
+        run: |
+          pnpm --filter @credo/site build
+          [ -f site/build/index.html ] || { echo "the build left no site/build/index.html" >&2; exit 1; }
+          echo "digest=$(bash ops/walks-digest.sh --sum site/build)" >>"$GITHUB_OUTPUT"
+      # Under act (which sets ACT) the step is skipped, as its artifact store is unreachable from
+      # the job's container; the deploy job, which needs it, is skipped off main by its own `if`.
+      - name: Hand the site to the deploy
+        if: ${{ !env.ACT }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: docs-site
+          path: site/build
+          retention-days: 1
+          if-no-files-found: error

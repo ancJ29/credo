@@ -2152,6 +2152,7 @@ node_pin_guard() { grep -qxE '26\.[0-9]+\.[0-9]+' "$1" || die ".node-version is 
 passes "every job restores what it downloads: toolchains by version, the pnpm store by the lock file, in ci.yml" cache_guards "$WORKFLOW"
 passes "  the same in the seed workflow" cache_guards "$REPO_DIR/.github/workflows/seed.yml"
 passes "  and in the walks workflow" cache_guards "$REPO_DIR/.github/workflows/walks.yml"
+passes "  and in the docs workflow" cache_guards "$REPO_DIR/.github/workflows/docs.yml"
 passes ".node-version is one exact Node 26 release" node_pin_guard "$REPO_DIR/.node-version"
 printf '26\n' >"$WORK/node-version-loose"
 refuses "  a loose .node-version, whose cache key would never change with the release, is refused" "exact 26.x.y" node_pin_guard "$WORK/node-version-loose"
@@ -6010,7 +6011,7 @@ check "8: the destroy on a whole ridge: exit 0, its verdict, the log ending on i
   "$RC $(grep -c '^== verdict: ridge is destroyed, ci.yml and seed.yml are off$' "$OPS_LOG_DIR"/*.log || true) $(tail -n 1 "$OPS_LOG_DIR"/*.log)"
 check "  it deleted in the one-off's order: the box, its disk, the bucket's files, the stack" "wait instance-terminated,ec2 delete-volume,s3 rm,cloudformation delete-stack," \
   "$(grep -oE -e 'wait instance-terminated|ec2 delete-volume|s3 rm|cloudformation delete-stack' "$S/aws.calls" | tr '\n' ',')"
-check "  ci.yml and seed.yml are off, walks.yml stays on, no workflow file is deleted" "disabled_manually disabled_manually active 3" \
+check "  ci.yml and seed.yml are off, walks.yml stays on, no workflow file is deleted (the four: ci, docs, seed, walks)" "disabled_manually disabled_manually active 4" \
   "$(cat "$S/wf.ci.yml") $(cat "$S/wf.seed.yml") $(cat "$S/wf.walks.yml") $(find "$CYC/repo/.github/workflows" -type f | wc -l | tr -d ' ')"
 check "  the account id is in neither the log nor the terminal" 0 "$(cat "$OPS_LOG_DIR"/*.log "$S/out" | grep -cF "$ACCT" || true)"
 check "  the bucket's three deletes were counted against the three files" 1 "$(grep -c '^   AWS reported 3 delete(s); 3 file(s) were counted before$' "$OPS_LOG_DIR"/*.log || true)"
