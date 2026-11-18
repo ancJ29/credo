@@ -1,4 +1,13 @@
-import { Burger, Button, Collapse, Group, MantineProvider, Text, Title } from '@mantine/core';
+import {
+  Burger,
+  Button,
+  Collapse,
+  Group,
+  MantineProvider,
+  NativeSelect,
+  Text,
+  Title,
+} from '@mantine/core';
 import { IconChevronRight } from '@tabler/icons-react';
 import { CREDO_COLOUR } from '@credo/shared';
 import { Fragment, useState, type ReactNode } from 'react';
@@ -6,9 +15,38 @@ import { Link, useLocation } from 'react-router';
 import { ENTRIES, GROUPS, slugOf, type Entry } from './entries';
 import classes from './Gallery.module.css';
 import { themeOf } from './appTheme';
+import { PALETTES } from './palettes';
 
 /** The gallery's own address: the page and what is below it. */
 const BASE = '/48b74d079/gallery';
+
+/** Where the browser remembers the gallery's theme; nothing outside the gallery reads it. */
+const SAVED = 'credo-gallery-theme';
+
+/** The gallery's themes: each stock palette by name, drawn from its shade 7, the app's own marked. */
+const THEMES = PALETTES.map(({ name, shades }) => ({
+  value: shades[7],
+  label: `${name[0].toUpperCase()}${name.slice(1)}${shades[7] === CREDO_COLOUR.toLowerCase() ? ' · the app’s' : ''}`,
+}));
+
+/** The theme the browser remembers, if the gallery offers it; else the app's own colour. */
+function remembered() {
+  try {
+    const saved = window.localStorage.getItem(SAVED);
+    return THEMES.find(({ value }) => value === saved)?.value ?? CREDO_COLOUR;
+  } catch {
+    return CREDO_COLOUR;
+  }
+}
+
+/** Remembers a theme where the browser lets it; where it does not, the choice lasts the visit. */
+function remember(colour: string) {
+  try {
+    window.localStorage.setItem(SAVED, colour);
+  } catch {
+    // No storage: the gallery draws the same, and forgets the choice when it closes.
+  }
+}
 
 const pathOf = (entry: Entry) => `${BASE}/${slugOf(entry.group)}/${slugOf(entry.name)}`;
 
@@ -121,11 +159,16 @@ function Fold({ label, count, children }: { label: string; count?: number; child
   );
 }
 
-/** The design system's parts as a workbench: a list by level and kind that folds and hides, one part at a time, light whatever the device asks. */
+/** The design system's parts as a workbench: a list by level and kind that folds and hides, one part at a time, light whatever the device asks, in a colour theme of the viewer's choosing. */
 export function Gallery() {
   const { pathname } = useLocation();
   const entry = partAt(pathname);
   const [listShown, setListShown] = useState(true);
+  const [colour, setColour] = useState<string>(remembered);
+  const choose = (next: string) => {
+    setColour(next);
+    remember(next);
+  };
   const link = (part: Entry) => (
     <Link
       key={part.name}
@@ -137,7 +180,7 @@ export function Gallery() {
     </Link>
   );
   return (
-    <MantineProvider theme={themeOf(CREDO_COLOUR)} forceColorScheme="light">
+    <MantineProvider theme={themeOf(colour)} forceColorScheme="light">
       <title>Credo: the design system’s gallery</title>
       <meta name="robots" content="noindex" />
       <div className={classes.root}>
@@ -157,6 +200,13 @@ export function Gallery() {
             Every part, one at a time
           </Text>
           <span className={classes.address}>{BASE}</span>
+          <NativeSelect
+            size="xs"
+            aria-label="Colour theme"
+            data={THEMES}
+            value={colour}
+            onChange={(event) => choose(event.currentTarget.value)}
+          />
         </header>
         <div className={classes.wrap}>
           {listShown && (

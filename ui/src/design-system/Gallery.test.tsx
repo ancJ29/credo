@@ -1,9 +1,12 @@
-import { render, screen, within } from '@testing-library/react';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
-import { describe, expect, it } from 'vitest';
+import { CREDO_COLOUR } from '@credo/shared';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { Providers } from '../frame/Providers';
 import { Gallery } from './Gallery';
 import { ENTRIES } from './entries';
+import { PALETTES } from './palettes';
 
 // Every component file of the three folders, by level and name: the list must hold each.
 const FILES = Object.keys(
@@ -271,6 +274,93 @@ describe('Gallery', () => {
     expect(kind().queryByRole('link', { name: first.name })).toBeNull();
     await user.click(list().getByRole('button', { name: first.kind }));
     expect(kind().getByRole('link', { name: first.name })).toBeDefined();
+  });
+
+  describe('the colour themes', () => {
+    afterEach(() => {
+      window.localStorage.clear();
+      vi.restoreAllMocks();
+    });
+
+    const chooser = () => screen.getByRole('combobox', { name: 'Colour theme' });
+    const options = () =>
+      within(chooser())
+        .getAllByRole('option')
+        .map((option) => option.textContent);
+    // The colour every part reads, as Mantine writes it for the provider drawn last.
+    const brand7 = () =>
+      [...document.querySelectorAll('style[data-mantine-styles]')]
+        .map((style) => /--mantine-color-brand-7:\s*([^;]+);/.exec(style.textContent ?? '')?.[1])
+        .filter((value) => value !== undefined)
+        .at(-1)
+        ?.toLowerCase();
+    const swatches = () =>
+      part()
+        .getAllByTitle(/^brand \d$/)
+        .map((swatch) => swatch.getAttribute('style'));
+
+    it('the colour themes: the top bar offers every stock palette by name, steel, emerald and terracotta among them, and opens on the app’s own', () => {
+      open(BASE);
+
+      expect(options()).toEqual([
+        'Terracotta',
+        'Sandstone',
+        'Forest',
+        'Autumn',
+        'Olive',
+        'Emerald',
+        'Steel · the app’s',
+        'Ocean',
+        'Coin',
+      ]);
+      expect(PALETTES.map(({ name }) => name)).toHaveLength(options().length);
+      expect((chooser() as HTMLSelectElement).value).toBe(CREDO_COLOUR);
+      expect(brand7()).toBe(CREDO_COLOUR);
+    });
+
+    it('the colour themes: choosing one redraws every part in it, the Foundations’ palette included, and the browser remembers it', async () => {
+      const user = userEvent.setup();
+      open(BASE);
+      const before = swatches();
+      const emerald = PALETTES.find(({ name }) => name === 'emerald')!;
+
+      await user.selectOptions(chooser(), 'Emerald');
+      expect(brand7()).toBe(emerald.shades[7]);
+      const after = swatches();
+      expect(after).toHaveLength(10);
+      after.forEach((style, at) => expect(style).not.toBe(before[at]));
+
+      cleanup();
+      open(BASE);
+      expect((chooser() as HTMLSelectElement).value).toBe(emerald.shades[7]);
+      expect(swatches()).toEqual(after);
+    });
+
+    it('the colour themes: they are the gallery’s alone, the app outside it keeps its own colour, and with no browser storage the gallery still draws and switches', async () => {
+      const user = userEvent.setup();
+      open(BASE);
+      await user.selectOptions(chooser(), 'Terracotta');
+      cleanup();
+
+      render(
+        <Providers colour={CREDO_COLOUR} language="en" test>
+          <span>the app</span>
+        </Providers>,
+      );
+      expect(brand7()).toBe(CREDO_COLOUR);
+      cleanup();
+
+      vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+        throw new Error('no storage');
+      });
+      vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+        throw new Error('no storage');
+      });
+      open(BASE);
+      expect((chooser() as HTMLSelectElement).value).toBe(CREDO_COLOUR);
+      await user.selectOptions(chooser(), 'Emerald');
+      expect(brand7()).toBe(PALETTES.find(({ name }) => name === 'emerald')!.shades[7]);
+    });
   });
 
   it('3: asks search engines not to list it and carries its title', () => {
