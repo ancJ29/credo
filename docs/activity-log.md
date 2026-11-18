@@ -17,8 +17,8 @@ calls it:** every route that changes a client's data declares its entry in `bff/
 write before the reply. The local copy starts the service beside c-storage (`scripts/src/stack.ts`'s
 `startStack`). **On the box it is shipped, and has not yet run there:** `ops/release.sh` installs it as its own unit,
 `ops/audit-backbone.service`, beside c-storage's, and the CI workflow gates it in its own `audit` job.
-No release has carried it to ridge yet, so nothing on ridge is read. Its single write path is `Writer.Do` in `services/audit-backbone/internal/batch/writer.go` and its
-store is `Store` in `services/audit-backbone/internal/activity/store.go`. What was changed on the way in
+No release has carried it to ridge yet, so nothing on ridge is read. Its store, the one path for its writes and
+reads, is `Store` in `services/audit-backbone/internal/activity/store.go`. What was changed on the way in
 and what was left behind is its recap, [`recaps/2026-11-09-audit-backbone-move.md`](recaps/2026-11-09-audit-backbone-move.md).
 
 **What a person can see of it today.** One command, `pnpm local activity`, prints the entries of one
@@ -31,10 +31,10 @@ client's entries are not swept with its records: they live in the service's own 
 deletion until their 180 days end.
 
 **Its store, which is the second one in the repository and the only one the continuous copy does not yet take.**
-`audit-backbone` opens its own SQLite file at its own `DB_PATH`, with its own schema and its own
-single writer: `Store` in `services/audit-backbone/internal/activity/store.go`, every write funnelled through
-`Writer.Do` in `services/audit-backbone/internal/batch/writer.go`, which blocks until the commit
-(`services/audit-backbone/CLAUDE.md`'s `AB3`). On the box it is a second file, in the unit's own state folder, with no copy of it yet, so
+`audit-backbone` opens its own SQLite file at its own `DB_PATH`, with its own schema, stamped
+with its own version: `Store` in `services/audit-backbone/internal/activity/store.go`, each write one plain
+transaction that returns only after its commit
+([a-201-means-committed](../services/audit-backbone/docs/memo/a-201-means-committed.md)). On the box it is a second file, in the unit's own state folder, with no copy of it yet, so
 [`architecture.md`](architecture.md)'s one sentence about storage holds for it: **one SQLite file, and it is
 the only copy.** In the local copy the file is the second one, in the copy's own data folder, and its
 removal takes it.

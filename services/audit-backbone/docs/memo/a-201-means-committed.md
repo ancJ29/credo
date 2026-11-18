@@ -1,29 +1,27 @@
 # A 201 means committed, not queued
 
 **Decided** 2026-08-31. **Amended** 2026-10-04 (trimmed; the linger knob
-removed).
+removed) and 2026-11-18 (the writer goroutine and its group commit removed).
 
-Every write goes through one goroutine, and `batch.Writer.Do` does not return
-until the transaction that carries it has committed.
+`Store.Append` writes a request's entries in one transaction and does not
+return until it has committed; only then does the 201 name their ids.
 
-**Rejected: answer from the queue and flush on a timer.**
+**Rejected: answer from a queue and flush on a timer.**
 `POST /api/activities` commits a request whole and returns its ids, and a
 caller left without them replays the batch. A duplicate entry is a visible artefact. A gap
 cannot be told apart from an event that never happened. Naming ids that are
 still in memory turns every crash into exactly that gap, and the caller can
 never learn of it.
 
-**Why there is no flush interval at all.** Once the handler waits, the batch
-forms on its own: work queues up during the previous commit. Under load the
-fsync is shared as an interval would share it, and under no load the latency
-is one commit. *Rejected:* a linger setting, since no measured load ever asked
-for one.
+**Rejected since 2026-11-18: one writer goroutine with group commit.** Until
+then every write went through a single goroutine that gathered the callers
+waiting on it into one transaction, a savepoint each, to share the fsync. No
+measured load ever asked for that, and it made every new write a queued unit,
+gave the shutdown an order of its own, and set this service apart from
+c-storage. Each write is now a plain transaction that begins `IMMEDIATE` and
+waits on `busy_timeout` for the write lock, as c-storage's do
+(`TestAppendsAtOnceAllLand`), and a request's entries still commit whole or
+not at all.
 
-**The hazard: units in one transaction share a fate.** Each unit runs inside
-its own `SAVEPOINT`, so one caller's bad row rolls back only to its own mark.
-`TestOneFailingUnitDoesNotFailItsBatchMates` queues all three units before the
-writer starts. If the units committed one at a time, the test would pass
-without ever using a savepoint.
-
-**Accepted:** if the box goes down, what was in flight is lost. That is one
-commit's worth, not one interval's.
+**Accepted:** if the box goes down, what was in flight is lost: the requests
+not yet answered, which their callers replay.

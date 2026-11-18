@@ -6,11 +6,11 @@ token-gated reader on two ports: the writer on `LISTEN_ADDR` (loopback unless se
 
 ## What belongs here, and what does not
 
-Nine internal packages, each one job: `activity` (the audit-log domain: wire shape, store, handlers),
-`auth` (the write key and the read token), `batch` (the single writer every write goes through),
-`config` (the environment, once, at start-up), `httpx` (JSON replies and the error-to-status
-mapping), `lifecycle` (the process: both listeners, the sweep, the shutdown order), `reqlog` (one log
-line a request), `server` (the two listeners and their gates), `sqlitedb` (opening the database).
+Eight internal packages, each one job: `activity` (the audit-log domain: wire shape, store, handlers),
+`auth` (the write key and the read token), `config` (the environment, once, at start-up), `httpx`
+(reading a JSON body, JSON replies and the error-to-status mapping), `lifecycle` (the process: both
+listeners, the sweep, the shutdown order), `reqlog` (one log line a request), `server` (the two
+listeners and their gates), `sqlitedb` (opening the database and stamping its schema version).
 `cmd/server` is wiring. What an entry means, who the system writing it is, and who reads it are the
 callers' and are not decided here; a route or a field belongs only with a caller that needs it.
 
@@ -25,17 +25,15 @@ callers' and are not decided here; a route or a field belongs only with a caller
 
 ## This package's own rules
 
-Marks: [How to read a rule](../../docs/conventions/code.md#how-to-read-a-rule). Five rules, each
+Marks: [How to read a rule](../../docs/conventions/code.md#how-to-read-a-rule). Four rules, each
 sourced from the code as it stands; the first copy of this package carried no ids, so these are
-minted here, once, and never renumbered.
+minted here, once, and never renumbered. AB3 (every write through one writer goroutine) was retired
+on 2026-11-18 with that writer, and its id stays unused.
 
 - **AB1 · holds · check:** format, vet, race tests at 100 % of statements outside `cmd/server`, and the
   box's cross-compile are the gate (`services/audit-backbone/Makefile`, `services/audit-backbone/scripts/cover.sh`).
 - **AB2 · holds · check:** a route is registered through `func (l *listener) HandleFunc(`
   (`services/audit-backbone/internal/server/server.go`), held by `TestEveryRegisteredRouteIsListed`.
-- **AB3 · holds · reader:** every write goes through `func (w *Writer) Do(`
-  (`services/audit-backbone/internal/batch/writer.go`); `Store.Sweep` and the insert in
-  `services/audit-backbone/internal/activity/store.go` are its only callers.
 - **AB4 · holds · reader:** the database driver is imported only by `sqlitedb`
   (`Open` in `services/audit-backbone/internal/sqlitedb/open.go`), the environment is read only by `config`
   (`Load` in `services/audit-backbone/internal/config/config.go`), and `cmd/server` adds only logging,
@@ -78,9 +76,17 @@ minted here, once, and never renumbered.
   Do not collapse them into `Store` (`services/audit-backbone/internal/activity/store.go`) in `Domains`
   (`services/audit-backbone/internal/server/server.go`): that split is what the compiler checks about the
   boundary.
-- **`batch.Writer.Do` blocks until the commit.** Never make it asynchronous:
+- **`Store.Append` returns only after its commit.** Never answer before it:
   the 201 names committed ids
   ([a-201-means-committed](docs/memo/a-201-means-committed.md)).
+- **Writes are plain transactions, as in c-storage.** Every transaction begins `IMMEDIATE` and
+  waits on `busy_timeout` for the write lock (`Open` in `services/audit-backbone/internal/sqlitedb/open.go`),
+  held by `TestAppendsAtOnceAllLand`.
+- **The schema's version sits beside the schema:** `SchemaVersion` in
+  `services/audit-backbone/internal/activity/store.go`, raised in the same commit as any change to
+  `Schema`. A file at `user_version` 0 is taken and stamped, never refused as c-storage refuses one,
+  because the binaries before the stamp made theirs at 0
+  (`TestAFileMadeBeforeTheStampOpensKeepsItsRowsAndIsStamped`).
 - **The retention sweep IS retention.** A sweep that stops is a store that
   grows forever with every test green
   ([retention-is-a-predicate](docs/memo/retention-is-a-predicate.md)).
