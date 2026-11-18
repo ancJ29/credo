@@ -107,40 +107,128 @@ export function idOf(request: FastifyRequest) {
 /** The staff routes: each checks who may call it on the server, with the permissions the app
  * resolved from the layers, and the root-only ones by the root flag alone. */
 export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
-  const { now, forClient, signedIn, mustBeRoot, mustCan } = deps;
+  registerStaffSetup(app, deps);
+  registerStaffReads(app, deps);
+  registerStaffAdds(app, deps);
+  registerStaffChanges(app, deps);
+  registerStaffPhotos(app, deps);
+  registerStaffSignIns(app, deps);
+}
 
-  const setupDoc = (storage: TenantStorage) => readSetup(storage, storage.tenantId);
+const setupDoc = (storage: TenantStorage) => readSetup(storage, storage.tenantId);
 
-  /** A person with how they sign in: ready once the root has given a password to the record that
-   * names them. */
-  async function docOf(storage: TenantStorage, found: { employee: Employee; tag: string }) {
-    const signIn = await readSignIn(
-      storage,
-      storage.tenantId,
-      normaliseSignInName(found.employee.code),
+/** A person with how they sign in: ready once the root has given a password to the record that
+ * names them. */
+async function docOf(storage: TenantStorage, found: { employee: Employee; tag: string }) {
+  const signIn = await readSignIn(
+    storage,
+    storage.tenantId,
+    normaliseSignInName(found.employee.code),
+  );
+  const ready = signIn?.user.employeeId === found.employee.id && !!signIn.user.passwordHash;
+  const doc: EmployeeDoc = {
+    employee: found.employee,
+    version: found.tag,
+    signIn: { name: found.employee.code, ready },
+  };
+  return doc;
+}
+
+async function mustFind(storage: TenantStorage, id: string) {
+  const found = await readEmployee(storage, storage.tenantId, id);
+  if (!found) throw new HttpError(404, 'Not found');
+  return found;
+}
+
+/** The link a person holds to a unit: the id and the name as saved. An unknown unit is a 400. */
+function linkTo(units: StaffSetup['departments'], id: string | null | undefined, kind: string) {
+  if (id === null || id === undefined) return null;
+  const unit = units.find((candidate) => candidate.id === id);
+  if (!unit) throw new HttpError(400, 'Bad request', { details: `${kind}: no such unit` });
+  return { id: unit.id, name: unit.name };
+}
+
+/** Every person, those who left too. Never a short list that looks whole: more than c-storage
+ * returns, or a record that does not parse, is a 500 that names the kind and not the key. */
+async function everyone(storage: TenantStorage) {
+  const listed = await recordTools(storage).every(
+    recordKeys.tenant(storage.tenantId).employeePrefix,
+    employeeSchema,
+    'employee',
+  );
+  return listed.map(({ record }) => record);
+}
+
+/** Claims the sign-in name for a person, before the person is written. A record already under
+ * the name that its person names back is a taken code. One its person does not name back is
+ * answered 503 while its claim time, `passwordAt`, is younger than the longest an add runs (it may
+ * be a running add's), and is a failed add's after that, taken over with the tag it was read at.
+ * `now` is the app's clock, `deps.now`. */
+async function claimSignIn(
+  now: () => number,
+  storage: TenantStorage,
+  name: string,
+  record: StoredUser,
+) {
+  const key = recordKeys.tenant(storage.tenantId).user(name);
+  for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
+    if ((await storage.putRecord(key, record, null)) === 'saved') return;
+    const found = await readSignIn(storage, storage.tenantId, name);
+    const raw = found ? null : await storage.getRecord(key);
+    if (raw) throw new HttpError(409, 'That code is taken');
+    if (found) {
+      // The root's record names no person and is never a failed add's; nor is a person's who is
+      // there.
+      if (found.user.root || (await namesBack(storage, storage.tenantId, name, found.user))) {
+        throw new HttpError(409, 'That code is taken');
+      }
+      // A claim no one is named by yet, inside the longest an add runs, may be an add still
+      // writing its person: not taken, not free either. The UI says the save failed and keeps
+      // what was typed, and the retry meets the person, or the free code.
+      if (now() - found.user.passwordAt <= ADD_MAX_MS) {
+        throw new HttpError(503, 'Service unavailable');
+      }
+      if ((await storage.putRecord(key, record, found.tag)) === 'saved') return;
+    }
+  }
+  throw new HttpError(409, 'That code is taken');
+}
+
+/** The last number given under a prefix, with the tag of the record that holds it. */
+async function numberingOf(storage: TenantStorage) {
+  const found = await storage.getRecord(recordKeys.tenant(storage.tenantId).staffNumbering);
+  if (!found) return { given: {} as Record<string, number>, tag: null };
+  const parsed = storedNumberingSchema.safeParse(found.data);
+  if (!parsed.success) throw new Error('the numbering record does not parse');
+  return { given: parsed.data.given, tag: found.tag };
+}
+
+/** Raises the last number given under `prefix` to at least `number`, over the tag it was read at,
+ * read again when it moved, a few times at most. A code the code route frees counts as given. */
+async function raiseGiven(storage: TenantStorage, prefix: string, number: number) {
+  for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
+    const held = await numberingOf(storage);
+    if ((held.given[prefix] ?? 0) >= number) return;
+    const given = { ...held.given, [prefix]: number };
+    const saved = await storage.putRecord(
+      recordKeys.tenant(storage.tenantId).staffNumbering,
+      { given },
+      held.tag,
     );
-    const ready = signIn?.user.employeeId === found.employee.id && !!signIn.user.passwordHash;
-    const doc: EmployeeDoc = {
-      employee: found.employee,
-      version: found.tag,
-      signIn: { name: found.employee.code, ready },
-    };
-    return doc;
+    if (saved === 'saved') return;
   }
+  throw new CStorageError(412, 'the numbering moved on every attempt to be raised');
+}
 
-  async function mustFind(storage: TenantStorage, id: string) {
-    const found = await readEmployee(storage, storage.tenantId, id);
-    if (!found) throw new HttpError(404, 'Not found');
-    return found;
-  }
+/** The person as stored now, for an answer; none if they are gone. */
+async function newest(storage: TenantStorage, id: string) {
+  const found = await readEmployee(storage, storage.tenantId, id);
+  return found ? await docOf(storage, found) : null;
+}
 
-  /** The link a person holds to a unit: the id and the name as saved. An unknown unit is a 400. */
-  function linkTo(units: StaffSetup['departments'], id: string | null | undefined, kind: string) {
-    if (id === null || id === undefined) return null;
-    const unit = units.find((candidate) => candidate.id === id);
-    if (!unit) throw new HttpError(400, 'Bad request', { details: `${kind}: no such unit` });
-    return { id: unit.id, name: unit.name };
-  }
+/** The staff setup, its departments and positions: read, and saved. */
+function registerStaffSetup(app: FastifyInstance, deps: Deps) {
+  const { forClient, signedIn, mustBeRoot, mustCan } = deps;
 
   app.get(ROUTES.staffSetup, forClient, async (request) => {
     const who = await signedIn(request);
@@ -187,17 +275,11 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
       return await setupDoc(request.storage);
     },
   );
+}
 
-  /** Every person, those who left too. Never a short list that looks whole: more than c-storage
-   * returns, or a record that does not parse, is a 500 that names the kind and not the key. */
-  async function everyone(storage: TenantStorage) {
-    const listed = await recordTools(storage).every(
-      recordKeys.tenant(storage.tenantId).employeePrefix,
-      employeeSchema,
-      'employee',
-    );
-    return listed.map(({ record }) => record);
-  }
+/** Everyone, and one person, for those who may view the staff. */
+function registerStaffReads(app: FastifyInstance, deps: Deps) {
+  const { forClient, signedIn, mustCan } = deps;
 
   app.get(ROUTES.employees, forClient, async (request) => {
     mustCan(await signedIn(request), 'staff.canView');
@@ -210,61 +292,11 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
     mustCan(await signedIn(request), 'staff.canView');
     return await docOf(request.storage, await mustFind(request.storage, idOf(request)));
   });
+}
 
-  /** Claims the sign-in name for a person, before the person is written. A record already under
-   * the name that its person names back is a taken code. One its person does not name back is
-   * answered 503 while its claim time, `passwordAt`, is younger than the longest an add runs (it may
-   * be a running add's), and is a failed add's after that, taken over with the tag it was read at. */
-  async function claimSignIn(storage: TenantStorage, name: string, record: StoredUser) {
-    const key = recordKeys.tenant(storage.tenantId).user(name);
-    for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
-      if ((await storage.putRecord(key, record, null)) === 'saved') return;
-      const found = await readSignIn(storage, storage.tenantId, name);
-      const raw = found ? null : await storage.getRecord(key);
-      if (raw) throw new HttpError(409, 'That code is taken');
-      if (found) {
-        // The root's record names no person and is never a failed add's; nor is a person's who is
-        // there.
-        if (found.user.root || (await namesBack(storage, storage.tenantId, name, found.user))) {
-          throw new HttpError(409, 'That code is taken');
-        }
-        // A claim no one is named by yet, inside the longest an add runs, may be an add still
-        // writing its person: not taken, not free either. The UI says the save failed and keeps
-        // what was typed, and the retry meets the person, or the free code.
-        if (now() - found.user.passwordAt <= ADD_MAX_MS) {
-          throw new HttpError(503, 'Service unavailable');
-        }
-        if ((await storage.putRecord(key, record, found.tag)) === 'saved') return;
-      }
-    }
-    throw new HttpError(409, 'That code is taken');
-  }
-
-  /** The last number given under a prefix, with the tag of the record that holds it. */
-  async function numberingOf(storage: TenantStorage) {
-    const found = await storage.getRecord(recordKeys.tenant(storage.tenantId).staffNumbering);
-    if (!found) return { given: {} as Record<string, number>, tag: null };
-    const parsed = storedNumberingSchema.safeParse(found.data);
-    if (!parsed.success) throw new Error('the numbering record does not parse');
-    return { given: parsed.data.given, tag: found.tag };
-  }
-
-  /** Raises the last number given under `prefix` to at least `number`, over the tag it was read at,
-   * read again when it moved, a few times at most. A code the code route frees counts as given. */
-  async function raiseGiven(storage: TenantStorage, prefix: string, number: number) {
-    for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
-      const held = await numberingOf(storage);
-      if ((held.given[prefix] ?? 0) >= number) return;
-      const given = { ...held.given, [prefix]: number };
-      const saved = await storage.putRecord(
-        recordKeys.tenant(storage.tenantId).staffNumbering,
-        { given },
-        held.tag,
-      );
-      if (saved === 'saved') return;
-    }
-    throw new CStorageError(412, 'the numbering moved on every attempt to be raised');
-  }
+/** A person added by hand, and the root's import of many, each row through `addPerson`. */
+function registerStaffAdds(app: FastifyInstance, deps: Deps) {
+  const { now, forClient, signedIn, mustBeRoot, mustCan } = deps;
 
   /** The codes of the people listed, read the first time a numbered code needs them and kept for the
    * rest of a call, to which each person written is added. */
@@ -299,7 +331,7 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
       };
       if ((await storage.putRecord(key, { given }, held.tag)) === 'moved') continue;
       try {
-        await claimSignIn(storage, normaliseSignInName(code), record);
+        await claimSignIn(now, storage, normaliseSignInName(code), record);
         return code;
       } catch (error) {
         // Taken (409) or maybe a running add's (503): the next number may be free.
@@ -368,7 +400,7 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
     } else {
       const code = normaliseEmployeeCode(body.code);
       person = personWith(code);
-      await claimSignIn(storage, normaliseSignInName(code), claim);
+      await claimSignIn(now, storage, normaliseSignInName(code), claim);
     }
     // The person is written last: the list finds them as soon as they are there.
     let written: 'saved' | 'moved';
@@ -453,6 +485,11 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
       return { results };
     },
   );
+}
+
+/** A person changed: saved, archived, restored, given a password, given a new code. */
+function registerStaffChanges(app: FastifyInstance, deps: Deps) {
+  const { now, forClient, signedIn, mustBeRoot, mustCan } = deps;
 
   app.put(
     employeeRoutes.one(':id'),
@@ -504,12 +541,6 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
       return await newest(request.storage, current.id);
     },
   );
-
-  /** The person as stored now, for an answer; none if they are gone. */
-  async function newest(storage: TenantStorage, id: string) {
-    const found = await readEmployee(storage, storage.tenantId, id);
-    return found ? await docOf(storage, found) : null;
-  }
 
   app.post(
     employeeRoutes.archive(':id'),
@@ -638,7 +669,7 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
       const freed = new RegExp(`^${prefix}(\\d+)$`).exec(found.employee.code);
       if (freed) await raiseGiven(request.storage, prefix, Number(freed[1]));
       const name = normaliseSignInName(code);
-      await claimSignIn(request.storage, name, {
+      await claimSignIn(now, request.storage, name, {
         passwordHash: old.user.passwordHash,
         root: false,
         employeeId: found.employee.id,
@@ -698,6 +729,11 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
       throw new CStorageError(412, 'the old sign-in moved on every attempt to be removed');
     },
   );
+}
+
+/** A person's photo, read and replaced. */
+function registerStaffPhotos(app: FastifyInstance, deps: Deps) {
+  const { forClient, signedIn, mustCan } = deps;
 
   /** A person's photo as stored, with the version it is at; none yet is `null` and `''`. A record
    * that does not parse is a fault, a 500 naming its kind and never its key. */
@@ -737,6 +773,11 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
       return await photoOf(request.storage, found.employee.id);
     },
   );
+}
+
+/** How a person signs in besides a password: an email, and a QR code. */
+function registerStaffSignIns(app: FastifyInstance, deps: Deps) {
+  const { now, forClient, signedIn, mustBeRoot } = deps;
 
   /** Claims an email for a person, before their record holds it. A record already under the email
    * whose person holds it is a taken email (409, with no `current`). One whose person does not hold
