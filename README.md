@@ -1,12 +1,13 @@
 # credo
 
-Credo is a web app for a business's office and its drivers: people sign in, take and follow orders,
-send deliveries and reconcile each day. It is rebuilt piece by piece, and each piece is walked by the
-human before the next. It runs on a shared pre-production environment, and no client has a stack of
-its own yet.
+Credo is the new credo app, rebuilt from the old one: the same screens and a similar concept. Each
+action a person takes on screen becomes one call to a single back end, which decides who is calling
+and what they may do, and saves the result in a store that knows none of those rules. It runs on a
+shared pre-production environment, and no client has a stack of its own yet.
 
 ## Where to look
 
+- [`docs/architecture.md`](docs/architecture.md): how the system is put together, the page to open on arrival.
 - [`docs/quick-start.md`](docs/quick-start.md): run your own copy of the app on this machine.
 - [`docs/products.md`](docs/products.md): what exists today, what each part does and how far it has got.
 - [`docs/README.md`](docs/README.md): the index of every document, and what to open when something is wrong.
