@@ -1,9 +1,8 @@
 # credo
 
-Credo is the new credo app, rebuilt from the old one: the same screens and a similar concept. Each
-action a person takes on screen becomes one call to a single back end, which decides who is calling
-and what they may do, and saves the result in a store that knows none of those rules. It runs on a
-shared pre-production environment, and no client has a stack of its own yet.
+Credo is a web app for a business's office and its drivers. Office staff sign in, keep customers and
+products, take and confirm orders, and settle each driver's day; drivers use their phones to see the
+day's deliveries and mark them delivered with a photo.
 
 ## Where to look
 
