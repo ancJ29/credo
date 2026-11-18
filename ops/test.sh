@@ -5887,10 +5887,10 @@ check "  and the plain line, with comment lines about environments around it, is
   "$(d=$WORK/wfodd; rm -rf "$d"; mkdir -p "$d/.github/workflows"; printf 'jobs:\n  d:\n    # the environment: here is plain\n    environment: ridge\n' >"$d/.github/workflows/odd.yml"; rc=0; out=$(REPO_DIR=$d workflows_of ridge 2>&1) || rc=$?; echo "$rc $out")"
 
 echo "== no file the ci workflow runs on its Ubuntu runner uses BSD sed's in-place form (GNU sed reads the empty suffix as the script)"
-# ci.yml runs ops/*.sh, walk/*.sh and services/c-storage/scripts/*.sh (ShellCheck, the guards, the deploy) and make check
+# ci.yml runs ops/*.sh, walk/*.sh and services/*/scripts/*.sh (ShellCheck, the guards, the deploy) and make check
 # in services/c-storage, on GNU sed: `-i` there takes its suffix attached, so a separate empty one is the script.
 # The pattern is written so that this line does not match itself.
-BSD_SED=$(grep -nE "sed( +-[A-Za-z]+)* +-[A-Za-z]*i +(''|\"\")" "$REPO_DIR"/ops/*.sh "$REPO_DIR"/walk/*.sh "$REPO_DIR"/services/c-storage/scripts/*.sh "$REPO_DIR"/services/c-storage/Makefile "$REPO_DIR"/.github/workflows/*.yml || true)
+BSD_SED=$(grep -nE "sed( +-[A-Za-z]+)* +-[A-Za-z]*i +(''|\"\")" "$REPO_DIR"/ops/*.sh "$REPO_DIR"/walk/*.sh "$REPO_DIR"/services/*/scripts/*.sh "$REPO_DIR"/services/c-storage/Makefile "$REPO_DIR"/.github/workflows/*.yml || true)
 check "no sed -i with a separate empty suffix in a file the runner runs" "" "$BSD_SED"
 
 echo "== ops/destroy.sh and ops/remake.sh, run whole once on stand-ins for aws, gh, bru and the four children (rows 8 and 18)"
