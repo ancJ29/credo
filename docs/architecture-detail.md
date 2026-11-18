@@ -293,7 +293,7 @@ without the listener's two, since API Gateway is the listener
   setting.
 - **The audit store** is routed by the same record, one store a group, the fit being the group's
   own box beside storage, which is still the nano's unmeasured memory
-  ([the activity log](activity-log.md#where-it-runs-open-and-cheap-to-leave-open)).
+  ([the activity log](activity-log.md#where-it-runs-the-box-beside-c-storage-its-fit-unmeasured)).
 - **Rejected:** a cache service for the lookup, which would be a hop of the same kind as the read
   it saves, from about $6 a month; a Caddy server for the addresses, about $8 a month fixed, with a
   public address, a network that has no way out, and either a key to the DNS zone on the box or a

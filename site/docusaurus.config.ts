@@ -1,5 +1,6 @@
 import type { Config } from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
+import { githubLinks } from './links';
 
 // One docs plugin rooted at the repository, so every page is shown from its one path and a link
 // between two pages resolves inside the one instance. The dated plans and recaps are left out.
@@ -22,10 +23,11 @@ const config: Config = {
   baseUrl: '/',
   // Open to anyone with the link, and kept out of search engines.
   noIndex: true,
-  // 'throw' once the link plugin turns a link to a file outside the site into a GitHub link.
-  onBrokenLinks: 'warn',
+  // A link to a file the site leaves out opens on GitHub (links.ts), so what is left broken is broken.
+  onBrokenLinks: 'throw',
+  onBrokenAnchors: 'throw',
   // 'detect' reads a .md file as plain Markdown, so a { or < in prose does not break the build.
-  markdown: { format: 'detect', mermaid: true },
+  markdown: { format: 'detect', mermaid: true, hooks: { onBrokenMarkdownLinks: 'throw' } },
   themes: ['@docusaurus/theme-mermaid'],
   plugins: [
     // The mermaid theme's browser code imports its optional ELK layouts, which are not installed and
@@ -44,6 +46,7 @@ const config: Config = {
           include: PAGES,
           routeBasePath: '/',
           sidebarPath: './sidebars.ts',
+          beforeDefaultRemarkPlugins: [githubLinks(PAGES)],
         },
         blog: false,
         pages: false,
