@@ -1,4 +1,4 @@
-# credo
+# Credo - Single Platform for SME Orders and Deliveries
 
 Credo is a web app that runs the daily orders and deliveries of small and medium businesses, from the
 office that takes an order to the driver who delivers it. One system serves many client companies at
