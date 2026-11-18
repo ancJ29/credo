@@ -145,6 +145,30 @@ You should see, on the phone, the list above the part, and nothing scrolling sid
 
 **Question: does it read as the mock you said yes to, on both?** Say yes or no; with a no, say the step number where it went wrong.
 
+## Next, in order
+
+What comes next, in the order the board holds it:
+
+1. The working rules are trimmed on a schedule, once their pages pass their word limit, rather than when
+   someone happens to notice.
+2. Pinning the test browser's version gets a home the index can find; today only one recap records it. It
+   waits for the check of the documents' citations, which touches the same pages.
+3. CI's runs on this machine, the wait for the test lock and CI's cache are each brought under 15 minutes.
+   It waits behind this week's milestones.
+4. The scripts that picture the legacy app's screens, parked for now.
+5. The parked open items, taken up again.
+
+Open items a newcomer can take first, each small:
+
+- [Item 63](open-items.md): one page test for the root-password page when the BFF refuses (403), copied
+  from its 503 test. Safe: a test on the fake alone, no credential and no rule to decide.
+- [Item 58](open-items.md): the walks page's two builds run one after the other, so `NODE_ENV` comes back
+  as it was. Safe: build code on this machine alone, nothing deployed and nothing to decide.
+- [Item 475](open-items.md): a doc comment moved back above its function, a test's label and a stale
+  comment reworded. Safe: words in comments and a label, no behaviour changes.
+
+This section is refreshed at each evening's push.
+
 ## Known gaps
 
 The numbers are [open items](open-items.md).

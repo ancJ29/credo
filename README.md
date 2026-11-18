@@ -53,7 +53,7 @@ branch.
 | how sign-in works | [docs/architecture.md, "One request, end to end"](docs/architecture.md#one-request-end-to-end) |
 | how to read a partner's returned words in | [docs/operator-guide.md, "Read a partner's returned words in"](docs/operator-guide.md#read-a-partners-returned-words-in) |
 | what is still to do | [docs/open-items.md](docs/open-items.md) |
-| what is being built now, and in what order | worktrees/glance.md on the orchestrator branch |
+| what is being built now, and in what order | [docs/products.md, "Next, in order"](docs/products.md#next-in-order) |
 | what we decided, and why | [docs/decisions.md](docs/decisions.md), newest first |
 | what runs on ridge now | [docs/products.md](docs/products.md), its first lines |
 | what the machine has learned, by kind of task | worktrees/skills/ on the orchestrator branch, a folder for each kind of task with its SKILL.md |
