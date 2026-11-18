@@ -3,7 +3,7 @@
 > **Decided** 2026-10-27, with the human's rule for the two readers: "for human to read:
 > visualize as much as possible; for machine to read: detail". Read this before writing any doc,
 > `CLAUDE.md` or code comment, or committing any path.
-> **Last amended** 2026-11-11, with the rule on logs in records, and from the human's proposal that a finished piece land on `pre-merge`,
+> **Last amended** 2026-11-18, from the knowledge proposal the human said yes to: the decision log, written by the lane that records a decision; on 2026-11-11, the rule on logs in records, and from the human's proposal that a finished piece land on `pre-merge`,
 > so a plan's hardened build ends at that landing, not at a merge into `main`; the amendment of
 > 2026-11-10 stands: every part which behaves has a behaviour memo, and a plan's word figure is what
 > the shape costs. This file holds the rules as they stand; their history is in `git log`.
@@ -20,20 +20,20 @@ without it, would get the next change wrong.
 | both | the code | the what. No doc copies it |
 
 - Each doc a human reads opens with a short version in its own file, never a separate summary of
-  it; a README starts a newcomer in 30 minutes ([two readers](#two-readers)).
+  it ([two readers](#two-readers)).
 - A doc holds a decision and what it beat, a risk no check catches, or steps whose order
   matters; a runbook holds the steps alone and links their why
   ([what earns a line](#what-earns-a-line)).
 - Each fact is written once, where its rule is enforced; a copy goes stale. A comment states the
-  rule that holds here, never the old code's mistakes; a convention carries one `Last amended`
-  line and no changelog ([one fact, one home](#one-fact-one-home)).
+  rule that holds here, never the old code's mistakes ([one fact, one home](#one-fact-one-home)).
 - A part whose behaviour a caller can be surprised by has a memo at `docs/memo/<part>.md`, its
   sections titled as claims, and a new service arrives with one
   ([one fact, one home](#one-fact-one-home)).
 - A living document cites a file and a symbol in it, never a line
   ([how a living document cites code](#how-a-living-document-cites-code)).
 - Progress lives in three files: the plan, one short page; the to-do log; and the recap, which
-  holds the evidence and keeps the piece's row in `docs/products.md` true
+  holds the evidence and keeps the piece's row in `docs/products.md` true; each decision gets
+  one line in `docs/decisions.md`, from the lane that records it
   ([where progress lives](#where-progress-lives-three-files-one-job-each)).
 - Never written down: what was deployed or checked by eye ([never in a doc](#never-in-a-doc));
   a path on one machine (a log is one), or a person's name
@@ -46,8 +46,8 @@ The table [at a glance](#at-a-glance) says who reads what.
 - **Every doc a human reads opens with its human version, in the same file**, under
   `## At a glance`: each convention, memo and plan, **and every page written for the human or for
   both** — today [`docs/architecture.md`](../architecture.md), the index
-  [`docs/README.md`](../README.md), [`docs/products.md`](../products.md) and
-  [`docs/client-readiness.md`](../client-readiness.md). **A page this list does not name and a person
+  [`docs/README.md`](../README.md), [`docs/products.md`](../products.md),
+  [`docs/client-readiness.md`](../client-readiness.md) and [`docs/decisions.md`](../decisions.md). **A page this list does not name and a person
   is handed anyway joins the list the moment that happens**: written to no reader it takes the
   machine's register by default, and nobody sees that until a human is reading it. A recap is the
   human's already; the operator's runbook and the numbered log have their own shapes below;
@@ -80,7 +80,8 @@ The table [at a glance](#at-a-glance) says who reads what.
 
 ## What earns a line
 
-- a **decision**, with the rejected alternative and its price
+- a **decision**, with the rejected alternative and its price, and its one line in the
+  [decision log](#where-progress-lives-three-files-one-job-each)
 - a **hazard no gate catches**, with the trigger to revisit it
 - a **recipe whose order is not obvious**, and why each step sits where it does
 
@@ -150,8 +151,8 @@ resolves twice lets a check pass on the wrong declaration. In Go a method is cit
 `func (s *Server) handle(`, not `handle`, and its case counts.
 
 *Who it binds:* the living documents, which must be true now (the conventions, the architecture
-page, the index, every `CLAUDE.md`, the root `README.md`, `docs/client-readiness.md` and
-[`docs/activity-log.md`](../activity-log.md)), and not plans or recaps, which were written once and
+page, the index, every `CLAUDE.md`, the root `README.md`, `docs/client-readiness.md`,
+[`docs/activity-log.md`](../activity-log.md) and [`docs/decisions.md`](../decisions.md)), and not plans or recaps, which were written once and
 were true then. **A page of decisions about code not yet written is still bound**, because the check
 only verifies what is cited and never asks for a citation to an unbuilt thing: the citations such a
 page makes to code that *does* exist are exactly the ones that rot when the work lands. *When:* it binds new writing, and an
@@ -167,6 +168,17 @@ change sees that, so a piece that moves a decision rereads the citations to it.
 | `docs/plans/<date>-<slug>.md` | what to build | [One short page](#the-plan-one-short-page). Each step is a checkbox, ticked only once its check reads back; the ticks are the plan's one status |
 | `docs/open-items.md` | the list of what is open | Numbered, never renumbered. One entry per thing still to do, naming who does it, or marked *parked* until a review. An entry is deleted when done |
 | `docs/recaps/<date>-<slug>.md` | the history and the evidence | Written when a step reads back green: what shipped, what was rejected and why, what remains the human's, in half a page the human reads; below it, the evidence, what each step's check read, in words and naming no log ([a log is such a path](#nothing-machine-local-or-personal-in-a-committed-file)). Append-only, and never a status source. The piece's recap adds or changes its row in [`docs/products.md`](../products.md), the products on hand, in the same commit, and adds the piece's card under "Check a piece on ridge, without code" where the piece stands up stage 4 |
+
+**Beside the three, one log: [`docs/decisions.md`](../decisions.md), every decision newest
+first, one line each** (its date, what was decided, what it beat, its home). It is the home of the
+list; the decision's memo or convention stays the home of its argument
+([what earns a line](#what-earns-a-line)). **The lane that records a human's decision also writes
+its line there**: the orchestrator, which records it on its board, or the piece that settles one.
+The argument goes into its home in the same lane, and both land on `pre-merge` the ordinary way. A
+decision reversed later keeps its line and gains a newer one, as the log's own
+[At a glance](../decisions.md#at-a-glance) says. *Why:* nothing else on `main` lists what was
+decided, and a log nobody is named to write stops on the day it was seeded. *Rejected:* a fourth
+row in the table above, whose heading other pages link to as three files.
 
 These names are fixed, so one `grep` finds every one of them. A directory is added once it has
 content, never ahead of it.
