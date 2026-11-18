@@ -17,6 +17,12 @@ allowBuilds:
   core-js: false
   esbuild: false
 
+# hast-util-raw 9.2.0 (2026-11-06), under Docusaurus's plain-Markdown loader, calls parse5's
+# tokenizer.flushCharacters, which the locked parse5 8.0.1 lacks, so every .md page failed to compile;
+# 9.1.0 is its newest release two weeks old, on parse5 7.
+overrides:
+  hast-util-raw: 9.1.0
+
 # Each at its newest release two weeks old on 2026-10-21, exact for what ships, a caret for
 # types and tooling that only check.
 catalog:
