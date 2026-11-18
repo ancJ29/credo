@@ -1,12 +1,12 @@
 import { MantineProvider } from '@mantine/core';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { designThemeOf } from '../../design-system/theme';
+import { themeOf } from '../../design-system/appTheme';
 import { LogoTile } from './LogoTile';
 
 const draw = (logo?: string) =>
   render(
-    <MantineProvider theme={designThemeOf('#2f7d6d')} env="test">
+    <MantineProvider theme={themeOf('#2f7d6d')} env="test">
       <LogoTile logo={logo} alt="Acme" />
     </MantineProvider>,
   );
@@ -36,7 +36,7 @@ describe('LogoTile', () => {
     expect(screen.queryByRole('img')).toBeNull();
 
     rerender(
-      <MantineProvider theme={designThemeOf('#2f7d6d')} env="test">
+      <MantineProvider theme={themeOf('#2f7d6d')} env="test">
         <LogoTile logo="/back.png" alt="Acme" />
       </MantineProvider>,
     );

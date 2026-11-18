@@ -1,13 +1,13 @@
 import { MantineProvider } from '@mantine/core';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { designThemeOf } from '../../design-system/theme';
+import { themeOf } from '../../design-system/appTheme';
 import { BackLink } from './BackLink';
 
 describe('BackLink', () => {
   it('4: goes where its caller says, its arrow before its words, in brand-7', () => {
     render(
-      <MantineProvider theme={designThemeOf('#2f7d6d')} env="test">
+      <MantineProvider theme={themeOf('#2f7d6d')} env="test">
         <BackLink href="/login">Back to sign in</BackLink>
       </MantineProvider>,
     );

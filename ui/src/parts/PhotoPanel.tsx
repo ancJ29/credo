@@ -1,5 +1,6 @@
 import type { PhotoReply } from '@credo/shared';
 import { Alert, Avatar, Button, FileButton, Group, Image, Stack, Text } from '@mantine/core';
+import { IconPhoto } from '@tabler/icons-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DetailCard } from './DetailCards';
@@ -52,7 +53,7 @@ export function PhotoPanel({ page, id, name, held, onHeld, editable }: Props) {
   }
 
   return (
-    <DetailCard title={t('person.photo')}>
+    <DetailCard icon={<IconPhoto size={14} />} title={t('person.photo')}>
       <Group>
         {held.photo ? (
           <Image src={held.photo} alt={name} h={96} w={96} fit="cover" radius="md" />

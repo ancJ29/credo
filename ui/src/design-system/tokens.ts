@@ -14,6 +14,8 @@ export const TOKENS = {
   rowHover: 'var(--mantine-color-brand-0)',
   /** A dialog's title: large, at 550. */
   dialogTitle: { fontSize: 'var(--mantine-font-size-lg)', fontWeight: 550 },
+  /** A dialog's header: the legacy's padding, 12 above and below, 16 at the sides. */
+  dialogHeader: { padding: 'var(--mantine-spacing-sm) var(--mantine-spacing-md)' },
   /** A field's label: small capitals, the legacy's default weight and spacing, in grey. */
   fieldLabel: { fw: 600, lts: 0.3 },
   /** A section's title: the same small capitals, bolder and wider. */
@@ -61,4 +63,17 @@ export const FRAME_COLOURS = {
   'white-90': 'rgba(255, 255, 255, 0.9)',
   'white-22': 'rgba(255, 255, 255, 0.22)',
   'white-55': 'rgba(255, 255, 255, 0.55)',
+} as const;
+
+/** The frame's sizes, weights, lines and shadows that Mantine has no slot for, written as
+ * `--credo-<name>` variables by the theme's resolver beside the colours. */
+export const FRAME_VALUES = {
+  /** The menu's labels: 14 px at 600. */
+  'menu-size': '14px',
+  'menu-weight': '600',
+  /** The phone bar's line above and its soft shadow cast upward: the legacy's `base/src/components/app/MobileAppLayout.tsx#L268-L269`. */
+  'bar-line': '1px solid var(--mantine-color-default-border)',
+  'bar-shadow': '0 -2px 8px rgba(0, 0, 0, 0.06)',
+  /** The header's soft shadow below: the legacy's `base/src/components/app/MobileAppLayout.tsx#L167`. */
+  'header-shadow': '0 2px 8px rgba(0, 0, 0, 0.08)',
 } as const;

@@ -1,13 +1,13 @@
 import { MantineProvider } from '@mantine/core';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { designThemeOf } from '../../design-system/theme';
+import { themeOf } from '../../design-system/appTheme';
 import { DoorCard } from './DoorCard';
 
 describe('DoorCard', () => {
   it('5: draws a 4-px bar in the brand’s gradient across its top, the band, then what it holds', () => {
     const { container } = render(
-      <MantineProvider theme={designThemeOf('#2f7d6d')} env="test">
+      <MantineProvider theme={themeOf('#2f7d6d')} env="test">
         <DoorCard name="Acme" logo="/logo.png">
           <p>Inside</p>
         </DoorCard>

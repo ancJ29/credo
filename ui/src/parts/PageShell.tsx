@@ -1,5 +1,6 @@
-import { Group, Stack, Title } from '@mantine/core';
+import { Stack } from '@mantine/core';
 import type { ReactNode } from 'react';
+import { PageHeader } from '../components/organisms/PageHeader';
 import { Loaded } from '../frame/Loaded';
 
 /**
@@ -21,10 +22,7 @@ export function PageShell({
 }) {
   return (
     <Stack gap="lg">
-      <Group justify="space-between">
-        <Title order={2}>{title}</Title>
-        {actions}
-      </Group>
+      <PageHeader title={title} actions={actions} />
       <Loaded status={status} onRetry={onRetry}>
         {children}
       </Loaded>

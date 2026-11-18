@@ -9,6 +9,7 @@ import {
   TextInput,
   Title,
 } from '@mantine/core';
+import { IconLogin, IconNote, IconPhone, IconUser } from '@tabler/icons-react';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router';
@@ -122,7 +123,7 @@ export function AddPersonPage(page: PageProps) {
         <Alert color="green" role="alert">
           {t('addPerson.madeIntro')}
         </Alert>
-        <DetailCard title={t('addPerson.madeCard')}>
+        <DetailCard icon={<IconLogin size={14} />} title={t('addPerson.madeCard')}>
           <FieldPair>
             <TextInput
               label={t('addPerson.signInName')}
@@ -178,7 +179,7 @@ export function AddPersonPage(page: PageProps) {
       <Loaded status={loaded.status} onRetry={loaded.reload}>
         <form onSubmit={(event) => void submit(event)}>
           <Stack gap="lg">
-            <DetailCard title={t('addPerson.basic')}>
+            <DetailCard icon={<IconUser size={14} />} title={t('addPerson.basic')}>
               <FieldPair>
                 <TextInput
                   label={t('addPerson.name')}
@@ -226,7 +227,7 @@ export function AddPersonPage(page: PageProps) {
                 onChange={(next) => setPersonal((was) => ({ ...was, ...next }))}
               />
             </DetailCard>
-            <DetailCard title={t('addPerson.contacts')}>
+            <DetailCard icon={<IconPhone size={14} />} title={t('addPerson.contacts')}>
               <FieldPair>
                 <TextInput
                   label={t('addPerson.phone')}
@@ -244,7 +245,7 @@ export function AddPersonPage(page: PageProps) {
                 )}
               </FieldPair>
             </DetailCard>
-            <DetailCard title={t('addPerson.noteCard')}>
+            <DetailCard icon={<IconNote size={14} />} title={t('addPerson.noteCard')}>
               <Textarea
                 label={t('addPerson.note')}
                 value={form.note}

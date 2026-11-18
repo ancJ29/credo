@@ -1,5 +1,6 @@
 import { addCustomerRequestSchema, type CustomerDoc } from '@credo/shared';
 import { Button, Stack, Textarea, TextInput } from '@mantine/core';
+import { IconAddressBook, IconInfoCircle, IconMapPin, IconNote } from '@tabler/icons-react';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { textIn } from '../listSheet';
@@ -64,7 +65,7 @@ export function CustomerForm({
         <DetailColumns
           main={
             <Stack gap="lg">
-              <DetailCard title={t('lists.customers.basic')}>
+              <DetailCard icon={<IconInfoCircle size={14} />} title={t('lists.customers.basic')}>
                 <FieldPair>
                   <TextInput
                     label={t('lists.columns.code')}
@@ -85,7 +86,10 @@ export function CustomerForm({
                   />
                 </FieldPair>
               </DetailCard>
-              <DetailCard title={t('lists.customers.contacts')}>
+              <DetailCard
+                icon={<IconAddressBook size={14} />}
+                title={t('lists.customers.contacts')}
+              >
                 <TextInput
                   label={t('lists.columns.phone')}
                   type="tel"
@@ -94,7 +98,7 @@ export function CustomerForm({
                   onChange={(event) => setPhone(event.currentTarget.value)}
                 />
               </DetailCard>
-              <DetailCard title={t('lists.customers.address')}>
+              <DetailCard icon={<IconMapPin size={14} />} title={t('lists.customers.address')}>
                 <TextInput
                   aria-label={t('lists.columns.address')}
                   readOnly={!editable}
@@ -106,7 +110,7 @@ export function CustomerForm({
           }
           side={
             editable || stored ? (
-              <DetailCard title={t('lists.customers.note')}>
+              <DetailCard icon={<IconNote size={14} />} title={t('lists.customers.note')}>
                 <Textarea
                   aria-label={t('lists.customers.note')}
                   rows={4}

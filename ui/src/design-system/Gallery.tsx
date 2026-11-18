@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { Link, useLocation } from 'react-router';
 import { ENTRIES, GROUPS, slugOf, type Entry } from './entries';
 import classes from './Gallery.module.css';
-import { designThemeOf } from './theme';
+import { themeOf } from './appTheme';
 
 /** The gallery's own address: the page and what is below it. */
 const BASE = '/48b74d079/gallery';
@@ -90,7 +90,7 @@ export function Gallery() {
   const { pathname } = useLocation();
   const entry = partAt(pathname);
   return (
-    <MantineProvider theme={designThemeOf(CREDO_COLOUR)} forceColorScheme="light">
+    <MantineProvider theme={themeOf(CREDO_COLOUR)} forceColorScheme="light">
       <title>Credo: the design system’s gallery</title>
       <meta name="robots" content="noindex" />
       <div className={classes.root}>

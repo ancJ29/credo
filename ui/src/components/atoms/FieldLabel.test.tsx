@@ -1,13 +1,13 @@
 import { MantineProvider } from '@mantine/core';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { designThemeOf } from '../../design-system/theme';
+import { themeOf } from '../../design-system/appTheme';
 import { FieldLabel } from './FieldLabel';
 
 describe('FieldLabel', () => {
   it('draws its words in capitals, at the legacy’s weight and spacing', () => {
     render(
-      <MantineProvider theme={designThemeOf('#2f7d6d')} env="test">
+      <MantineProvider theme={themeOf('#2f7d6d')} env="test">
         <FieldLabel>Name</FieldLabel>
       </MantineProvider>,
     );

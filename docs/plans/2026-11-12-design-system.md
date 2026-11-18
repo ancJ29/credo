@@ -105,7 +105,7 @@ The new app's lines are this tree's; the legacy's are the old repository's `work
 | A dialog | Mantine's title, 16 px, regular | centred, title large at 550, `#L84-L97` | the legacy's |
 | The section card | `ui/src/parts/DetailCards.tsx#L21-L30`: title 22 px at 600, padding 16, no icon; 27 uses in 7 files | padding 24, a 24-px grey icon tile, title 12 px at 700 in capitals spaced 0.5 (`c-mngt/src/components/SectionCard.tsx#L40`, `#L63-L72`; `base/src/components/common/FieldLabel.tsx#L19`) | the legacy's |
 | The menu's labels | 16 px at 500, `ui/src/frame/frame.module.css#L79-L80` | 14 px at 600, `base/src/components/app/PCAppLayout.css#L47-L51` | 14 at 600, the human's word of 11-16 |
-| The phone's header and foot bar | no shadow, no line | a soft shadow under the header and a line and soft shadow above the bar, `base/src/components/app/MobileAppLayout.tsx#L167`, `#L268-L269` | the legacy's |
+| The phone's header and foot bar | no shadow under the header; the bar's gray-3 line (`#d1d5db`, Mantine's own `border-top` on the footer) and no shadow | a soft shadow under the header and a line and soft shadow above the bar, the line the default border's gray-4 (`#9ca3af`), `base/src/components/app/MobileAppLayout.tsx#L167`, `#L268-L269` | the legacy's |
 | The page title | 22 px at 700, `ui/src/theme.ts#L115` | 22 px at 600 (`c-mngt/src/components/ListPageHeader.tsx#L130`) | kept: the 700 was the human's look of 2026-11-03 |
 
 Control sizes differ nowhere: the legacy's shared `sm` entries (`base/src/utils/mantine-theme.ts#L78-L97`)
@@ -158,7 +158,7 @@ legacy's card by hand (`ui/src/parts/Settings.tsx#L122-L131`), the model for the
 
 | # | The case: one behaviour, one sentence | Held by |
 | --- | --- | --- |
-| 1 | The design system's theme draws the main colour at shade 6 while shade 7 stays the colour itself, a badge with 4-px corners, a table row under the pointer in the brand's shade 0, and a dialog centred with its title large at 550 | `ui/src/design-system/theme.test.tsx`, the shade's case now at `ui/src/theme.test.ts#L52-L58` |
+| 1 | The design system's theme draws the main colour at shade 6 while shade 7 stays the colour itself, a badge with 4-px corners, a table row under the pointer in the brand's shade 0, and a dialog centred with its title large at 550 | `ui/src/design-system/appTheme.test.tsx` (the shade's case in `themeOf`'s describe, the badge, table and dialog entries in case 11) |
 | 2 | Each sample draws its states: a status badge green when active, grey when not; a detail field with no value a dash; a section title its icon in a grey tile; a page header its title as the page's heading | a test beside each, `ui/src/components/<level>/<Name>.test.tsx` |
 | 3 | The gallery shows every component of the three folders under its level's heading (from landing 4, in its list), light whatever the device asks | `ui/src/design-system/Gallery.test.tsx`, which reads the folders and mounts the entry on a `#root` |
 | 4 | A component imports nothing from a level above its own, nor from the app outside `components/` and the tokens | `eslint.config.js`, one block a level |
@@ -237,23 +237,27 @@ confirm the skeleton first").
 
 **Landing 3: the legacy's values.**
 
-- [ ] **9. The app takes the design system's theme.** `themeOf` takes the main shade and the badge,
+- [x] **9. The app takes the design system's theme.** `themeOf` takes the main shade and the badge,
       table and dialog entries `designThemeOf` lays over it, and the two become one. Case 11, seen
       red first. _Done when:_ the checks exit 0. **8 min.**
-- [ ] **10. The card and the page header.** `DetailCard` draws `SectionCard`, each card with the
+      _Done 2026-11-17: `main` taken in by fast-forward; case 11 red on the old `themeOf` (exit 1, `expected 7 to be 6`), green after; `themeOf` in `ui/src/design-system/appTheme.ts` takes the main shade, the gradient and the badge, divider, table and dialog entries, `theme.ts` and `designThemeOf` gone, `theme.test.tsx`'s cases joined `appTheme.test.tsx`, eight importers followed; the frame snapshots moved by the badge's `--badge-radius` (two) and the dialog title's size and weight (one), nothing else, and the staff chip's style test now reads the radius; `pnpm --filter @credo/ui check` exit 0 (typecheck, eslint, prettier, test, knip all 0); the citations test exit 0 (32 passed). **14 min.**_
+- [x] **10. The card and the page header.** `DetailCard` draws `SectionCard`, each card with the
       legacy's icon for the same section where one exists, else the nearest; `PageShell`'s heading
       draws `PageHeader`; the settings copy becomes a `DetailCard`. Case 12. _Done when:_ the checks
       and visual's exit 0, and `grep -c 'tt="uppercase"' ui/src/parts/Settings.tsx` counts 0.
       **10 min.**
-- [ ] **11. The frame's values.** The menu's labels at 14 and 600; the phone bar's line and shadow
+      _Done 2026-11-17: case 12 (`ui/src/parts/DetailCards.test.tsx`, "12: shows its icon in a grey tile and its title small, bold, in capitals") red first on the old `DetailCard` (no `section-icon` tile, exit 1), green after; `DetailCard` in `ui/src/parts/DetailCards.tsx` now takes an `icon` and draws the organism `SectionCard`, `PageShell` draws `PageHeader`, and the settings copy is a `DetailCard` (`grep -c 'tt="uppercase"' ui/src/parts/Settings.tsx` counts 0); the icon of each of the 27 cards is the legacy's for the same section where it has one (read in the old app's `c-mngt` pages): basic information `IconInfoCircle` for the customers' card, `IconPackage` for the products' (the legacy's main details) and `IconBuilding` for the settings' (its Company Info), `IconUser` for the staff cards as the legacy's employees page has it, contacts `IconAddressBook` (customers) and `IconPhone` (staff), address `IconMapPin`, note `IconNote`, a product's unit `IconAdjustmentsHorizontal` and its stock `IconBuildingWarehouse`; the nearest, where the legacy has none: `IconMail` the email, `IconQrcode` the QR code, `IconPhoto` the photo, `IconLogin` the made sign-in, `IconLock` the password, `IconKey` the code, `IconShieldCheck` the permissions, `IconArchive` the lock card, `IconListDetails` an order's details, `IconPackage` its lines, `IconTruck` its delivery, each chosen as the tabler glyph that names the card's thing; one snapshot moved, the ways one in `ui/src/frame/frameKept.test.tsx.snap`, its diff read to hold only the cards' padding (16 to 24), the icon tile and the title's small capitals, and shifted generated ids, no other test changed; item 590 filed (its id mask takes nine characters, the random id is sometimes eight); `pnpm --filter @credo/ui check`, the citations test and `pnpm --filter @credo/visual check` exit 0. **12 min.**_
+- [x] **11. The frame's values.** The menu's labels at 14 and 600; the phone bar's line and shadow
       and the header's shadow; each a token. Case 13, seen red first. _Done when:_ the checks exit 0.
       **5 min.**
-- [ ] **12. Review, the picture run, and landing.** One review and fix pass; `pre-merge` taken in;
+      _Done 2026-11-17: case 13 (`ui/src/frame/Shell.test.tsx`, "13: The menu's labels are 14 px at 600...") red first on the code without the change (`expected ':root, :host{--mantine-cursor-type: p…' to contain '--credo-menu-size: 14px;'`, exit 1), green after; `FRAME_VALUES` in `ui/src/design-system/tokens.ts` holds the menu's size and weight, the bar's line and shadow and the header's shadow, `credoVariables` writes them as `--credo-*` variables, `.item` in `ui/src/frame/frame.module.css` reads the menu's two, the shell's footer reads the bar's two, and the header's shadow is a rule below 48em on `.header` alone; the legacy's values (`0 2px 8px` under the header, the default border and `0 -2px 8px` above the bar, `base/src/components/app/MobileAppLayout.tsx#L167`, `#L268-L269`) read back from the old app's file; two snapshots moved, the ways one and the passkeys one in `ui/src/frame/frameKept.test.tsx.snap`, each by the footer's `border-top` and `box-shadow` variables and nothing else; `pnpm --filter @credo/ui check` exit 0 (typecheck, eslint, prettier, test, knip all 0) and the citations test exit 0 (32 passed); `pnpm --filter @credo/visual check` exit 0 on this tree, run on 2026-11-17 after the lock freed (typecheck, eslint, prettier, test and knip all 0, the package's coverage at 100 %); an earlier run, before the prettier fix, had read prettier 1 on one file, since fixed. **5 min.**_
+- [x] **12. Review, the picture run, and landing.** One review and fix pass; `pre-merge` taken in;
       your run, `bash walk/run.sh` over all twelve walks with `--moved all --write`, then with no
       flags. The machine reads both logs, counts the screens moved per walk from the base folders'
       diff, commits the bases and the recap, and lands; point 4. _Done when:_ the second run reads
       `== verdict: green` with every count 0, and the branch merges. **25 min, and your runs, about
       32.**
+      _Done 2026-11-18: the review (may merge with changes) and the fix pass `f2407e45`; `pre-merge` taken in at `9865d82b`; your first picture run with `--moved all --write` read green and wrote 728 of 786 pictures (`4f3a2a7e`); your second run with no flags read green, every picture the same and no base written; point 4, your look at the walks page, stays open and the push waits for it._
 
 **Landing 4: the gallery's final shape** (when the components pass 15; the human's yes of
 2026-11-16).
@@ -304,8 +308,8 @@ landing 4 when it opens.
    colour now comes from one folder. A yes closes it; a no names the screen that moved, and the step
    that touched it reopens.
 4. **The legacy's look, on the walks page (step 12).** Every walk redrawn: buttons a shade lighter,
-   badges with small corners, a pale tint under the pointer in a table, card titles small in capitals
-   beside a grey icon, a centred dialog, the menu's labels smaller and bolder. Does each walk read as
+   badges with small corners, card titles small in capitals
+   beside a grey icon, a centred dialog, the menu's labels smaller and bolder, and on a phone a soft shadow under the header and a darker line with a soft shadow above the bar. A still picture cannot show a table row's tint under the pointer; the test holds that. Does each walk read as
    the legacy app? Yes per walk closes it; a no names the screen and part, and its step reopens.
 5. **The gallery's final shape: answered 2026-11-16.** You asked: "when we have more components to
    check, let say, 50 components, a single long page is not realistic, right?" Shown the sketch (the

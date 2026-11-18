@@ -1975,7 +1975,9 @@ The rule of three is written at the `components/` note and again in the levels' 
 
 ## 507. The theme drops the dialog header's padding, and the gallery draws no dialog or table (the same review, Low) — the machine; `[DEFERRED]`
 
-`ui/src/design-system/theme.ts#L18-L21` carries the dialog's centring and title but not the header's padding of the legacy's `theme/index.ts#L89-L91`, and the gallery shows neither a dialog nor a table row under the pointer, so the two entries of case 1 are held by the test alone and cannot be judged by eye. Add the padding with the first screen that opens a dialog, and a dialog and a table to the gallery.
+The dialog's entry (`Modal.extend`) in `ui/src/design-system/appTheme.ts` carries the dialog's centring and title but not the header's padding of the legacy's `theme/index.ts#L89-L91`, and the gallery shows neither a dialog nor a table row under the pointer, so the two entries of case 1 are held by the test alone and cannot be judged by eye. Add the padding with the first screen that opens a dialog, and a dialog and a table to the gallery.
+
+**Half done (design system, the fix pass of landing 3, 2026-11-17).** The dialog header's padding half is done at step 12: the legacy's `var(--mantine-spacing-sm) var(--mantine-spacing-md)` is `TOKENS.dialogHeader` in `ui/src/design-system/tokens.ts`, read by the dialog's entry in `ui/src/design-system/appTheme.ts` and held in `ui/src/design-system/appTheme.test.tsx`. The gallery half is still open: the gallery draws no dialog and no table row.
 
 ## 508. `tokens.ts` repeats values `ui/src/design-system/appTheme.ts` holds (the same review, Low) — the machine; `[DEFERRED]`
 
@@ -2158,7 +2160,6 @@ After the ui tests' words piece, every ui test reads its words from `DICTIONARIE
 
 `ops/words-in.sh#L75` prints `cd $REPO_DIR && bash $OPS_DIR/words-in.sh --land $BRANCH` with the two paths bare, so a credo root with a space in its path pastes as two words. This root has none. Fix: print each path single-quoted. *Trigger:* a credo root moved to a path with a space.
 
-
 ## 587. The operator page's test reads `words.app.name` for the brand's name — the machine; `[DEFERRED]` (the ui tests' words review, 2026-11-17, Low)
 
 `ui/src/frame/OperatorPage.test.tsx#L22` reads the page's heading as `words.app.name`. The heading shows `CREDO_BRAND.name` (`ui/src/brand.ts#L14`), which is data, and `app.name` is drawn only by `ui/src/frame/Boot.tsx#L29`; the two hold the same text today, so the test is green, and the fix pass's proof run (each key's word given a suffix) went red on it. The doors' pin keeps "Credo" typed as data. Fix: keep the brand's name typed, or read `CREDO_BRAND.name`. *Trigger:* a returned file that changes `app.name`, or the next edit of that test.
@@ -2171,6 +2172,18 @@ After the ui tests' words piece, every ui test reads its words from `DICTIONARIE
 
 Words found by hand on the branch after the fix pass: `ui/src/listSheet.test.ts#L283` types the forms a person writes for three column headings, `['ĐỊA CHỈ', 'tên *', 'MA']`, which are `lists.columns.address`, `.name` and `.code` in Vietnamese in upper, lower and unaccented case, where case 5 says the forms are applied to the dictionary word (`ui/src/importSheet.test.ts#L256-L261` does); and `ui/src/pages/client/StaffPages.test.tsx#L186` types "Active" inside the person card's whole text, which is `words.staff.chipActive`. A returned file that changes those words reddens them. Not confirmed: the fix pass's proof run left 16 reds in 12 files, and its author's list of words left typed is in no commit or plan text; of those reds, the template and sheet-name ones read as artefacts of the suffix it appended, and the three in `ui/src/pages/client/Reconcile.test.tsx` (money cells that were not found) and `ui/src/listSheet.test.ts#L223` were not classified. Fix: read those two from the dictionary, then run the proof again, key suffix and all, to find any other. *Trigger:* the next returned words file, or a proof run.
 
+## 590. `frameKept.test.tsx`'s id mask needs nine characters, and Mantine's random id is sometimes eight — a snapshot taken then holds a live id and fails the next run — the machine; `[DEFERRED]` (design system step 10, 2026-11-17, Low)
+
+`ui/src/frame/frameKept.test.tsx#L13` masks `mantine-[a-z0-9]{9}`, but Mantine's fallback id is `Math.random().toString(36).slice(2, 11)`, which is eight characters about one time in thirty-six; the first `-u` rewrite of the ways snapshot took `mantine-nevtwxk2` as it was, and a second rewrite masked it. Fix: mask `{8,9}`. *Trigger:* a snapshot red on an id nobody changed.
+
 ## 591. The plan's account of which chunks share the theme is wrong — the machine; `[DEFERRED]` (the fake build's style fix review, 2026-11-17, Low)
 
 `docs/plans/2026-11-17-ui-tests-words.md`, step 5a, says the theme is shared by "the gallery and the fake chunk". The review of the style fix (`e0654fa7`) read the built page: the entry and the gallery share the theme, and the fake chunk imports neither. The fix stands and nothing breaks; the sentence is history, not a living document. Fix: none unless the plan is reopened. *Trigger:* the plan reopened.
+
+## 595. Case 13 pins two of its five values, and its feature came after its test (design system landing 3's review, 2026-11-17, Low) — the machine; `[DEFERRED]`
+
+`ui/src/frame/Shell.test.tsx#L81-L82` pins the menu's 14 px and 600, but `#L102-L103` only checks that the bar's line, the bar's shadow and the header's shadow each have some value, so a shadow cast downward or ten times darker passes, and the snapshots show only the variable names; the two negatives at `#L100` and `#L101` pass with the feature or without it. The test was committed two hours before its feature (873e4165 and c3f1acbe, then ffb02689), which `docs/conventions/qa.md#L204` does not ask. Fix: assert the three values as `FRAME_VALUES` in `ui/src/design-system/tokens.ts` writes them. *Trigger:* the next change to the frame's values.
+
+## 596. `tokens.ts` still repeats `themeOf`'s corner and spacing, and item 507's citation named a deleted file (design system landing 3's review, 2026-11-17, Low) — the machine; `[DEFERRED]`
+
+Item 507's citation of `ui/src/design-system/theme.ts#L18-L21` named a file step 9 deleted; item 507 stays open, half done: the dialog's padding is done, the gallery's dialog and table row are not. Item 508 asked step 9 to read one theme from the other; it did not, and `ui/src/design-system/tokens.ts#L12` (`'4px'`) and `#L24` (`24`) still repeat the radius `sm` and the spacing `lg` at `ui/src/design-system/appTheme.ts#L125-L126`, two homes that drift with nothing red. Neither item's page is in the citation check's living set (`scripts/src/citations.ts#L15-L32`). Fix: write the badge's radius and the card's padding once, read by the other. *Trigger:* a change to either value.

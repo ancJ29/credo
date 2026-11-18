@@ -2,12 +2,16 @@
 // where the theme is shared with a lazy chunk (the gallery) a bundler may hoist it ahead of the entry.
 import '@mantine/core/styles.css';
 import {
+  Badge,
   Checkbox,
   createTheme,
+  Divider,
   Input,
   type MantineColorsTuple,
+  Modal,
   PasswordInput,
   rem,
+  Table,
 } from '@mantine/core';
 import { paletteOfColour } from './palettes';
 import classes from './theme.module.css';
@@ -102,13 +106,17 @@ export function shadesOf(colour: string) {
 
 /**
  * The old app's look, coloured by the tenant's brand: only `brand` follows the tenant; the greys,
- * the green, the red, the font, the radii, the shadows and the underlined fields are fixed.
+ * the green, the red, the font, the radii, the shadows and the underlined fields are fixed. Also the
+ * design system's own entries: the main shade, a small-cornered badge, a table row's pale hover, a
+ * centred dialog with a large title, the gradient button and a labelled divider. Light only.
  */
 export const themeOf = (colour: string) =>
   createTheme({
     colors: { brand: shadesOf(colour), neutral: NEUTRAL, gray: GRAY, green: GREEN, red: RED },
     primaryColor: 'brand',
-    primaryShade: 7,
+    // The main colour at shade 6; shade 7 stays the company's colour itself.
+    primaryShade: TOKENS.primaryShade,
+    defaultGradient: TOKENS.buttonGradient,
     fontFamily: FONT,
     // A page's title is its level-2 heading, drawn at the old app's h3, in bold (700).
     headings: {
@@ -135,5 +143,15 @@ export const themeOf = (colour: string) =>
         classNames: { root: classes.passwordRoot, input: classes.password },
       }),
       InputWrapper: Input.Wrapper.extend({ styles: { label: { fontWeight: 500 } } }),
+      Badge: Badge.extend({ defaultProps: { radius: TOKENS.badgeRadius } }),
+      Divider: Divider.extend({
+        defaultProps: { labelPosition: 'center' },
+        styles: { label: TOKENS.dividerLabel },
+      }),
+      Table: Table.extend({ defaultProps: { highlightOnHoverColor: TOKENS.rowHover } }),
+      Modal: Modal.extend({
+        defaultProps: { centered: true },
+        styles: { header: TOKENS.dialogHeader, title: TOKENS.dialogTitle },
+      }),
     },
   });
