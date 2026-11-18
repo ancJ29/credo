@@ -29,7 +29,7 @@ const readHeaderTimeout = 10 * time.Second
 // server that answers while pointed at no database is the most expensive
 // outcome there is.
 func Run(ctx context.Context, cfg *config.Config) error {
-	db, err := sqlitedb.Open(cfg.DBPath, store.Schema)
+	db, err := sqlitedb.Open(cfg.DBPath, store.Schema, store.Version)
 	if err != nil {
 		return fmt.Errorf("open the records database: %w", err)
 	}
@@ -38,7 +38,10 @@ func Run(ctx context.Context, cfg *config.Config) error {
 	// is one file.
 	defer db.Close()
 
-	ln, err := server.Listen(cfg.ListenAddr, cfg.Port)
+	// One address, which config has already made a single IP and never an unspecified one: loopback
+	// by default, or the box's private address, so no other interface answers whatever a firewall
+	// says. TestRunBindsTheAddressItIsGiven.
+	ln, err := net.Listen("tcp", net.JoinHostPort(cfg.ListenAddr, cfg.Port))
 	if err != nil {
 		return fmt.Errorf("bind the listener: %w", err)
 	}

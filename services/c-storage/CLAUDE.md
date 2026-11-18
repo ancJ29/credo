@@ -59,8 +59,9 @@ bind as written there.
   ([why](../../docs/memo/c-storage.md#a-write-on-a-moved-record-is-refused)).
 - **Every transaction begins IMMEDIATE,** a read wrapped in one included
   ([why](../../docs/memo/c-storage.md#one-writer-at-a-time)).
-- **`schema.sql` applies only to a new file:** a schema change needs the version raised and a step
-  that carries a version-1 file to it
+- **`schema.sql` applies only to a new file:** a schema change needs the version raised (`Version`,
+  beside `Schema` in `services/c-storage/internal/store/store.go`) and a step that carries a
+  version-1 file to it
   ([why](../../docs/memo/c-storage.md#the-schema-version-is-checked-at-open)).
 - **The listener binds one address:** `LISTEN_ADDR`, a single IP and never an unspecified one,
   loopback when unset; on ridge the box's private address

@@ -17,10 +17,14 @@ import (
 	"unicode/utf8"
 )
 
-// Schema is the database's one shape; sqlitedb.Open applies it to a new file.
+// Schema is the database's one shape; sqlitedb.Open applies it to a new file and stamps it at
+// Version. A change to schema.sql raises Version and carries a file at the old one to it.
 //
 //go:embed schema.sql
 var Schema string
+
+// Version is the user_version a file holds once Schema is applied.
+const Version = 1
 
 var (
 	ErrExists    = errors.New("the service code is already registered")
@@ -47,29 +51,26 @@ func hash(accessKey string) string {
 
 // Register adds a service under code, or returns ErrExists.
 func (s *Store) Register(ctx context.Context, code, accessKey string) error {
-	res, err := s.db.ExecContext(ctx, `INSERT INTO services (code, hashed_access_key) VALUES (?, ?)
+	return s.writeService(ctx, ErrExists, `INSERT INTO services (code, hashed_access_key) VALUES (?, ?)
 		ON CONFLICT (code) DO NOTHING`, code, hash(accessKey))
-	if err != nil {
-		return err
-	}
-	// The driver's RowsAffected never fails.
-	if n, _ := res.RowsAffected(); n == 0 {
-		return ErrExists
-	}
-	s.wrote()
-	return nil
 }
 
 // Rekey replaces code's key with accessKey, or returns ErrNoService. The old key is refused from
 // the commit on; the service's records are untouched.
 func (s *Store) Rekey(ctx context.Context, code, accessKey string) error {
-	res, err := s.db.ExecContext(ctx, `UPDATE services SET hashed_access_key = ? WHERE code = ?`, hash(accessKey), code)
+	return s.writeService(ctx, ErrNoService, `UPDATE services SET hashed_access_key = ? WHERE code = ?`, hash(accessKey), code)
+}
+
+// writeService runs query on one service's row, and returns unchanged when no row changed. It and
+// write are the two ways a write commits, and each notes its commit.
+func (s *Store) writeService(ctx context.Context, unchanged error, query string, args ...any) error {
+	res, err := s.db.ExecContext(ctx, query, args...)
 	if err != nil {
 		return err
 	}
 	// The driver's RowsAffected never fails.
 	if n, _ := res.RowsAffected(); n == 0 {
-		return ErrNoService
+		return unchanged
 	}
 	s.wrote()
 	return nil

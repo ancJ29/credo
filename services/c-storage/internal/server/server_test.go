@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"net"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -37,7 +36,7 @@ var allKeys = keys{internalKey, adminKey, accessKey}
 // build is the real wiring over a fresh file holding one service, "svc".
 func build(t *testing.T) (*Server, *sql.DB) {
 	t.Helper()
-	db, err := sqlitedb.Open(filepath.Join(t.TempDir(), "c-storage.db"), store.Schema)
+	db, err := sqlitedb.Open(filepath.Join(t.TempDir(), "c-storage.db"), store.Schema, store.Version)
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
@@ -607,30 +606,6 @@ func TestBuildPanicsRatherThanRunningWithoutAKey(t *testing.T) {
 	}
 }
 
-// A listener on every interface would make a firewall the only thing between the network and the
-// port: Listen binds the one address it is given, whichever family.
-func TestListenBindsTheAddressItIsGiven(t *testing.T) {
-	addrs := []string{"127.0.0.1"}
-	// Only the ::1 case needs IPv6; a host without it still tests 127.0.0.1.
-	if probe, err := net.Listen("tcp", "[::1]:0"); err == nil {
-		probe.Close()
-		addrs = append(addrs, "::1")
-	} else {
-		t.Logf("no IPv6 loopback on this host, ::1 not tested: %v", err)
-	}
-	for _, addr := range addrs {
-		ln, err := Listen(addr, "0")
-		if err != nil {
-			t.Fatalf("Listen(%s): %v", addr, err)
-		}
-		got := ln.Addr().(*net.TCPAddr).IP.String()
-		ln.Close()
-		if got != addr {
-			t.Fatalf("Listen(%s) bound %s", addr, got)
-		}
-	}
-}
-
 // statusOf is GET /api/status with every key, decoded.
 func statusOf(t *testing.T, s *Server) (free uint64, at *time.Time) {
 	t.Helper()
@@ -648,7 +623,7 @@ func statusOf(t *testing.T, s *Server) (free uint64, at *time.Time) {
 func buildBare(t *testing.T) (*Server, string) {
 	t.Helper()
 	dir := t.TempDir()
-	db, err := sqlitedb.Open(filepath.Join(dir, "c-storage.db"), store.Schema)
+	db, err := sqlitedb.Open(filepath.Join(dir, "c-storage.db"), store.Schema, store.Version)
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
@@ -689,7 +664,18 @@ func TestTheStatusNamesTheLastCommittedWriteAndNoRefusedOne(t *testing.T) {
 		t.Fatalf("a stale delete = %d, want 412", got)
 	}
 	if _, after := statusOf(t, s); after == nil || !after.Equal(*pushed) {
-		t.Errorf("lastWriteAt after a refused write = %v, want it unchanged at %v", after, pushed)
+		t.Fatalf("lastWriteAt after a refused write = %v, want it unchanged at %v", after, pushed)
+	}
+	time.Sleep(2 * time.Millisecond)
+	call(t, s, "POST", "/api/services/rekey", `{"code":"svc","accessKey":"`+accessKey+`"}`, http.StatusOK)
+	_, rekeyed := statusOf(t, s)
+	if rekeyed == nil || !rekeyed.After(*pushed) {
+		t.Fatalf("lastWriteAt after a rekey = %v, want later than the push's %v", rekeyed, pushed)
+	}
+	time.Sleep(2 * time.Millisecond)
+	call(t, s, "DELETE", "/api/records/svc/k", "", http.StatusNoContent)
+	if _, removed := statusOf(t, s); removed == nil || !removed.After(*rekeyed) {
+		t.Errorf("lastWriteAt after a remove = %v, want later than the rekey's %v", removed, rekeyed)
 	}
 }
 
