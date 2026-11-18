@@ -95,6 +95,8 @@ otherwise runs whole.
   ([the plan](docs/plans/2026-10-31-orders-delivery.md#what-it-holds)).
 - **A client's own data goes in `extra`, never in a new typed field,** unless the BFF or c-storage must
   trust it; `extraSchema` in `shared/` is the one bound ([extra](docs/memo/extra.md)).
+- **`pnpm mock` builds the screens' every state as one page that needs no server** (Node 26 and pnpm 12): the page is
+  `ui/mock.html`, written under `ui/dist/mock/`, with filters for a language, a theme and a width.
 - **`pnpm fake -- <command>` serves the UI alone over invented data: no BFF, no c-storage.** It builds
   the UI with `vite build --mode fake`, the one build that holds `?fake`, the fake `Api`
   (`ui/src/fake.ts`) and the data set (`@credo/shared/demo`, a subpath never in the package's index);
