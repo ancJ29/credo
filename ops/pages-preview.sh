@@ -195,7 +195,7 @@ echo "  (both addresses shown on the terminal only)"
 # ---- 3 finish ----
 say "3/3 finish"
 if [ -z "$failures" ]; then
-  say "verdict: good: preview deployed at branch $branch, open by its link"
+  say "verdict: good: preview deployed at branch $branch"
   say "done"
   exit 0
 fi

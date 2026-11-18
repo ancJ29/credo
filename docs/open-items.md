@@ -1604,9 +1604,9 @@ In `ops/release.sh` the by-hand path builds and checks the store before anything
 
 The keys file path `/etc/audit-backbone/keys.env` is spelled out in six places: `ops/release.sh` (two), `ops/app.sh`, `ops/check.sh` (two) and `ops/audit-backbone.service`. The open port is read by a second `sed` in `ops/lib.sh` beside `unit_port`. The store's keys path is spread the same way today. *Fix, if wanted:* `unit_port <file> [<name>]` with `OPEN_PORT` as the name, and the keys path as one name in `ops/lib.sh`, passed to the here-documents as an argument. *Trigger:* the next change of either value.
 
-## 397. `ops/CLAUDE.md`'s counts of scripts (OP4 "thirteen", OP5 and OP9 "10 of 10", OP6 "9 of 10") do not match the folder, and its port line named a taken port — the machine; `[DEFERRED]` (the key script, 2026-11-13, Info)
+## 397. `ops/CLAUDE.md`'s counts of scripts (OP5 and OP9 "10 of 10", OP6 "9 of 10") do not match the folder, and its port line named a taken port — the machine; `[DEFERRED]` (the key script, 2026-11-13, Info)
 
-The folder holds fourteen scripts that call `main_synced` (with `ops/keys.sh`) and about fifteen that print a usage line; the rules say ten and thirteen. The port line said a new script takes 3197, which `ops/demo-remake.sh` already holds; this step set `ops/keys.sh` to 3198 and the line to "3191 to 3198; next 3199". *Fix, if wanted:* drop the counts from the rules (the stance test already holds the glob) or have a test compare them.
+The folder holds fourteen scripts that call `main_synced` (with `ops/keys.sh`); the rules say ten. OP4's counts are right since 2026-11-18, recounted when `ops/walks-refused.sh` went: seventeen scripts print a usage line and five hand-run ones refuse a bad call. OP6's hand-run "4 of 4" is to be recounted with the rest. The port line said a new script takes 3197, which `ops/demo-remake.sh` already holds; this step set `ops/keys.sh` to 3198 and the line to "3191 to 3198; next 3199". *Fix, if wanted:* drop the counts from the rules (the stance test already holds the glob) or have a test compare them.
 
 ## 398. A service-key run restarts every sign-in wait and voids every open operator challenge, because both are derived from the service key — the machine; `[DEFERRED]` (the review of the front door's keys, 2026-11-13, Medium; the cost is now said, the separate secrets are parked)
 
