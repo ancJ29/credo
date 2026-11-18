@@ -5,15 +5,7 @@ in it. It stays up after the command returns, so you can close the terminal and 
 
 Six things you can do. Copy a block, paste it, read the line under it. Every block finds the
 project's folder by itself, so you can paste it from any folder inside a checkout of this project.
-It needs Node 26, pnpm 12 and Go.
-
-## Once, the first time
-
-```sh
-cd "$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")/main" && pnpm install
-```
-
-You will see pnpm fetch and link the packages, ending in a summary of what it installed.
+Do the [first-time setup](first-time-setup.md) once before step 1.
 
 ## 1. Bring it up
 
