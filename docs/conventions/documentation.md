@@ -125,7 +125,7 @@ to rot, because the change that breaks it touches no line there.
   each promise with its price, and what no gate catches. A claim lands in exactly one of the three;
   where it would fit two it belongs to the memo, and the other links to it. Today
   [`docs/memo/bff.md`](../memo/bff.md), [`docs/memo/ui.md`](../memo/ui.md) and
-  [`docs/memo/c-storage.md`](../memo/c-storage.md), and the first two are living, so the citation
+  [`services/c-storage/docs/memo/c-storage.md`](../../services/c-storage/docs/memo/c-storage.md), and the first two are living, so the citation
   check reads them
   (`scripts/src/citations.ts`'s `LIVING`). *Rejected:* the behaviour in the part's `CLAUDE.md`. That
   file is read by a session about to write code; a promise is read by whoever calls the part, which

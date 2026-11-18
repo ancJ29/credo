@@ -152,7 +152,7 @@ ending at 1,000 records or about 4 MiB with the next starting after its last key
 reads every page, so a list is never short; orders and deliveries are still filed by day, which
 keeps a day's list to a page. Its promises are a store's: a save over a record
 changed since it was read is refused, one save happens at a time, and every path but the health
-check needs a key ([its memo](memo/c-storage.md), one section per decision). **Its one isolation
+check needs a key ([its memo](../services/c-storage/docs/memo/c-storage.md), one section per decision). **Its one isolation
 unit is the service, not the client** — which is why tenant separation is a prefix the BFF builds
 and nothing the store enforces, and why a box holds one tenant or twenty with no change to it.
 

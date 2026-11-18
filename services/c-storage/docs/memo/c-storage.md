@@ -10,7 +10,7 @@
 **c-storage keeps the records of every tenant the BFF sends it in one SQLite file, and answers only
 the BFF, the app's back end.** Today that is every tenant of an environment; in the pooled shape,
 intended and not built, it is one group of them
-([the detail page](../architecture-detail.md#how-a-call-finds-its-tenants-box)). The routing needs
+([the detail page](../../../../docs/architecture-detail.md#how-a-call-finds-its-tenants-box)). The routing needs
 no change here, since the service reads nothing per tenant
 (`services/c-storage/internal/config/config.go`'s `Load`); the one change the pooled shape asks of
 it, not built, is a reading of its disk used and free for the operator's choice of box, which its
@@ -36,10 +36,10 @@ flowchart TD
   turn -- "no: 412" --> refused
 ```
 
-Drawn from [`server.go`](../../services/c-storage/internal/server/server.go),
-[`auth.go`](../../services/c-storage/internal/auth/auth.go),
-[`store.go`](../../services/c-storage/internal/store/store.go) and
-[`open.go`](../../services/c-storage/internal/sqlitedb/open.go).
+Drawn from [`server.go`](../../internal/server/server.go),
+[`auth.go`](../../internal/auth/auth.go),
+[`store.go`](../../internal/store/store.go) and
+[`open.go`](../../internal/sqlitedb/open.go).
 
 | It promises | Protects against | Why |
 | --- | --- | --- |
@@ -137,8 +137,8 @@ would run a guarded write unguarded while its caller believes otherwise.
   record whatever it holds, so the guard holds only on the BFF's write paths that send the tag.
   This service cannot tell a careless write from a deliberate overwrite; the BFF's tests must
   (piece 1's row 16, a save over a newer one refused, in
-  [the app frame](../plans/2026-10-27-app-frame.md#piece-1s-case-table); the root
-  [`CLAUDE.md`](../../CLAUDE.md)'s rule to recover, never bypass, a concurrency token).
+  [the app frame](../../../../docs/plans/2026-10-27-app-frame.md#piece-1s-case-table); the root
+  [`CLAUDE.md`](../../../../CLAUDE.md)'s rule to recover, never bypass, a concurrency token).
   *Trigger:* each write path the BFF adds.
 
 ## A list reads one prefix
@@ -190,7 +190,7 @@ read a record as absent, exactly one lands (`TestOfWritesNamingNoRecordOneLands`
   already stale and waiting cannot cure that: a 500 for a write that should have waited its turn,
   or answered 412.
 - *Price of the choice:* every write in a client waits behind the one before, so the one file is
-  the client's ceiling, as [the architecture](../plans/2026-10-27-architecture.md#what-it-costs)
+  the client's ceiling, as [the architecture](../../../../docs/plans/2026-10-27-architecture.md#what-it-costs)
   says, and a write that waits past 5 s answers 500. At under 1,000 writes a working hour, that is
   far off. *Trigger to revisit:* SQLite's busy error as the logged cause of a 500.
 - *Hazard no gate catches:* the IMMEDIATE setting is the whole pool's, so a read wrapped in a
@@ -199,7 +199,7 @@ read a record as absent, exactly one lands (`TestOfWritesNamingNoRecordOneLands`
 
 ## The schema version is checked at open
 
-[`schema.sql`](../../services/c-storage/internal/store/schema.sql) is the database's whole shape. Opening
+[`schema.sql`](../../internal/store/schema.sql) is the database's whole shape. Opening
 applies it, in one transaction, only to a file with no table, and stamps `user_version` 1. A file
 at 1 opens; any other version, or a file at 0 that already holds a table, stops the process at
 start-up (`TestOpenRefusesWhatItCannotUse`), so a file this binary did not make fails before
@@ -214,11 +214,11 @@ anything answers, never on a caller's request.
   version raised beside it (`Version` in `internal/store`) and a step that carries a version-1
   file to it, written with that change. *Trigger:* the first schema change once a box holds a
   client's data. Until then every database is new: the local stack starts each run on a fresh one
-  ([the app frame](../plans/2026-10-27-app-frame.md#the-frame)), and no box exists yet.
+  ([the app frame](../../../../docs/plans/2026-10-27-app-frame.md#the-frame)), and no box exists yet.
 
 ## The listener binds one address
 
-*Decided* 2026-10-28, in [the ridge-app plan](../plans/2026-10-28-ridge-app.md#layer-four), step 4.
+*Decided* 2026-10-28, in [the ridge-app plan](../../../../docs/plans/2026-10-28-ridge-app.md#layer-four), step 4.
 `LISTEN_ADDR` names the one IP address the listener binds. Unset, it is `127.0.0.1`, so the local
 stack and every test stay on loopback. On ridge each release writes it from the stack's
 `BoxAddress` into `/etc/c-storage/listen.env`, which the unit reads, so the BFF in Lambda reaches
@@ -242,18 +242,18 @@ the port on the private address.
 *Decided* 2026-10-28 by the human: "we'll go back later, when really necessary". ridge's c-storage
 is reached through the Instance Connect tunnel from the human's own Mac only. Nothing else, a
 partner or a CI outside AWS included, reaches it. The plan stays as the record:
-[ridge's public URL](../plans/2026-10-28-ridge-url.md), parked ([open item 13](../open-items.md)).
+[ridge's public URL](../../../../docs/plans/2026-10-28-ridge-url.md), parked ([open item 13](../../../../docs/open-items.md)).
 
 - *Chosen, if a URL is needed:* shape H, an HTTP API whose one route invokes a small relay function
   in ridge's subnet, which calls the box's private address. *Price:* about $0.02 a month at ridge's
   traffic; throttled to 10 requests a second with bursts of 50, so a flood costs under $40 a month.
 - *Rejected:* a CloudFront origin access control to a function URL (A). Function URLs may not be
-  offered in Malaysia ([ridge-app's call 2](../plans/2026-10-28-ridge-app.md#the-humans-calls)), and every write would need the body's
+  offered in Malaysia ([ridge-app's call 2](../../../../docs/plans/2026-10-28-ridge-app.md#the-humans-calls)), and every write would need the body's
   SHA-256 in a header.
 - *Rejected:* an HTTP API with a VPC link to the box (B): VPC links are not offered in
   `ap-southeast-5`.
 - *Rejected:* a CloudFront VPC origin on the box (C): it needs an internet gateway on the one network
-  under every environment's stack, against [decision 4](../plans/2026-10-27-architecture.md#decisions--the-machines).
+  under every environment's stack, against [decision 4](../../../../docs/plans/2026-10-27-architecture.md#decisions--the-machines).
 - *Rejected:* a Lambda Web Function behind CloudFront (D): its connector needs two zones and ridge
   has one.
 - *Rejected:* a public function URL with no CloudFront (E): whoever finds it runs the function, on
@@ -268,9 +268,9 @@ The database file (`DB_PATH`) holds the records. Litestream, which the unit star
 its child, copies each committed change to the environment's own bucket about once a second, so a lost disk
 costs about a second of saves where it once cost everything since the last backup. The copy is not this
 service's: it is `ops/c-storage.service`'s and `ops/litestream.yml`'s, and its check and restore are
-[the runbook's](../../ops/README.md#restoring-the-records). It is built and not yet run on an environment, so
+[the runbook's](../../../../ops/README.md#restoring-the-records). It is built and not yet run on an environment, so
 this section states what the scripts do, not what a drill has read back; the piece closes
-[open item 6](../open-items.md).
+[open item 6](../../../../docs/open-items.md).
 
 - **The service reports two readings the copy's check needs**, behind the internal key: the free bytes of
   the disk under the file and the time of the last committed write, empty until the first since the process

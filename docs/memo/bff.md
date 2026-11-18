@@ -388,7 +388,7 @@ leaves it.**
   `tenantStorage` over the home box, and refuse a company whose line names another box (open item 246, closed;
   the seed's side, item 271).
 - *Price of the choice:* one SQLite file holds every company's records, so one company's write rate
-  is every company's ceiling ([c-storage's memo](c-storage.md#one-writer-at-a-time)). In the pooled
+  is every company's ceiling ([c-storage's memo](../../services/c-storage/docs/memo/c-storage.md#one-writer-at-a-time)). In the pooled
   shape, built in the back end, that narrows to the companies on the same box.
 
 ## No record says who changed it
@@ -429,7 +429,7 @@ is the one gradation there is.
 - - What the package is **for**, in one paragraph:
   [`architecture.md`](../architecture.md#what-each-part-is-for).
 - The other half of the same wire: [the UI's memo](ui.md).
-- The store's own promises: [c-storage's memo](c-storage.md).
+- The store's own promises: [c-storage's memo](../../services/c-storage/docs/memo/c-storage.md).
 
 ## What this memo did not read
 
