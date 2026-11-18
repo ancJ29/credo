@@ -14,6 +14,7 @@ line and gains a newer one that says so; the page it links is never rewritten.
 
 | Date | Decided | What it beat | Its home |
 | --- | --- | --- | --- |
+| 2026-11-18 | The walks page is open by its link, with no sign-in; the human: "I think no need to restrict access anymore / I already removed restriction for credo walks too" | Cloudflare Access's sign-in by emailed code in front of it and its previews since 2026-10-29, with the deploy's two checks that it refused a visitor | worktrees/reviews/2026-11-18-partners/6-walks-open.md on the orchestrator branch |
 | 2026-11-18 | Knowledge stays where it is, as Markdown in the repository; the front page gains "Where to look" and `main` gains this log | the orchestrator branch squashed onto `main`: about three lines in four of the whole, every question harder to answer | worktrees/reviews/2026-11-18-knowledge/2-proposal.md on the orchestrator branch |
 | 2026-11-16 | The week's objective: the final architecture finished and confirmed on ridge, then the design system | - | worktrees/milestones/2026-11-16-final-architecture-confirmed.md on the orchestrator branch |
 | 2026-11-11 | The store is SQLite | DynamoDB: a runaway cost on per-request billing, and very hard to roll back | [c-storage memo](../services/c-storage/docs/memo/c-storage.md#the-store-is-sqlite-not-dynamodb) |
