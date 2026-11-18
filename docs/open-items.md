@@ -910,7 +910,6 @@ fifteen minutes (`shared/src/signins.ts#L29`) — it is handed over, never sent.
   live session and a fresh passkey touch (`bff/src/routes/root-password.ts#L41-L48`) — and that door can report
   "as it was" over a password that was in fact set (item 61).
 - **Nothing reaches a customer**: no order confirmation, no delivery notice.
-The walks page's partner sign-in by emailed code is Cloudflare's, not the product's, so it is no precedent.
 *Fix:* a sender, and then the human's decision on what may leave a client's system; the staff reset is the
 smallest first use and does not need one if a one-time link shown on the root's screen is accepted instead.
 *Trigger:* before a client's own stack, or the first staff member who forgets a password.
@@ -1899,9 +1898,9 @@ The dialog's entry (`Modal.extend`) in `ui/src/design-system/appTheme.ts` carrie
 
 A walk opens an address on the front (`walk/playwright.config.ts#L25`) and `shot` writes each picture by screen name (`walk/support.ts#L46`, `#L63`); `visual` takes no picture (`visual/src/capture.ts#L1-L4`). A `walk/specs/gallery.spec.ts` would open each part's address and call `walk/support.ts`'s `shot`. Three things stand in its way (the first, the fronts answering `/gallery.html` with the app, is struck: the gallery left `gallery.html` for `/48b74d079/gallery`, a route of the app, 2026-11-17, the gallery workbench's plan): every walk has a stack lane and is green only when the fake equals the stack (`walk/run.sh#L45-L58`); every `at` in a spec must be a screen of the walks page (`visual/src/walks.test.ts#L163-L171`), which draws the app's screens, not the gallery; and every spec shoots three widths in two languages (`#L204-L211`), where a part needs one picture.
 
-## 517. The delivery photos' card is not on the walks page, where partners already sign in (the check without code, 2026-11-16) — the machine; `[DEFERRED]`
+## 517. The delivery photos' card is not on the walks page, where partners already answer (the check without code, 2026-11-16) — the machine; `[DEFERRED]`
 
-The card for checking a piece on ridge lives on the products page, which a person opens in the editor. Partners already sign in to the walks page and their answers arrive in the block the machine reads, so it is the right home once a partner checks a piece. The price is a code step in `visual/` with its tests, and a push to redeploy. Bring it in with the first piece a partner is to check on ridge.
+The card for checking a piece on ridge lives on the products page, which a person opens in the editor. Partners already open the walks page by its link and their answers arrive in the block the machine reads, so it is the right home once a partner checks a piece. The price is a code step in `visual/` with its tests, and a push to redeploy. Bring it in with the first piece a partner is to check on ridge.
 
 ## 518. The photos' receipt is a one-off outside git, not an `ops/` script with its cases in `ops/test.sh` (the check without code, 2026-11-16) — the machine; `[DEFERRED]`
 

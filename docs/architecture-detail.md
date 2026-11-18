@@ -333,8 +333,8 @@ third-party code builds *before* the AWS role is assumed (`ci.yml`'s comment "Th
 to the point of naming the one function and the one instance
 (`ops/env.yml`'s `DeployRole`). Two other workflows:
 [`seed.yml`](../.github/workflows/seed.yml) brings ridge's demo copies up to yesterday when somebody runs it (it has no schedule), and
-[`walks.yml`](../.github/workflows/walks.yml) deploys the walks page to Cloudflare Pages behind
-Access — the only deploy target that is not AWS.
+[`walks.yml`](../.github/workflows/walks.yml) deploys the walks page to Cloudflare Pages, open by its
+link — the only deploy target that is not AWS.
 
 One hazard the split creates: a change set that updates the `Bff` resource can restore its inline
 503 stub and empty environment, so the human re-runs the latest deploy afterwards
