@@ -8,13 +8,16 @@ import (
 	"testing"
 )
 
-const schema = `CREATE TABLE t (id TEXT NOT NULL PRIMARY KEY) STRICT;`
+const (
+	schema  = `CREATE TABLE t (id TEXT NOT NULL PRIMARY KEY) STRICT;`
+	version = 1
+)
 
 // The data directory need not exist on a fresh box; the file comes up in WAL,
 // stamped, and opens again as itself.
 func TestOpenCreatesAStampedFileAndReopensIt(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "data", "a.db")
-	db, err := Open(path, schema)
+	db, err := Open(path, schema, version)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
@@ -29,7 +32,7 @@ func TestOpenCreatesAStampedFileAndReopensIt(t *testing.T) {
 	db.Close()
 
 	// A schema that would fail if run again proves the second open skipped it.
-	again, err := Open(path, "this is not SQL")
+	again, err := Open(path, "this is not SQL", version)
 	if err != nil {
 		t.Fatalf("reopen: %v", err)
 	}
@@ -40,7 +43,7 @@ func TestOpenCreatesAStampedFileAndReopensIt(t *testing.T) {
 // lock already, so a second one waits at its BEGIN instead of reading the same
 // row and committing over the first.
 func TestEveryTransactionTakesTheWriteLockAtBegin(t *testing.T) {
-	db, err := Open(filepath.Join(t.TempDir(), "a.db"), schema)
+	db, err := Open(filepath.Join(t.TempDir(), "a.db"), schema, version)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
@@ -89,7 +92,7 @@ func TestOpenRefusesWhatItCannotUse(t *testing.T) {
 		"another binary's version":     {future, schema, "user_version 2"},
 		"a schema that does not apply": {filepath.Join(dir, "new.db"), "this is not SQL", "apply"},
 	} {
-		db, err := Open(tc.path, tc.schema)
+		db, err := Open(tc.path, tc.schema, version)
 		if err == nil {
 			db.Close()
 			t.Errorf("%s: Open succeeded", name)
@@ -104,7 +107,7 @@ func TestOpenRefusesWhatItCannotUse(t *testing.T) {
 // seed makes a file as another binary would have left it.
 func seed(t *testing.T, path, sql string) string {
 	t.Helper()
-	db, err := Open(path, schema)
+	db, err := Open(path, schema, version)
 	if err != nil {
 		t.Fatalf("seed %s: %v", path, err)
 	}
@@ -118,7 +121,7 @@ func seed(t *testing.T, path, sql string) string {
 // busy_timeout is what makes a second writer wait its turn instead of failing:
 // every connection the pool opens carries it, not only the first.
 func TestEveryConnectionWaitsForTheWriteLock(t *testing.T) {
-	db, err := Open(filepath.Join(t.TempDir(), "a.db"), schema)
+	db, err := Open(filepath.Join(t.TempDir(), "a.db"), schema, version)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}

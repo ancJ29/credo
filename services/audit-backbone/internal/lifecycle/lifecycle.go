@@ -1,6 +1,6 @@
 // Package lifecycle is the process: it opens the database, binds both
-// listeners, runs the writer and the retention sweep, and stops them in the one
-// order that never fails a write that was already durable. cmd/server keeps
+// listeners, runs the retention sweep, and stops the listeners before the
+// database they write to is closed. cmd/server keeps
 // only the wiring around it, so this package is what the coverage gate reads.
 package lifecycle
 
@@ -15,14 +15,13 @@ import (
 	"time"
 
 	"credo/audit-backbone/internal/activity"
-	"credo/audit-backbone/internal/batch"
 	"credo/audit-backbone/internal/config"
 	"credo/audit-backbone/internal/server"
 	"credo/audit-backbone/internal/sqlitedb"
 )
 
 // shutdownGrace bounds how long in-flight requests have to finish committing
-// before the writer is stopped underneath them.
+// before the database is closed underneath them.
 const shutdownGrace = 15 * time.Second
 
 // sweepInterval is how often expired rows are deleted.
@@ -36,7 +35,7 @@ const readHeaderTimeout = 10 * time.Second
 // outcome there is — the caller believes it delivered, and this process holds
 // the only copy of the data.
 func Run(ctx context.Context, cfg *config.Config, buildVersion string) error {
-	db, err := sqlitedb.Open(cfg.DBPath, activity.Schema)
+	db, err := sqlitedb.Open(cfg.DBPath, activity.Schema, activity.SchemaVersion)
 	if err != nil {
 		return fmt.Errorf("open the activities database: %w", err)
 	}
@@ -69,14 +68,11 @@ func bind(cfg *config.Config) (keyed, open net.Listener, err error) {
 // stops on its own, which ends the process too: a port that no longer answers
 // is a restart, not a half-working service.
 func serve(ctx context.Context, db *sql.DB, writeKey, buildVersion string, keyed, open net.Listener, grace time.Duration) error {
-	writerCtx, stopWriter := context.WithCancel(context.Background())
-	var wg sync.WaitGroup
-	writer := batch.New(db)
-	wg.Go(func() { writer.Run(writerCtx) })
-
-	store := activity.NewStore(db, writer, activity.NewIDFactory())
+	store := activity.NewStore(db, activity.NewIDFactory())
 	srv := server.Build(writeKey, server.Domains{Reader: store, Writer: store}, buildVersion, time.Now)
-	wg.Go(func() { runSweeper(writerCtx, store.Sweep, sweepInterval) })
+	sweepCtx, stopSweep := context.WithCancel(ctx)
+	var wg sync.WaitGroup
+	wg.Go(func() { runSweeper(sweepCtx, store.Sweep, sweepInterval) })
 
 	listeners := []struct {
 		name string
@@ -99,9 +95,8 @@ func serve(ctx context.Context, db *sql.DB, writeKey, buildVersion string, keyed
 	case err = <-stopped:
 	}
 
-	// Stop accepting first, let in-flight writes commit, and only then take the
-	// writer away — the reverse order fails requests that were already durable
-	// in every way except the answer. TestAWriteInFlightAtShutdownCommits.
+	// Stop accepting and let in-flight writes commit; Run closes the database
+	// only after serve returns. TestAWriteInFlightAtShutdownCommits.
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), grace)
 	defer cancel()
 	for _, l := range listeners {
@@ -111,7 +106,7 @@ func serve(ctx context.Context, db *sql.DB, writeKey, buildVersion string, keyed
 			slog.Error("listener did not stop cleanly", "listener", l.name, "error", serr)
 		}
 	}
-	stopWriter()
+	stopSweep()
 	wg.Wait()
 	return err
 }

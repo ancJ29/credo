@@ -20,7 +20,7 @@ import { declare, personOf } from '../audit';
 import { HttpError, parse } from '../errors';
 import { parsed, recordTools, type TenantStorage } from '../records/records';
 import { readEmployee } from '../records/staff-records';
-import type { Deps } from './staff';
+import { type Deps, paramsOf } from './staff';
 
 const conflict = (current: unknown) => new HttpError(409, 'Conflict', { current });
 const notFound = () => new HttpError(404, 'Not found');
@@ -65,14 +65,10 @@ export function registerReconciliationRoutes(app: FastifyInstance, deps: Deps) {
     { ...forClient, config: { audit: 'reconciliation.close' } },
     async (request) => {
       const who = await signedIn(request);
-      const entry = declare(
-        request,
-        personOf(who),
-        (request.params as { driverId: string }).driverId,
-      );
+      const entry = declare(request, personOf(who), paramsOf(request).driverId);
       mustCan(who, 'orders.canEdit');
       const body = parse(closeDayRequestSchema, request.body);
-      const { day, driverId } = request.params as { day: string; driverId: string };
+      const { day, driverId } = paramsOf(request);
       if (!daySchema.safeParse(day).success || !z.uuid().safeParse(driverId).success) {
         throw notFound();
       }

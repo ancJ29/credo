@@ -178,8 +178,6 @@ export function buildApp({
     return reply.status(status).send(body);
   });
 
-  /** Runs first on every client route, before the body is read and before any session: the code
-   * names the tenant or the call goes no further. It scopes and never authenticates. */
   /** The client over a box the back end holds, or none. */
   const boxStorage = (box: string) =>
     box === HOME_BOX ? storage : new Map(Object.entries(boxes)).get(box);
@@ -191,7 +189,7 @@ export function buildApp({
    * state, while a move is on the line. A box not held is the logged 503, as it always was. Only
    * the move's route reads past a mark.
    */
-  function storeOfLine(...[line, caller, log]: Parameters<StoreOfLine>) {
+  const storeOfLine: StoreOfLine = (line, caller, log) => {
     const { box = HOME_BOX, move } = line;
     if (move && caller === 'act') throw new HttpError(409, 'The client is moving');
     if (
@@ -208,8 +206,10 @@ export function buildApp({
       throw new HttpError(503, 'Service unavailable');
     }
     return held;
-  }
+  };
 
+  /** Runs first on every client route, before the body is read and before any session: the code
+   * names the tenant or the call goes no further. It scopes and never authenticates. */
   async function resolveTenant(request: FastifyRequest) {
     const code = clientCodeSchema.safeParse(request.headers[CLIENT_HEADER]);
     if (!code.success) throw new HttpError(400, 'Bad request', { details: CLIENT_HEADER });

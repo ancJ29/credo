@@ -15,7 +15,7 @@ import (
 
 func open(t *testing.T) *Store {
 	t.Helper()
-	db, err := sqlitedb.Open(filepath.Join(t.TempDir(), "c-storage.db"), Schema)
+	db, err := sqlitedb.Open(filepath.Join(t.TempDir(), "c-storage.db"), Schema, Version)
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
@@ -199,7 +199,7 @@ func TestAListThatFailsIsAnError(t *testing.T) {
 }
 
 func TestTheFreeBytesOfAClosedStoreAreAnError(t *testing.T) {
-	db, err := sqlitedb.Open(filepath.Join(t.TempDir(), "c-storage.db"), Schema)
+	db, err := sqlitedb.Open(filepath.Join(t.TempDir(), "c-storage.db"), Schema, Version)
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}

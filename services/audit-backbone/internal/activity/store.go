@@ -6,9 +6,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"time"
-
-	"credo/audit-backbone/internal/batch"
 )
+
+// SchemaVersion is the user_version a file holds once Schema is applied: a
+// change to Schema raises it, in the same commit.
+const SchemaVersion = 1
 
 // Schema is applied at start-up and is the whole data model.
 const Schema = `
@@ -61,13 +63,27 @@ type Writer interface {
 
 // Store implements both, plus the retention sweep that lifecycle runs.
 type Store struct {
-	db     *sql.DB
-	writer *batch.Writer
-	ids    *IDFactory
+	db  *sql.DB
+	ids *IDFactory
 }
 
-func NewStore(db *sql.DB, writer *batch.Writer, ids *IDFactory) *Store {
-	return &Store{db: db, writer: writer, ids: ids}
+func NewStore(db *sql.DB, ids *IDFactory) *Store {
+	return &Store{db: db, ids: ids}
+}
+
+// inTx runs fn in one transaction and commits it, so a write returns only once
+// it is durable (docs/memo/a-201-means-committed.md); an error from fn rolls
+// it back whole.
+func (s *Store) inTx(ctx context.Context, fn func(*sql.Tx) error) error {
+	tx, err := s.db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	if err := fn(tx); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 // Append inserts a batch and returns the ids that landed.
@@ -81,23 +97,17 @@ func (s *Store) Append(ctx context.Context, inputs []Input, now time.Time) ([]st
 		ids[i] = s.ids.New(now)
 	}
 
-	err := s.writer.Do(ctx, len(inputs), func(ctx context.Context, tx *sql.Tx) error {
-		stmt, err := tx.PrepareContext(ctx, `
-			INSERT INTO activities
-				(id, client_id, actor_id, action, target_id, memo, created_at, expires_at)
-			VALUES (?, ?, ?, ?, ?, ?, ?, ?)`)
-		if err != nil {
-			return err
-		}
-		defer stmt.Close()
-
+	err := s.inTx(ctx, func(tx *sql.Tx) error {
 		for i, in := range inputs {
 			createdAt := ResolveCreatedAt(in, now)
 			var target any
 			if in.TargetID != "" {
 				target = in.TargetID
 			}
-			if _, err := stmt.ExecContext(ctx,
+			if _, err := tx.ExecContext(ctx, `
+				INSERT INTO activities
+					(id, client_id, actor_id, action, target_id, memo, created_at, expires_at)
+				VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
 				ids[i], in.ClientID, in.ActorID, in.Action, target,
 				MemoJSON(in.Memo), FormatTime(createdAt), expiresAt(createdAt),
 			); err != nil {
@@ -179,7 +189,7 @@ func (s *Store) Sweep(ctx context.Context, now time.Time) (int, error) {
 	total := 0
 	for {
 		var deleted int64
-		err := s.writer.Do(ctx, sweepBatch, func(ctx context.Context, tx *sql.Tx) error {
+		err := s.inTx(ctx, func(tx *sql.Tx) error {
 			res, err := tx.ExecContext(ctx, `
 				DELETE FROM activities
 				WHERE id IN (SELECT id FROM activities WHERE expires_at < ? LIMIT ?)`,

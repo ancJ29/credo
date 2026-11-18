@@ -11,14 +11,13 @@
 > stops resolving.
 
 **What exists.** `services/audit-backbone/` holds a finished Go service: 22 Go files, nine internal
-packages and `cmd/server`, its own SQLite file, its own gate, five rules `AB1` to `AB5`. **The back end
+packages and `cmd/server`, its own SQLite file, its own gate, four rules `AB1`, `AB2`, `AB4` and `AB5` (`AB3` retired). **The back end
 calls it:** every route that changes a client's data declares its entry in `bff/src/audit.ts`'s
 `declare`, and one hook in `buildApp` (`bff/src/app.ts`) sends the entry to the service's keyed
 write before the reply. The local copy starts the service beside c-storage (`scripts/src/stack.ts`'s
-`startStack`). **On the box it is shipped, and has not yet run there:** `ops/release.sh` installs it as its own unit,
-`ops/audit-backbone.service`, beside c-storage's, and the CI workflow gates it in its own `audit` job.
-No release has carried it to ridge yet, so nothing on ridge is read. Its single write path is `Writer.Do` in `services/audit-backbone/internal/batch/writer.go` and its
-store is `Store` in `services/audit-backbone/internal/activity/store.go`. What was changed on the way in
+`startStack`). **On the box it runs on ridge beside c-storage, released 2026-11-15:** `ops/release.sh` installs it as its own unit,
+`ops/audit-backbone.service`, beside c-storage's, and the CI workflow gates it in its own `audit` job. Its store, the one path for its writes and
+reads, is `Store` in `services/audit-backbone/internal/activity/store.go`. What was changed on the way in
 and what was left behind is its recap, [`recaps/2026-11-09-audit-backbone-move.md`](recaps/2026-11-09-audit-backbone-move.md).
 
 **What a person can see of it today.** One command, `pnpm local activity`, prints the entries of one
@@ -31,10 +30,10 @@ client's entries are not swept with its records: they live in the service's own 
 deletion until their 180 days end.
 
 **Its store, which is the second one in the repository and the only one the continuous copy does not yet take.**
-`audit-backbone` opens its own SQLite file at its own `DB_PATH`, with its own schema and its own
-single writer: `Store` in `services/audit-backbone/internal/activity/store.go`, every write funnelled through
-`Writer.Do` in `services/audit-backbone/internal/batch/writer.go`, which blocks until the commit
-(`services/audit-backbone/CLAUDE.md`'s `AB3`). On the box it is a second file, in the unit's own state folder, with no copy of it yet, so
+`audit-backbone` opens its own SQLite file at its own `DB_PATH`, with its own schema, stamped
+with its own version: `Store` in `services/audit-backbone/internal/activity/store.go`, each write one plain
+transaction that returns only after its commit
+([a-201-means-committed](../services/audit-backbone/docs/memo/a-201-means-committed.md)). On the box it is a second file, in the unit's own state folder, with no copy of it yet, so
 [`architecture.md`](architecture.md)'s one sentence about storage holds for it: **one SQLite file, and it is
 the only copy.** In the local copy the file is the second one, in the copy's own data folder, and its
 removal takes it.
@@ -214,7 +213,7 @@ so that nobody re-derives it from scratch in six weeks. That costing is not in t
 
 - **The service's 22 Go files were not read.** Everything here about its behaviour comes from its own
   guideline, `services/audit-backbone/CLAUDE.md`, read whole, its `Makefile` whole,
-  `services/audit-backbone/internal/config/config.go`, and the declarations of `Writer.Do` and `Store` and
+  `services/audit-backbone/internal/config/config.go`, and the declarations of `Store` and of its write path (a batch writer then, removed 2026-11-18) and
   nothing else of their files.
 - **The counts are relayed, not re-derived** — the 39 deliberate write sites, the 11 with the actor
   in scope and the 28 without, and the 15 that must never be logged come from an earlier costing of

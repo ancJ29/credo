@@ -76,7 +76,7 @@ func TestRunRefusesToStartWithoutItsDatabaseOrItsPorts(t *testing.T) {
 // before, if given, runs against the database before serve starts.
 func started(t *testing.T, grace time.Duration, before func(*sql.DB)) (db *sql.DB, keyed, open net.Listener, stop context.CancelFunc, done <-chan error) {
 	t.Helper()
-	db, err := sqlitedb.Open(filepath.Join(t.TempDir(), "activities.db"), activity.Schema)
+	db, err := sqlitedb.Open(filepath.Join(t.TempDir(), "activities.db"), activity.Schema, activity.SchemaVersion)
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
@@ -120,8 +120,8 @@ func inFlight(t *testing.T, keyed net.Listener, body string) (net.Conn, *bufio.R
 }
 
 // A write already in flight when the stop comes still commits and answers 201:
-// the listeners stop first and the writer last. In the reverse order this
-// request would read ErrClosed and answer 500, for a write the caller retries.
+// the listeners stop first, and the database closes after. In the reverse
+// order this request would answer 500, for a write the caller retries.
 func TestAWriteInFlightAtShutdownCommits(t *testing.T) {
 	db, keyed, _, stop, done := started(t, shutdownGrace, nil)
 	body := `{"activities":[{"clientId":"acme","actorId":"emp-1","action":"in flight"}]}`

@@ -18,12 +18,12 @@ import {
   saveCustomerRequestSchema,
   saveProductRequestSchema,
 } from '@credo/shared';
-import type { FastifyInstance, FastifyRequest } from 'fastify';
+import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import { declare, personOf } from '../audit';
 import { HttpError, parse, replyFor } from '../errors';
 import { recordTools, type TenantStorage } from '../records/records';
-import type { Deps } from './staff';
+import { type Deps, idOf, paramsOf } from './staff';
 
 /** What one list is to the routes: where its records sit, how a row is read, how a record is
  * checked, what a save may change. The two lists differ in nothing else. */
@@ -196,13 +196,6 @@ export function registerListRoutes(app: FastifyInstance, deps: Deps) {
       },
     );
 
-    /** A route's `:id` that is no id names no record. */
-    function idOf(request: FastifyRequest) {
-      const id = z.uuid().safeParse((request.params as { id: string }).id);
-      if (!id.success) throw new HttpError(404, 'Not found');
-      return id.data;
-    }
-
     /** The record as stored now with its tag, answered as the kind's doc (`{ customer, version }`
      * or `{ product, version }`); none if the company holds none by that id. */
     async function readOne(storage: TenantStorage, id: string) {
@@ -263,7 +256,7 @@ export function registerListRoutes(app: FastifyInstance, deps: Deps) {
       { ...forClient, config: { audit: kind.audits.save } },
       async (request) => {
         const who = await signedIn(request);
-        const entry = declare(request, personOf(who), (request.params as { id: string }).id);
+        const entry = declare(request, personOf(who), paramsOf(request).id);
         mustCan(who, 'orders.canEdit');
         const id = idOf(request);
         const body = parse(kind.save, request.body);

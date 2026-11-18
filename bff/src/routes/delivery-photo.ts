@@ -11,7 +11,7 @@ import { HttpError, parse } from '../errors';
 import { photoAddress, type PhotoStore } from '../photo-store';
 import { parsed, type TenantStorage } from '../records/records';
 import type { RequestTools } from './orders';
-import type { Deps } from './staff';
+import { type Deps, paramsOf } from './staff';
 
 /** The routes of a delivery's photo: the driver asks where to send it, the office and the driver
  * ask where to read it. The back end signs after its own checks and never touches the picture. */
@@ -39,7 +39,7 @@ export function registerDeliveryPhotoRoutes(
     { ...forClient, config: { audit: 'delivery.photo' } },
     async (request) => {
       const { driverId, who } = await requests.mustBeDriver(request);
-      const entry = declare(request, personOf(who), (request.params as { id: string }).id);
+      const entry = declare(request, personOf(who), paramsOf(request).id);
       const body = parse(photoAddressRequestSchema, request.body);
       if (body.type !== 'image/jpeg') {
         throw new HttpError(400, 'Bad request', { details: 'type: a JPEG alone' });

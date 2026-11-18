@@ -211,9 +211,9 @@ anything answers, never on a caller's request.
 - *Hazard no gate catches:* editing `schema.sql` changes no existing database. The file is read
   only for a new one, so an edit with the version left at 1 passes every test, each on a fresh
   file, and does nothing to a database that already holds data. A schema change then needs the
-  version raised in `internal/sqlitedb` and a step that carries a version-1 file to it, written
-  with that change. *Trigger:* the first schema change once a box holds a client's data. Until
-  then every database is new: the local stack starts each run on a fresh one
+  version raised beside it (`Version` in `internal/store`) and a step that carries a version-1
+  file to it, written with that change. *Trigger:* the first schema change once a box holds a
+  client's data. Until then every database is new: the local stack starts each run on a fresh one
   ([the app frame](../plans/2026-10-27-app-frame.md#the-frame)), and no box exists yet.
 
 ## The listener binds one address
@@ -227,7 +227,7 @@ the port on the private address.
 - *Held by:* `TestListenAddrIsLoopbackWhenUnsetAndTheAddressWhenSet`,
   `TestListenAddrRefusesWhatIsNotOneAddress` (an unspecified address, a name, a port, a range, a
   zone or a list stops the start, naming the variable and never its value) and
-  `TestListenBindsTheAddressItIsGiven`.
+  `TestRunBindsTheAddressItIsGiven`.
 - *Rejected:* every interface (`0.0.0.0`, `::`). The security group would then be the one thing
   between the network and the port. *Rejected:* a name, which resolves to whatever the box's
   resolver says at start.
