@@ -164,7 +164,7 @@ run, or when the CLI's version moves.
 Home: [the parked plan](plans/2026-10-28-ridge-url.md), with its three calls, its shape (an HTTP API
 and a relay function in ridge's subnet) and its steps. The human decided not to build it now. Until
 then ridge's c-storage is reached through the tunnel from the human's Mac
-([the memo](memo/c-storage.md#no-public-url-for-now)). Trigger: someone other than the human, or a
+([the memo](../services/c-storage/docs/memo/c-storage.md#no-public-url-for-now)). Trigger: someone other than the human, or a
 machine other than the human's Mac, needs to reach it: partners sending requests themselves, or a CI
 or tool outside AWS.
 
@@ -678,29 +678,11 @@ The full run named "sv-5-unavailable" and moved 0 of its 6 pictures, so 210 pict
 
 The run printed "walk/run.sh: child setpgid (11085 to 11085): Operation not permitted" (`20261104-1447-palettes-full-run.log`, line 996), in lane 2's driver walk, which still passed 6 of 6 and exited 0. A lane's child could not set its own process group, so the stop path's KILL may not reach that group. Harmless here. *Trigger:* the next piece touching `walk/run.sh`.
 
-## 88. A named screen that does not move reads green — the machine; **Done (walk-machinery, step 3, 2026-11-06)**; was `[DEFERRED]` (palettes, full run, 2026-11-04, Info)
-
-`ops/full-run.sh`'s verdict line lists the asked `--moved` names, not what moved (`20261104-1447-palettes-full-run.log`, line 1821): it listed 36 where 35 moved. *Trigger:* the next piece touching `ops/full-run.sh`.
-
-**Done (walk-machinery, step 3, 2026-11-06).** The verdict line now reads run 1's `full-1 to the bases` compare lines and names the screens that moved, the screens that are new, and the named screens that were seen and moved nothing; the asked list is printed as `asked`. The counts still decide the exit. Row 4 in `ops/test.sh`.
-
-## 89. `person.signIn` is left unused — the machine; **Done (staff-fields, 2026-11-05)**; was `[DEFERRED]` (staff-cards, plan step 5, review, Opus, 2026-11-04, Low)
-
-The key `person.signIn` ('How they sign in' / 'Cách đăng nhập') stays in `ui/src/i18n/en.ts#L403` and `ui/src/i18n/vi.ts#L404` after the sentence moved into the first card. Nothing reads it, and the missing-key test cannot catch an unused key. *Fix:* delete both lines when the files are next touched.
-
-**Done (staff-fields, `ed30369`, 2026-11-05).** Both lines are deleted; no reader was left.
-
 ## 90. The frame draws its side column even when empty — the machine; **Done (customer-cards, 2026-11-05)**; was `[DEFERRED]` (staff-cards, plan step 5, review, Opus, 2026-11-04, Low)
 
 `ui/src/parts/DetailCards.tsx#L12` always draws `side`. A viewer who gets no side panel (photo field off, neither root nor allowed to delete) sees the details at 7/12 beside a blank. *Trigger:* the first detail page that takes the frame. *Fix:* make `side` optional and give `main` the full 12 when it is absent.
 
 **Done (customer-cards, `a71e6a1`, 2026-11-05).** The fix is the one named: `side` is optional and `main` spans 12 when it is absent (`ui/src/parts/DetailCards.tsx#L12-L13`), held by `ui/src/parts/DetailCards.test.tsx#L12-L20`; the customer with no note is its first live case. What is left of the symptom — a side passed but empty — is item 99.
-
-## 91. Eight walk specs press a loading button and take a picture with no wait for its loader — the machine; **Done (walk-machinery, step 6, 2026-11-06)**; was `[DEFERRED]` (staff-cards, full run, 2026-11-04, Info)
-
-Found while fixing the services walk (`926c1b2`): `operator-services` sv-5 and its sign-in at `#L202`, `operator-passkeys`, `operator`, `operator-team`, `operator-root-password`, `driver`, `lists` and `orders` press a `loading` button and take a picture with no wait for its loader. All green so far. *Fix:* the wait for any button loader belongs inside `at()` itself (`walk/support.ts`), so no spec can forget it. *Trigger:* the next walk piece, or the next flake.
-
-**Done (walk-machinery, step 6, 2026-11-06).** `shot()` in `walk/support.ts`, the one picture-taker, now waits for no `.mantine-Button-loader` on the page before it parks the pointer and takes the first shot; the services walk's own local waits are left as they are. The count is of loaders mounted, not visible: a loader whose exit has not finished stays mounted at opacity 0 (Mantine's Button keeps it through the exit transition, and Playwright reads opacity 0 as visible), so the services walk, whose clock is paused, advances it with its own `settled()` before sv-3, sv-4 and sv-5 as it already did before sv-1 and sv-2 (the review's High; the advance moves the clock 500 ms and a loader at opacity 0 draws nothing, which step 8's run must confirm: no base moves). Blast radius: a break shows at once on every walk, as a red naming the screen (`<screen>: a button's loader is still on the page`), and deleting the one line in `shot()` reverts it, the three `settled()` lines being harmless without it. The proof is the full run (step 8): every base must come back unmoved.
 
 ## 92. The card's avatar condition is untested — the machine; `[DEFERRED]` (staff-list, review, Opus, 2026-11-04, Low)
 
@@ -725,12 +707,6 @@ The BFF stores `extra` untouched (`shared/src/extra.ts#L3-L5`), so a stored non-
 ## 97. The day check's production path is nearly unreachable on these two fields — the machine; `[DEFERRED]` (staff-fields, review, 2026-11-05, Low)
 
 A real browser's date input never yields a day that is not one, so `dayIsValid` (`shared/src/fields.ts#L117`) guards an older browser's text fallback; it is right and covered, and its refusal is tested with the input made a text input. *Cost:* none to keep; *trigger:* none, noted so a reader does not look for the path.
-
-## 98. The customers and the products have no detail page to re-lay — the machine; **Done (products-cards, 2026-11-06)**; was `[DEFERRED]` (customer-cards, plan, Opus, 2026-11-05, Info)
-
-The campaign reads "each remaining detail page onto the old app's two columns", but both lists are a list page and an Excel import only (`ui/src/ClientApp.tsx#L367-L379`): the customer's page is built new in this milestone, and the product's will be in the next, from the list reply with no server work. Only the order has a page already (`ui/src/pages/client/OrderPage.tsx`). *Trigger:* sizing the products milestone — it is a new page, not a re-lay, and its own column set (unit, price, stocked) is not the customer's.
-
-**Done (products-cards, `02bbebc`, 2026-11-06).** The trigger was met: this milestone's plan sized the product's page as a new page with its own columns, and the page is built (`ui/src/pages/client/ProductPage.tsx`, `/products/:id` at `ui/src/ClientApp.tsx#L383-L386`). Both lists now have a detail page, so nothing of the campaign's "re-lay" reading is left unsized; the order's page, already there, is lane B's.
 
 ## 99. An empty side still draws its column — the machine; **Done (orders-cards, 2026-11-06)**; was `[DEFERRED]` (customer-cards, review, Opus, 2026-11-05, Low)
 
@@ -767,22 +743,6 @@ Item 99 is marked done on the first of the two fixes it named, and this is the s
 ## 107. The new column tests count every grid column in the document — the machine; `[DEFERRED]` (orders-cards, review, Opus, 2026-11-06, Info)
 
 `columnOf` and `columnCount` (`ui/src/pages/client/OrdersPages.test.tsx#L349-L353`) query `document` for `.mantine-Grid-col`, so they hold only while the page's frame draws no other `Grid`. They are right today and read the real class the component emits, which is the point; but a `Grid` added to the shell or a banner would turn the column *indexes* wrong rather than merely failing, and the message would point at the order's page. *Fix:* scope both to the page's own grid (the `.mantine-Grid` nearest the found heading). *Trigger:* a `Grid` added to `ui/src/frame/Shell.tsx`, or the next page to copy these helpers.
-
-## 108. Two full runs can overlap: the lock is refused on, never taken — the machine; **Done (walk-machinery, step 2, 2026-11-06)**; was `[DEFERRED]` (walk-machinery, plan, 2026-11-06, Medium)
-
-`ops/full-run.sh` refused on the gate lock and took none, since `walk/run.sh` refuses a run while that lock exists; its only guard against a second full run was `walk/run.sh`'s refusal while a credo process lives, and the compare step starts none (13m50s on 2026-11-06, unguarded). **Done (walk-machinery, step 2, 2026-11-06).** The full run takes `.full-run-lock` (a folder made with `mkdir`, atomic, as the gate lock is) after its refusals and releases it at the end, on every red path and on an interrupt; `--check` takes none and the gate lock still refuses first. A lock left behind is refused on, never cleared by the script: the refusal names the owner (pid, start time, walks) and prints the one command that clears it. The rows are in `ops/test.sh`, "ops/full-run.sh's run lock".
-
-## 109. The compare step says neither the time nor the load of each comparison — the machine; **Done (walk-machinery, step 4, 2026-11-06)**; was `[DEFERRED]` (walk-machinery, plan, 2026-11-06, Low)
-
-`walk/run.sh`'s compare step printed no elapsed time or load: 1m50s in one run against 13m50s in the next on the same work, and nothing in either log says why. *Fix:* step 4 of the walk-machinery plan stamps each comparison with its elapsed time and the Mac's load, as `pass_of` does.
-
-**Done (walk-machinery, step 4, 2026-11-06).** `compare_stamp` prints `-- compare <label> (load N; elapsed XmYYs)` before every comparison, in the shape of `pass_of`'s line, so the lines either side give each comparison's own time. No verdict reads the line. Held in `scripts/src/walk-run.test.ts`.
-
-## 110. One stalled walk blocks the bases of every other walk — the machine; **Done (walk-machinery, step 5, 2026-11-06)**; was `[DEFERRED]` (walk-machinery, plan, 2026-11-05, Medium)
-
-`walk/run.sh` writes the bases all or nothing: one stalled pass discarded three green walks' 156 pictures (27m24s, `20261105-1934-walk-piece-1-piece-2-operator-passkeys.log`). *Fix:* step 5 of the walk-machinery plan writes each walk's bases on its own reads; a red walk, or a lane that ended red, is left untouched and the run still ends red.
-
-**Done (walk-machinery, step 5, 2026-11-06).** `walk/run.sh` keeps the walks whose own passes or comparisons were red, and every walk of a lane that ended red, in `red_walks`, and writes the bases of the others; the red ones keep their bases as they were and the run still ends red, exit 1. A red run 1 therefore leaves the green walks' new bases uncommitted in the worktree (`ops/full-run.sh` commits nothing on a red run 1, as before): the next full run refuses a dirty tree until the human decides: commit those pictures if they are good, or discard them with `git -C <worktree> checkout -- walk/specs`. Rows 6 to 8 in `scripts/src/walk-run.test.ts`.
 
 ## 111. Piece-2's walk takes six minutes in one worker — the machine; `[DEFERRED]` (walk-machinery, plan, 2026-11-06, Info)
 
@@ -840,10 +800,6 @@ Deferred from line 72's review, not a fault of the piece. `browser_lost` is set 
 ## 124. A crash between the claim's draft and its rename leaves `.claim-<pid>` in the shared folder for good — the machine; `[DEFERRED]` (browser-guard, review of line 72, 2026-11-07, Low)
 
 Deferred from line 72's review, not a fault of the piece. `scripts/src/running/claim.ts` writes the draft beside `.links` and renames it; a crash between the two leaves `.claim-<pid>` in the shared browser folder, and nothing prunes it. It sits outside `.links`, so no install reads it. *Trigger:* a `.claim-*` file seen in the browser folder; then remove it by hand.
-
-## 125. The generic hint on every claim failure made a revision mismatch read as two instructions — the machine; `[DONE]` (browser-guard, review of line 72, 2026-11-07, Low)
-
-Deferred from line 72's review, folded into its Medium 1 fix: `walk/run.sh` now appends the way to write the claim only where writing was the failure, and names a walk in it because `--checks` alone is refused by the parser.
 
 ## 126. The 409's `current: null` arm has no case — the machine; `[DEFERRED]` (edit-a-product, review of line 64.2, 2026-11-07, Low)
 
@@ -967,10 +923,6 @@ The walks page's partner sign-in by emailed code is Cloudflare's, not the produc
 smallest first use and does not need one if a one-time link shown on the root's screen is accepted instead.
 *Trigger:* before a client's own stack, or the first staff member who forgets a password.
 
-## 140. The stack's generator cannot make the stale-price draft, so `scripts` goes red — the machine; `[FIXED]` (edit-an-order, step 5's whole check, 2026-11-07, High)
-
-`shared/src/demo.ts` gives order DH-00017 a line saved at 1,800,000 where today's list says 1,900,000, so the fake lane draws it as screens 13 and 14 need. `scripts/src/generator.ts#L271`'s `replayWeek` makes every order by `POST`ing it to the BFF, which prices the lines from the list as it is now (`bff/src/routes/orders.ts#L181-L193`), so the stack's DH-00017 comes back at 1,900,000, total 3,950,000 against the data set's 3,850,000. `scripts/src/generator.test.ts#L416`, "The week of orders and requests the BFF lists is the data set's", fails on exactly that, in two whole-package runs (`logs/20261107-1941-edit-order-step5-check.log` and `logs/20261107-1952-edit-order-step5-rerun2-nobail.log`). The plan's line "both lanes take it from the one data set, so the new screens need no lane of their own" is false for the stack lane, and the stack's walk would draw screens 13 and 14 without a moved line. Step 2's gate did not run `scripts`. *Fixed in edit-an-order (`05bb852b`):* `replayWeek` sets a product to the price a line was saved at, takes the order, and puts today's price back, through the product's own route, closed in a `finally` (review fix); the stack lane thus carries the fixture and `generator.test.ts` is green unchanged.
-
 ## 141. The page's "Now X" figure is the list as read when the editor mounted — the machine; `[DEFERRED]` (edit-an-order, review of line 64, milestone 3, 2026-11-07, Low)
 
 `ui/src/pages/client/OrderPage.tsx#L86-L92` takes the moved-price advisory from the product list read at mount, so a price moving while the page stays open shows a stale figure and a save takes another. No money diverges: the screen and the driver both carry the saved prices until a save, and the save's answer redraws the page. *Trigger:* a second office editing prices while an order is open, or a reader of a test names it.
@@ -1082,22 +1034,22 @@ appends its pattern to the list a test reads (`server_test.go#L106`).
 | the three screen widths are declared once | one exported set in `shared/`, replacing `visual/src/walks.ts#L26`, `walk/support.ts#L9`, `ui/src/mock/MockPage.tsx#L16`, `ui/src/mock/Frame.tsx#L8` — and retiring the regex in `visual/src/walks.test.ts` that reads one of them as source text |
 | the retry bound is one number | one export imported by `bff/src/records/staff-records.ts#L58`, `operators.ts#L21`, `orders.ts#L48`, `sessions.ts#L27` |
 | the next route in the two big modules goes in its own module | an eslint `max-lines` on `bff/src/routes/staff.ts` and `bff/src/routes/orders.ts` (single closures of 629 and 453 lines) |
-| the shellcheck glob covers every tracked script | a test comparing `.github/workflows/ci.yml#L197`'s glob with `git ls-files '*.sh'` (item 161 is the two it misses today) |
+| the shellcheck glob covers every tracked script | a test comparing the glob in `.github/workflows/ci.yml`'s ShellCheck step with `git ls-files '*.sh'`; the two match today, since `9eb9a61a`, and no test keeps them so |
 | one `refuse()` and one log opener, one shebang | two greps in `ops/test.sh`: `ops/lib.sh#L75`'s opener used by all seventeen scripts, and `#!/usr/bin/env bash` on each — four scripts the human runs by hand pin `#!/bin/bash` (bash 3.2) and define `refuse()` separately, one of them already using newer-bash arrays |
 | no client is named in shared code | a grep in the gate, as the divergence rule's mechanical test |
 | a walk has one identity | `walk/playwright.config.ts#L30-L96` derives its projects from the table at `walk/run.sh#L45-L57`, or one test fails when the two disagree |
 
-## 161. Two scripts that are themselves gates are read by no tool, and two comments in one of them say the opposite — the machine; `[OPEN]` (the 2026-11-08 structure review, 2026-11-09, Medium)
+## 161. The Node file that proves a Bruno run is read by no lint or formatter — the machine; `[OPEN]` (the 2026-11-08 structure review, 2026-11-09, Medium)
 
-`services/c-storage/scripts/cover.sh` (the coverage gate, 70 lines) and `services/c-storage/scripts/e2e.sh` (the
-end-to-end gate, 138 lines) fall outside the repository's one ShellCheck invocation
-(`.github/workflows/ci.yml#L197`, glob `ops/*.sh walk/*.sh`), outside lint and outside the
-formatter, so 19 of 21 tracked `.sh` files are checked and these two are not. Worse, `cover.sh#L29`
-and `#L37` carry suppression comments written for a checker that never reads them, telling the next
-reader the opposite of the truth. The small Node file that proves a request run actually asserted
-something (`services/c-storage/scripts/bruno-proof.cjs`, three callers) is read by no tool either. *Fix:* add
-`services/c-storage/scripts/*.sh` to `ci.yml#L197` and to `ops/README.md#L569`, one line each, then delete or
-correct the two comments. *Trigger:* none needed; it is one line and a read.
+`services/c-storage/scripts/bruno-proof.cjs`, the small Node file that proves a request run actually
+asserted something, is read by no lint or formatter: `eslint.config.js#L26` ignores `services/c-storage/`
+and `.prettierignore#L5` ignores `services/`. It is run as a test (`ops/test.sh#L1730`), and its two callers
+are `ops/check.sh#L212` and `services/c-storage/scripts/e2e.sh#L95`. The rest of this item is settled: the two
+gate scripts beside it, `cover.sh` and `e2e.sh`, are in ShellCheck's list (`.github/workflows/ci.yml#L684`,
+`ops/README.md#L930`) since `9eb9a61a`, and since then ShellCheck reads `cover.sh`'s two comments (`#L29`,
+`#L37`), each needed and each giving its reason. *Fix:* let eslint and prettier read
+`services/*/scripts/*.cjs`, one exception in each ignore list, then fix what they find. *Trigger:* the next
+edit of `bruno-proof.cjs`.
 
 ## 162. The units nobody can judge in one read — the machine; *parked* until each is touched (the 2026-11-08 structure review, 2026-11-09, Low)
 
@@ -1295,12 +1247,6 @@ The one-gate-command convention gives every package one check command, and the r
 
 `docs/conventions/documentation.md` requires a piece's recap to add or change the piece's row in `docs/products.md` in the same commit, with no exemption. Four recaps written on 2026-11-09 added none: the gate command, the one-home piece, the gate convention and the guideline skeleton. All four are internal and change no product anyone opens. Recommended (a recommendation, not a decision): the convention gains an explicit exemption for a piece that ships no product, with the recap saying "no row" in its evidence, rather than four rows being owed. *Trigger:* the next recap of an internal piece.
 
-## 202. The architecture page is past one sitting, and the activity-log section is the split — the machine; **Done (the architecture page rearranged for a person, 2026-11-09)**; was `[OPEN]` (the architecture page's audit-backbone section, 2026-11-09, Low)
-
-[`architecture.md`](architecture.md) is 594 lines and about 6,731 words now that the activity log is on it, and [`CLAUDE.md`](../CLAUDE.md) makes its `## At a glance` part of every session's opening, so its length is paid by every session that starts. *Recommended:* move `## The activity log: intended, and not built` into a page of its own and leave the architecture page pointing at it, as it points at the day-one plan. **Trimming is not the answer — moving is:** every paragraph of that section is a measured fact, a decision with its price, or a hazard no gate catches, which is what the documentation convention asks a doc to hold. *Trigger:* the piece that builds the actor change, which is the first thing that will read it.
-
-**Done (the architecture page rearranged for a person, 2026-11-09).** The section was carried whole into [`activity-log.md`](activity-log.md) — nothing shortened, its own "what this page did not read" written for it — and `architecture.md` points at it as it points at the day-one plan. The move was made inside a larger rearrangement the human asked for after reading the page: "the only thing a human can read is the diagram". The page now opens with one sentence, the diagram, one request walked end to end and a one-line codemap, with the detail below a line; it is 506 lines against 594, and the detail it lost went to the nine packages' own `CLAUDE.md` files rather than being trimmed. The root [`CLAUDE.md`](../CLAUDE.md)'s reading instruction was rewritten in the same change, since the per-package sections it named no longer exist.
-
 ## 203. A line citation can name an entirely unrelated sentence, and nothing reports it — the machine; `[OPEN]` (the architecture page's audit-backbone section, 2026-11-09, Medium)
 
 [`architecture.md`](architecture.md) cited `services/c-storage/CLAUDE.md#L11` for the claim that `pnpm check` never reaches that directory. Line 11 of that file says "A route belongs only with a caller named above"; the sentence cited is at line 45. The citation check verifies that a line citation's *file* exists and, in its own words, never that its line says anything — `scripts/src/citations.ts`'s header: "a line citation (`path#L12`) is counted per document and its line is never checked" — so the page was green with that citation throughout, and the only reason it surfaced is that this piece happened to touch the claim. `docs/architecture.md` carried **106** line citations when this was written (the 2026-11-09 rearrangement took it to a lower count, and five of the ones it touched did name unrelated lines), `docs/client-readiness.md` 110 and `docs/conventions/code.md` 52, and **how many of them name an unrelated line is unknown**. The conversion-on-touch policy is the only thing that finds them, so the rot is discovered at the rate pieces happen to touch it. Recorded with nothing recommended: the alternative is the sweep that policy deliberately refuses, and that is the human's call rather than an item's.
@@ -1409,12 +1355,6 @@ The wait after wrong passwords (`docs/plans/2026-11-11-password-wait.md`) counts
 
 `LIVING` in `scripts/src/citations.ts` lists the living documents by path, and `docs/open-items.md` is not among them, so no step reads it. On 2026-11-09 a merge-conflict marker sat in that file through a full green gate for that reason. The log cites many files and symbols that later moved, and its dead citations have not been audited, so adding it today would turn the check red on old entries. *Fix:* audit the log's citations and repair or delete the dead ones, then add a `docs/open-items.md` entry to `LIVING`; a grep for a line starting with the conflict markers is the cheaper stopgap. *Trigger:* the next change to the citation check, or the next conflict in this file.
 
-## 228. The test photo in the cross-company tests is a third copy of one value — the machine; `[FIXED]` (the cross-company tests' review, 2026-11-11, Low)
-
-*Fixed 2026-11-15:* the delivery photos' step 3 removed the old picture schemas and with them the three copies of the test photo; no `PHOTO` constant is left in `bff/`. As filed:
-
-`PHOTO` in `bff/src/routes/cross-tenant.route.test.ts` is a third copy of the same test photo, after `bff/src/routes/reconciliations.route.test.ts` and an inline one in `bff/src/routes/orders.route.test.ts` (code.md's C1, one home for a value). Fix: export it once from `bff/tests/orders.ts`. *Trigger:* the next change to any of those three test files.
-
 ## 271. A demo copy on a box other than the home box is neither seeded nor given a root password by the scripts — the machine; *parked* until a demo copy is needed on a second box (the pooled shape's plan, 2026-11-11, Low)
 
 The pooled shape's plan (`docs/plans/2026-11-11-pooled-shape.md`, decision 9) routes the seed (`scripts/src/demo/apply.ts`) and the root password script (`scripts/src/root-password.ts`) through a company's client over the home box alone, and has them refuse by name a copy whose line names another box: `ops/seed.sh` and `ops/root-password.sh` open one tunnel, to the home box. So a demo copy moved to a second box keeps its records but is no longer brought up to yesterday, and its root password is the console's. *Fix:* the two ops scripts open the copy's own box by name, as the plan teaches `box_open`, and hand the scripts that box. *Trigger:* a demo copy wanted on a box other than the home box, such as a walk of the move with seeded data.
@@ -1426,12 +1366,6 @@ The services page (`ui/src/pages/operator/ServicesPage.tsx`) reads `shared/src/w
 ## 276. A list screen still takes its whole list in one answer — the machine; *parked* (the store's pages and copy plan, 2026-11-11, Low)
 
 After `docs/plans/2026-11-11-store-pages-copy.md` the store answers in pages and the back end's `every` (`bff/src/records/records.ts`) reads them all, so a customer, product or staff list past 1,000 comes back whole, in one answer, and the order page still loads both whole lists for its pickers (`ui/src/pages/client/OrderPage.tsx`'s `api.listCustomers()` and `api.listProducts()`). Nothing on screen asks for a part today, and the lists of the human's companies are far under any size a phone cannot draw. Fix: a list screen that asks for a page or a search, and pickers that search the back end. *Trigger:* the first company whose list a phone draws slowly, or whose answer nears the back end's answer limit, which that plan did not read.
-
-## 277. The copy tool carries a company's records and not its activity entries — the pooled shape's move; waits on the activity log running beside the store (the store's pages and copy plan, 2026-11-11, Medium) — `[FIXED]` in the move's step 2, 2026-11-16: refuted, nothing needs to move
-
-The copy tool of `docs/plans/2026-11-11-store-pages-copy.md` copies every record under a company's prefix in c-storage and nothing else. The activity log keeps each company's entries in its own service and file (`services/audit-backbone/internal/activity/store.go`'s `ByActor` and `ByTarget` take the company's id), so a company moved to another box would leave its history on the old one. A one-company restore is not touched by this: history records what happened, and stays. Fix: the move carries the company's entries too, or the back end reads a moved company's history where it was written. *Trigger:* the activity log's milestone, which ships it beside the store, and the shape's move, whichever plan comes second.
-
-**Closed (the move's step 2, 2026-11-16).** The premise was a log per box; there is one activity log (`bff/src/env.ts`), its address read off the home box, each entry kept under the company's id (`bff/src/app.ts`'s onSend hook), which a move keeps. A moved company's history is where it was written, and the photos sit in one bucket per back end, so neither moves. See `docs/plans/2026-11-16-shape-move.md`, "What the code says".
 
 ## 246. The terminal scripts reach a company's records with the whole store, so the pooled shape must route them too — the machine; `[FIXED]` in the pooled shape's first landing, 2026-11-14 (the one-company storage client's plan, 2026-11-11, Medium)
 
@@ -1576,10 +1510,6 @@ Gap 4 and the passage near it say what the wait leaves: one guesser trying many 
 ## 342. `scripts/src/running/claim.ts`'s draft cleanup is pinned by no case, so deleting it stays green — the machine; `[DEFERRED]` (the root-proof tests' review, 2026-11-12)
 
 `claim.ts`'s `rmSync` of the draft after a failed write is run by every failing case but asserted by none: each fails at the folder's creation, before any draft exists. The case it guards, a written draft whose rename then fails, cannot be staged as root without a mock (a directory standing at the claim's name throws earlier, at the existence check). *Fix:* pin the draft's removal on a failed rename with a mocked `renameSync`, or drop the line as unreachable. *Trigger:* the next change to `claim.ts`.
-
-## 261. The layer-four change-set test reads every resource the template gains as layer four's — the machine; `[FIXED]` in the Slack alarm's fix pass, 2026-11-12 (the Slack alarm's plan, 2026-11-11, Medium)
-
-`adds_and_one_modify` in `ops/test.sh` compares the recorded layer-four change set (`ops/testdata/changeset-app.json`) with every resource of `ops/env.yml` outside a fixed list of five, so any piece that adds a resource to the template turns `bash ops/test.sh` red there, whatever the resource is for. Three lanes of the final architecture add resources to that template at once (the continuous copy, the watch, the front door's key), and each would meet the same red and change the same lines. *Fix:* pin layer four's own resource names in the test, so the recorded change set is compared with the resources it recorded and a later resource leaves it alone; the first lane to land does it, the later ones take it in and add nothing (docs/plans/2026-11-11-slack-alarm.md, step 2). *Trigger:* the first of those lanes to change `ops/env.yml`. *Fixed 2026-11-12:* `adds_and_one_modify` now pins layer four's sixteen names, compares the recorded change set's Adds with them and checks the template holds each; a resource a later piece adds to the template leaves it alone (three new rows).
 
 ## 365. A changed Slack workspace ID is two runs by the runbook, which no real run has shown — the machine; `[OPEN]` (the Slack alarm's review, 2026-11-12, Low)
 
@@ -1727,10 +1657,6 @@ The stand-in's copy ends in seconds, and the slow variants are stopped before 30
 
 The deploy job's Go is c-storage's (its `toolchain go1.26.7`), while the `audit` job tests on the service's own `go 1.25.0`. Because `go.mod` says 1.25.0, the runtime defaults stay those of 1.25, so the risk is small. *Fix, if wanted:* give the service's `go.mod` the store's `toolchain` line, or set up Go a second time in the deploy job before the log's build. *Trigger:* a Go release that changes a runtime default the service meets.
 
-## 411. ShellCheck covers c-storage's scripts only, not the activity log's four — the machine; `[DEFERRED]` (the activity log's review, 2026-11-13, Low 7)
-
-Gate row 3 and CI's `ops` job run ShellCheck on c-storage's scripts; the four in `services/audit-backbone/scripts/*.sh` are not covered, and `cover.sh` is now a CI gate step. The gap predates the piece's shipping. *Fix, if wanted:* add the folder to the row and the job. *Trigger:* the next edit of one of the four scripts.
-
 ## 412. `FRONT_DOOR_KEY_FILE` is a switch carried by the shell's environment, so a shell that still exports it turns an ordinary stack run into a key run — the machine; `[DEFERRED]` (the review of the front door's keys, 2026-11-13, Low)
 
 `ops/stack.sh` reads the variable at four places (the step count, the key, the guard, the box step). A shell that exports it with a valid file makes `ops/stack.sh env <env>` change the door's key with no function update, so every API call is 403 until `ops/app.sh` runs, and the box and GitHub steps are skipped. *Fix, if wanted:* take it as an argument (`--door-key-file <path>`; a path is no secret), which `ops/keys.sh` passes. *Trigger:* the next edit of `ops/stack.sh`, or the first time a key run is left exported in a shell.
@@ -1742,12 +1668,6 @@ Gate row 3 and CI's `ops` job run ShellCheck on c-storage's scripts; the four in
 ## 414. The door hook writes its own 403 reply instead of throwing `HttpError(403, 'Forbidden')` for the one error handler — the machine; `[DEFERRED]` (the review of the front door's keys, 2026-11-13, Low; `code.md` C7)
 
 `bff/src/server.ts` replies inside the hook; `bff/src/app.ts` holds the one error handler that turns an `HttpError` into a reply. *Fix, if wanted:* throw. Check first that the not-found path and the log line (case 6) are unchanged. *Trigger:* the next edit of the hook.
-
-## 415. The piece moved living line citations that step 7 did not list: `docs/conventions/code.md` cites a line of the back end's `server.ts` three times, and `docs/architecture-detail.md` cites lines of its `env.ts` and counts "seven" and "five" variables, now eight and six — the machine; `[FIXED]` in the plan's step 7 (2026-11-13; the review of the front door's keys, Low)
-
-*Fixed 2026-11-13:* the three lines of `code.md` cite `bff/src/server.ts`'s `buildBff`, the paragraph of `architecture-detail.md` cites `readEnv`, `envSchema` and `readLambdaEnv` and counts eight and six; `code.md`'s edit still goes by the conventions route to `main`. As filed:
-
-Three lines of `docs/conventions/code.md` (near its lines 31, 101 and 227) cite line 11 of the back end's `server.ts`, which was `createCStorageClient({` and is `export function buildBff(` now. The paragraph of `docs/architecture-detail.md` near its line 115 cites three lines of the back end's `env.ts`. *Fix:* cite by symbol and correct the counts in step 7; `code.md` is main's convention, so its change goes by the conventions route. *Trigger:* step 7.
 
 ## 416. Knip says an ignore entry is no longer needed — the machine; *parked* until a review (the long runs plan's fill, 2026-11-13, Low)
 
@@ -1796,12 +1716,6 @@ The e2e job's cache holds the Node prefix, and `npm install -g @usebruno/cli@4.2
 ## 435. The Services status page shows the app's page by the build its tab loaded, so a tab left open across a deploy shows that row a build behind and calls the deploy half done — the machine; at the next change to the page (the build version plan, 2026-11-14, Low)
 
 The app's row is the commit compiled into the scripts the tab loaded (`ui/src/main.tsx#L32`), while the BFF's and c-storage's are asked each minute (`ui/src/pages/operator/ServicesPage.tsx#L84-L99`). After a deploy, a tab opened before it marks the app's page "Different build", and the sentence above the rows (`ui/src/i18n/en.ts#L260-L261`) says c-storage is updated first, then the BFF and the app, which reads as "wait" when a reload is the whole remedy: `index.html` is served `no-cache` (`ops/app.sh#L156-L157`), so a reload shows the new build. It bites at a deploy's look and in the rehearsal of the way back, both read on this page. *Fix:* the sentence also says "or this page was opened before it: reload it", in both languages, which moves the services walk's half-done screen. *Trigger:* the next change to the Services page, or a no at the build version plan's look.
-
-## 440. The box's resolution is written out three times, so step 7's moving mark must be added to each copy — the machine; `[FIXED]` in the move's step 2, 2026-11-16 (the review of the pooled shape's first landing, 2026-11-14, Low)
-
-`bff/src/app.ts` (`resolveTenant`), `bff/src/routes/clients-delete.ts` and `bff/src/routes/root-password.ts` each read the line's box (none is home), look for the store, and on a miss log the box and answer 503 (code convention C1). A copy missed by the move's mark would answer a moving company's call. *Fix, if taken:* one helper, for example `boxStorage` throwing the logged 503 itself, or a `companyOf(line)` answering the id and the store. *Trigger:* the move's step (step 7), which adds a mark to each copy.
-
-**Fixed (the move's step 2, 2026-11-16).** One helper in `bff/src/app.ts`, `storeOfLine`, answers a line's store or its refusal by the line's state; `resolveTenant`, the delete's route and the root password's route all call it, so the moving mark is read in one place.
 
 ## 441. Four comments sit on the wrong declaration after the boxes' inserts — the machine; `[DEFERRED]` (the review of the pooled shape's first landing, 2026-11-14, Low)
 
@@ -1891,9 +1805,9 @@ In `dayDeliveries` (`scripts/src/demo/apply.ts`) the ask is `driver.must`, so a 
 
 `https://operator.${Domain}` in `ops/env.yml`, `'operator'` in `KEPT_CODES` and `OPERATOR_PART` in `shared/src/wire.ts` agree today and no check ties them (one exported `OPERATOR_NAME`, and the domain guard comparing it with `AppAddress`); `ridge_cli tenant` answers "names a client already" for a kept-back code, where `tenant-id` then finds none (the message says it is taken or kept back); `ui/src/fake.ts`'s create refuses only a code it holds, so a fake walk typing `operator` or `www` shows the made screen where ridge says taken (`KEPT_CODES.includes(code)` joins the refusal).
 
-## 475. The company address's reader-facing text: an orphaned comment, a case-5 label, four living citations and a stale comment — the machine; *partly closed* by the company address's step 6 (2026-11-14): the four living citations are `[FIXED]` (file and symbol now), the orphaned comment, the case-5 label and the stale comment stay `[DEFERRED]` (the review of the company address, 2026-11-14, Low)
+## 475. The company address's reader-facing text: an orphaned comment, a case-5 label and a stale comment — the machine; `[DEFERRED]` (the review of the company address, 2026-11-14, Low)
 
-`normaliseClientCode`'s doc comment in `shared/src/records.ts` now sits above `KEPT_CODES`'s own and wants moving back; a case-5 test in `ops/test.sh` is labelled "masks neither" but checks only the domain, since `DistributionName` stays masked; `docs/conventions/code.md` (three lines) and `docs/README.md` cite `App.tsx` and `ClientApp.tsx` lines the piece moved, to become file and symbol at step 6; the comment above `bff_settings_set` in `ops/lib.sh` still says the passkeys' address is "CloudFront's name, kept for good", where under a domain it is `operator.<Domain>`.
+`normaliseClientCode`'s doc comment in `shared/src/records.ts` still sits above `KEPT_CODES`'s own and wants moving back; the case-5 check in `ops/test.sh` labelled "a stack that names no domain masks neither" reads only the domain, since `DistributionName` stays masked; the comment above `bff_settings_set` in `ops/lib.sh` still says the passkeys' address is "CloudFront's name, kept for good", where under a domain it is `operator.<Domain>`.
 
 ## 476. The plan's order of acts assumes step 1 lands alone; landing whole, an app deploy must follow the stack run before the operator's passkey — the machine; `[DEFERRED]` (the review of the company address, 2026-11-14, Low)
 
@@ -1910,12 +1824,6 @@ The function's `APP_ORIGIN` is written only by `bff_settings_set`, which only `o
 ## 482. In both photo one-offs a `die` inside an `ops/lib.sh` helper ends the run with "== done" and no verdict line (the review of the delivery photos, 2026-11-15, Low) — the machine; `[DEFERRED]`
 
 `die` prints to the terminal's error stream and exits 1, so the one-offs' own log (outside git, `one-off/`) ends on "== done" with no `== verdict` line; the human reads the terminal, the log does not say red. Fix by a `die` wrapper in each one-off that writes the verdict line first.
-
-## 483. The `ops` job's guards step does nearly all the job's work and holds a 5-minute limit of its own, under the job's 19 — the machine; `[FIXED]` 2026-11-16 (the reread of the jobs' limits, 2026-11-15, Medium)
-
-In `.github/workflows/ci.yml`, the `ops` job's step "The guards" runs `bash ops/test.sh` under `timeout-minutes: 5`, and that script is nearly all of the job's minutes. As `ops/test.sh` grows, the step's 5 minutes cut before the job's 19 does. The step's own time on GitHub is unmeasured: no `ops` job log is saved, every `ops` run was green so the step took under 5 there, and the whole `ops/test.sh` took 5.7 minutes on the developer's Mac. *Fix:* read one `ops` job's step times from a GitHub run, set the step's limit by the rule (three times its longest, never under 15), and pin it in `ops/test.sh`'s guards.
-
-*Closed 2026-11-16.* GitHub's `ci` run 43878547335 (on `5a87402c`) cut "The guards" at its 5 minutes (305 seconds) and skipped the deploy; `ops/test.sh` had not changed in that push. The nine green `ops` runs read from GitHub's API give the step's longest time as 293 seconds (4.9 minutes, run 43700424182) and the job's longest as 383 seconds (6.4 minutes, the same run). By the rule, three times the longest and never under 15: the step's limit is 15 minutes (3 x 4.9 = 14.7, raised to 15), and the job's is 20 minutes (3 x 6.4 = 19.2, to a whole minute up), so its 19 was 20 and its pin in `scripts_guards` and the refusing case beside it now read 20. The step plus the shellcheck and cfn-lint steps (about 1.2 minutes) fit under 20. The step's own pin was not added.
 
 ## 484. The `ops` limit's pin sits inside the scripts' guard, so a red names the wrong gate — the machine; `[DEFERRED]` (the reread of the jobs' limits, 2026-11-15, Low)
 
@@ -1999,10 +1907,6 @@ The dialog's entry (`Modal.extend`) in `ui/src/design-system/appTheme.ts` carrie
 
 A walk opens an address on the front (`walk/playwright.config.ts#L25`) and `shot` writes each picture by screen name (`walk/support.ts#L46`, `#L63`); `visual` takes no picture (`visual/src/capture.ts#L1-L4`). A `walk/specs/gallery.spec.ts` would open each part's address and call `walk/support.ts`'s `shot`. Three things stand in its way (the first, the fronts answering `/gallery.html` with the app, is struck: the gallery left `gallery.html` for `/48b74d079/gallery`, a route of the app, 2026-11-17, the gallery workbench's plan): every walk has a stack lane and is green only when the fake equals the stack (`walk/run.sh#L45-L58`); every `at` in a spec must be a screen of the walks page (`visual/src/walks.test.ts#L163-L171`), which draws the app's screens, not the gallery; and every spec shoots three widths in two languages (`#L204-L211`), where a part needs one picture.
 
-## 516. The gallery's "Legacy" pane has no picture of a legacy part to show — the machine; `[CLOSED AS MOOT, NOT FIXED]` 2026-11-16: the human said the gallery needs no legacy part, and the pane was taken out (the design system's plan, landing 4, 2026-11-16, Low)
-
-`ops/legacy-capture.sh` takes whole screens (`walk/legacy-capture.ts#L496`) of the employee feature (`walk/legacy-screens/employees.screens#L6-L15`) into a folder outside git (`ops/legacy-capture.sh#L17-L18`), since they show a client's real people (`docs/recaps/2026-11-04-legacy-capture.md#L24`); the design system's plan reads the legacy's code, not pictures. A pane beside each part needs a picture of that part alone (an element's picture rather than the page's), taken on data with no real person so it can sit beside the gallery; the pane is drawn only for a part that has one.
-
 ## 517. The delivery photos' card is not on the walks page, where partners already sign in (the check without code, 2026-11-16) — the machine; `[DEFERRED]`
 
 The card for checking a piece on ridge lives on the products page, which a person opens in the editor. Partners already sign in to the walks page and their answers arrive in the block the machine reads, so it is the right home once a partner checks a piece. The price is a code step in `visual/` with its tests, and a push to redeploy. Bring it in with the first piece a partner is to check on ridge.
@@ -2072,10 +1976,6 @@ For the piece that moves the doors onto these parts. `ui/src/components/atoms/Ba
 
 A build of `pre-merge` at `a0514569`, made into a scratch folder for that plan, wrote an entry of 1,010.91 kB (297.55 kB gzipped) and printed Vite's "larger than 1000 kB" warning, against the limit `ui/vite.config.ts`'s `chunkSizeWarningLimit` raises. The gallery workbench's piece rewrote the memo's figure in `docs/memo/ui.md`'s bundle section (about 1,010 kB), and that section's trigger, "the entry reaching 1,000 kB, when the build starts warning again", has fired unnoticed: nothing fails on the warning. The gallery workbench adds only its address test to the entry, its page going into a chunk of its own. *Fix:* the memo's numbers rewritten, then either a heavy route split off as the gallery is, or the limit raised with its reason. *Trigger:* the next page that adds to the entry.
 
-## 560. The gallery's frame is `100vh`, which a phone browser's toolbar may cover — the machine; `[CLOSED BY THE LOOK, NOT CHANGED]` 2026-11-17: the human's look on ridge, 2026-11-17, a part's last line above the phone's bar (the gallery workbench's review, 2026-11-17, Low)
-
-`ui/src/design-system/Gallery.module.css`'s `.root` sets `height: 100vh; overflow: hidden`. On iOS Safari the toolbar may cover the foot of a part's scroll area; `100dvh` is the usual fix. Not changed: no test here measures a layout and the picture run cannot take the gallery, so the change cannot be proved harmless or useful without the human's phone on ridge. *Trigger:* the plan's ridge look; if the end of a part sits under the toolbar, change it to `100dvh`.
-
 ## 563. Taking a box out still ends in hand acts after the stack run — the machine; *parked* until the next box taken out (the move fixes' plan, 2026-11-17, Low)
 
 `ops/stack.sh env <env> --more-boxes <list>` with its five `--take` keeps the instance and its root disk (the instance is `RetainExceptOnCreate`) and leaves the records disk's snapshot, so `ops/README.md`'s "Adding a box" step 6 sends the rest to the hand paths: stop the box first, terminate the instance by its recorded id, delete its root disk, keep or delete the snapshot. Each sitting so far (2026-11-15, 2026-11-17) wrote that rest as a one-off and copied it, which `ops/CLAUDE.md`'s OP1 says a one-off should not do. After the move fixes the copy in the bucket is the box command's own; the rest is not. *Fix:* one `ops/` command for the rest, copied from the 2026-11-17 removal one-off with the box's name as its argument, its refusals kept. *Trigger:* the next box taken out.
@@ -2103,10 +2003,6 @@ The whole check's commit is read by `git rev-parse HEAD` in `pre-merge`'s worktr
 ## 571. A staff or list file made from a template downloaded before a words change no longer imports — the machine; *parked* until the first real client, or a partner who meets it (the ui tests' words plan, 2026-11-17, Low)
 
 The staff import finds each column by the dictionary's word for it in either language (`ui/src/importSheet.ts#L48`), and a file without the name column fails whole (`#L202`); the lists read their columns the same way. A template downloaded before a returned words file lands carries the old headings: after p1's file, `addPerson.name` reads "Full name" and "Họ và tên" where it read "Name" and "Tên", so a file filled from the earlier template fails as having no name column. Nothing is lost, and a fresh template imports. *Trigger:* the first real client, or a partner who reports it; the likely fix is to also accept the headings the template had before a change.
-
-## 572. The words file goes out with no note on the words whose meaning a case needs — the machine; `[CLOSED AS MOOT, NOT FIXED]` 2026-11-17: the human said to trust the partner's text, so the eight words land as p1 wrote them and no case pins their meaning (the ui tests' words plan, 2026-11-17, Low)
-
-`pnpm words out` writes an empty Note for every row, so a partner could not see that eight failure words said the act may have happened; p1's file dropped the hedge from all eight. Closed: the human decided the partner's text stands, and the plan's rule on those eight was taken out.
 
 ## 573. No mechanical check stops a new ui test from finding a word by its typed text — the machine; *parked* until a returned file reddens on such a test (the ui tests' words plan, 2026-11-17, Low)
 
@@ -2187,14 +2083,6 @@ Words found by hand on the branch after the fix pass: `ui/src/listSheet.test.ts#
 ## 596. `tokens.ts` still repeats `themeOf`'s corner and spacing, and item 507's citation named a deleted file (design system landing 3's review, 2026-11-17, Low) — the machine; `[DEFERRED]`
 
 Item 507's citation of `ui/src/design-system/theme.ts#L18-L21` named a file step 9 deleted; item 507 stays open, half done: the dialog's padding is done, the gallery's dialog and table row are not. Item 508 asked step 9 to read one theme from the other; it did not, and `ui/src/design-system/tokens.ts#L12` (`'4px'`) and `#L24` (`24`) still repeat the radius `sm` and the spacing `lg` at `ui/src/design-system/appTheme.ts#L125-L126`, two homes that drift with nothing red. Neither item's page is in the citation check's living set (`scripts/src/citations.ts#L15-L32`). Fix: write the badge's radius and the card's padding once, read by the other. *Trigger:* a change to either value.
-
-## 601. c-storage's five small non-boring spots — the machine; `[FIXED]` 2026-11-18 by the c-storage refactor (`2c5196d6`): each of the five changes lands in one place (the go boring review, 2026-11-18, Low)
-
-c-storage passes all eight lines of the boring-Go checklist (`orch` review page `2026-11-18-go-boring/1-c-storage.md`); five spots each make one change touch two places. (1) The schema's version is in another package than the schema: `services/c-storage/internal/sqlitedb/open.go#L19` versions `services/c-storage/internal/store/schema.sql`, so a schema change edits two packages (the hazard itself is in `docs/memo/c-storage.md#L211-L215`). (2) `services/c-storage/internal/server/handlers.go#L177-L187` and `#L202-L212` repeat register's and rekey's body and check, so a key rule added to one is missed in the other. (3) `services/c-storage/internal/server/handlers.go#L170` writes its 204 itself, the one answer site of 36 not through `httpx`, against GO4's "status writing only in `httpx`". (4) `s.wrote()` is called by hand at `services/c-storage/internal/store/store.go#L59`, `#L74` and `#L136`, and no test reads `lastWriteAt` after a rekey or a remove, so a new write that forgets it leaves `/api/status` stale. (5) `services/c-storage/internal/server/server.go#L108-L110` wraps `net.Listen` in one line for its one caller, `lifecycle`, which GO4 says joins the parts. Fix: `version` beside `Schema` in `store`, passed to `sqlitedb.Open`; one `serviceBody` and one decode-and-check both handlers call; an `httpx.NoContent`; Register and Rekey through one helper that notes the commit; `net.Listen` inlined in `lifecycle`. *Trigger:* the next change to c-storage's handlers or store, or the first schema change, whichever comes first.
-
-## 602. audit-backbone writes through a hand-built queue that c-storage does without, and stamps no schema version — the machine; `[FIXED]` 2026-11-18 by the audit-backbone refactor (`c1972b5e`, `8f7f9311`): plain transactions and a stamped schema version that adopts a version-0 file, the batch writer removed (the go services' boring check, 2026-11-18, Low)
-
-`services/audit-backbone/internal/batch/writer.go` (175 lines: a writer goroutine, group commit, a savepoint per caller, an atomic closed flag, a drain) is the only write path, and its only callers are `Store.Append` and `Store.Sweep` (`services/audit-backbone/internal/activity/store.go#L84`, `#L182`). c-storage does the same job with `_txlock=immediate` and `busy_timeout` (`services/c-storage/internal/sqlitedb/open.go#L24-27`, `#L39`) and a plain `BeginTx`. The batching rests on no measured load (`services/audit-backbone/docs/memo/a-201-means-committed.md#L19`). Because of the queue, every new write has to be written as a `batch.Op` inside a savepoint, the shutdown needs its own order (`services/audit-backbone/internal/lifecycle/lifecycle.go#L102-115`), and the two services' `open.go` comments state opposite rules on lock contention (`services/audit-backbone/internal/sqlitedb/open.go#L20-22`). The same `open.go` also runs `CREATE … IF NOT EXISTS` on every open with no `user_version` (`#L44`), where c-storage stamps a version and refuses a foreign file (`services/c-storage/internal/sqlitedb/open.go#L52-74`), so the first column added to `activities` will be missing on the box, where the file is the only copy, until an insert fails. Fix: copy c-storage's `sqlitedb/open.go` (immediate transactions, `apply` with `user_version`); write `Store.Append` and `Store.Sweep` as plain `BeginTx`/`Commit`; delete `internal/batch`, the writer goroutine and its shutdown step; move `decodeOne` (`services/audit-backbone/internal/activity/handler.go#L87`) into `httpx` as `Decode`, as c-storage has it; retire AB3 and rewrite the memo's first half. *Trigger:* the next change to the activity log's write path or its schema, whichever comes first.
 
 ## 603. The BFF's two largest closures still share inner values, and its routes read path parameters two ways — the machine; `[DEFERRED]` (the BFF made clearer, 2026-11-18, Low)
 

@@ -451,7 +451,7 @@ session can read on for the detail it needs, and **split in two on 2026-11-10**:
 [how a call finds its tenant's box](#how-a-call-finds-its-tenants-box): what is built today, cited,
 and the pooled shape the human gave, marked on both pages with what is built and what is not.
 
-**Nothing was shortened when this page was rearranged** ([open item 202](open-items.md)): the detail
+**Nothing was shortened when this page was rearranged**: the detail
 moved to the page beside the code it describes — each part's own `CLAUDE.md` for that part's
 internals, and [`docs/activity-log.md`](activity-log.md) for the activity log, a page of decisions
 about work not yet started. The first-day plan,

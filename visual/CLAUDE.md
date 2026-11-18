@@ -23,6 +23,8 @@ None: flat is the answer, and the package's real problem is not its directories 
 - **A step:** a `Step`, named by a key of the app's dictionaries.
 - **A question in Vietnamese:** a line of `visual/site/questions-vi.json`, keyed by the English text.
 - **A walk's test:** `walks.test.ts`'s "puts the client delete walk last".
+- **A test that needs the credo root:** `visual/src/home.test.ts`, which makes one, a bare repository
+  and a worktree, through `visual/tests/repo.ts`'s `makeRoot`.
 
 **`visual/src` has no directories, and flat is this package's decision:** 15 files, each already
 named for what it is, and the one thing that reads long is `visual/src/walks.ts` at 2,190 lines,

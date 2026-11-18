@@ -1,5 +1,5 @@
 # credo
-Stack: TypeScript on Node 26, one pnpm 12 workspace; c-storage in Go 1.26 · Gate: seven commands, the whole list in [the gate](#the-gate) · Ship: c-storage, the activity log and the app (the BFF and the UI, once the stack holds layer four) to ridge by GitHub Actions on a push to `main` or a press of `ci` on `main`; stacks in hand-written CloudFormation YAML, by the human's change sets, never CDK
+Stack: TypeScript on Node 26, one pnpm 12 workspace; the Go services on Go 1.25 (both modules' floor; c-storage builds on 1.26.7) · Gate: seven commands, the whole list in [the gate](#the-gate) · Ship: c-storage, the activity log and the app (the BFF and the UI, once the stack holds layer four) to ridge by GitHub Actions on a push to `main` or a press of `ci` on `main`; stacks in hand-written CloudFormation YAML, by the human's change sets, never CDK
 
 The new credo app: the same UI and a similar concept, rebuilt as UI → one BFF → c-storage.
 
@@ -13,7 +13,7 @@ says otherwise.
 | --- | --- | --- | --- |
 | 1 | `pnpm check` | typecheck, eslint, prettier, every TypeScript package's tests at 100 %, knip, all through `ops/gate.sh` (`package.json`'s `scripts.check`) | `.github/workflows/ci.yml`'s `app` job, which waits on six package jobs, one a package (`app-bff` to `app-walk`, each running that package's check under a 15-minute cap, the scripts' tests in three shards under 28, `app-scripts` only merging them) |
 | 2 | `make check`, in `services/c-storage/` | gofmt, `go vet`, the race tests at 100 % through `services/c-storage/scripts/cover.sh`, and the box's arm64 cross-compile (`services/c-storage/Makefile`) | `ci.yml`'s `check` job, step `name: make check` |
-| 3 | `shellcheck -x ops/*.sh walk/*.sh services/c-storage/scripts/*.sh` | every tracked `.sh`: `ops/`, `walk/run.sh` and `services/c-storage/scripts/` | `ci.yml`'s `ShellCheck 0.11.0` step, ShellCheck 0.11.0 |
+| 3 | `shellcheck -x ops/*.sh walk/*.sh services/*/scripts/*.sh` | every tracked `.sh`: `ops/`, `walk/run.sh` and each service's `scripts/` | `ci.yml`'s `ShellCheck 0.11.0` step, ShellCheck 0.11.0 |
 | 4 | `cfn-lint ops/network.yml ops/github.yml ops/env.yml` | the three CloudFormation templates | `ci.yml`'s `ops` job, step `name: cfn-lint`, cfn-lint 1.46.0 |
 | 5 | `bash ops/test.sh` | the `ops` guards and the workflows' own shape; needs Ruby, Node and `pnpm install` | `ci.yml`'s `ops` job, step `name: The guards` |
 | 6 | `bash scripts/e2e.sh`, in `services/c-storage/` | the assembled server on a real socket against the Bruno collection; needs the Bruno CLI | `ci.yml`'s `e2e` job, step `run: bash scripts/e2e.sh` |

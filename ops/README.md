@@ -794,7 +794,7 @@ outside any stack.
    If the group is gone, the box has no way in, and the way to read it is to stop the instance, detach its disk and follow the left-behind volume below.
 3. On the box, stop the service so the file is whole (`sudo systemctl stop c-storage`): the memo
    says a copy taken while it runs can miss commits held in the `-wal` file
-   ([the memo](../docs/memo/c-storage.md#a-second-copy-follows-the-file-within-a-second)). Then
+   ([the memo](../services/c-storage/docs/memo/c-storage.md#a-second-copy-follows-the-file-within-a-second)). Then
    `sudo ls -la /var/lib/c-storage/` and expect the `.db` file with no `-wal` beside it. *Untested:*
    that a clean stop leaves it so; if a `-wal` is there, copy the whole folder and keep all three files.
 4. Copy it out over the same connection, the way `ops/release.sh` sends files the other way:
@@ -927,7 +927,7 @@ the real c-storage, built there, so Go must be installed. The guards also need R
 as JSON), Node (the CloudFront Function, the scripts under `scripts/`) and `pnpm install` done.
 Run the same three before pushing an `ops/` change:
 
-1. `shellcheck -x ops/*.sh walk/*.sh`
+1. `shellcheck -x ops/*.sh walk/*.sh services/*/scripts/*.sh`
 2. `cfn-lint ops/network.yml ops/github.yml ops/env.yml`
 3. `bash ops/test.sh`, which also reads the workflow's `deploy` job: its branch condition,
    `!env.ACT` on each step, `needs`, the environment, the single concurrency and its `cancel-in-progress`,

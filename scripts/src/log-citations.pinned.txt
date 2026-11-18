@@ -9,9 +9,7 @@ docs/open-items.md	20261101-1355-staff-test-split-red-nokeyretry.log
 docs/open-items.md	20261101-1356-staff-test-split-red-nokey2.log
 docs/open-items.md	20261104-1447-palettes-full-run.log
 docs/open-items.md	20261104-1447-palettes-full-run.log
-docs/open-items.md	20261104-1447-palettes-full-run.log
 docs/open-items.md	20261104-1732-staff-cards-full-run.log
-docs/open-items.md	20261105-1934-walk-piece-1-piece-2-operator-passkeys.log
 docs/open-items.md	20261106-1252-walk-machinery-step3-gate.log
 docs/open-items.md	20261106-1301-walk-machinery-step3-gate-rerun.log
 docs/open-items.md	20261106-1324-walk-machinery-step5-gate.log
@@ -29,8 +27,6 @@ docs/open-items.md	logs/20261101-1356-staff-test-split-alone2.log
 docs/open-items.md	logs/20261101-1424-driver-reconcile-review-runs.log
 docs/open-items.md	logs/20261101-1427-driver-reconcile-review.md
 docs/open-items.md	logs/20261103-walks-page-step2-gate-run3-red-ui.log
-docs/open-items.md	logs/20261107-1941-edit-order-step5-check.log
-docs/open-items.md	logs/20261107-1952-edit-order-step5-rerun2-nobail.log
 docs/open-items.md	logs/20261107-233125-clerk-add-records-step7-whole-check.log
 docs/open-items.md	logs/20261107-233422-clerk-add-records-step7-whole-check.log
 docs/open-items.md	logs/20261108-120141-money-defects-step1-bff-gate.log

@@ -1,5 +1,5 @@
 # audit-backbone
-Stack: Go 1.25 · Gate: make check · Ship: `ops/release.sh` to the box beside c-storage, and the deploy job (not yet run on ridge)
+Stack: Go 1.25 (both modules' floor; c-storage builds on 1.26.7) · Gate: make check · Ship: `ops/release.sh` to the box beside c-storage, and the deploy job (not yet run on ridge)
 
 The activity log: one Go binary, one SQLite file, a keyed writer and a
 token-gated reader on two ports: the writer on `LISTEN_ADDR` (loopback unless set), the reader on loopback. Repo-wide rules: [`CLAUDE.md`](../../CLAUDE.md).
