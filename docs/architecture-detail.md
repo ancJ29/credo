@@ -27,6 +27,7 @@ needs before touching any of it, is on
 | `services/audit-backbone/` | a second Go service, in this repository and called by the back end for every change a person makes (locally; shipped by the release, not yet run on ridge) | the history of every change, once it runs on ridge ([the activity log](activity-log.md)) |
 | `scripts/` | the local lanes — `pnpm stack`, `pnpm fake`, `pnpm demo` — and the steps the ops scripts hand to the product's own code | any way to run or seed anything locally, and the BFF's route tests |
 | `visual/` | the walks page: the app's own screens drawn without a browser | the one artefact a non-coder judges a screen from |
+| `site/` | the docs site: the repository's own Markdown shown in place for readers who do not code, by Docusaurus (its config and sidebar only; not yet built or deployed) | nothing yet: no job builds it |
 | `walk/` | the browser walks: one spec a walk, every screen counted pixel by pixel | the end-to-end check |
 | `ops/` | three hand-written CloudFormation templates and the shell scripts; every AWS call in the repository is made here | every way to a machine |
 

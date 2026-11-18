@@ -76,3 +76,7 @@ test-results/
 
 # The local environment's handle, data and build (pnpm local)
 /.local-env/
+
+# The docs site's build and Docusaurus's generated files (site/)
+/site/build/
+/site/.docusaurus/
