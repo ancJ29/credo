@@ -40,3 +40,21 @@ Each folder at the root is part of the app that ships, the tooling around it, or
 | [`walk/`](walk) | tests | the browser walks |
 | [`visual/`](visual) | tests | the walks page |
 | [`docs/`](docs) | pages | the conventions, memos, plans and recaps |
+
+## Where to look
+
+A question on the left, the page that answers it on the right. Two pages live on the orchestrator
+branch, the sessions' own worktree; no link on `main` reaches them, so they are named with the
+branch.
+
+| You want to know | Open |
+| --- | --- |
+| how to deploy a change | [docs/operator-guide.md, "Deploy a change"](docs/operator-guide.md#deploy-a-change) |
+| how sign-in works | [docs/architecture.md, "One request, end to end"](docs/architecture.md#one-request-end-to-end) |
+| how to read a partner's returned words in | [docs/operator-guide.md, "Read a partner's returned words in"](docs/operator-guide.md#read-a-partners-returned-words-in) |
+| what is still to do | [docs/open-items.md](docs/open-items.md) |
+| what is being built now, and in what order | worktrees/glance.md on the orchestrator branch |
+| what we decided, and why | [docs/decisions.md](docs/decisions.md), newest first |
+| what runs on ridge now | [docs/products.md](docs/products.md), its first lines |
+| what the machine has learned, by kind of task | worktrees/skills/ on the orchestrator branch, a folder for each kind of task with its SKILL.md |
+| every place credo keeps what it knows | [docs/README.md, "The documents, and what each answers"](docs/README.md#the-documents-and-what-each-answers) |
