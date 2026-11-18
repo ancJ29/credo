@@ -57,4 +57,5 @@ branch.
 | what we decided, and why | [docs/decisions.md](docs/decisions.md), newest first |
 | what runs on ridge now | [docs/products.md](docs/products.md), its first lines |
 | what the machine has learned, by kind of task | worktrees/skills/ on the orchestrator branch, a folder for each kind of task with its SKILL.md |
+| these pages in one site, for partners | [site/CLAUDE.md](site/CLAUDE.md); `.github/workflows/docs.yml` builds it on a change and publishes it from `main` |
 | every place credo keeps what it knows | [docs/README.md, "The documents, and what each answers"](docs/README.md#the-documents-and-what-each-answers) |
