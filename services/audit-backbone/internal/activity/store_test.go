@@ -5,28 +5,21 @@ import (
 	"database/sql"
 	"errors"
 	"path/filepath"
+	"sync"
 	"testing"
 	"time"
 
-	"credo/audit-backbone/internal/batch"
 	"credo/audit-backbone/internal/sqlitedb"
 )
 
 func newStore(t *testing.T) (*Store, *sql.DB) {
 	t.Helper()
-	db, err := sqlitedb.Open(filepath.Join(t.TempDir(), "activities.db"), Schema)
+	db, err := sqlitedb.Open(filepath.Join(t.TempDir(), "activities.db"), Schema, SchemaVersion)
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
 	t.Cleanup(func() { db.Close() })
-
-	w := batch.New(db)
-	ctx, cancel := context.WithCancel(context.Background())
-	done := make(chan struct{})
-	go func() { defer close(done); w.Run(ctx) }()
-	t.Cleanup(func() { cancel(); <-done })
-
-	return NewStore(db, w, NewIDFactory()), db
+	return NewStore(db, NewIDFactory()), db
 }
 
 func entry(client, actor, action, target string) Input {
@@ -138,6 +131,35 @@ func TestSweepDeletesByCreatedAtNotInsertTime(t *testing.T) {
 	}
 	if left != "fresh" {
 		t.Fatalf("the wrong row survived: %q", left)
+	}
+}
+
+// Handlers append at once, each on a connection of its own, and every entry
+// lands: each transaction waits for the write lock rather than fail.
+func TestAppendsAtOnceAllLand(t *testing.T) {
+	s, db := newStore(t)
+	const n = 100
+	var wg sync.WaitGroup
+	for range n {
+		wg.Go(func() {
+			if _, err := s.Append(context.Background(), []Input{entry("acme", "emp-1", "at once", "")}, time.Now()); err != nil {
+				t.Errorf("Append: %v", err)
+			}
+		})
+	}
+	wg.Wait()
+	var got int
+	if err := db.QueryRow(`SELECT count(*) FROM activities`).Scan(&got); err != nil || got != n {
+		t.Fatalf("rows = %d, %v; want %d", got, err, n)
+	}
+}
+
+// A write that cannot begin is an error, never ids for rows that are not there.
+func TestAWriteThatCannotBeginIsAnError(t *testing.T) {
+	s, db := newStore(t)
+	db.Close()
+	if ids, err := s.Append(context.Background(), []Input{entry("acme", "emp-1", "lost", "")}, time.Now()); err == nil {
+		t.Fatalf("Append on a closed database = %v, want an error", ids)
 	}
 }
 

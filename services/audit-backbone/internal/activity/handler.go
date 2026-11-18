@@ -2,9 +2,7 @@ package activity
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
-	"io"
 	"net/http"
 	"strconv"
 	"time"
@@ -19,10 +17,6 @@ const Prefix = "/api/activities"
 
 // TokensPath is where a client's system mints its browser's read token.
 const TokensPath = "/api/read-tokens"
-
-// maxBody caps the request body. Memos are small, but "small" is the caller's
-// word, not ours.
-const maxBody = 8 << 20 // 8 MiB
 
 type logActivitiesResponse struct {
 	IDs []string `json:"ids"`
@@ -67,7 +61,7 @@ func RegisterTokens(mux Router, mint func(clientID string) (string, time.Time)) 
 		var body struct {
 			ClientID string `json:"clientId"`
 		}
-		if !decodeOne(w, r, &body, "{clientId}") {
+		if !httpx.Decode(w, r, &body, "{clientId}") {
 			return
 		}
 		if err := validateID("clientId", body.ClientID); err != nil {
@@ -78,28 +72,6 @@ func RegisterTokens(mux Router, mint func(clientID string) (string, time.Time)) 
 		reqlog.SetClient(r, body.ClientID)
 		httpx.JSON(w, http.StatusOK, tokenResponse{Token: token, ExpiresAt: expires.Format(TimeFormat)})
 	})
-}
-
-// decodeOne reads the body as one JSON value of at most maxBody, and answers
-// the refusal itself: false means the response is written. A decoder stops
-// after one value, so anything after it but whitespace is refused here: `{…}
-// junk` is a malformed body, not a request.
-func decodeOne(w http.ResponseWriter, r *http.Request, v any, shape string) bool {
-	dec := json.NewDecoder(http.MaxBytesReader(w, r.Body, maxBody))
-	err := dec.Decode(v)
-	if err == nil {
-		if rest := dec.Decode(&struct{}{}); rest != io.EOF {
-			err = errors.Join(errors.New("bytes after the body"), rest)
-		}
-	}
-	var tooLarge *http.MaxBytesError
-	switch {
-	case errors.As(err, &tooLarge):
-		httpx.TooLarge(w)
-	case err != nil:
-		httpx.BadRequest(w, "body must be JSON: "+shape)
-	}
-	return err == nil
 }
 
 type reader struct{ repo Reader }
@@ -152,7 +124,7 @@ func (wr *writer) logActivities(w http.ResponseWriter, r *http.Request) {
 	var body struct {
 		Activities []Input `json:"activities"`
 	}
-	if !decodeOne(w, r, &body, "{activities: [...]}") {
+	if !httpx.Decode(w, r, &body, "{activities: [...]}") {
 		return
 	}
 	if len(body.Activities) == 0 {
