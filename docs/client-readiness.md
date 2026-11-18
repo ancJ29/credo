@@ -260,6 +260,10 @@ its steps.
    thing that cannot be recovered from. The deletion policy is live on ridge; the continuous copy, its
    check and its restore are written and guarded, and what remains is the human's: the two template
    changes, the release and the drill that reads a restored file ([open item 6](open-items.md)).
+   *Corrected 2026-11-18:* the copy, its check and its restore ran on ridge on 2026-11-13, the drill reading a
+   restored file that held a save made before a reboot ([the recap](recaps/2026-11-12-continuous-copy.md)),
+   and one demo copy was restored alone ([its recap](recaps/2026-11-13-store-pages-copy.md)); a restore onto
+   a box named with `--box` ran only on stand-ins ([its recap](recaps/2026-11-17-move-fixes.md)).
 2. **The tree guard widened: done.** `ops_match_main` covers every deployed path, `scripts/`
    included (open item 130, fixed).
 3. **A client-stack mode, or a refusal, on `check.sh` and `drill.sh`: done.** The check only reads

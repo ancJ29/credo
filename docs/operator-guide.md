@@ -510,8 +510,9 @@ Pages previews are a developer's, in [`ops/README.md`](../ops/README.md).
 - Remaking the demo copies and a demo copy's root password are in the repository and tested on stand-ins,
   but no recap in `docs/recaps/` records a run of either on the real ridge. The remake's timing above is the
   plan's aim, measured only between two stores on this Mac.
-- Putting the records back from the copy, and the copy it reads, are built and tested on this Mac; the
-  continuous-copy recap says nothing of it has run on ridge yet. Treat it as untried.
+- Putting the records back from the copy ran on ridge on 2026-11-13, and so did one demo copy alone. A
+  restore onto a box named with `--box` ran only on stand-ins, and no recap records one onto a blank disk on
+  ridge. Treat those two as untried.
 - Taking ridge down, bringing it back and making the operator ran on the real ridge on 2026-11-12: the
   take-down took about 5.5 minutes, the bring-back about 7.5 and the operator 13 seconds, each ending 0.
   Whether the operator's passkey was then made is not yet recorded.

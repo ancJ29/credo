@@ -12,14 +12,11 @@ such a trigger fires at that environment's stack, not at a stack for each client
 
 ## 1. A client's server that stops reaches no one — the machine proposes, the human places the alert; waits for a signed client (the architecture plan, 2026-10-27)
 
-Written in `ops/env.yml`, guarded by `ops/test.sh` and not yet applied to ridge: four alarms (the
-API's `5xx`, the back end's `Errors` and `Throttles`, the box's `StatusCheckFailed`) send each alarm
-and its return to normal to one topic, and with a Slack workspace ID and a channel ID the stack makes
-AWS's Slack app carry the topic into one channel ([the runbook](../ops/README.md#the-watch), [the
-plan](plans/2026-11-11-slack-alarm.md)). Not built: the scheduled check that fails when the continuous
-copy lags or the disk is low, production's alarms (one more stack, the same four), and a spend alarm.
-Before the first client goes live the alarms must be applied and one forced; where an alert lands is
-the human's (production).
+Ridge's four alarms are applied and one was forced there on 2026-11-13, its alarm and its return to
+normal each reaching the Slack channel ([the recap](recaps/2026-11-12-slack-alarm.md), [the
+runbook](../ops/README.md#the-watch)). Open: the scheduled check that fails when the continuous copy
+lags or the disk is low, production's alarms (one more stack, the same four, applied and one forced
+before the first client goes live), and a spend alarm. Where production's alert lands is the human's.
 
 ## 2. The plan's assumptions are unmeasured — *parked* until a review (the architecture plan, 2026-10-27)
 
@@ -57,15 +54,15 @@ systemd. `ops/release.sh` does this, run by GitHub Actions' `deploy` job on each
 by the human while Actions is down. The BFF's function for arm64 comes with piece 1, in the ridge
 plan's fourth layer, which decides how CD ships it (planned in [ridge-app](plans/2026-10-28-ridge-app.md#layer-four)).
 
-## 6. The continuous copy of the records, its check and its restore — built, not yet run on an environment; the machine wrote it, the human runs the changes and the drill (the continuous-copy plan, 2026-11-11)
+## 6. The restore onto a blank disk and onto an added box — run only on stand-ins; the copy, its check and its restore ran on ridge on 2026-11-13; the human runs the two (the continuous-copy plan, 2026-11-11)
 
-**The backup half is built and not yet run anywhere.** Litestream copies each save of the records file to
-the environment's own bucket under the box's path, and the scripts that check and restore it are written
-and guarded on written input ([the plan](plans/2026-11-11-continuous-copy.md)). Nothing in the bucket has
-been read yet: the bucket's key layout comes from Litestream's source and has not been seen against S3,
-and no restore has been read back. **What stays open is the human's runs** (the network change, ridge's
-change, the release, the drill), and the item closes when `ops/drill.sh ridge` has read a restored file
-holding a save made before it. The fence half is the backup-policy piece's (below).
+**The backup half ran on ridge on 2026-11-13.** The check read the copy within 300 seconds of the last
+write, and `ops/drill.sh ridge` restored the newest copy holding a code registered before a reboot, and a
+copy from a moment before not holding it ([the recap](recaps/2026-11-12-continuous-copy.md)); one demo copy
+was restored alone the same day ([its recap](recaps/2026-11-13-store-pages-copy.md)). **What stays open is
+two restores run only on stand-ins:** onto a real blank disk (`--onto-blank`) and onto a box added to the
+stack (`--box <name>`, [its recap](recaps/2026-11-17-move-fixes.md)); the item closes when both have run on
+ridge. The fence half is the backup-policy piece's (below).
 
 How it is built, each line read off the scripts:
 
@@ -97,15 +94,10 @@ How it is built, each line read off the scripts:
 - **The copy's address carries the bucket's region** (`s3://<bucket>/<path>?region=<region>`, the release's
   `copy.env`): Litestream takes its region from that query or its own config, never from `AWS_REGION`, and
   with none it asks `us-east-1` where the bucket is, which the box's role does not grant and the box cannot
-  reach. From Litestream 0.5.18's source; not yet seen against S3.
-- **The drill:** `ops/drill.sh` gains a row that restores the newest copy and a copy to the box's clock
-  from before a registration, and reads the registration in the first and not the second. It is the human's
-  run on ridge.
+  reach. From Litestream 0.5.18's source, and seen on ridge, where the copy started against the bucket.
 
-Three things stay unproven until the human's runs: that the region in the address is what lets Litestream start
-against the bucket, that full copies sit under `<path>/0009/` in S3 (from
-Litestream 0.5.18's own source, where the S3 client builds `<path>/0009/<name>`), and that a restore from
-an empty disk (`ops/restore.sh --onto-blank`) works on a real blank disk. Litestream makes no full copy of a file that has not been
+Unproven, as above: a restore from an empty disk (`ops/restore.sh --onto-blank`) on a real blank disk, and
+one onto an added box. Litestream makes no full copy of a file that has not been
 written, so a file idle for six days reads red on the check by design: the check is what notices it.
 
 **The fence half (widened by the client-readiness read, 2026-11-07), corrected 2026-11-08 and built
@@ -129,7 +121,7 @@ survivable; nothing else changes.** A termination, a torn file, a bad write or a
 the database are still unrecoverable, and the fence, though live on ridge (its change set was refused as
 `--plan` on 2026-11-08 at 16:44, `Conditional` being the property's class as
 [the memo](plans/2026-11-08-backup-policy-conditional-memo.md) explains, then applied at 17:10 with
-`--take Box`), is not a copy: the copy above is the backup half, and it has not been run yet.
+`--take Box`), is not a copy: the copy above is the backup half, run on ridge on 2026-11-13.
 
 ## 8. Two places start c-storage — the machine; *parked* until a third caller (the app frame plan, step 6, 2026-10-28)
 

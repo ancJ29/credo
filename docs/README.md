@@ -15,9 +15,10 @@
 record is one key holding its current value ([`shared/src/records.ts#L7`](../shared/src/records.ts#L7)),
 so a save overwrites. No record carries who wrote it or what it held before — searched for
 `changedBy`, `updatedBy`, a revision and a history across `shared/src`, `bff/src` and
-`services/c-storage/internal`, and there is none — and no copy of any client's records has yet been
-read back: the continuous copy of the records is built and has not run on an environment, so until a drill has
-read a restored file there is nothing to restore from that anyone has proved ([open item 6](open-items.md))
+`services/c-storage/internal`, and there is none — and no copy of a real client's records has yet been
+read back: the continuous copy of the records ran on ridge on 2026-11-13, where a drill read a restored file
+holding a save made before a reboot ([the recap](recaps/2026-11-12-continuous-copy.md)), and ridge holds only
+invented companies ([open item 6](open-items.md))
 
 What **can** be established in the first minutes:
 
