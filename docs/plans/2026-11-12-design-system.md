@@ -251,12 +251,13 @@ confirm the skeleton first").
       and the header's shadow; each a token. Case 13, seen red first. _Done when:_ the checks exit 0.
       **5 min.**
       _Done 2026-11-17: case 13 (`ui/src/frame/Shell.test.tsx`, "13: The menu's labels are 14 px at 600...") red first on the code without the change (`expected ':root, :host{--mantine-cursor-type: p…' to contain '--credo-menu-size: 14px;'`, exit 1), green after; `FRAME_VALUES` in `ui/src/design-system/tokens.ts` holds the menu's size and weight, the bar's line and shadow and the header's shadow, `credoVariables` writes them as `--credo-*` variables, `.item` in `ui/src/frame/frame.module.css` reads the menu's two, the shell's footer reads the bar's two, and the header's shadow is a rule below 48em on `.header` alone; the legacy's values (`0 2px 8px` under the header, the default border and `0 -2px 8px` above the bar, `base/src/components/app/MobileAppLayout.tsx#L167`, `#L268-L269`) read back from the old app's file; two snapshots moved, the ways one and the passkeys one in `ui/src/frame/frameKept.test.tsx.snap`, each by the footer's `border-top` and `box-shadow` variables and nothing else; `pnpm --filter @credo/ui check` exit 0 (typecheck, eslint, prettier, test, knip all 0) and the citations test exit 0 (32 passed); `pnpm --filter @credo/visual check` exit 0 on this tree, run on 2026-11-17 after the lock freed (typecheck, eslint, prettier, test and knip all 0, the package's coverage at 100 %); an earlier run, before the prettier fix, had read prettier 1 on one file, since fixed. **5 min.**_
-- [ ] **12. Review, the picture run, and landing.** One review and fix pass; `pre-merge` taken in;
+- [x] **12. Review, the picture run, and landing.** One review and fix pass; `pre-merge` taken in;
       your run, `bash walk/run.sh` over all twelve walks with `--moved all --write`, then with no
       flags. The machine reads both logs, counts the screens moved per walk from the base folders'
       diff, commits the bases and the recap, and lands; point 4. _Done when:_ the second run reads
       `== verdict: green` with every count 0, and the branch merges. **25 min, and your runs, about
       32.**
+      _Done 2026-11-18: the review (may merge with changes) and the fix pass `f2407e45`; `pre-merge` taken in at `9865d82b`; your first picture run with `--moved all --write` read green and wrote 728 of 786 pictures (`4f3a2a7e`); your second run with no flags read green, every picture the same and no base written; point 4, your look at the walks page, stays open and the push waits for it._
 
 **Landing 4: the gallery's final shape** (when the components pass 15; the human's yes of
 2026-11-16).
