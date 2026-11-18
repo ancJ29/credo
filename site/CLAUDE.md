@@ -1,5 +1,5 @@
 # site
-Stack: Docusaurus 3 with its mermaid theme · Gate: `pnpm check` from the root, which runs this package's typecheck and, as its test, the site's build (a render failure, a broken link or a broken anchor is its red) · Ship: none yet; a build job and its deploy to Cloudflare Pages come in later steps
+Stack: Docusaurus 3 with its mermaid theme · Gate: `pnpm check` from the root, which runs this package's typecheck and, as its test, the site's build (a render failure, a broken link or a broken anchor is its red) · Ship: `.github/workflows/docs.yml` builds it on every push that changes a page it shows and, on `main`, publishes it to its own Cloudflare Pages project
 
 The docs site: the repository's own Markdown, shown where it already sits, for partners and other
 readers who do not code. Open to anyone with the link, kept out of search engines (`noIndex`).

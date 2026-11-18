@@ -27,7 +27,7 @@ needs before touching any of it, is on
 | `services/audit-backbone/` | a second Go service, in this repository and called by the back end for every change a person makes (locally; shipped by the release, not yet run on ridge) | the history of every change, once it runs on ridge ([the activity log](activity-log.md)) |
 | `scripts/` | the local lanes — `pnpm stack`, `pnpm fake`, `pnpm demo` — and the steps the ops scripts hand to the product's own code | any way to run or seed anything locally, and the BFF's route tests |
 | `visual/` | the walks page: the app's own screens drawn without a browser | the one artefact a non-coder judges a screen from |
-| `site/` | the docs site: the repository's own Markdown shown in place for readers who do not code, by Docusaurus (its config and sidebar only; not yet built or deployed) | nothing yet: no job builds it |
+| `site/` | the docs site: the repository's own Markdown shown in place for readers who do not code, by Docusaurus (its config, its sidebar and its link rewrite; [`docs.yml`](../.github/workflows/docs.yml) builds it on every push that changes a page it shows and publishes it from `main`) | the documents a partner reads without opening the repository, and the red for a page that no longer renders |
 | `walk/` | the browser walks: one spec a walk, every screen counted pixel by pixel | the end-to-end check |
 | `ops/` | three hand-written CloudFormation templates and the shell scripts; every AWS call in the repository is made here | every way to a machine |
 
@@ -332,10 +332,11 @@ shape** (`ci.yml`'s comment "Releases only: a template change stays the human's 
 bucket ([`ops/app.sh`](../ops/app.sh)), then [`ops/check.sh`](../ops/check.sh) verifies it. All
 third-party code builds *before* the AWS role is assumed (`ci.yml`'s comment "The app's builds and installs run third-party code"), and the role itself is narrow
 to the point of naming the one function and the one instance
-(`ops/env.yml`'s `DeployRole`). Two other workflows:
-[`seed.yml`](../.github/workflows/seed.yml) brings ridge's demo copies up to yesterday when somebody runs it (it has no schedule), and
+(`ops/env.yml`'s `DeployRole`). Three other workflows:
+[`seed.yml`](../.github/workflows/seed.yml) brings ridge's demo copies up to yesterday when somebody runs it (it has no schedule),
 [`walks.yml`](../.github/workflows/walks.yml) deploys the walks page to Cloudflare Pages, open by its
-link — the only deploy target that is not AWS.
+link, and [`docs.yml`](../.github/workflows/docs.yml) builds the docs site and, from `main`, deploys it
+to its own Pages project — the only deploy targets that are not AWS.
 
 One hazard the split creates: a change set that updates the `Bff` resource can restore its inline
 503 stub and empty environment, so the human re-runs the latest deploy afterwards

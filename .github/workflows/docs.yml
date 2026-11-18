@@ -26,9 +26,11 @@ on:
 permissions:
   contents: read
 
-# One run at a time, in order: an older push never deploys after a newer one.
+# One run at a time for each branch, in order: GitHub keeps one waiting run in a group and a newer
+# run replaces it, so an older push never deploys after a newer one. The group carries the ref, so
+# a branch's build never replaces main's waiting deploy, which would show cancelled, not red.
 concurrency:
-  group: docs
+  group: docs-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
