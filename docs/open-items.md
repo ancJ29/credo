@@ -1087,17 +1087,17 @@ appends its pattern to the list a test reads (`server_test.go#L106`).
 | no client is named in shared code | a grep in the gate, as the divergence rule's mechanical test |
 | a walk has one identity | `walk/playwright.config.ts#L30-L96` derives its projects from the table at `walk/run.sh#L45-L57`, or one test fails when the two disagree |
 
-## 161. Two scripts that are themselves gates are read by no tool, and two comments in one of them say the opposite — the machine; `[OPEN]` (the 2026-11-08 structure review, 2026-11-09, Medium)
+## 161. The Node file that proves a Bruno run is read by no lint or formatter — the machine; `[OPEN]` (the 2026-11-08 structure review, 2026-11-09, Medium)
 
-`services/c-storage/scripts/cover.sh` (the coverage gate, 70 lines) and `services/c-storage/scripts/e2e.sh` (the
-end-to-end gate, 138 lines) fall outside the repository's one ShellCheck invocation
-(`.github/workflows/ci.yml#L197`, glob `ops/*.sh walk/*.sh`), outside lint and outside the
-formatter, so 19 of 21 tracked `.sh` files are checked and these two are not. Worse, `cover.sh#L29`
-and `#L37` carry suppression comments written for a checker that never reads them, telling the next
-reader the opposite of the truth. The small Node file that proves a request run actually asserted
-something (`services/c-storage/scripts/bruno-proof.cjs`, three callers) is read by no tool either. *Fix:* add
-`services/c-storage/scripts/*.sh` to `ci.yml#L197` and to `ops/README.md#L569`, one line each, then delete or
-correct the two comments. *Trigger:* none needed; it is one line and a read.
+`services/c-storage/scripts/bruno-proof.cjs`, the small Node file that proves a request run actually
+asserted something, is read by no lint or formatter: `eslint.config.js#L26` ignores `services/c-storage/`
+and `.prettierignore#L5` ignores `services/`. It is run as a test (`ops/test.sh#L1730`), and its two callers
+are `ops/check.sh#L212` and `services/c-storage/scripts/e2e.sh#L95`. The rest of this item is settled: the two
+gate scripts beside it, `cover.sh` and `e2e.sh`, are in ShellCheck's list (`.github/workflows/ci.yml#L684`,
+`ops/README.md#L930`) since `9eb9a61a`, and since then ShellCheck reads `cover.sh`'s two comments (`#L29`,
+`#L37`), each needed and each giving its reason. *Fix:* let eslint and prettier read
+`services/*/scripts/*.cjs`, one exception in each ignore list, then fix what they find. *Trigger:* the next
+edit of `bruno-proof.cjs`.
 
 ## 162. The units nobody can judge in one read — the machine; *parked* until each is touched (the 2026-11-08 structure review, 2026-11-09, Low)
 
@@ -1727,7 +1727,7 @@ The stand-in's copy ends in seconds, and the slow variants are stopped before 30
 
 The deploy job's Go is c-storage's (its `toolchain go1.26.7`), while the `audit` job tests on the service's own `go 1.25.0`. Because `go.mod` says 1.25.0, the runtime defaults stay those of 1.25, so the risk is small. *Fix, if wanted:* give the service's `go.mod` the store's `toolchain` line, or set up Go a second time in the deploy job before the log's build. *Trigger:* a Go release that changes a runtime default the service meets.
 
-## 411. ShellCheck covers c-storage's scripts only, not the activity log's four — the machine; `[DEFERRED]` (the activity log's review, 2026-11-13, Low 7)
+## 411. ShellCheck covers c-storage's scripts only, not the activity log's four — the machine; `[FIXED]` 2026-11-18 by ShellCheck's list widened to every service (`9eb9a61a`): audit-backbone's four scripts are in gate row 3 and CI's `ops` job (the activity log's review, 2026-11-13, Low 7)
 
 Gate row 3 and CI's `ops` job run ShellCheck on c-storage's scripts; the four in `services/audit-backbone/scripts/*.sh` are not covered, and `cover.sh` is now a CI gate step. The gap predates the piece's shipping. *Fix, if wanted:* add the folder to the row and the job. *Trigger:* the next edit of one of the four scripts.
 
