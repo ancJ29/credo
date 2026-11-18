@@ -437,9 +437,8 @@ nightly copy to S3 under a put-only role on the box, none of it built, deferred 
 ([open item 6](open-items.md)). The continuous-copy piece replaced it: Litestream copies each save to the
 environment's own bucket through an S3 gateway door, the box's role may put, get and list under its own
 path and holds no delete, and the records sit on a disk of their own (`ops/env.yml`'s `CopyBucket`,
-`BoxRole` and `RecordsVolume`). **It is built and guarded on written input, and no environment has run it
-yet**, so until the human's changes and the drill have run, a deployment's one SQLite file is still the only
-copy that has been proved readable. The restore runs on the box under its own role, which is why the role
+`BoxRole` and `RecordsVolume`). **It ran on ridge on 2026-11-13**, where the drill read a restored file holding a
+save made before a reboot ([the recap](recaps/2026-11-12-continuous-copy.md)). The restore runs on the box under its own role, which is why the role
 reads; the first plan's "may only put" was dropped for that reason.
 
 ## Where these pages' facts came from
