@@ -15,15 +15,9 @@ You need three things in the terminal you paste into, and none of them is a bloc
 
 - An AWS session for the account, opened in that same terminal.
 - `gh` logged in with rights on the repository (`gh auth login` if it is not).
-- Node 26, pnpm 12, Go and `jq`.
+- The [first-time setup](first-time-setup.md) done, and `jq`.
 
-Then these two, once:
-
-```sh
-cd "$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")/main" && pnpm install
-```
-
-You will see pnpm fetch and link the packages, ending in a summary of what it installed.
+Then this, once:
 
 ```sh
 npm install -g --ignore-scripts @usebruno/cli@4.2.0

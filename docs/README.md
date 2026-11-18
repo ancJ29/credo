@@ -80,6 +80,7 @@ reach us" faster than reading anything.
 | Page | It answers | For |
 | --- | --- | --- |
 | [`README.md`](../README.md) | what credo is, and where to look next | anyone |
+| [`docs/first-time-setup.md`](first-time-setup.md) | what to do once on a new machine: the tools and their versions, the code, its packages, and the first run | the human |
 | [`CLAUDE.md`](../CLAUDE.md) | what a session must know before it touches anything: the gate's seven commands, and the facts the code does not show | the machine |
 | [`docs/architecture.md`](architecture.md) | **how the system is put together** — one sentence, the diagram, one request walked end to end, the nine parts and what each one is for, and what is never there. Opened by anyone who has just arrived and wants the whole system | both |
 | [`docs/architecture-detail.md`](architecture-detail.md) | the detail behind that page: the codemap of where each thing lives, the data, who may do what, how it reaches a machine, how it is checked, and where these two pages' facts came from. Opened by whoever is about to change the code | the machine |
