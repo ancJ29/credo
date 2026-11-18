@@ -42,11 +42,13 @@ function open(path: string) {
 
 const list = () => within(screen.getByRole('navigation', { name: 'Parts' }));
 const part = () => within(screen.getByRole('article'));
-// Each state is a region named for it, so a sample's own headings are not taken for states.
+const bar = () => within(screen.getByRole('banner'));
+const about = () => within(screen.getByRole('complementary', { name: 'About this part' }));
+// Each state is a figure named for it, so a sample's own headings are not taken for states.
 const stateNames = () =>
   part()
-    .getAllByRole('region')
-    .map((region) => region.getAttribute('aria-label'));
+    .getAllByRole('figure')
+    .map((figure) => figure.getAttribute('aria-label'));
 
 describe('Gallery', () => {
   it('4: lists Foundations, Atoms, Molecules and Organisms in order, each with its count and every component file of its level', () => {
@@ -73,7 +75,6 @@ describe('Gallery', () => {
     open(`${BASE}/organisms/door-card`);
 
     expect(part().getByRole('heading', { level: 2, name: 'DoorCard' })).toBeDefined();
-    expect(part().getByText('Organisms')).toBeDefined();
     expect(part().getByText(/^A door’s card|^A door's card/)).toBeDefined();
     expect(part().getByText('name: string · logo?: string · children: ReactNode')).toBeDefined();
     expect(stateNames()).toEqual(['Sign-in', 'Login link']);
@@ -322,7 +323,7 @@ describe('Gallery', () => {
         .getAllByTitle(/^brand \d$/)
         .map((swatch) => swatch.getAttribute('style'));
 
-    it('the colour themes: the top bar offers every stock palette by name, steel, emerald and terracotta among them, and opens on the app’s own', () => {
+    it('the colour themes: the picker offers every stock palette by name, steel, emerald and terracotta among them, and opens on the app’s own', () => {
       open(BASE);
 
       expect(options()).toEqual([
@@ -389,6 +390,58 @@ describe('Gallery', () => {
       await user.selectOptions(chooser(), 'Emerald');
       expect(brand7()).toBe(PALETTES.find(({ name }) => name === 'emerald')!.shades[7]);
     });
+  });
+
+  it('the workbench: the top bar carries the title and the part’s path, and neither a tagline nor the page’s address', () => {
+    open(`${BASE}/organisms/door-card`);
+
+    expect(bar().getByRole('heading', { level: 1, name: 'Design system' })).toBeDefined();
+    expect(bar().getByText('Organisms / Cards /')).toBeDefined();
+    expect(bar().getByText('DoorCard')).toBeDefined();
+    expect(screen.queryByText('Every part, one at a time')).toBeNull();
+    expect(screen.queryByText(BASE)).toBeNull();
+    expect(bar().queryByRole('combobox')).toBeNull();
+  });
+
+  it('the workbench: a part with no kind has its group and name for a path, and an address naming no part has none', () => {
+    open(BASE);
+    expect(bar().getByText('Foundations /')).toBeDefined();
+    expect(bar().getByText('Values')).toBeDefined();
+    cleanup();
+
+    open(`${BASE}/organisms/no-such-part`);
+    expect(bar().queryByText(/\//)).toBeNull();
+  });
+
+  it('the workbench: the right column holds the part’s name, description, props, the Show switch, the states to pick and the theme picker', async () => {
+    const user = userEvent.setup();
+    open(`${BASE}/organisms/door-card`);
+
+    expect(about().getByRole('heading', { level: 2, name: 'DoorCard' })).toBeDefined();
+    expect(about().getByText(/^A door’s card|^A door's card/)).toBeDefined();
+    expect(about().getByRole('heading', { level: 3, name: 'Props' })).toBeDefined();
+    expect(about().getByText('name: string · logo?: string · children: ReactNode')).toBeDefined();
+    expect(about().getByRole('heading', { level: 3, name: 'Show' })).toBeDefined();
+    expect(about().getByRole('combobox', { name: 'Colour theme' })).toBeDefined();
+    expect(about().queryAllByRole('figure')).toHaveLength(0);
+
+    await user.click(about().getByRole('button', { name: 'One state at a time' }));
+    expect(about().getByRole('button', { name: 'Login link' })).toBeDefined();
+  });
+
+  it('the workbench: each state is a plate on the stage with its name under it, outside the right column', () => {
+    open(`${BASE}/organisms/door-card`);
+
+    const plate = part().getByRole('figure', { name: 'Sign-in' });
+    expect(within(plate).getByText('Sign-in').tagName).toBe('FIGCAPTION');
+    expect(plate.closest('aside')).toBeNull();
+  });
+
+  it('the workbench: an address that names no part keeps the theme picker beside its message', () => {
+    open(`${BASE}/organisms/no-such-part`);
+
+    expect(screen.getByRole('combobox', { name: 'Colour theme' })).toBeDefined();
+    expect(screen.queryByRole('complementary', { name: 'About this part' })).toBeNull();
   });
 
   it('3: asks search engines not to list it and carries its title', () => {

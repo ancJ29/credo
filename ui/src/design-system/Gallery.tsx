@@ -2,7 +2,6 @@ import {
   Burger,
   Button,
   Collapse,
-  Group,
   MantineProvider,
   NativeSelect,
   Text,
@@ -60,69 +59,76 @@ function partAt(pathname: string): Entry | undefined {
   return ENTRIES.find((entry) => pathOf(entry) === `${BASE}/${rest}`);
 }
 
-/** One part: its group, name, description, props and states, all side by side or one at a time. */
-function Part({ entry }: { entry: Entry }) {
+/** One part on the workbench: its states as plates on the stage, and a right column with its name, description, props, the Show switch, the states to pick and the theme picker. */
+function Part({ entry, picker }: { entry: Entry; picker: ReactNode }) {
   const [alone, setAlone] = useState(false);
   const [at, setAt] = useState(0);
   const shown = alone ? [entry.states[at]] : entry.states;
   return (
     <article className={classes.part}>
-      <Text size="xs" c="dimmed">
-        {entry.group}
-      </Text>
-      <Title order={2}>{entry.name}</Title>
-      <Text c="dimmed" maw="70ch" mt={4} mb="sm">
-        {entry.description}
-      </Text>
-      <code className={classes.props}>{entry.props}</code>
-      {entry.states.length > 1 && (
-        <Group gap="md" my="md">
-          <Text size="xs" c="dimmed">
-            Show
-          </Text>
-          <Button.Group>
-            <Button
-              size="xs"
-              variant={alone ? 'default' : 'filled'}
-              aria-pressed={!alone}
-              onClick={() => setAlone(false)}
-            >
-              All states side by side
-            </Button>
-            <Button
-              size="xs"
-              variant={alone ? 'filled' : 'default'}
-              aria-pressed={alone}
-              onClick={() => setAlone(true)}
-            >
-              One state at a time
-            </Button>
-          </Button.Group>
-        </Group>
-      )}
-      {alone && (
-        <Group gap="xs" mb="md" aria-label="States">
-          {entry.states.map((state, index) => (
-            <Button
-              key={state.name}
-              size="compact-xs"
-              variant={index === at ? 'light' : 'default'}
-              aria-pressed={index === at}
-              onClick={() => setAt(index)}
-            >
-              {state.name}
-            </Button>
-          ))}
-        </Group>
-      )}
-      <div className={classes.states}>
+      <div className={classes.stage}>
         {shown.map((state) => (
-          <section key={state.name} aria-label={state.name} className={classes.state}>
-            <h3 className={classes.stateName}>{state.name}</h3>
-            <div className={classes.stage}>{state.node}</div>
-          </section>
+          <figure key={state.name} aria-label={state.name} className={classes.plate}>
+            <div className={classes.sample}>{state.node}</div>
+            <figcaption className={classes.plateName}>{state.name}</figcaption>
+          </figure>
         ))}
       </div>
+      <aside className={classes.side} aria-label="About this part">
+        <Title order={2} fz={22} lh={1.2} mb={8}>
+          {entry.name}
+        </Title>
+        <Text c="dimmed" inherit mb={18}>
+          {entry.description}
+        </Text>
+        <section className={classes.sideSection}>
+          <h3 className={classes.sideHead}>Props</h3>
+          <code className={classes.props}>{entry.props}</code>
+        </section>
+        {entry.states.length > 1 && (
+          <section className={classes.sideSection}>
+            <h3 className={classes.sideHead}>Show</h3>
+            <Button.Group>
+              <Button
+                size="xs"
+                fullWidth
+                variant={alone ? 'default' : 'filled'}
+                aria-label="All states side by side"
+                aria-pressed={!alone}
+                onClick={() => setAlone(false)}
+              >
+                Side by side
+              </Button>
+              <Button
+                size="xs"
+                fullWidth
+                variant={alone ? 'filled' : 'default'}
+                aria-label="One state at a time"
+                aria-pressed={alone}
+                onClick={() => setAlone(true)}
+              >
+                One at a time
+              </Button>
+            </Button.Group>
+            {alone && (
+              <div className={classes.pick} role="group" aria-label="States">
+                {entry.states.map((state, index) => (
+                  <button
+                    key={state.name}
+                    type="button"
+                    className={classes.pickOne}
+                    aria-pressed={index === at}
+                    onClick={() => setAt(index)}
+                  >
+                    {state.name}
+                  </button>
+                ))}
+              </div>
+            )}
+          </section>
+        )}
+        <section className={classes.sideSection}>{picker}</section>
+      </aside>
     </article>
   );
 }
@@ -153,10 +159,10 @@ function Fold({
         <div className={classes.kindHead}>{toggle}</div>
       ) : (
         <div className={classes.groupHead}>
-          <Title order={2} fz={11} tt="uppercase" lts={0.5}>
+          <Title order={2} fz={13}>
             {toggle}
           </Title>
-          <Text span inherit fz={11}>
+          <Text span inherit fz={12}>
             {count}
           </Text>
         </div>
@@ -199,6 +205,15 @@ export function Gallery() {
       {part.name}
     </Link>
   );
+  const picker = (
+    <NativeSelect
+      size="xs"
+      aria-label="Colour theme"
+      data={THEMES}
+      value={colour}
+      onChange={(event) => choose(event.currentTarget.value)}
+    />
+  );
   return (
     <MantineProvider theme={themeOf(colour)} forceColorScheme="light">
       <title>Credo: the design system’s gallery</title>
@@ -213,20 +228,17 @@ export function Gallery() {
             aria-label={listShown ? 'Hide the list' : 'Show the list'}
             onClick={() => setListShown(!listShown)}
           />
-          <Title order={1} fz={16}>
+          <Title order={1} fz={14}>
             Design system
           </Title>
-          <Text span inherit opacity={0.85}>
-            Every part, one at a time
-          </Text>
-          <span className={classes.address}>{BASE}</span>
-          <NativeSelect
-            size="xs"
-            aria-label="Colour theme"
-            data={THEMES}
-            value={colour}
-            onChange={(event) => choose(event.currentTarget.value)}
-          />
+          {entry !== undefined && (
+            <span className={classes.crumb}>
+              <span>
+                {[entry.group, ...(entry.kind === undefined ? [] : [entry.kind])].join(' / ')} /
+              </span>{' '}
+              <b>{entry.name}</b>
+            </span>
+          )}
         </header>
         <div className={classes.wrap}>
           {listShown && (
@@ -252,11 +264,14 @@ export function Gallery() {
             </nav>
           )}
           {entry === undefined ? (
-            <div className={classes.part} role="status">
-              <Text>No part has this address. Pick one from the list.</Text>
+            <div className={classes.part}>
+              <div className={classes.stage} role="status">
+                <Text>No part has this address. Pick one from the list.</Text>
+              </div>
+              <div className={classes.side}>{picker}</div>
             </div>
           ) : (
-            <Part key={entry.name} entry={entry} />
+            <Part key={entry.name} entry={entry} picker={picker} />
           )}
         </div>
       </div>
