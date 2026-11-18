@@ -230,8 +230,8 @@ by the Mac's bash 3.2.
 ### The deploy, and the only route back
 
 The gate is five jobs and the deploy needs all five
-(`.github/workflows/ci.yml`'s `deploy` job, its `needs`); the fifth, `app`, waits on six package jobs
-of its own and is green only when all six are. The app job's 15-minute cap was what
+(`.github/workflows/ci.yml`'s `deploy` job, its `needs`); the fifth, `app`, waits on seven package jobs
+of its own and is green only when all seven are. The app job's 15-minute cap was what
 skipped two deploys (commit 4a15d012 raised it to 25); on 11-13 the 25 cut a run whose tests took about 24 minutes
 on one job running every package. Since the split each package job has its own cap, three times its longest measured time and never under 15 minutes
 (the scripts' shards 28, every other package job 15).
