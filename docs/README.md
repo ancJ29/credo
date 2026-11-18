@@ -81,7 +81,10 @@ reach us" faster than reading anything.
 | --- | --- | --- |
 | [`README.md`](../README.md) | what credo is, and where to look next | anyone |
 | [`docs/first-time-setup.md`](first-time-setup.md) | what to do once on a new machine: the tools and their versions, the code, its packages, and the first run | the human |
+| [`docs/quick-start.md`](quick-start.md) | your own copy of the app on this machine, with one demo company in it, in six pasted blocks | the human |
 | [`CLAUDE.md`](../CLAUDE.md) | what a session must know before it touches anything: the gate's seven commands, and the facts the code does not show | the machine |
+| each package's `CLAUDE.md`: [`bff`](../bff/CLAUDE.md), [`ui`](../ui/CLAUDE.md), [`shared`](../shared/CLAUDE.md), [`services/c-storage`](../services/c-storage/CLAUDE.md), [`services/audit-backbone`](../services/audit-backbone/CLAUDE.md), [`ops`](../ops/CLAUDE.md), [`scripts`](../scripts/CLAUDE.md), [`walk`](../walk/CLAUDE.md), [`visual`](../visual/CLAUDE.md) | what a session must know before it writes code in that package | the machine |
+| [`.claude/skills/session/SKILL.md`](../.claude/skills/session/SKILL.md) | the order a session meets the conventions in, from the piece's plan to its end | the machine |
 | [`docs/architecture.md`](architecture.md) | **how the system is put together** — one sentence, the diagram, one request walked end to end, the nine parts and what each one is for, and what is never there. Opened by anyone who has just arrived and wants the whole system | both |
 | [`docs/architecture-detail.md`](architecture-detail.md) | the detail behind that page: the codemap of where each thing lives, the data, who may do what, how it reaches a machine, how it is checked, and where these two pages' facts came from. Opened by whoever is about to change the code | the machine |
 | [`docs/activity-log.md`](activity-log.md) | the activity log, **built in the back end and shipped to the box, not yet run on ridge**: what `services/audit-backbone/` is, the path an entry takes, the two prerequisites, what is guaranteed and what cannot be | the machine |
@@ -94,9 +97,12 @@ reach us" faster than reading anything.
 | [`conventions/qa.md`](conventions/qa.md) | what must be checked, and what a gate is | the machine |
 | [`docs/memo/`](memo) | **how a part behaves — the promises a caller can be surprised by, one section a claim**: [`bff.md`](memo/bff.md), [`ui.md`](memo/ui.md), [`c-storage.md`](../services/c-storage/docs/memo/c-storage.md); where the BFF's code sits and one call's path through it: [`bff-code.md`](memo/bff-code.md); the same for the UI: [`ui-code.md`](memo/ui-code.md). Beside them, one argument a file: a client's own data in `extra`, the three decisions that are the human's, and one red diagnosed | both |
 | [`docs/open-items.md`](open-items.md) | everything still to do, numbered and never renumbered — read it before calling anything missing | both |
+| [`docs/decisions.md`](decisions.md) | **what was decided, and why**: every decision newest first, one line each, what it beat and the page that argues it | both |
 | [`docs/plans/`](plans), [`docs/recaps/`](recaps) | a piece's one page before it is built, and its half page with the evidence after | both |
 | [`ops/README.md`](../ops/README.md) | the runbook: the order and the commands for the network, a stack, a release, a drill, and [what a push to `main` runs](../ops/README.md#the-deploy-job) | the human, with the machine reading the logs |
 | [`services/c-storage/README.md`](../services/c-storage/README.md) | the Go service alone, and its whole check in one command | both |
+| [`services/audit-backbone/README.md`](../services/audit-backbone/README.md), [its memos](../services/audit-backbone/docs/README.md) | the activity log's Go service alone; one argument a memo, from its two doors to its retention | both |
+| on the orchestrator branch, its own worktree, never linked from here: worktrees/glance.md, worktrees/status.md and worktrees/runs.tsv; worktrees/archive/ and worktrees/pieces/; worktrees/research/, reviews/, process-review/, compare/, diagnoses/, milestones/ and mocks/; worktrees/skills/ | what is being built now and in what order, the board and its days, each piece's page, the dated research and reviews, the week objectives, and what the machine has learned by kind of task | the sessions; the human by glance.md |
 
 ## The order to read them
 
