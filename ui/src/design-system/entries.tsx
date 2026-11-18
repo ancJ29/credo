@@ -89,6 +89,8 @@ export const GROUPS = ['Foundations', 'Atoms', 'Molecules', 'Organisms'] as cons
 export type Entry = {
   group: (typeof GROUPS)[number];
   name: string;
+  /** The kind it sits under inside its group in the list; a part with none sits straight under the group. */
+  kind?: string;
   description: string;
   props: string;
   states: { name: string; node: ReactNode }[];
@@ -176,6 +178,7 @@ export const ENTRIES: Entry[] = [
   {
     group: 'Atoms',
     name: 'FieldLabel',
+    kind: 'Text',
     description:
       "A label in small capitals, bold and spaced: the legacy's field and section label.",
     props: 'children: string',
@@ -184,6 +187,7 @@ export const ENTRIES: Entry[] = [
   {
     group: 'Atoms',
     name: 'DoorHeading',
+    kind: 'Text',
     description:
       "A door's title as a heading, bold and centred, and a small dimmed subtitle beneath only when given.",
     props: 'title: string · subtitle?: string',
@@ -212,6 +216,7 @@ export const ENTRIES: Entry[] = [
   {
     group: 'Atoms',
     name: 'BackLink',
+    kind: 'Text',
     description:
       "A link back to where its caller says: a small arrow before its words, in the brand's shade 7.",
     props: 'href: string · children: string',
@@ -220,6 +225,7 @@ export const ENTRIES: Entry[] = [
   {
     group: 'Atoms',
     name: 'LogoTile',
+    kind: 'Marks',
     description:
       "A company's logo in a small tile with a pale brand line. With no logo, or one that fails to load, it draws nothing.",
     props: 'logo?: string · alt: string',
@@ -239,6 +245,7 @@ export const ENTRIES: Entry[] = [
   {
     group: 'Atoms',
     name: 'StatusBadge',
+    kind: 'Marks',
     description:
       "A record's state as a chip: green when active, grey when not. It takes its word as a prop.",
     props: 'active: boolean · label: string',
@@ -257,6 +264,7 @@ export const ENTRIES: Entry[] = [
   {
     group: 'Molecules',
     name: 'BrandBand',
+    kind: 'Headings',
     description:
       "The company's logo tile beside its name, bold and centred on the brand's palest shade, a brand-1 line beneath.",
     props: 'name: string · logo?: string',
@@ -274,6 +282,7 @@ export const ENTRIES: Entry[] = [
   {
     group: 'Molecules',
     name: 'DetailField',
+    kind: 'Fields',
     description: 'A label over its value; with no value, a dash. It takes its words as props.',
     props: 'label: string · value?: string',
     states: [
@@ -291,6 +300,7 @@ export const ENTRIES: Entry[] = [
   {
     group: 'Molecules',
     name: 'SectionTitle',
+    kind: 'Headings',
     description: "A section's title: a grey icon tile beside a small, bold label in capitals.",
     props: 'icon: ReactNode · label: string',
     states: [
@@ -300,6 +310,7 @@ export const ENTRIES: Entry[] = [
   {
     group: 'Organisms',
     name: 'DoorCard',
+    kind: 'Cards',
     description:
       "A door's card: a bar in the brand's gradient across its top, the company's band, then what it holds.",
     props: 'name: string · logo?: string · children: ReactNode',
@@ -325,6 +336,7 @@ export const ENTRIES: Entry[] = [
   {
     group: 'Organisms',
     name: 'SectionCard',
+    kind: 'Cards',
     description: 'A bordered block: a section title over what it holds. No edit mode.',
     props: 'icon: ReactNode · title: string · children: ReactNode',
     states: [
@@ -341,6 +353,7 @@ export const ENTRIES: Entry[] = [
   {
     group: 'Organisms',
     name: 'PageHeader',
+    kind: 'Headers',
     description: "A page's heading, with what acts on the page beside it. No phone variant.",
     props: 'title: string · actions?: ReactNode',
     states: [

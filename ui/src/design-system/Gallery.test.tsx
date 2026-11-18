@@ -3,6 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { describe, expect, it } from 'vitest';
 import { Gallery } from './Gallery';
+import { ENTRIES } from './entries';
 
 // Every component file of the three folders, by level and name: the list must hold each.
 const FILES = Object.keys(
@@ -208,6 +209,68 @@ describe('Gallery', () => {
     open(BASE);
 
     expect(document.documentElement.getAttribute('data-mantine-color-scheme')).toBe('light');
+  });
+
+  it('the side list: a button hides the whole list so the part takes the width, and shows it again', async () => {
+    const user = userEvent.setup();
+    open(`${BASE}/organisms/door-card`);
+
+    await user.click(screen.getByRole('button', { name: 'Hide the list' }));
+    expect(screen.queryByRole('navigation', { name: 'Parts' })).toBeNull();
+    expect(part().getByRole('heading', { level: 2, name: 'DoorCard' })).toBeDefined();
+    expect(
+      screen.getByRole('button', { name: 'Show the list' }).getAttribute('aria-expanded'),
+    ).toBe('false');
+
+    await user.click(screen.getByRole('button', { name: 'Show the list' }));
+    expect(list().getByRole('link', { name: 'DoorCard' })).toBeDefined();
+    expect(
+      screen.getByRole('button', { name: 'Hide the list' }).getAttribute('aria-expanded'),
+    ).toBe('true');
+  });
+
+  it('the side list: each group folds its parts away and unfolds them again, the others left open', async () => {
+    const user = userEvent.setup();
+    open(`${BASE}/organisms/door-card`);
+    const atoms = () => within(list().getByRole('region', { name: 'Atoms' }));
+
+    expect(atoms().getAllByRole('link').length).toBeGreaterThan(0);
+    await user.click(list().getByRole('button', { name: 'Atoms' }));
+    expect(atoms().queryAllByRole('link')).toHaveLength(0);
+    expect(list().getByRole('button', { name: 'Atoms' }).getAttribute('aria-expanded')).toBe(
+      'false',
+    );
+    expect(list().getByRole('link', { name: 'DoorCard' })).toBeDefined();
+    expect(list().getByRole('link', { name: 'Values' })).toBeDefined();
+
+    await user.click(list().getByRole('button', { name: 'Atoms' }));
+    expect(atoms().getByRole('link', { name: 'FieldLabel' })).toBeDefined();
+    expect(list().getByRole('button', { name: 'Atoms' }).getAttribute('aria-expanded')).toBe(
+      'true',
+    );
+  });
+
+  it('the side list: a part with a kind sits under its kind inside its group, read from its own entry, and a kind folds its parts', async () => {
+    const user = userEvent.setup();
+    open(`${BASE}/atoms/field-label`);
+
+    const kinded = ENTRIES.filter((entry) => entry.kind !== undefined);
+    expect(kinded.length).toBeGreaterThan(0);
+    for (const entry of kinded) {
+      const group = within(list().getByRole('region', { name: entry.group }));
+      const kind = within(group.getByRole('region', { name: entry.kind }));
+      expect(kind.getByRole('link', { name: entry.name })).toBeDefined();
+    }
+    // A part with no kind sits straight under its group.
+    const values = list().getByRole('link', { name: 'Values' });
+    expect(values.closest('section')?.getAttribute('aria-label')).toBe('Foundations');
+
+    const first = kinded[0];
+    const kind = () => within(list().getByRole('region', { name: first.kind }));
+    await user.click(list().getByRole('button', { name: first.kind }));
+    expect(kind().queryByRole('link', { name: first.name })).toBeNull();
+    await user.click(list().getByRole('button', { name: first.kind }));
+    expect(kind().getByRole('link', { name: first.name })).toBeDefined();
   });
 
   it('3: asks search engines not to list it and carries its title', () => {

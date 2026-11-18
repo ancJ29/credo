@@ -51,6 +51,39 @@
   color: var(--mantine-color-gray-7);
 }
 
+.fold {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 0;
+  font: inherit;
+  letter-spacing: inherit;
+  text-transform: inherit;
+  color: inherit;
+  background: none;
+  border: 0;
+  cursor: pointer;
+}
+
+.chevron {
+  transition: transform 150ms ease;
+}
+
+.chevron[data-open='true'] {
+  transform: rotate(90deg);
+}
+
+.kindHead {
+  margin: 6px 16px 2px 22px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--mantine-color-gray-7);
+}
+
+.kind .link {
+  padding-left: 40px;
+}
+
 .link {
   display: block;
   padding: 6px 16px 6px 24px;

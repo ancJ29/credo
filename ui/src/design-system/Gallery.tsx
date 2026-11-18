@@ -1,6 +1,7 @@
-import { Button, Group, MantineProvider, Text, Title } from '@mantine/core';
+import { Burger, Button, Collapse, Group, MantineProvider, Text, Title } from '@mantine/core';
+import { IconChevronRight } from '@tabler/icons-react';
 import { CREDO_COLOUR } from '@credo/shared';
-import { useState } from 'react';
+import { Fragment, useState, type ReactNode } from 'react';
 import { Link, useLocation } from 'react-router';
 import { ENTRIES, GROUPS, slugOf, type Entry } from './entries';
 import classes from './Gallery.module.css';
@@ -85,16 +86,70 @@ function Part({ entry }: { entry: Entry }) {
   );
 }
 
-/** The design system's parts as a workbench: a list by level, one part at a time, light whatever the device asks. */
+/** A label that folds and unfolds what sits under it: a group's heading with its count, or a kind's line. */
+function Fold({ label, count, children }: { label: string; count?: number; children: ReactNode }) {
+  const [open, setOpen] = useState(true);
+  const toggle = (
+    <button
+      type="button"
+      className={classes.fold}
+      aria-expanded={open}
+      onClick={() => setOpen(!open)}
+    >
+      <IconChevronRight className={classes.chevron} data-open={open} size={12} aria-hidden="true" />
+      {label}
+    </button>
+  );
+  return (
+    <section aria-label={label} className={count === undefined ? classes.kind : undefined}>
+      {count === undefined ? (
+        <div className={classes.kindHead}>{toggle}</div>
+      ) : (
+        <div className={classes.groupHead}>
+          <Title order={2} fz={11} tt="uppercase" lts={0.5}>
+            {toggle}
+          </Title>
+          <Text span inherit fz={11}>
+            {count}
+          </Text>
+        </div>
+      )}
+      <Collapse expanded={open} transitionDuration={0} keepMounted={false}>
+        {children}
+      </Collapse>
+    </section>
+  );
+}
+
+/** The design system's parts as a workbench: a list by level and kind that folds and hides, one part at a time, light whatever the device asks. */
 export function Gallery() {
   const { pathname } = useLocation();
   const entry = partAt(pathname);
+  const [listShown, setListShown] = useState(true);
+  const link = (part: Entry) => (
+    <Link
+      key={part.name}
+      className={classes.link}
+      to={pathOf(part)}
+      aria-current={part === entry ? 'page' : undefined}
+    >
+      {part.name}
+    </Link>
+  );
   return (
     <MantineProvider theme={themeOf(CREDO_COLOUR)} forceColorScheme="light">
       <title>Credo: the design system’s gallery</title>
       <meta name="robots" content="noindex" />
       <div className={classes.root}>
         <header className={classes.top}>
+          <Burger
+            size="sm"
+            color="white"
+            opened={listShown}
+            aria-expanded={listShown}
+            aria-label={listShown ? 'Hide the list' : 'Show the list'}
+            onClick={() => setListShown(!listShown)}
+          />
           <Title order={1} fz={16}>
             Design system
           </Title>
@@ -104,33 +159,28 @@ export function Gallery() {
           <span className={classes.address}>{BASE}</span>
         </header>
         <div className={classes.wrap}>
-          <nav className={classes.list} aria-label="Parts">
-            {GROUPS.map((group) => {
-              const parts = ENTRIES.filter((each) => each.group === group);
-              return (
-                <section key={group} aria-label={group}>
-                  <div className={classes.groupHead}>
-                    <Title order={2} fz={11} tt="uppercase" lts={0.5}>
-                      {group}
-                    </Title>
-                    <Text span inherit fz={11}>
-                      {parts.length}
-                    </Text>
-                  </div>
-                  {parts.map((part) => (
-                    <Link
-                      key={part.name}
-                      className={classes.link}
-                      to={pathOf(part)}
-                      aria-current={part === entry ? 'page' : undefined}
-                    >
-                      {part.name}
-                    </Link>
-                  ))}
-                </section>
-              );
-            })}
-          </nav>
+          {listShown && (
+            <nav className={classes.list} aria-label="Parts">
+              {GROUPS.map((group) => {
+                const parts = ENTRIES.filter((each) => each.group === group);
+                const kinds = [...new Set(parts.map((part) => part.kind))];
+                return (
+                  <Fold key={group} label={group} count={parts.length}>
+                    {kinds.map((kind) => {
+                      const links = parts.filter((part) => part.kind === kind).map(link);
+                      return kind === undefined ? (
+                        <Fragment key="">{links}</Fragment>
+                      ) : (
+                        <Fold key={kind} label={kind}>
+                          {links}
+                        </Fold>
+                      );
+                    })}
+                  </Fold>
+                );
+              })}
+            </nav>
+          )}
           {entry === undefined ? (
             <div className={classes.part} role="status">
               <Text>No part has this address. Pick one from the list.</Text>
