@@ -52,6 +52,10 @@ the routes `buildApp` declares inline stay at the top (`bff/src/auth.route.test.
   `bff/tests/c-storage.ts`'s `startCStorage` and signs in through `bff/tests/staff.ts`'s
   `staffTenant`.
 - **An answer the caller reads:** `bff/src/errors.ts`'s `HttpError`, thrown, and `parse` for a body.
+- **A route's path parameter:** `bff/src/routes/staff.ts`'s `idOf` for an `:id` that must be an
+  id (a 404 otherwise), and `paramsOf` for a parameter as the URL carries it; no route casts
+  `request.params` itself. The operator's routes name theirs in the route's `Params` type instead
+  (`bff/src/routes/operator-team.ts`).
 
 ## This package's own rules
 

@@ -42,7 +42,7 @@ import { declare, personOf } from '../audit';
 import { HttpError, parse } from '../errors';
 import { parsed, recordTools, type TenantStorage } from '../records/records';
 import { readSetup } from '../records/staff-records';
-import type { Deps } from './staff';
+import { type Deps, paramsOf } from './staff';
 
 const conflict = (current: unknown) => new HttpError(409, 'Conflict', { current });
 const notFound = () => new HttpError(404, 'Not found');
@@ -55,138 +55,146 @@ const idSchema = z.uuid();
  * the request first, so a stop between leaves a state the next read shows as it is: an order that
  * names a request which is not there, or not waiting, reads as having none. */
 export function registerOrderRoutes(app: FastifyInstance, deps: Deps) {
-  const { now, forClient, signedIn, mustCan } = deps;
+  registerOrderBook(app, deps);
+  const requests = registerDeliveries(app, deps);
+  registerDrivers(app, deps);
+  return requests;
+}
 
-  /** A request, with its tag. */
-  async function readRequest(storage: TenantStorage, day: string, id: string) {
-    const found = await storage.getRecord(recordKeys.tenant(storage.tenantId).delivery(day, id));
-    return found
-      ? { request: parsed(deliveryRequestSchema, 'a delivery request', found), tag: found.tag }
-      : null;
+/** A request, with its tag. */
+async function readRequest(storage: TenantStorage, day: string, id: string) {
+  const found = await storage.getRecord(recordKeys.tenant(storage.tenantId).delivery(day, id));
+  return found
+    ? { request: parsed(deliveryRequestSchema, 'a delivery request', found), tag: found.tag }
+    : null;
+}
+
+/** The order as the page shows it, given the request it names (if that is there): the request
+ * only while it waits or is delivered, and a confirmed order whose request is delivered reads
+ * fulfilled, whether or not the write that fulfils it was made. */
+const asShown = (order: Order, live: DeliveryRequest | undefined): Order => {
+  if (!order.request) return order;
+  if (live?.state === 'waiting') return order;
+  if (live?.state === 'delivered') {
+    return order.state === 'confirmed' ? { ...order, state: 'fulfilled' } : order;
   }
+  return { ...order, request: null };
+};
 
-  /** The order as the page shows it, given the request it names (if that is there): the request
-   * only while it waits or is delivered, and a confirmed order whose request is delivered reads
-   * fulfilled, whether or not the write that fulfils it was made. */
-  const asShown = (order: Order, live: DeliveryRequest | undefined): Order => {
-    if (!order.request) return order;
-    if (live?.state === 'waiting') return order;
-    if (live?.state === 'delivered') {
-      return order.state === 'confirmed' ? { ...order, state: 'fulfilled' } : order;
-    }
-    return { ...order, request: null };
-  };
+async function shown(storage: TenantStorage, order: Order): Promise<Order> {
+  if (!order.request) return order;
+  const live = await readRequest(storage, order.request.day, order.request.id);
+  return asShown(order, live?.request);
+}
 
-  async function shown(storage: TenantStorage, order: Order): Promise<Order> {
-    if (!order.request) return order;
-    const live = await readRequest(storage, order.request.day, order.request.id);
-    return asShown(order, live?.request);
+async function readOrder(storage: TenantStorage, day: string, id: string) {
+  const found = await storage.getRecord(recordKeys.tenant(storage.tenantId).order(day, id));
+  return found ? { order: parsed(orderSchema, 'an order', found), tag: found.tag } : null;
+}
+
+/** The order named by the route, or a 404. */
+async function mustFindOrder(request: FastifyRequest) {
+  const { day, id } = paramsOf(request);
+  if (!daySchema.safeParse(day).success || !idSchema.safeParse(id).success) throw notFound();
+  const found = await readOrder(request.storage, day, id);
+  if (!found) throw notFound();
+  return found;
+}
+
+async function mustFindRequest(request: FastifyRequest) {
+  const { day, id } = paramsOf(request);
+  if (!daySchema.safeParse(day).success || !idSchema.safeParse(id).success) throw notFound();
+  const found = await readRequest(request.storage, day, id);
+  if (!found) throw notFound();
+  return found;
+}
+
+const orderDoc = async (storage: TenantStorage, day: string, id: string): Promise<OrderDoc> => {
+  const found = (await readOrder(storage, day, id)) as NonNullable<
+    Awaited<ReturnType<typeof readOrder>>
+  >;
+  return { order: await shown(storage, found.order), version: found.tag };
+};
+
+const requestDoc = async (
+  storage: TenantStorage,
+  day: string,
+  id: string,
+): Promise<DeliveryDoc> => {
+  const found = (await readRequest(storage, day, id)) as NonNullable<
+    Awaited<ReturnType<typeof readRequest>>
+  >;
+  return { request: found.request, version: found.tag };
+};
+
+/** The next number of a kind, raised in the numbering record over the tag it was read at before
+ * any record carries it; a record that moved is read again, a few times at most (503). A number
+ * lost to a failed write is never given again. */
+async function nextNumber(storage: TenantStorage, kind: 'orders' | 'requests') {
+  const key = recordKeys.tenant(storage.tenantId).documentNumbering;
+  for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
+    const found = await storage.getRecord(key);
+    const held = found
+      ? parsed(documentNumberingSchema, 'the numbering', found)
+      : { orders: 0, requests: 0 };
+    const given = held[kind] + 1;
+    const saved = await storage.putRecord(key, { ...held, [kind]: given }, found?.tag ?? null);
+    if (saved === 'saved') return given;
   }
+  throw new HttpError(503, 'Service unavailable');
+}
 
-  async function readOrder(storage: TenantStorage, day: string, id: string) {
-    const found = await storage.getRecord(recordKeys.tenant(storage.tenantId).order(day, id));
-    return found ? { order: parsed(orderSchema, 'an order', found), tag: found.tag } : null;
-  }
-
-  /** The order named by the route, or a 404. */
-  async function mustFindOrder(request: FastifyRequest) {
-    const { day, id } = request.params as { day: string; id: string };
-    if (!daySchema.safeParse(day).success || !idSchema.safeParse(id).success) throw notFound();
-    const found = await readOrder(request.storage, day, id);
-    if (!found) throw notFound();
-    return found;
-  }
-
-  async function mustFindRequest(request: FastifyRequest) {
-    const { day, id } = request.params as { day: string; id: string };
-    if (!daySchema.safeParse(day).success || !idSchema.safeParse(id).success) throw notFound();
-    const found = await readRequest(request.storage, day, id);
-    if (!found) throw notFound();
-    return found;
-  }
-
-  const orderDoc = async (storage: TenantStorage, day: string, id: string): Promise<OrderDoc> => {
-    const found = (await readOrder(storage, day, id)) as NonNullable<
-      Awaited<ReturnType<typeof readOrder>>
-    >;
-    return { order: await shown(storage, found.order), version: found.tag };
-  };
-
-  const requestDoc = async (
-    storage: TenantStorage,
-    day: string,
-    id: string,
-  ): Promise<DeliveryDoc> => {
-    const found = (await readRequest(storage, day, id)) as NonNullable<
-      Awaited<ReturnType<typeof readRequest>>
-    >;
-    return { request: found.request, version: found.tag };
-  };
-
-  /** The next number of a kind, raised in the numbering record over the tag it was read at before
-   * any record carries it; a record that moved is read again, a few times at most (503). A number
-   * lost to a failed write is never given again. */
-  async function nextNumber(storage: TenantStorage, kind: 'orders' | 'requests') {
-    const key = recordKeys.tenant(storage.tenantId).documentNumbering;
-    for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
-      const found = await storage.getRecord(key);
-      const held = found
-        ? parsed(documentNumberingSchema, 'the numbering', found)
-        : { orders: 0, requests: 0 };
-      const given = held[kind] + 1;
-      const saved = await storage.putRecord(key, { ...held, [kind]: given }, found?.tag ?? null);
-      if (saved === 'saved') return given;
-    }
-    throw new HttpError(503, 'Service unavailable');
-  }
-
-  /** The customer and the lines of a save, priced by the app: each read by its key, the customer and
-   * each distinct product the save names and no more. An id the company lacks, or a total too large,
-   * is a 400. */
-  async function priced(storage: TenantStorage, body: z.infer<typeof saveOrderRequestSchema>) {
-    const keys = recordKeys.tenant(storage.tenantId);
-    const found = await storage.getRecord(keys.customer(body.customerId));
-    const customer = found ? parsed(customerSchema, 'a customer', found) : undefined;
-    const products = (
-      await Promise.all(
-        [...new Set(body.lines.map((line) => line.productId))].map((id) =>
-          storage.getRecord(keys.product(id)),
-        ),
-      )
+/** The customer and the lines of a save, priced by the app: each read by its key, the customer and
+ * each distinct product the save names and no more. An id the company lacks, or a total too large,
+ * is a 400. */
+async function priced(storage: TenantStorage, body: z.infer<typeof saveOrderRequestSchema>) {
+  const keys = recordKeys.tenant(storage.tenantId);
+  const found = await storage.getRecord(keys.customer(body.customerId));
+  const customer = found ? parsed(customerSchema, 'a customer', found) : undefined;
+  const products = (
+    await Promise.all(
+      [...new Set(body.lines.map((line) => line.productId))].map((id) =>
+        storage.getRecord(keys.product(id)),
+      ),
     )
-      .filter((stored) => stored !== null)
-      .map((stored) => parsed(productSchema, 'a product', stored));
-    const lines = priceLines(body.lines, products);
-    if (!customer || lines.kind !== 'priced') {
-      throw new HttpError(400, 'Bad request', { details: 'a customer and products of the lists' });
-    }
-    return { customer, lines: lines.lines, total: lines.total };
+  )
+    .filter((stored) => stored !== null)
+    .map((stored) => parsed(productSchema, 'a product', stored));
+  const lines = priceLines(body.lines, products);
+  if (!customer || lines.kind !== 'priced') {
+    throw new HttpError(400, 'Bad request', { details: 'a customer and products of the lists' });
   }
+  return { customer, lines: lines.lines, total: lines.total };
+}
 
-  /** The people the office may name as a driver: not left, and allowed to deliver by their layers. */
-  async function driversOf(storage: TenantStorage): Promise<Driver[]> {
-    const read = await readSetup(storage, storage.tenantId);
-    const people = await recordTools(storage).every(
-      recordKeys.tenant(storage.tenantId).employeePrefix,
-      employeeSchema,
-      'employee',
-    );
-    return people
-      .map((one) => one.record)
-      .filter(
-        (person) =>
-          !person.archived &&
-          resolvePermissions(
-            layersOf(read.setup, {
-              departmentId: person.department?.id,
-              positionId: person.position?.id,
-              own: person.permissions,
-            }),
-          )['deliveries.canDeliver'],
-      )
-      .map(({ id, code, name }) => ({ id, code, name }))
-      .sort(byCode);
-  }
+/** The people the office may name as a driver: not left, and allowed to deliver by their layers. */
+async function driversOf(storage: TenantStorage): Promise<Driver[]> {
+  const read = await readSetup(storage, storage.tenantId);
+  const people = await recordTools(storage).every(
+    recordKeys.tenant(storage.tenantId).employeePrefix,
+    employeeSchema,
+    'employee',
+  );
+  return people
+    .map((one) => one.record)
+    .filter(
+      (person) =>
+        !person.archived &&
+        resolvePermissions(
+          layersOf(read.setup, {
+            departmentId: person.department?.id,
+            positionId: person.position?.id,
+            own: person.permissions,
+          }),
+        )['deliveries.canDeliver'],
+    )
+    .map(({ id, code, name }) => ({ id, code, name }))
+    .sort(byCode);
+}
+
+/** The office's orders: listed, added, read, saved, and confirmed, sent or cancelled. */
+function registerOrderBook(app: FastifyInstance, deps: Deps) {
+  const { now, forClient, signedIn, mustCan } = deps;
 
   app.get(ROUTES.orders, forClient, async (request) => {
     mustCan(await signedIn(request), 'orders.canView');
@@ -266,7 +274,7 @@ export function registerOrderRoutes(app: FastifyInstance, deps: Deps) {
     { ...forClient, config: { audit: 'order.save' } },
     async (request) => {
       const who = await signedIn(request);
-      const entry = declare(request, personOf(who), (request.params as { id: string }).id);
+      const entry = declare(request, personOf(who), paramsOf(request).id);
       mustCan(who, 'orders.canEdit');
       const body = parse(resaveOrderRequestSchema, request.body);
       const found = await mustFindOrder(request);
@@ -303,7 +311,7 @@ export function registerOrderRoutes(app: FastifyInstance, deps: Deps) {
    * there, not left and allowed to deliver, and the day not before the order's (400). */
   async function issue(request: FastifyRequest, confirming: boolean) {
     const who = await signedIn(request);
-    const entry = declare(request, personOf(who), (request.params as { id: string }).id);
+    const entry = declare(request, personOf(who), paramsOf(request).id);
     mustCan(who, 'orders.canEdit');
     const body = parse(sendOrderRequestSchema, request.body);
     const found = await mustFindOrder(request);
@@ -370,7 +378,7 @@ export function registerOrderRoutes(app: FastifyInstance, deps: Deps) {
     { ...forClient, config: { audit: 'order.cancel' } },
     async (request) => {
       const who = await signedIn(request);
-      const entry = declare(request, personOf(who), (request.params as { id: string }).id);
+      const entry = declare(request, personOf(who), paramsOf(request).id);
       mustCan(who, 'orders.canEdit');
       const body = parse(cancelRequestSchema, request.body);
       const found = await mustFindOrder(request);
@@ -405,6 +413,12 @@ export function registerOrderRoutes(app: FastifyInstance, deps: Deps) {
       return await orderDoc(request.storage, order.day, order.id);
     },
   );
+}
+
+/** The delivery requests: the office's list and one, the driver's own, and a request delivered or
+ * cancelled; it hands back what the photo's routes need. */
+function registerDeliveries(app: FastifyInstance, deps: Deps) {
+  const { now, forClient, signedIn, mustCan } = deps;
 
   app.get(ROUTES.deliveries, forClient, async (request) => {
     mustCan(await signedIn(request), 'orders.canView');
@@ -467,7 +481,7 @@ export function registerOrderRoutes(app: FastifyInstance, deps: Deps) {
     { ...forClient, config: { audit: 'delivery.deliver' } },
     async (request) => {
       const { driverId, who } = await mustBeDriver(request);
-      const entry = declare(request, personOf(who), (request.params as { id: string }).id);
+      const entry = declare(request, personOf(who), paramsOf(request).id);
       const body = parse(deliverSentRequestSchema, request.body);
       const found = await mustFindRequest(request);
       const { day, id, order: named } = found.request;
@@ -520,7 +534,7 @@ export function registerOrderRoutes(app: FastifyInstance, deps: Deps) {
     { ...forClient, config: { audit: 'delivery.cancel' } },
     async (request) => {
       const who = await signedIn(request);
-      const entry = declare(request, personOf(who), (request.params as { id: string }).id);
+      const entry = declare(request, personOf(who), paramsOf(request).id);
       mustCan(who, 'orders.canEdit');
       const body = parse(cancelRequestSchema, request.body);
       const found = await mustFindRequest(request);
@@ -553,12 +567,17 @@ export function registerOrderRoutes(app: FastifyInstance, deps: Deps) {
     },
   );
 
+  return { mustFindRequest, mustReadRequest, mustBeDriver, requestDoc };
+}
+
+/** The people the office may name as a driver. */
+function registerDrivers(app: FastifyInstance, deps: Deps) {
+  const { forClient, signedIn, mustCan } = deps;
+
   app.get(ROUTES.drivers, forClient, async (request) => {
     mustCan(await signedIn(request), 'orders.canEdit');
     return { drivers: await driversOf(request.storage) };
   });
-
-  return { mustFindRequest, mustReadRequest, mustBeDriver, requestDoc };
 }
 
 /** What the orders' routes hand the photo's routes, which find and read a request as these do. */
