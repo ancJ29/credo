@@ -1,7 +1,7 @@
 # QA
 
 > **Decided** 2026-10-27, after reading the old app's QA process.
-> **Last amended** 2026-11-11, with a line on logs in records, and from the human's proposal that the whole check stop gating each merge:
+> **Last amended** 2026-11-19, from the human's ask that the review come once, right before `main` moves, and not on each step or piece; on 2026-11-11, a line on logs in records, and from the human's proposal that the whole check stop gating each merge:
 > a finished piece lands on `pre-merge`, the whole check runs there at most every two hours, and
 > `main` holds only checked trees. This file holds the rules as they stand; their history is in
 > `git log`.
@@ -19,13 +19,14 @@ flowchart LR
   table["case table<br/>🤖"] --> cheap["cheap build<br/>🤖 fake first"]
   cheap --> look["fake walk<br/>👤"] --> red["red<br/>🤖 each case once"]
   red --> green["green · 100 %<br/>🤖"]
-  green --> review["review<br/>🤖 another model"]
-  review --> merge["land on pre-merge<br/>🤖 quick check"]
+  green --> merge["land on pre-merge<br/>🤖 quick check"]
   merge --> on["work goes on<br/>🤖"]
-  merge -. every two hours .-> main["main<br/>🤖 whole check"]
+  merge -. every two hours .-> whole["whole check<br/>🤖 on pre-merge"]
+  whole --> review["one review<br/>🤖 another model"]
+  review --> main["main<br/>🤖"]
   green --> walks["walks<br/>👤 yes or no"]
   walks -- yes --> act["the act<br/>👤 deploy · partner"]
-  review -. a finding, once .-> red
+  review -. a block .-> merge
   walks -. a no .-> table
 ```
 
@@ -36,8 +37,9 @@ The eight rules, [below](#the-rules):
    only a test calls is dead.
 3. Each case is tested as near its code as it can be.
 4. Each test is named after its case; no second list.
-5. Another model reviews the code before it merges; one review, one fix pass; each finding
-   fixed, rejected or deferred, with its reason.
+5. One review of all that `pre-merge` holds and `main` lacks, by another model, after the whole
+   check is green and before `main` moves; one fix pass; each finding fixed, rejected or
+   deferred, with its reason.
 6. A flaky red is a bug, never rerun; only the gate that can change a conclusion is run, and a
    package's gate is one command; the whole check runs on `pre-merge` at most every two hours.
 7. The screens are the end-to-end check: each person's day on their device, yes or no a screen
@@ -93,20 +95,28 @@ The map of walks. A dash is a part of the day not built yet.
 4. **The test names are the cases.** Once built, each test's name is its case's sentence; the
    plan's table stays as it was at its commit, never kept in step. *Rejected:* a test-case file
    beside the tests. It repeats the names, and goes stale at the first test nobody copies in.
-5. **A model other than the author's reviews the code before it lands on `pre-merge`**, with its
-   tests and the case table, asking of each test whether breaking its case would turn it red.
-   The author's model is the one in the commits' `Co-Authored-By` line. *Rejected:* the
-   author's model reviewing its own code. It shares the blind spots that wrote it. Each finding is
-   listed in the recap and tagged `[FIXED]`, `[REJECTED]` or `[DEFERRED]`, with its reason; a
-   deferred one names where it went.
+5. **One review, of everything `pre-merge` holds that `main` lacks, once the whole check on
+   `pre-merge` is green and before `main` moves; a step or a piece reaching `pre-merge` gets its
+   own checks and the human's look, not a review.** The reviewer is a model other than the one that
+   wrote most of those commits, counted by the `Co-Authored-By` lines. It reads the work of several
+   authors at once, so no one author's model can be ruled out: the one that wrote most shares the
+   blind spots of most of what is read. It asks, in order, whether the code is boring and simple,
+   whom each new memo is for and whether it sits in its one home, whether it is consistent,
+   maintainable and secure, and of each test whether breaking its case would turn it red. *Rejected:*
+   a review of each step or piece before `pre-merge`, which this rule asked until 2026-11-19: the
+   human, "we should only do this kind of review right before merge code from pre-merge to main".
+   *Rejected:* the author's model reviewing its own code. It shares the blind spots that wrote it.
+   A finding that blocks (a defect, a wrong fact) is fixed on `pre-merge` and the whole check runs
+   again; the rest becomes an open item or a note. Each finding is listed and tagged `[FIXED]`,
+   `[REJECTED]` or `[DEFERRED]`, with its reason; a deferred one names where it went.
    **One review, one fix pass, and that pass's own gate is the re-check.** The reviewer may be
-   asked to reread the fixed lines; nothing else reads the piece again. What a second round would
+   asked to reread the fixed lines; nothing else reads the work again. What a second round would
    raise is deferred by the tagging above, never handed to a third reviewer — with one exception,
    deferred in no round: a finding whose text, acted on, would cost something that cannot be
    undone. A fix that meets the same red twice stops there
    ([pacing](collaboration.md#pacing-one-piece-at-a-time)'s budget), and the stop is reported as a
    diagnosis the human hears. *Rejected:* rounds until the reviewer has nothing left to say. A
-   second reviewing model costs a whole read of the piece to confirm what the fix pass's own gate
+   second reviewing model costs a whole read of the work to confirm what the fix pass's own gate
    has already read back, and rounds with no cap have no end a session can name.
    A finding made without context that a memo or the plan
    already holds is rejected, naming that home. *Why:* treating every finding as a bug erodes

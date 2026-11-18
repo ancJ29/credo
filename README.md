@@ -43,9 +43,11 @@ Each folder at the root is part of the app that ships, the tooling around it, or
 
 ## Where to look
 
-A question on the left, the page that answers it on the right. Two pages live on the orchestrator
-branch, the sessions' own worktree; no link on `main` reaches them, so they are named with the
-branch.
+A question on the left, the page that answers it on the right: each kind of note and fact has the
+one home named here, and every other page points to it
+([the rule](docs/conventions/documentation.md#one-fact-one-home)). A home outside `main` (the
+orchestrator branch, the sessions' own worktree; the kit's rules every project shares; a session's
+memory) is named with where it is, since no link on `main` reaches it.
 
 | You want to know | Open |
 | --- | --- |
@@ -53,6 +55,13 @@ branch.
 | how sign-in works | [docs/architecture.md, "One request, end to end"](docs/architecture.md#one-request-end-to-end) |
 | how to read a partner's returned words in | [docs/operator-guide.md, "Read a partner's returned words in"](docs/operator-guide.md#read-a-partners-returned-words-in) |
 | what is still to do | [docs/open-items.md](docs/open-items.md) |
+| what you, the human, have to do now, and the command for each | worktrees/glance.md and worktrees/next-actions.md on the orchestrator branch; a command an operator repeats is in [docs/operator-guide.md](docs/operator-guide.md) |
+| where one piece stands now | its own file, worktrees/pieces/ on the orchestrator branch; every board page is drawn from it |
+| what a run cost in minutes and size | worktrees/runs.tsv on the orchestrator branch, one row a run |
+| how sessions work, a rule that holds in every project | the kit's rules.md, outside this repository; credo's own rules are in [docs/conventions/collaboration.md](docs/conventions/collaboration.md), and a session's memory points to them and holds neither |
+| how a part is built, a fact about the architecture | [docs/architecture-detail.md](docs/architecture-detail.md); [docs/architecture.md](docs/architecture.md) summarises it |
+| how code is written here | [docs/conventions/code.md](docs/conventions/code.md) |
+| what a partner may read | [docs/partners/](docs/partners/README.md) |
 | what is being built now, and in what order | [docs/products.md, "Next, in order"](docs/products.md#next-in-order) |
 | what we decided, and why | [docs/decisions.md](docs/decisions.md), newest first |
 | what runs on ridge now | [docs/products.md](docs/products.md), its first lines |
