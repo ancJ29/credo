@@ -23,19 +23,22 @@ const BASE = '/48b74d079/gallery';
 /** Where the browser remembers the gallery's theme; nothing outside the gallery reads it. */
 const SAVED = 'credo-gallery-theme';
 
+/** The app's own colour in the one spelling the palettes use, so a comparison and a return agree. */
+const APP_COLOUR = CREDO_COLOUR.toLowerCase();
+
 /** The gallery's themes: each stock palette by name, drawn from its shade 7, the app's own marked. */
 const THEMES = PALETTES.map(({ name, shades }) => ({
   value: shades[7],
-  label: `${name[0].toUpperCase()}${name.slice(1)}${shades[7] === CREDO_COLOUR.toLowerCase() ? ' · the app’s' : ''}`,
+  label: `${name[0].toUpperCase()}${name.slice(1)}${shades[7] === APP_COLOUR ? ' · the app’s' : ''}`,
 }));
 
 /** The theme the browser remembers, if the gallery offers it; else the app's own colour. */
 function remembered() {
   try {
     const saved = window.localStorage.getItem(SAVED);
-    return THEMES.find(({ value }) => value === saved)?.value ?? CREDO_COLOUR;
+    return THEMES.find(({ value }) => value === saved)?.value ?? APP_COLOUR;
   } catch {
-    return CREDO_COLOUR;
+    return APP_COLOUR;
   }
 }
 
@@ -124,16 +127,22 @@ function Part({ entry }: { entry: Entry }) {
   );
 }
 
-/** A label that folds and unfolds what sits under it: a group's heading with its count, or a kind's line. */
-function Fold({ label, count, children }: { label: string; count?: number; children: ReactNode }) {
-  const [open, setOpen] = useState(true);
+/** A label that folds and unfolds what sits under it: a group's heading with its count, or a kind's line; whether it is open is kept by the gallery, so hiding the list forgets no fold. */
+function Fold({
+  label,
+  count,
+  open,
+  onToggle,
+  children,
+}: {
+  label: string;
+  count?: number;
+  open: boolean;
+  onToggle: () => void;
+  children: ReactNode;
+}) {
   const toggle = (
-    <button
-      type="button"
-      className={classes.fold}
-      aria-expanded={open}
-      onClick={() => setOpen(!open)}
-    >
+    <button type="button" className={classes.fold} aria-expanded={open} onClick={onToggle}>
       <IconChevronRight className={classes.chevron} data-open={open} size={12} aria-hidden="true" />
       {label}
     </button>
@@ -164,6 +173,17 @@ export function Gallery() {
   const { pathname } = useLocation();
   const entry = partAt(pathname);
   const [listShown, setListShown] = useState(true);
+  // The folds closed, by group, or by group and kind: kept here, outside the list a hide unmounts.
+  const [folded, setFolded] = useState<ReadonlySet<string>>(new Set());
+  const fold = (key: string) => ({
+    open: !folded.has(key),
+    onToggle: () =>
+      setFolded((was) => {
+        const next = new Set(was);
+        if (!next.delete(key)) next.add(key);
+        return next;
+      }),
+  });
   const [colour, setColour] = useState<string>(remembered);
   const choose = (next: string) => {
     setColour(next);
@@ -215,13 +235,13 @@ export function Gallery() {
                 const parts = ENTRIES.filter((each) => each.group === group);
                 const kinds = [...new Set(parts.map((part) => part.kind))];
                 return (
-                  <Fold key={group} label={group} count={parts.length}>
+                  <Fold key={group} label={group} count={parts.length} {...fold(group)}>
                     {kinds.map((kind) => {
                       const links = parts.filter((part) => part.kind === kind).map(link);
                       return kind === undefined ? (
                         <Fragment key="">{links}</Fragment>
                       ) : (
-                        <Fold key={kind} label={kind}>
+                        <Fold key={kind} label={kind} {...fold(`${group}/${kind}`)}>
                           {links}
                         </Fold>
                       );

@@ -3,7 +3,7 @@ import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { CREDO_COLOUR } from '@credo/shared';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { Providers } from '../frame/Providers';
+import { openApp } from '../../tests/open';
 import { Gallery } from './Gallery';
 import { ENTRIES } from './entries';
 import { PALETTES } from './palettes';
@@ -276,6 +276,29 @@ describe('Gallery', () => {
     expect(kind().getByRole('link', { name: first.name })).toBeDefined();
   });
 
+  it('the side list: a group and a kind folded stay folded when the list is hidden and shown again', async () => {
+    const user = userEvent.setup();
+    open(`${BASE}/atoms/field-label`);
+    const folded = (name: string) =>
+      list().getByRole('button', { name }).getAttribute('aria-expanded');
+
+    await user.click(list().getByRole('button', { name: 'Atoms' }));
+    await user.click(list().getByRole('button', { name: 'Cards' }));
+    await user.click(screen.getByRole('button', { name: 'Hide the list' }));
+    await user.click(screen.getByRole('button', { name: 'Show the list' }));
+
+    expect(folded('Atoms')).toBe('false');
+    expect(
+      within(list().getByRole('region', { name: 'Atoms' })).queryAllByRole('link'),
+    ).toHaveLength(0);
+    expect(folded('Cards')).toBe('false');
+    expect(
+      within(list().getByRole('region', { name: 'Cards' })).queryAllByRole('link'),
+    ).toHaveLength(0);
+    expect(folded('Molecules')).toBe('true');
+    expect(list().getByRole('link', { name: 'PageHeader' })).toBeDefined();
+  });
+
   describe('the colour themes', () => {
     afterEach(() => {
       window.localStorage.clear();
@@ -318,6 +341,14 @@ describe('Gallery', () => {
       expect(brand7()).toBe(CREDO_COLOUR);
     });
 
+    it('the colour themes: a remembered value no palette has opens on the app’s own colour', () => {
+      window.localStorage.setItem('credo-gallery-theme', '#123456');
+      open(BASE);
+
+      expect((chooser() as HTMLSelectElement).value).toBe(CREDO_COLOUR);
+      expect(brand7()).toBe(CREDO_COLOUR);
+    });
+
     it('the colour themes: choosing one redraws every part in it, the Foundations’ palette included, and the browser remembers it', async () => {
       const user = userEvent.setup();
       open(BASE);
@@ -342,11 +373,8 @@ describe('Gallery', () => {
       await user.selectOptions(chooser(), 'Terracotta');
       cleanup();
 
-      render(
-        <Providers colour={CREDO_COLOUR} language="en" test>
-          <span>the app</span>
-        </Providers>,
-      );
+      // The app as `App.tsx` draws it, at the operator's door, which wears credo's own colour.
+      openApp('/operator', { operator: true });
       expect(brand7()).toBe(CREDO_COLOUR);
       cleanup();
 
