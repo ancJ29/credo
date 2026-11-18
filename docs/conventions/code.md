@@ -212,9 +212,11 @@ storage** (`bff/src/routes/staff.ts`'s `parse(saveEmployeeRequestSchema, request
 repo.
 
 **C10 · The next route added to `bff/src/routes/staff.ts` or `bff/src/routes/orders.ts` goes in its own module**, as the
-five smaller modules already do. `[next copy · reader]` *Why:* those two are single closures of 629
-and 453 lines (`bff/src/routes/staff.ts`'s `registerStaffRoutes` and `bff/src/routes/orders.ts`'s `registerOrderRoutes`, each to the end of its file), 42 and 40
-branches as the 2026-11-08 review counted them, and nobody can judge either in one read.
+five smaller modules already do. `[next copy · reader]` *Why:* `bff/src/routes/staff.ts`'s
+`registerStaffRoutes` calls six named groups (the largest, `registerStaffChanges`, is 242 lines) and
+`bff/src/routes/orders.ts`'s `registerOrderRoutes` calls three (the largest, `registerOrderBook`, is
+221), split 2026-11-18; each file is still the length of one read or more, so a new kind of record
+still gets its own module.
 
 ## The patterns to copy
 
