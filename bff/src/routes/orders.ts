@@ -42,7 +42,7 @@ import { declare, personOf } from '../audit';
 import { HttpError, parse } from '../errors';
 import { parsed, recordTools, type TenantStorage } from '../records/records';
 import { readSetup } from '../records/staff-records';
-import type { Deps } from './staff';
+import { type Deps, paramsOf } from './staff';
 
 const conflict = (current: unknown) => new HttpError(409, 'Conflict', { current });
 const notFound = () => new HttpError(404, 'Not found');
@@ -90,7 +90,7 @@ export function registerOrderRoutes(app: FastifyInstance, deps: Deps) {
 
   /** The order named by the route, or a 404. */
   async function mustFindOrder(request: FastifyRequest) {
-    const { day, id } = request.params as { day: string; id: string };
+    const { day, id } = paramsOf(request);
     if (!daySchema.safeParse(day).success || !idSchema.safeParse(id).success) throw notFound();
     const found = await readOrder(request.storage, day, id);
     if (!found) throw notFound();
@@ -98,7 +98,7 @@ export function registerOrderRoutes(app: FastifyInstance, deps: Deps) {
   }
 
   async function mustFindRequest(request: FastifyRequest) {
-    const { day, id } = request.params as { day: string; id: string };
+    const { day, id } = paramsOf(request);
     if (!daySchema.safeParse(day).success || !idSchema.safeParse(id).success) throw notFound();
     const found = await readRequest(request.storage, day, id);
     if (!found) throw notFound();
@@ -266,7 +266,7 @@ export function registerOrderRoutes(app: FastifyInstance, deps: Deps) {
     { ...forClient, config: { audit: 'order.save' } },
     async (request) => {
       const who = await signedIn(request);
-      const entry = declare(request, personOf(who), (request.params as { id: string }).id);
+      const entry = declare(request, personOf(who), paramsOf(request).id);
       mustCan(who, 'orders.canEdit');
       const body = parse(resaveOrderRequestSchema, request.body);
       const found = await mustFindOrder(request);
@@ -303,7 +303,7 @@ export function registerOrderRoutes(app: FastifyInstance, deps: Deps) {
    * there, not left and allowed to deliver, and the day not before the order's (400). */
   async function issue(request: FastifyRequest, confirming: boolean) {
     const who = await signedIn(request);
-    const entry = declare(request, personOf(who), (request.params as { id: string }).id);
+    const entry = declare(request, personOf(who), paramsOf(request).id);
     mustCan(who, 'orders.canEdit');
     const body = parse(sendOrderRequestSchema, request.body);
     const found = await mustFindOrder(request);
@@ -370,7 +370,7 @@ export function registerOrderRoutes(app: FastifyInstance, deps: Deps) {
     { ...forClient, config: { audit: 'order.cancel' } },
     async (request) => {
       const who = await signedIn(request);
-      const entry = declare(request, personOf(who), (request.params as { id: string }).id);
+      const entry = declare(request, personOf(who), paramsOf(request).id);
       mustCan(who, 'orders.canEdit');
       const body = parse(cancelRequestSchema, request.body);
       const found = await mustFindOrder(request);
@@ -467,7 +467,7 @@ export function registerOrderRoutes(app: FastifyInstance, deps: Deps) {
     { ...forClient, config: { audit: 'delivery.deliver' } },
     async (request) => {
       const { driverId, who } = await mustBeDriver(request);
-      const entry = declare(request, personOf(who), (request.params as { id: string }).id);
+      const entry = declare(request, personOf(who), paramsOf(request).id);
       const body = parse(deliverSentRequestSchema, request.body);
       const found = await mustFindRequest(request);
       const { day, id, order: named } = found.request;
@@ -520,7 +520,7 @@ export function registerOrderRoutes(app: FastifyInstance, deps: Deps) {
     { ...forClient, config: { audit: 'delivery.cancel' } },
     async (request) => {
       const who = await signedIn(request);
-      const entry = declare(request, personOf(who), (request.params as { id: string }).id);
+      const entry = declare(request, personOf(who), paramsOf(request).id);
       mustCan(who, 'orders.canEdit');
       const body = parse(cancelRequestSchema, request.body);
       const found = await mustFindRequest(request);

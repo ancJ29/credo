@@ -94,9 +94,12 @@ export type Deps = {
 
 const conflict = (current: unknown) => new HttpError(409, 'Conflict', { current });
 
-/** A route's `:id` that is no id names no one. */
-function idOf(request: FastifyRequest) {
-  const id = z.uuid().safeParse((request.params as { id: string }).id);
+/** A route's path parameters as the URL carries them, unchecked: each is a string. */
+export const paramsOf = (request: FastifyRequest) => request.params as Record<string, string>;
+
+/** A route's `:id` that is no id names no record. */
+export function idOf(request: FastifyRequest) {
+  const id = z.uuid().safeParse(paramsOf(request).id);
   if (!id.success) throw new HttpError(404, 'Not found');
   return id.data;
 }
@@ -456,7 +459,7 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
     { ...forClient, config: { audit: 'employee.save' } },
     async (request) => {
       const who = await signedIn(request);
-      const entry = declare(request, personOf(who), (request.params as { id: string }).id);
+      const entry = declare(request, personOf(who), paramsOf(request).id);
       mustCan(who, 'staff.canEdit');
       const found = await mustFind(request.storage, idOf(request));
       const body = parse(saveEmployeeRequestSchema, request.body);
@@ -513,7 +516,7 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
     { ...forClient, config: { audit: 'employee.archive' } },
     async (request) => {
       const who = await signedIn(request);
-      const entry = declare(request, personOf(who), (request.params as { id: string }).id);
+      const entry = declare(request, personOf(who), paramsOf(request).id);
       mustCan(who, 'staff.canDelete');
       const found = await mustFind(request.storage, idOf(request));
       const body = parse(archiveEmployeeRequestSchema, request.body);
@@ -547,7 +550,7 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
     { ...forClient, config: { audit: 'employee.restore' } },
     async (request) => {
       const who = await signedIn(request);
-      const entry = declare(request, personOf(who), (request.params as { id: string }).id);
+      const entry = declare(request, personOf(who), paramsOf(request).id);
       mustCan(who, 'staff.canDelete');
       const found = await mustFind(request.storage, idOf(request));
       const body = parse(archiveEmployeeRequestSchema, request.body);
@@ -579,7 +582,7 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
     { ...forClient, config: { audit: 'employee.password' } },
     async (request) => {
       const who = await signedIn(request);
-      const entry = declare(request, personOf(who), (request.params as { id: string }).id);
+      const entry = declare(request, personOf(who), paramsOf(request).id);
       mustBeRoot(who);
       const found = await mustFind(request.storage, idOf(request));
       const body = parse(setPasswordRequestSchema, request.body);
@@ -612,7 +615,7 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
     { ...forClient, config: { audit: 'employee.code' } },
     async (request) => {
       const who = await signedIn(request);
-      const entry = declare(request, personOf(who), (request.params as { id: string }).id);
+      const entry = declare(request, personOf(who), paramsOf(request).id);
       mustBeRoot(who);
       const found = await mustFind(request.storage, idOf(request));
       const body = parse(changeCodeRequestSchema, request.body);
@@ -717,7 +720,7 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
     { ...forClient, config: { audit: 'employee.photo' } },
     async (request) => {
       const who = await signedIn(request);
-      const entry = declare(request, personOf(who), (request.params as { id: string }).id);
+      const entry = declare(request, personOf(who), paramsOf(request).id);
       mustCan(who, 'staff.canEdit');
       const found = await mustFind(request.storage, idOf(request));
       const body = parse(savePhotoRequestSchema, request.body);
@@ -778,7 +781,7 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
     { ...forClient, config: { audit: 'employee.email' } },
     async (request) => {
       const who = await signedIn(request);
-      const entry = declare(request, personOf(who), (request.params as { id: string }).id);
+      const entry = declare(request, personOf(who), paramsOf(request).id);
       mustBeRoot(who);
       const found = await mustFind(request.storage, idOf(request));
       if (!staffConfig((await setupDoc(request.storage)).setup).fields.email) {
@@ -820,7 +823,7 @@ export function registerStaffRoutes(app: FastifyInstance, deps: Deps) {
     { ...forClient, config: { audit: 'employee.qr' } },
     async (request) => {
       const who = await signedIn(request);
-      const entry = declare(request, personOf(who), (request.params as { id: string }).id);
+      const entry = declare(request, personOf(who), paramsOf(request).id);
       mustBeRoot(who);
       const found = await mustFind(request.storage, idOf(request));
       if (!staffConfig((await setupDoc(request.storage)).setup).fields.qr) {
