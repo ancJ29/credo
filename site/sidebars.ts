@@ -1,11 +1,24 @@
 import type { SidebarsConfig } from '@docusaurus/plugin-content-docs';
 
 // The sidebar drawn in the docs site's plan; each id is the page's path from the repository root,
-// without `.md`. Two rows wait on later steps: "Partners", first, once its pages are written in
-// docs/partners/, and "Archive", last, a GitHub link to docs/plans/ and docs/recaps/, once the link
-// plugin derives the repository's address where the site is built.
+// without `.md`. One row waits on a later step: "Archive", last, a GitHub link to docs/plans/ and
+// docs/recaps/, once the link plugin derives the repository's address where the site is built.
 const sidebars: SidebarsConfig = {
   docs: [
+    {
+      type: 'category',
+      label: 'Partners',
+      items: [
+        { type: 'doc', id: 'docs/partners/README', label: 'What credo is, without code' },
+        { type: 'doc', id: 'docs/partners/product-owner', label: 'For the product owner' },
+        { type: 'doc', id: 'docs/partners/sales', label: 'For the sales partner' },
+        { type: 'doc', id: 'docs/partners/operator', label: 'For the operator' },
+        { type: 'doc', id: 'docs/partners/developer', label: 'For a new developer' },
+        { type: 'doc', id: 'docs/partners/tester', label: 'For a tester' },
+        { type: 'link', label: 'What comes next', href: '/docs/products#next-in-order' },
+        { type: 'doc', id: 'docs/partners/questions', label: 'Questions and answers' },
+      ],
+    },
     {
       type: 'category',
       label: 'Start',
