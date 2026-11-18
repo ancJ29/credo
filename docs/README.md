@@ -116,6 +116,10 @@ reach us" faster than reading anything.
 4. [`conventions/qa.md`](conventions/qa.md) and [`CLAUDE.md`](../CLAUDE.md) before running or
    changing anything; the rest when a question asks for it.
 
+**For a tester**, in this order: the product's row in [`products.md`](products.md), then the case table of
+that product's plan in `docs/plans/`, then the walks page's question for that screen
+([`products.md`](products.md), section 3). Where plans disagree, the newest plan for a screen wins.
+
 ## What this page did not read
 
 Every file and line in the tables above was opened at the commit that added this page. **Six
