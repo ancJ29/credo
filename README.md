@@ -6,12 +6,19 @@ once, each seeing only its own people and records. Each company makes the app it
 settings, such as its name, logo, colours and the staff details it keeps, rather than through code
 written for it.
 
-## Where to look
+## Get started
 
-- [`docs/architecture.md`](docs/architecture.md): how the system is put together, the page to open on arrival.
-- [`docs/quick-start.md`](docs/quick-start.md): run your own copy of the app on this machine.
-- [`docs/products.md`](docs/products.md): what exists today, what each part does and how far it has got.
-- [`docs/README.md`](docs/README.md): the index of every document, and what to open when something is wrong.
-- [`docs/ridge-guide.md`](docs/ridge-guide.md): the shared pre-production environment, how to reach and operate it.
-- [`docs/open-items.md`](docs/open-items.md): everything still to do.
-- [`CLAUDE.md`](CLAUDE.md): what a coding session needs to know, including the commands to run the app and its checks.
+New to the project? Begin with [first-time setup](docs/first-time-setup.md): the tools to install,
+the code and its packages, and the app brought up once on your own machine. After that, the table
+below names the page for each next question, from how the system is built to where to look when
+something goes wrong.
+
+| Page | Includes |
+| --- | --- |
+| [`docs/architecture.md`](docs/architecture.md) | the system at a glance · one request end to end · what each part is for · where a tenant's records live · what is never there |
+| [`docs/quick-start.md`](docs/quick-start.md) | bring your copy up · add a demo company · see what runs · stop it · read a record's changes · take it away |
+| [`docs/products.md`](docs/products.md) | the app · the operator console · the walk · the demo set · the tooling · checking a piece on ridge · known gaps |
+| [`docs/README.md`](docs/README.md) | putting a changed record back · a bug's first fifteen minutes · the logs · every document · the order to read them |
+| [`docs/ridge-guide.md`](docs/ridge-guide.md) | deploy · check · take down and bring back · the operator and demo copies · a new root password · restoring records |
+| [`docs/open-items.md`](docs/open-items.md) | everything still to do, numbered |
+| [`CLAUDE.md`](CLAUDE.md) | for coding sessions · the gate's seven checks · the facts the code does not show |
