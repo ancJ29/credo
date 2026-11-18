@@ -12,11 +12,11 @@
 #   CLOUDFLARE_PAGES_PRODUCTION_BRANCH   only when the project's production branch is not main
 #
 # What it does: the walks-only checks below (each "== refused: <why>", exit 2), then ops/pages-preview.sh --folder <it> --branch <the
-#   build line's branch>, which refuses the rest (project, credential, tools, production branch, an open address), deploys, probes
-#   and gives the verdict: see its header. Log: logs/<YYYYMMDD-HHMM>-walks-preview.log in the credo root.
+#   build line's branch>, which refuses the rest (project, credential, tools, production branch), deploys and gives the
+#   verdict: see its header. Log: logs/<YYYYMMDD-HHMM>-walks-preview.log in the credo root.
 #   Walks-only refusals: the folder is missing or has no index.html; the page's own build line is unreadable or names main.
 #   The script's own refusals are written to that log too.
-# Look for: "== deployed", the two addresses, "refused: a redirect to Access's sign-in" twice, "== verdict: good", "== done".
+# Look for: "== deployed", the two addresses, "== verdict: good", "== done".
 set -uo pipefail
 
 # shellcheck source=lib.sh

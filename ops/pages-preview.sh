@@ -1,7 +1,7 @@
 #!/bin/bash
 # ops/pages-preview.sh (--folder <dir> | --worktree <dir> --sub <path>) --branch <preview-branch> [--commit <sha>] [--stem <log-name>]
 # The one body of every Cloudflare Pages PREVIEW deploy: sends a static folder to the project as a preview at a branch,
-# never production, and checks that the preview's two addresses refuse a visitor without Access. Called by
+# never production; the preview is open by its link, with no sign-in, as production is. Called by
 # ops/walks-preview.sh (the walks page) and by hand (any worktree's committed folder). Runs from any worktree.
 #
 # Parameters (the shape of the two cases):
@@ -19,18 +19,16 @@
 # What it does, in order:
 #   1 refusals (each "== refused: <why>", exit 2, nothing deployed): a bad or missing parameter; the folder or its
 #     index.html is missing; the worktree is dirty or lacks <path>/index.html at HEAD; the project's name or the credential is
-#     absent (named, no value printed); the branch equals the production branch; no node 26, npm, curl, jq or tar; the
-#     preview address answers a visitor instead of refusing; then, with wrangler installed, the project named is not in the
-#     account these credentials reach (a read of wrangler's project list, never its "create it?" question).
+#     absent (named, no value printed); the branch equals the production branch; no node 26, npm, jq or tar; then, with
+#     wrangler installed, the project named is not in the account these credentials reach (a read of wrangler's project
+#     list, never its "create it?" question).
 #   2 deploy: wrangler 4.151.0 (pinned as in the workflow, installed into a temp folder) pages deploy of the folder at
 #     --branch. The two addresses are printed on this terminal only (the log masks Pages names).
-#   3 after the upload: both addresses must refuse a visitor (a redirect to cloudflareaccess.com, as ops/walks-refused.sh
-#     judges it). If one answers the page: a loud FAIL line and the command that takes it down.
-#   4 a verdict line naming every failure, then "== done". Exit: 0 good, 1 a failure, 2 refused.
+#   3 a verdict line naming every failure, then "== done". Exit: 0 good, 1 a failure, 2 refused.
 # What it changes: ONE preview deployment on Cloudflare Pages; the logs folder; a temp folder (removed). Nothing in git,
 #   any worktree (a worktree is only read), or production.
-# Look for: "== project found", "== deployed", the two addresses, "refused: a redirect to Access's sign-in" twice,
-#   "== verdict: good", "== done". Expected length: about 1 to 2 minutes.
+# Look for: "== project found", "== deployed", the two addresses, "== verdict: good", "== done". Expected length: about
+#   1 to 2 minutes.
 set -uo pipefail
 
 # shellcheck source=lib.sh
@@ -40,7 +38,7 @@ logdir="${OPS_LOG_DIR:-$root/logs}"
 wrangler_ver=4.151.0
 wrangler_before=2026-10-14T05:50:43.466Z
 
-# The mask: every wrangler/curl line passes it before the screen or the log. Every 32-hex id (an account id), Pages names,
+# The mask: every wrangler line passes it before the screen or the log. Every 32-hex id (an account id), Pages names,
 # token-like strings (long base64/hex/underscore runs, Bearer values), and key/secret/token/password values.
 mask() {
   LC_ALL=C sed -l -E \
@@ -128,61 +126,17 @@ elif [ -s "$HOME/Library/Preferences/.wrangler/config/default.toml" ] || [ -s "$
 else
   refuse "no Cloudflare credential: set CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID, or run wrangler login"
 fi
-for c in node npm curl jq tar; do command -v "$c" >/dev/null 2>&1 || refuse "$c is not on the PATH"; done
+for c in node npm jq tar; do command -v "$c" >/dev/null 2>&1 || refuse "$c is not on the PATH"; done
 [ "$(node -p 'process.versions.node.split(".")[0]' 2>/dev/null)" = 26 ] || refuse "node on the PATH is not v26 (the workflow's)"
-
-# probe <url>: 0 refused as Access refuses (a redirect to *.cloudflareaccess.com), 1 answers or redirects elsewhere,
-# 3 nothing there (no answer, or 404), as ops/walks-refused.sh judges it. Prints the status only, never the address.
-probe() {
-  local out code location host
-  out=$(curl -sS -o /dev/null -m 20 -w '%{http_code} %{redirect_url}' "$1" 2>/dev/null) || {
-    echo "  no answer from the address"
-    return 3
-  }
-  code=${out%% *}
-  location=${out#* }
-  host=${location#*://}
-  host=${host%%/*}
-  host=${host%%:*}
-  case "$code" in
-    404 | 000)
-      echo "  the address gave $code: nothing there yet"
-      return 3
-      ;;
-    30[1278]) ;;
-    *)
-      echo "  an anonymous fetch was answered $code, not refused"
-      return 1
-      ;;
-  esac
-  case "$host" in
-    ?*.cloudflareaccess.com)
-      echo "  refused: a redirect to Access's sign-in"
-      return 0
-      ;;
-    *)
-      echo "  an anonymous fetch was redirected ($code), but not to Access's sign-in"
-      return 1
-      ;;
-  esac
-}
 
 # Pages' alias label for a branch: lower case, anything but a letter or digit a dash, at most 28 characters.
 label=$(printf '%s' "$branch" | tr '[:upper:]' '[:lower:]' | sed -e 's/[^a-z0-9]/-/g' | cut -c1-28 | sed -e 's/-*$//')
 alias_url="https://$label.$project.pages.dev/"
-say "before: the preview address refuses a visitor"
-probe "$alias_url"
-rc=$?
-case "$rc" in
-  0) ;;
-  3) say "the preview address does not exist yet; step 3 checks it after the upload" ;;
-  *) refuse "the preview address answers a visitor without Access (turn Access on for previews in the project first)" ;;
-esac
 
 # ---- 2 deploy ----
 work=$(mktemp -d "${TMPDIR:-/tmp}/pages-preview.XXXXXX") || refuse "cannot make a temp folder"
 trap 'rm -rf "$work"' EXIT
-say "2/4 install wrangler $wrangler_ver into a temp folder"
+say "2/3 install wrangler $wrangler_ver into a temp folder"
 npm install --prefix "$work/wrangler" --ignore-scripts --no-audit --no-fund --before="$wrangler_before" "wrangler@$wrangler_ver" 2>&1 | mask
 [ -x "$work/wrangler/node_modules/.bin/wrangler" ] || {
   say "verdict: bad: wrangler did not install"
@@ -199,7 +153,7 @@ unset tok acct
 export WRANGLER_SEND_METRICS=false CI=1
 
 # The project must exist in the account these credentials reach: a read, never wrangler's question about creating it.
-say "2/4 the project named is in the account these credentials reach"
+say "2/3 the project named is in the account these credentials reach"
 "$wr" pages project list --json >"$work/projects.out" 2>"$work/projects.err" </dev/null
 prc=$?
 if [ "$prc" -ne 0 ] || ! jq -e . "$work/projects.out" >/dev/null 2>&1; then
@@ -220,7 +174,7 @@ if [ -n "$tree" ]; then
 fi
 
 failures=""
-say "2/4 deploy $(basename "$folder") to the project, branch $branch"
+say "2/3 deploy $(basename "$folder") to the project, branch $branch"
 "$wr" pages deploy "$folder" --project-name "$project" --branch "$branch" --commit-hash "${pcommit:-unknown}" --commit-dirty="$dirty_flag" \
   >"$work/deploy.out" 2>&1 </dev/null
 drc=$?
@@ -238,47 +192,10 @@ tty_line "  branch alias address: ${alias_url%/}"
 echo "  (both addresses shown on the terminal only)"
 [ -n "$dep_url" ] || failures="$failures; the deployment's address was not found in wrangler's output"
 
-# The deployment's id, for the take-down command: the newest preview deploy on this branch.
-depid=$("$wr" pages deployment list --project-name "$project" --environment preview --json 2>/dev/null </dev/null |
-  jq -r --arg b "$branch" '[.[] | select((.Branch // "") == $b)][0].Id // empty' 2>/dev/null)
-case "$depid" in *[!0-9a-fA-F-]*) depid="" ;; esac
-
-# ---- 3 after the upload ----
-say "3/4 both addresses refuse a visitor"
-bad=""
-for u in "${dep_url:+$dep_url/}" "$alias_url"; do
-  [ -n "$u" ] || continue
-  # An Access policy may take a few seconds to cover a new deployment: one retry after 10 s.
-  probe "$u" >"$work/p.out"
-  prc=$?
-  if [ "$prc" -ne 0 ]; then
-    sleep 10
-    probe "$u" >"$work/p.out"
-    prc=$?
-  fi
-  cat "$work/p.out"
-  if [ "$prc" -ne 0 ]; then
-    bad="$bad $u"
-    echo "!!!! FAIL: an address ANSWERS the page without Access (or does not refuse as Access does) !!!!"
-    tty_line "!!!! FAIL: $u"
-    failures="$failures; an address does not refuse a visitor"
-  fi
-done
-if [ -n "$bad" ]; then
-  echo "!!!! Take the deployment down with this command (shown on the terminal; it holds the project's name):"
-  if [ -n "$depid" ]; then
-    tty_line "  CI=1 $wr pages deployment delete $depid --project-name $project --force"
-  else
-    tty_line "  CI=1 $wr pages deployment list --project-name $project --environment preview   (find its id), then"
-    tty_line "  CI=1 $wr pages deployment delete <id> --project-name $project --force"
-  fi
-  tty_line "  (the wrangler path above is a temp folder removed at exit: install again with npx wrangler@$wrangler_ver, same arguments)"
-fi
-
-# ---- 4 finish ----
-say "4/4 finish"
+# ---- 3 finish ----
+say "3/3 finish"
 if [ -z "$failures" ]; then
-  say "verdict: good: preview deployed at branch $branch, both addresses refuse a visitor"
+  say "verdict: good: preview deployed at branch $branch, open by its link"
   say "done"
   exit 0
 fi
