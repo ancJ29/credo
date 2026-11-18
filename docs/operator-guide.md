@@ -200,6 +200,27 @@ cd "$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")/main" 
 
 Near its end the log says `shipped` and the commit: the app's server code and its screens are on ridge.
 
+### Go back to the last good version
+
+Revert the bad commit on `main` and push: the deploy that follows ships the reverted tree onto ridge, as in
+[Deploy a change](#deploy-a-change). On ridge a revert took 65 minutes 58 seconds from being written to ridge
+running the code from before. A deploy that stopped half way leaves a mixed version until then.
+
+Only while GitHub Actions is down, do the same by hand, these two in order:
+
+```sh
+cd "$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")/main" && bash ops/release.sh ridge
+```
+
+Near its end the log says `released` and the revert's commit. Never the old commit: it says
+`superseded: ridge runs` and that commit, sends nothing and still exits 0.
+
+```sh
+cd "$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")/main" && bash ops/app.sh ridge
+```
+
+Near its end the log says `shipped` and the commit.
+
 ### A change to a template
 
 ```sh
@@ -405,7 +426,24 @@ left-behind volume".
 
 ### An alarm in the Slack channel
 
-**no command yet**.
+```sh
+cd "$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")/main" && bash ops/check.sh ridge --reads-only
+```
+
+About 3 minutes, changing nothing. Near its end the log reads `== green`, or `== red` followed by one line
+for each thing that failed.
+
+Then [see whether the services answer](#see-whether-the-services-answer): **in the console**:
+`/operator/services`.
+
+Then, if the records are lost or wrong, [put the records back from the copy](#put-the-records-back-from-the-copy):
+
+```sh
+cd "$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")/main" && bash ops/restore.sh ridge
+```
+
+About a minute. It names the box, restores on it, and says the live file is untouched, with the command to
+swap a fresh restore in.
 
 ### Who changed a record, and what it held before
 
