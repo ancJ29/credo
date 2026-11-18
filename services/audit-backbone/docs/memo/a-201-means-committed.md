@@ -18,10 +18,10 @@ then every write went through a single goroutine that gathered the callers
 waiting on it into one transaction, a savepoint each, to share the fsync. No
 measured load ever asked for that, and it made every new write a queued unit,
 gave the shutdown an order of its own, and set this service apart from
-c-storage. Each write is now a plain transaction that begins `IMMEDIATE` and
-waits on `busy_timeout` for the write lock, as c-storage's do
-(`TestAppendsAtOnceAllLand`), and a request's entries still commit whole or
-not at all.
+c-storage. Each write is now a plain transaction that begins `IMMEDIATE` on
+the writer's one connection, so concurrent writes queue in Go's pool rather
+than race for the lock past `busy_timeout` (`TestAppendsAtOnceAllLand`), and a
+request's entries still commit whole or not at all.
 
 **Accepted:** if the box goes down, what was in flight is lost: the requests
 not yet answered, which their callers replay.

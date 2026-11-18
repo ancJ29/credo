@@ -14,12 +14,15 @@ import (
 
 func newStore(t *testing.T) (*Store, *sql.DB) {
 	t.Helper()
-	db, err := sqlitedb.Open(filepath.Join(t.TempDir(), "activities.db"), Schema, SchemaVersion)
+	path := filepath.Join(t.TempDir(), "activities.db")
+	db, err := sqlitedb.Open(path, Schema, SchemaVersion)
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
 	t.Cleanup(func() { db.Close() })
-	return NewStore(db, NewIDFactory()), db
+	reads := sqlitedb.OpenReads(path)
+	t.Cleanup(func() { reads.Close() })
+	return NewStore(db, reads, NewIDFactory()), db
 }
 
 func entry(client, actor, action, target string) Input {
@@ -134,8 +137,8 @@ func TestSweepDeletesByCreatedAtNotInsertTime(t *testing.T) {
 	}
 }
 
-// Handlers append at once, each on a connection of its own, and every entry
-// lands: each transaction waits for the write lock rather than fail.
+// Handlers append at once, and every entry lands: each transaction waits its
+// turn for the writer's one connection rather than fail.
 func TestAppendsAtOnceAllLand(t *testing.T) {
 	s, db := newStore(t)
 	const n = 100
@@ -151,6 +154,27 @@ func TestAppendsAtOnceAllLand(t *testing.T) {
 	var got int
 	if err := db.QueryRow(`SELECT count(*) FROM activities`).Scan(&got); err != nil || got != n {
 		t.Fatalf("rows = %d, %v; want %d", got, err, n)
+	}
+}
+
+// A feed answers while a write is in progress: the writer's one connection is
+// held, and the read goes on beside it on a connection of its own (WAL).
+func TestAFeedReadsWhileAWriteIsHeld(t *testing.T) {
+	s, db := newStore(t)
+	mustAppend(t, s, time.Now(), entry("acme", "emp-1", "before", ""))
+	tx, err := db.Begin()
+	if err != nil {
+		t.Fatalf("begin: %v", err)
+	}
+	defer tx.Rollback()
+	if _, err := tx.Exec(`DELETE FROM activities`); err != nil {
+		t.Fatalf("delete: %v", err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	page, err := s.ByActor(ctx, "acme", "emp-1", "", 20)
+	if err != nil || len(page.Activities) != 1 {
+		t.Fatalf("ByActor = %d entries, %v; want the committed one, read beside the write", len(page.Activities), err)
 	}
 }
 

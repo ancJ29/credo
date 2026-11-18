@@ -16,12 +16,11 @@ import (
 )
 
 // Open creates the parent directory if needed, opens the file, and applies
-// schema unless the file already holds version.
-//
-// Handlers write concurrently, each on a connection of its own, so every
-// transaction begins IMMEDIATE: it takes the write lock at BEGIN, and
-// busy_timeout is what makes the others wait their turn rather than fail. WAL
-// lets the open listener's reads go on meanwhile.
+// schema unless the file already holds version. What it returns is the writer:
+// one connection, so concurrent writes queue in Go's pool and each takes its
+// turn, where a hundred connections racing for the lock would outlast
+// busy_timeout and fail. Every transaction still begins IMMEDIATE and waits on
+// busy_timeout for a lock another process holds. Reads go through OpenReads.
 func Open(path, schema string, version int) (*sql.DB, error) {
 	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
 		return nil, fmt.Errorf("create data dir: %w", err)
@@ -40,11 +39,23 @@ func Open(path, schema string, version int) (*sql.DB, error) {
 	// sql.Open only looks the driver up, and the import above registers it;
 	// apply's first read is what opens the file.
 	db, _ := sql.Open("sqlite", dsn)
+	db.SetMaxOpenConns(1)
 	if err := apply(db, schema, version); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("%s: %w", path, err)
 	}
 	return db, nil
+}
+
+// OpenReads opens the file Open has prepared as a pool of its own for the
+// feeds, so a read goes on beside a write in progress (WAL) and never waits for
+// the writer's one connection. It asks for no WAL, which the file keeps, so a
+// reader never needs the write lock to change it.
+func OpenReads(path string) *sql.DB {
+	db, _ := sql.Open("sqlite", "file:"+url.PathEscape(path)+"?"+url.Values{
+		"_pragma": {"busy_timeout(5000)"},
+	}.Encode())
+	return db
 }
 
 // apply runs schema and stamps the file at version, in one transaction, when
