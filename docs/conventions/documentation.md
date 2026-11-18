@@ -3,7 +3,7 @@
 > **Decided** 2026-10-27, with the human's rule for the two readers: "for human to read:
 > visualize as much as possible; for machine to read: detail". Read this before writing any doc,
 > `CLAUDE.md` or code comment, or committing any path.
-> **Last amended** 2026-11-18, from the knowledge proposal the human said yes to: the decision log, written by the lane that records a decision; on 2026-11-11, the rule on logs in records, and from the human's proposal that a finished piece land on `pre-merge`,
+> **Last amended** 2026-11-19, from the human's rule that each kind of note and fact has one home, found from one page; on 2026-11-18, from the knowledge proposal the human said yes to: the decision log, written by the lane that records a decision; on 2026-11-11, the rule on logs in records, and from the human's proposal that a finished piece land on `pre-merge`,
 > so a plan's hardened build ends at that landing, not at a merge into `main`; the amendment of
 > 2026-11-10 stands: every part which behaves has a behaviour memo, and a plan's word figure is what
 > the shape costs. This file holds the rules as they stand; their history is in `git log`.
@@ -24,6 +24,8 @@ without it, would get the next change wrong.
 - A doc holds a decision and what it beat, a risk no check catches, or steps whose order
   matters; a runbook holds the steps alone and links their why
   ([what earns a line](#what-earns-a-line)).
+- Each kind of note and fact has one home, found from the front page's "Where to look"; every
+  other page points to it ([one home a kind](#one-fact-one-home)).
 - Each fact is written once, where its rule is enforced; a copy goes stale. A comment states the
   rule that holds here, never the old code's mistakes ([one fact, one home](#one-fact-one-home)).
 - A part whose behaviour a caller can be surprised by has a memo at `docs/memo/<part>.md`, its
@@ -103,6 +105,16 @@ CLAUDE.md      a one-line pointer to the memo; line 2 is  Stack · Gate · Ship
 The argument lives once, where the rule is enforced. A copy anywhere else is the one most certain
 to rot, because the change that breaks it touches no line there.
 
+- **Each kind of note and fact has one home, and every other place points to it rather than
+  copying it; the homes are found from one page, the front page's
+  [Where to look](../../README.md#where-to-look).** A new kind of note gets its row there in the
+  commit that makes it; a page that would write a fact already homed links the home instead. A home
+  outside `main` (the orchestrator branch's board, pieces and run table, the kit's rules for every
+  project, a session's memory) is named there as such and never copied in. The review before `main`
+  moves reads each new page against this ([QA](qa.md)'s rule 5). *Why:* on 2026-11-19 the 13 kinds
+  of note and fact each sat in one to nine places with no declared home, and the copies drifted.
+  *Rejected:* the homes listed in this convention as well: a second list is the copy this rule
+  forbids, and the front page is the page a reader opens first.
 - **A comment or doc states the rule that holds here, never how the old code got it wrong.**
 - **Before writing a WHY, grep a distinctive phrase of it.** If a home exists, extend it there.
   Delete any comment whose loss costs nothing.
