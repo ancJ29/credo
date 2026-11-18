@@ -1,9 +1,8 @@
 pnpm-lock.yaml
 # CLAUDE.md line 2 is a convention prettier would break by inserting a blank line.
 *.md
-# A Go project with its own face and gate (its CLAUDE.md line 2).
-services/c-storage/
-services/audit-backbone/
+# The Go services, each with its own face and gate (its CLAUDE.md line 2).
+services/
 node_modules/
 dist/
 coverage/

@@ -2,7 +2,7 @@
   "$schema": "https://unpkg.com/knip@6/schema.json",
   "workspaces": {
     ".": {
-      "ignore": ["services/c-storage/**", "services/audit-backbone/**"],
+      "ignore": ["services/**"],
       "ignoreDependencies": ["prettier"]
     },
     "bff": { "entry": ["src/main.ts", "src/lambda-main.ts"] },
