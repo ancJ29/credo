@@ -8,9 +8,12 @@ import { draw } from '../../../tests/render';
 import { sceneParts } from '../../scene';
 import { StaffListPage } from './StaffListPage';
 
-const menu = () => within(screen.getAllByRole('navigation', { name: 'Menu' })[0]);
-const forbidden = () =>
-  screen.findByRole('heading', { level: 2, name: 'You cannot open this page' });
+import { DICTIONARIES } from '../../i18n';
+
+const words = DICTIONARIES.en;
+const starting = (word: string) => new RegExp(`^${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`);
+const menu = () => within(screen.getAllByRole('navigation', { name: words.nav.menu })[0]);
+const forbidden = () => screen.findByRole('heading', { level: 2, name: words.forbidden.title });
 
 /** Someone with a page but not the staff list: only the settings are theirs. */
 const onlySettings = (spied: Spied) => {
@@ -36,7 +39,7 @@ describe('a route guard', () => {
         menu()
           .getAllByRole('link')
           .map((link) => link.textContent),
-      ).toEqual(['Settings']);
+      ).toEqual([words.nav.settings]);
       expect(drawn.api.listEmployees, path).not.toHaveBeenCalled();
       expect(drawn.api.getEmployee, path).not.toHaveBeenCalled();
       expect(drawn.api.getCustomer, path).not.toHaveBeenCalled();
@@ -54,10 +57,10 @@ describe('a route guard', () => {
     reader.unmount();
 
     for (const [path, heading] of [
-      ['/settings', 'Settings'],
-      ['/staff', 'Staff'],
-      ['/staff-setup', 'Departments and positions'],
-      ['/staff/new', 'Add a person'],
+      ['/settings', words.settings.title],
+      ['/staff', words.staff.title],
+      ['/staff-setup', words.setup.title],
+      ['/staff/new', words.addPerson.title],
     ] as const) {
       const root = openApp(path);
       expect(await screen.findByRole('heading', { level: 2, name: heading }), path).toBeTruthy();
@@ -70,19 +73,19 @@ describe('Settings by permission', () => {
   it('A department, a position or a person may be allowed to change the company’s settings: the page is in their menu and they save', async () => {
     const { api } = openApp('/staff', { as: 'EMP-0003' });
 
-    await screen.findByRole('heading', { level: 2, name: 'Staff' });
+    await screen.findByRole('heading', { level: 2, name: words.staff.title });
     expect(
       menu()
         .getAllByRole('link')
         .map((link) => link.textContent),
-    ).toEqual(['Settings', 'Staff']);
-    await userEvent.click(menu().getByRole('link', { name: 'Settings' }));
-    const name = await screen.findByLabelText(/^Company name/);
+    ).toEqual([words.nav.settings, words.nav.staff]);
+    await userEvent.click(menu().getByRole('link', { name: words.nav.settings }));
+    const name = await screen.findByLabelText(starting(words.settings.name));
     await userEvent.clear(name);
     await userEvent.type(name, 'Minh Phát 2');
-    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await userEvent.click(screen.getByRole('button', { name: words.settings.save }));
 
-    expect(await screen.findByText(/^Saved\./)).toBeTruthy();
+    expect(await screen.findByText(words.settings.saved)).toBeTruthy();
     expect(api.saveConfig).toHaveBeenCalledWith(
       expect.objectContaining({ name: 'Minh Phát 2' }),
       'v1',
@@ -93,7 +96,7 @@ describe('Settings by permission', () => {
     const { api } = openApp('/settings', { as: 'EMP-0001' });
 
     expect(await forbidden()).toBeTruthy();
-    expect(menu().queryByRole('link', { name: 'Settings' })).toBeNull();
+    expect(menu().queryByRole('link', { name: words.nav.settings })).toBeNull();
     expect(api.getConfig).toHaveBeenCalledTimes(1);
   });
 
@@ -104,11 +107,11 @@ describe('Settings by permission', () => {
     ) as HTMLElement;
 
     await userEvent.click(
-      within(delivery).getByRole('checkbox', { name: 'Change the company’s settings' }),
+      within(delivery).getByRole('checkbox', { name: words.permissions.settings_canEdit }),
     );
-    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await userEvent.click(screen.getByRole('button', { name: words.setup.save }));
 
-    expect(await screen.findByText('Saved.')).toBeTruthy();
+    expect(await screen.findByText(words.setup.saved)).toBeTruthy();
     const saved = (await api.getStaffSetup()).setup.departments[2];
     expect(saved?.permissions).toEqual({
       'deliveries.canDeliver': true,
@@ -144,27 +147,36 @@ describe('the list’s address', () => {
 
   it('The address keeps both: what is typed and chosen is written once set, and cleared when emptied', async () => {
     drawn();
-    const search = await screen.findByLabelText('Search');
+    const search = await screen.findByLabelText(words.staff.search);
 
     expect(address()).toBe('');
     await userEvent.type(search, 'lan');
     expect(address()).toBe('?q=lan');
-    await userEvent.selectOptions(screen.getByLabelText('Department'), 'Kho');
-    await userEvent.selectOptions(screen.getByLabelText('Status'), 'All');
+    await userEvent.selectOptions(screen.getByLabelText(words.staff.filterDepartment), 'Kho');
+    await userEvent.selectOptions(screen.getByLabelText(words.staff.status), words.staff.statusAll);
     await userEvent.selectOptions(screen.getByLabelText('Driving licence'), 'Class C');
     expect(address()).toBe(
       `?q=lan&department=${DEMO_STAFF_SETUP.departments[0]?.id}&status=all&f.licence=c`,
     );
     await userEvent.clear(search);
-    await userEvent.selectOptions(screen.getByLabelText('Department'), 'All departments');
-    await userEvent.selectOptions(screen.getByLabelText('Status'), 'Active');
-    await userEvent.selectOptions(screen.getByLabelText('Driving licence'), 'All driving licence');
+    await userEvent.selectOptions(
+      screen.getByLabelText(words.staff.filterDepartment),
+      words.staff.filterAllDepartments,
+    );
+    await userEvent.selectOptions(
+      screen.getByLabelText(words.staff.status),
+      words.staff.statusActive,
+    );
+    await userEvent.selectOptions(
+      screen.getByLabelText('Driving licence'),
+      words.staff.filterAllOf.replace('{{field}}', 'driving licence'),
+    );
     expect(address()).toBe('');
   });
 
   it('A syllable being composed is not written to the address half-way, and the whole of it is when it ends', async () => {
     drawn();
-    const search = await screen.findByLabelText<HTMLInputElement>('Search');
+    const search = await screen.findByLabelText<HTMLInputElement>(words.staff.search);
 
     fireEvent.compositionStart(search);
     fireEvent.change(search, { target: { value: 'ng' } });

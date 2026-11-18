@@ -37,7 +37,7 @@ describe('createI18n', () => {
     const vi = createI18n('vi');
     const en = createI18n('en');
 
-    expect(vi.t('auth.submit')).toBe('Đăng nhập');
-    expect(en.t('auth.submit')).toBe('Sign In');
+    expect(vi.t('auth.submit')).toBe(DICTIONARIES.vi.auth.submit);
+    expect(en.t('auth.submit')).toBe(DICTIONARIES.en.auth.submit);
   });
 });

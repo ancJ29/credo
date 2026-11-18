@@ -1975,7 +1975,7 @@ The rule of three is written at the `components/` note and again in the levels' 
 
 ## 507. The theme drops the dialog header's padding, and the gallery draws no dialog or table (the same review, Low) — the machine; `[DEFERRED]`
 
-`ui/src/design-system/theme.ts#L18-L21` carries the dialog's centring and title but not the header's padding of the legacy's `theme/index.ts#L89-L91`, and the gallery shows neither a dialog nor a table row under the pointer, so the two entries of case 1 are held by the test alone and cannot be judged by eye. Add the padding with the first screen that opens a dialog, and a dialog and a table to the gallery.
+The dialog's entry (`Modal.extend`) in `ui/src/design-system/appTheme.ts` carries the dialog's centring and title but not the header's padding of the legacy's `theme/index.ts#L89-L91`, and the gallery shows neither a dialog nor a table row under the pointer, so the two entries of case 1 are held by the test alone and cannot be judged by eye. Add the padding with the first screen that opens a dialog, and a dialog and a table to the gallery.
 
 **Half done (design system, the fix pass of landing 3, 2026-11-17).** The dialog header's padding half is done at step 12: the legacy's `var(--mantine-spacing-sm) var(--mantine-spacing-md)` is `TOKENS.dialogHeader` in `ui/src/design-system/tokens.ts`, read by the dialog's entry in `ui/src/design-system/appTheme.ts` and held in `ui/src/design-system/appTheme.test.tsx`. The gallery half is still open: the gallery draws no dialog and no table row.
 
@@ -2060,7 +2060,7 @@ The old app's sign-in offers "remember me", on by default (the old repo's `works
 
 The old app's `/login-via-qr-code` (the old repo's `workspace/uis/c-mngt/src/pages/auth/AccessViaQRCodePage.tsx`) scans a code with the camera or from a picture, or takes it typed, and its sign-in links to it. The new app's QR code is opened by the phone's own camera (`shared/src/signins.ts`'s `qrLink`, `ui/src/pages/client/QrLanding.tsx`'s `QrLanding`), and no page or button offers the other two ways. The sign-in's parts draw that page in the gallery as a look only; the divider and the back link have no door until this is built. *Trigger:* a partner whose people cannot open a link from the camera.
 
-## 549. An English word changed by a partner reddens the `ui` tests that query it by its text — the machine; *parked* until the first returned file that changes an English word (the words file's plan, 2026-11-16, Low)
+## 549. An English word changed by a partner reddens the `ui` tests that query it by its text — the machine; `[FIXED]` 2026-11-17 by the ui tests' words plan: every ui test but those item 589 names finds a word by its key in `DICTIONARIES`, and `ui/CLAUDE.md` says so (the words file's plan, 2026-11-16, Low)
 
 29 test files under `ui/` hold 384 queries by a capitalised literal (`getByText`, `getByRole` with a `name`, `getByLabelText`, `getByPlaceholderText`), counted by `git grep` on 2026-11-16, while the walk's specs read the dictionaries. A word changed in `ui/src/i18n/en.ts` by `pnpm words in` (`docs/plans/2026-11-16-words-csv.md`) therefore turns each test that queries the old text red, and that change carries their edits. Fix, if the edits cost more than the change: those tests query by the dictionary's word. *Trigger:* the first returned file that changes an English word.
 
@@ -2099,6 +2099,18 @@ The whole check's commit is read by `git rev-parse HEAD` in `pre-merge`'s worktr
 ## 568. A new sent file for a partner whose earlier return is still out reads that return against the new file — the machine; *parked* until a second send to one partner (the words paste's plan, 2026-11-17, Low)
 
 `ops/words-in.sh` reads a return against `words-sent/<label>.csv` in the credo root, one sent copy a partner (`docs/plans/2026-11-17-words-paste.md`). Sent a second file before the first comes back, a partner's return of the first is read against the second, and every word changed between the two sends shows as a change back to the old word; the import shows each before the y, so nothing is written unseen, but nothing tells the reader why. Fix, if a second send happens: the sent copy's name carries its date and the returned file names which copy it was made from, or the script refuses a return whose unchanged rows disagree with the sent copy. *Trigger:* a second send to one partner.
+
+## 571. A staff or list file made from a template downloaded before a words change no longer imports — the machine; *parked* until the first real client, or a partner who meets it (the ui tests' words plan, 2026-11-17, Low)
+
+The staff import finds each column by the dictionary's word for it in either language (`ui/src/importSheet.ts#L48`), and a file without the name column fails whole (`#L202`); the lists read their columns the same way. A template downloaded before a returned words file lands carries the old headings: after p1's file, `addPerson.name` reads "Full name" and "Họ và tên" where it read "Name" and "Tên", so a file filled from the earlier template fails as having no name column. Nothing is lost, and a fresh template imports. *Trigger:* the first real client, or a partner who reports it; the likely fix is to also accept the headings the template had before a change.
+
+## 572. The words file goes out with no note on the words whose meaning a case needs — the machine; `[CLOSED AS MOOT, NOT FIXED]` 2026-11-17: the human said to trust the partner's text, so the eight words land as p1 wrote them and no case pins their meaning (the ui tests' words plan, 2026-11-17, Low)
+
+`pnpm words out` writes an empty Note for every row, so a partner could not see that eight failure words said the act may have happened; p1's file dropped the hedge from all eight. Closed: the human decided the partner's text stands, and the plan's rule on those eight was taken out.
+
+## 573. No mechanical check stops a new ui test from finding a word by its typed text — the machine; *parked* until a returned file reddens on such a test (the ui tests' words plan, 2026-11-17, Low)
+
+After the ui tests' words piece, every ui test reads its words from `DICTIONARIES`, and `ui/CLAUDE.md`'s "The file to copy" says so; nothing else stops the next test from typing one, which then goes red only when a partner changes that word. *Trigger:* a returned file that reddens a test on a typed word; the fix is a run of the ui tests against a dictionary whose every word is altered, or a scan of the test files' literals against the dictionaries.
 
 ## 575. The env run's step count is 10 where an ordinary run takes 8 — the machine; *parked* until the next edit of `ops/stack.sh`'s steps (the move fixes' review, fix pass, 2026-11-17, Low)
 
@@ -2148,9 +2160,25 @@ The whole check's commit is read by `git rev-parse HEAD` in `pre-merge`'s worktr
 
 `ops/words-in.sh#L75` prints `cd $REPO_DIR && bash $OPS_DIR/words-in.sh --land $BRANCH` with the two paths bare, so a credo root with a space in its path pastes as two words. This root has none. Fix: print each path single-quoted. *Trigger:* a credo root moved to a path with a space.
 
+## 587. The operator page's test reads `words.app.name` for the brand's name — the machine; `[DEFERRED]` (the ui tests' words review, 2026-11-17, Low)
+
+`ui/src/frame/OperatorPage.test.tsx#L22` reads the page's heading as `words.app.name`. The heading shows `CREDO_BRAND.name` (`ui/src/brand.ts#L14`), which is data, and `app.name` is drawn only by `ui/src/frame/Boot.tsx#L29`; the two hold the same text today, so the test is green, and the fix pass's proof run (each key's word given a suffix) went red on it. The doors' pin keeps "Credo" typed as data. Fix: keep the brand's name typed, or read `CREDO_BRAND.name`. *Trigger:* a returned file that changes `app.name`, or the next edit of that test.
+
+## 588. `visual/src/words.test.tsx` has a stranded doc comment, two doc blocks stacked — the machine; `[DEFERRED]` (the ui tests' words review, 2026-11-17, Low)
+
+`visual/src/words.test.tsx#L27-L28`: the key pattern's doc comment went in between `hasNote`'s doc comment and `hasNote`, so two doc blocks stack above the pattern and `hasNote` (`#L41`) has none. Nothing fails. Fix: move `hasNote`'s comment back above `hasNote`. *Trigger:* the next edit of the file.
+
+## 589. A few ui tests still find a word by its typed text — the machine; `[DEFERRED]` (the ui tests' words review's reread, 2026-11-17, Low)
+
+Words found by hand on the branch after the fix pass: `ui/src/listSheet.test.ts#L283` types the forms a person writes for three column headings, `['ĐỊA CHỈ', 'tên *', 'MA']`, which are `lists.columns.address`, `.name` and `.code` in Vietnamese in upper, lower and unaccented case, where case 5 says the forms are applied to the dictionary word (`ui/src/importSheet.test.ts#L256-L261` does); and `ui/src/pages/client/StaffPages.test.tsx#L186` types "Active" inside the person card's whole text, which is `words.staff.chipActive`. A returned file that changes those words reddens them. Not confirmed: the fix pass's proof run left 16 reds in 12 files, and its author's list of words left typed is in no commit or plan text; of those reds, the template and sheet-name ones read as artefacts of the suffix it appended, and the three in `ui/src/pages/client/Reconcile.test.tsx` (money cells that were not found) and `ui/src/listSheet.test.ts#L223` were not classified. Fix: read those two from the dictionary, then run the proof again, key suffix and all, to find any other. *Trigger:* the next returned words file, or a proof run.
+
 ## 590. `frameKept.test.tsx`'s id mask needs nine characters, and Mantine's random id is sometimes eight — a snapshot taken then holds a live id and fails the next run — the machine; `[DEFERRED]` (design system step 10, 2026-11-17, Low)
 
 `ui/src/frame/frameKept.test.tsx#L13` masks `mantine-[a-z0-9]{9}`, but Mantine's fallback id is `Math.random().toString(36).slice(2, 11)`, which is eight characters about one time in thirty-six; the first `-u` rewrite of the ways snapshot took `mantine-nevtwxk2` as it was, and a second rewrite masked it. Fix: mask `{8,9}`. *Trigger:* a snapshot red on an id nobody changed.
+
+## 591. The plan's account of which chunks share the theme is wrong — the machine; `[DEFERRED]` (the fake build's style fix review, 2026-11-17, Low)
+
+`docs/plans/2026-11-17-ui-tests-words.md`, step 5a, says the theme is shared by "the gallery and the fake chunk". The review of the style fix (`e0654fa7`) read the built page: the entry and the gallery share the theme, and the fake chunk imports neither. The fix stands and nothing breaks; the sentence is history, not a living document. Fix: none unless the plan is reopened. *Trigger:* the plan reopened.
 
 ## 595. Case 13 pins two of its five values, and its feature came after its test (design system landing 3's review, 2026-11-17, Low) — the machine; `[DEFERRED]`
 
@@ -2158,4 +2186,4 @@ The whole check's commit is read by `git rev-parse HEAD` in `pre-merge`'s worktr
 
 ## 596. `tokens.ts` still repeats `themeOf`'s corner and spacing, and item 507's citation named a deleted file (design system landing 3's review, 2026-11-17, Low) — the machine; `[DEFERRED]`
 
-Item 507's `ui/src/design-system/theme.ts#L18-L21` named a file step 9 deleted; item 507 closed with the dialog's padding, so that part is gone. Item 508 asked step 9 to read one theme from the other; it did not, and `ui/src/design-system/tokens.ts#L12` (`'4px'`) and `#L24` (`24`) still repeat the radius `sm` and the spacing `lg` at `ui/src/design-system/appTheme.ts#L125-L126`, two homes that drift with nothing red. Neither item's page is in the citation check's living set (`scripts/src/citations.ts#L15-L32`). Fix: write the badge's radius and the card's padding once, read by the other. *Trigger:* a change to either value.
+Item 507's citation of `ui/src/design-system/theme.ts#L18-L21` named a file step 9 deleted; item 507 stays open, half done: the dialog's padding is done, the gallery's dialog and table row are not. Item 508 asked step 9 to read one theme from the other; it did not, and `ui/src/design-system/tokens.ts#L12` (`'4px'`) and `#L24` (`24`) still repeat the radius `sm` and the spacing `lg` at `ui/src/design-system/appTheme.ts#L125-L126`, two homes that drift with nothing red. Neither item's page is in the citation check's living set (`scripts/src/citations.ts#L15-L32`). Fix: write the badge's radius and the card's padding once, read by the other. *Trigger:* a change to either value.

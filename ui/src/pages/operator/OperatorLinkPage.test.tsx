@@ -18,7 +18,10 @@ describe('a new link for a colleague', () => {
     const { api } = open(DEMO_COLLEAGUE_ID);
 
     expect(
-      await screen.findByRole('heading', { level: 2, name: 'A new link for Minh Quân' }),
+      await screen.findByRole('heading', {
+        level: 2,
+        name: words.team.linkTitle.replace('{{name}}', 'Minh Quân'),
+      }),
     ).toBeTruthy();
     expect(
       screen.getByText(words.team.linkIntroActive.replace('{{name}}', 'Minh Quân')),
@@ -33,7 +36,9 @@ describe('a new link for a colleague', () => {
     expect(api.newOperatorLink).toHaveBeenCalledExactlyOnceWith(DEMO_COLLEAGUE_ID, {
       confirm: expect.objectContaining({ token: 'fake.token' }) as unknown,
     });
-    expect(screen.getByRole('alert').textContent).toContain('Minh Quân');
+    expect(screen.getByRole('alert').textContent).toBe(
+      words.team.linkMadeIntro.replace('{{name}}', 'Minh Quân'),
+    );
     const link = screen.getByLabelText<HTMLInputElement>(words.team.link).value;
     expect(link).toMatch(new RegExp(`^${window.location.origin}/operator/join#.{43}$`));
     expect(screen.getByRole('button', { name: `Copy: ${words.team.link}` })).toBeTruthy();
@@ -72,13 +77,18 @@ describe('a new link for a colleague', () => {
       row('Minh Quân').getByRole('link', { name: `${words.team.delete}: Minh Quân` }),
     ).toBeTruthy();
     expect(row('Lan Anh').getAllByRole('link')).toHaveLength(2);
-    expect(within(screen.getByText('you').closest('tr')!).queryAllByRole('link')).toEqual([]);
+    expect(within(screen.getByText(words.team.you).closest('tr')!).queryAllByRole('link')).toEqual(
+      [],
+    );
 
     await userEvent.click(
       row('Minh Quân').getByRole('link', { name: `${words.team.newLink}: Minh Quân` }),
     );
     expect(
-      await screen.findByRole('heading', { level: 2, name: 'A new link for Minh Quân' }),
+      await screen.findByRole('heading', {
+        level: 2,
+        name: words.team.linkTitle.replace('{{name}}', 'Minh Quân'),
+      }),
     ).toBeTruthy();
   });
 
@@ -103,12 +113,10 @@ describe('a new link for a colleague', () => {
     expect(screen.getByRole('button', { name: words.team.linkMake })).toBeTruthy();
   });
 
-  it('B2 row 5: a failure says the link may not have been made, since the service may have made it; the colleague gone says so; a 401 opens the prompt', async () => {
+  it('B2 row 5: a failure says so; the colleague gone says so; a 401 opens the prompt', async () => {
     open(DEMO_COLLEAGUE_ID, { cue: 'newOperatorLink:503' });
     await userEvent.click(await makeButton());
     expect((await screen.findByRole('alert')).textContent).toBe(words.team.linkFailed);
-    expect(words.team.linkFailed).toMatch(/may not have been made/);
-    expect(DICTIONARIES.vi.team.linkFailed).toMatch(/có thể chưa/);
   });
 
   it('B2 row 3: a colleague already deleted answers 404: the page says they are gone and offers the list', async () => {
@@ -135,7 +143,10 @@ describe('a new link for a colleague', () => {
     open(DEMO_COLLEAGUE_ID, { language: 'vi' });
 
     expect(
-      await screen.findByRole('heading', { level: 2, name: 'Đường dẫn mới cho Minh Quân' }),
+      await screen.findByRole('heading', {
+        level: 2,
+        name: DICTIONARIES.vi.team.linkTitle.replace('{{name}}', 'Minh Quân'),
+      }),
     ).toBeTruthy();
     await userEvent.click(screen.getByRole('button', { name: DICTIONARIES.vi.team.linkMake }));
     expect(

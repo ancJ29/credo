@@ -80,7 +80,10 @@ or in `frame/` when importers stand on both sides (`ui/src/frame/frame.module.cs
   `createFakeApi`, which must answer the same shape.
 - **A screen's test:** `ui/src/pages/client/ListPage.test.tsx`, which opens the whole app through
   `ui/tests/open.tsx`'s `openApp` and walks a person's story.
-- **A word:** both dictionaries, `ui/src/i18n/en.ts` first; `vi.ts` takes its shape from it.
+- **A word:** both dictionaries, `ui/src/i18n/en.ts` first; `vi.ts` takes its shape from it. A test finds a word by
+  `DICTIONARIES[language]`'s key (`const words = DICTIONARIES.en`, as in
+  `ui/src/parts/Settings.test.tsx`), never typed: the wording is the partners', and a typed word reddens
+  the test at the next returned file. A name, a code or a number stays typed, since it is data.
 
 ## This package's own rules
 

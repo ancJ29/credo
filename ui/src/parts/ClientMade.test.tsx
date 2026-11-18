@@ -2,7 +2,12 @@ import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { draw } from '../../tests/render';
+import { DICTIONARIES } from '../i18n';
 import { ClientMade } from './ClientMade';
+
+const words = DICTIONARIES.en.operator;
+/** A label that carries a star is found by its word inside it, as the dictionary spells it. */
+const labelled = (word: string) => new RegExp(word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
 
 const MADE = {
   link: 'https://credo.example/login?client-code=minh-phat',
@@ -15,9 +20,9 @@ describe('ClientMade', () => {
     draw(<ClientMade {...MADE} onAnother={vi.fn()} />);
 
     for (const [label, value] of [
-      [/Link/, MADE.link],
-      [/Root name/, MADE.rootName],
-      [/First password/, MADE.password],
+      [labelled(words.link), MADE.link],
+      [labelled(words.rootName), MADE.rootName],
+      [labelled(words.firstPassword), MADE.password],
     ] as const) {
       const field = screen.getByRole<HTMLInputElement>('textbox', { name: label });
       expect(field.value).toBe(value);
@@ -25,17 +30,17 @@ describe('ClientMade', () => {
     }
   });
 
-  it('says the password is shown now and never again', () => {
+  it('says the password is shown once', () => {
     draw(<ClientMade {...MADE} onAnother={vi.fn()} />);
 
-    expect(screen.getByRole('alert').textContent).toContain('never again');
+    expect(screen.getByRole('alert').textContent).toBe(words.madeIntro);
   });
 
   it('offers another client', async () => {
     const onAnother = vi.fn();
     draw(<ClientMade {...MADE} onAnother={onAnother} />);
 
-    await userEvent.click(screen.getByRole('button', { name: 'Add another client' }));
+    await userEvent.click(screen.getByRole('button', { name: words.another }));
 
     expect(onAnother).toHaveBeenCalledOnce();
   });
@@ -46,9 +51,9 @@ describe('ClientMade', () => {
     const copied = vi.spyOn(navigator.clipboard, 'writeText');
 
     for (const [name, value] of [
-      ['Copy: Link', MADE.link],
-      ['Copy: Root name', MADE.rootName],
-      ['Copy: First password', MADE.password],
+      [`${words.copy}: ${words.link}`, MADE.link],
+      [`${words.copy}: ${words.rootName}`, MADE.rootName],
+      [`${words.copy}: ${words.firstPassword}`, MADE.password],
     ] as const) {
       await user.click(screen.getByRole('button', { name }));
       expect(copied).toHaveBeenLastCalledWith(value);
@@ -59,7 +64,7 @@ describe('ClientMade', () => {
   it('offers the way back to the clients, a link to the list', () => {
     draw(<ClientMade {...MADE} onAnother={vi.fn()} />);
 
-    expect(screen.getByRole('link', { name: 'Back to the clients' }).getAttribute('href')).toBe(
+    expect(screen.getByRole('link', { name: words.back }).getAttribute('href')).toBe(
       '/operator/clients',
     );
   });

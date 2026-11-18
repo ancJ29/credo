@@ -7,7 +7,11 @@ import { ApiError } from '../../api';
 import { timeOf } from '../../day';
 import { DICTIONARIES } from '../../i18n';
 
+const wordsVi = DICTIONARIES.vi;
+
 const words = DICTIONARIES.en;
+const took = (ms: number) => words.services.time.replace('{{ms}}', String(ms));
+const checked = (time: string) => words.services.checkedAt.replace('{{time}}', time);
 const open = (options: Parameters<typeof openApp>[1] = {}) =>
   openApp('/operator/services', { operator: true, ...options });
 
@@ -45,7 +49,7 @@ describe('the services status', () => {
   it('C: The page shows the app’s page, the BFF and c-storage, each answering with the build it runs, and says all three run one build', async () => {
     const { api } = open();
 
-    expect(await screen.findByRole('heading', { level: 2, name: 'Services status' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { level: 2, name: words.nav.services })).toBeTruthy();
     expect((await screen.findByRole('status')).textContent).toBe(words.services.oneBuild);
     for (const name of [words.services.app, words.services.bff, words.services.storage]) {
       const service = await card(name);
@@ -111,22 +115,18 @@ describe('the services status', () => {
 
     expect((await screen.findByRole('status')).textContent).toBe(vi.services.twoBuilds);
     expect((await card(vi.services.storage)).getByText(vi.services.differs)).toBeTruthy();
-    expect(screen.getByRole('heading', { level: 2 }).textContent).toBe('Trạng thái dịch vụ');
+    expect(screen.getByRole('heading', { level: 2 }).textContent).toBe(wordsVi.nav.services);
   });
 
   it('C: It shows how long the BFF and c-storage took and when it last checked, the clock to the second', async () => {
     open();
 
+    expect((await card(words.services.bff)).getByText(took(DEMO_SERVICES.bffMs))).toBeTruthy();
     expect(
-      (await card(words.services.bff)).getByText(`Took ${DEMO_SERVICES.bffMs} ms`),
+      (await card(words.services.storage)).getByText(took(DEMO_SERVICES.storageMs)),
     ).toBeTruthy();
-    expect(
-      (await card(words.services.storage)).getByText(`Took ${DEMO_SERVICES.storageMs} ms`),
-    ).toBeTruthy();
-    expect((await card(words.services.app)).queryByText(/^Took /)).toBeNull();
-    expect(
-      await screen.findByText(`Last checked at ${timeOf(DEMO_SERVICES.checkedAt, 'en')}`),
-    ).toBeTruthy();
+    expect((await card(words.services.app)).queryByText(took(DEMO_SERVICES.bffMs))).toBeNull();
+    expect(await screen.findByText(checked(timeOf(DEMO_SERVICES.checkedAt, 'en')))).toBeTruthy();
   });
 
   it('C: It checks each minute while it is open and in view', async () => {
@@ -169,7 +169,7 @@ describe('the services status', () => {
     await settle();
 
     expect(api.operatorServices).not.toHaveBeenCalled();
-    expect(screen.getByLabelText('Loading')).toBeTruthy();
+    expect(screen.getByLabelText(words.common.loading)).toBeTruthy();
     inView(true);
     expect((await screen.findByRole('status')).textContent).toBe(words.services.oneBuild);
     expect(api.operatorServices).toHaveBeenCalledOnce();
@@ -202,7 +202,7 @@ describe('the services status', () => {
     });
     await screen.findByRole('status');
     vi.useRealTimers();
-    await userEvent.click(screen.getByRole('button', { name: 'Check now' }));
+    await userEvent.click(screen.getByRole('button', { name: words.services.checkNow }));
     expect(api.operatorServices).toHaveBeenCalledTimes(2);
   });
 
@@ -213,7 +213,7 @@ describe('the services status', () => {
     expect((await card(words.services.app)).getByText(words.services.answers)).toBeTruthy();
     expect((await card(words.services.bff)).getByText(words.services.answers)).toBeTruthy();
     expect((await card(words.services.storage)).getByText(words.services.silent)).toBeTruthy();
-    expect(screen.queryByText(/^Last checked/)).toBeNull();
+    expect(screen.queryByText(checked(timeOf(DEMO_SERVICES.checkedAt, 'en')))).toBeNull();
   });
 
   it('C: When the BFF does not answer, the page says so and that c-storage cannot be seen from here', async () => {
@@ -244,7 +244,7 @@ describe('the services status', () => {
     open({ cue: 'operatorServices:503' });
     await screen.findByRole('alert');
 
-    await userEvent.click(screen.getByRole('button', { name: 'Check now' }));
+    await userEvent.click(screen.getByRole('button', { name: words.services.checkNow }));
 
     expect((await screen.findByRole('status')).textContent).toBe(words.services.oneBuild);
     expect(screen.queryByRole('alert')).toBeNull();
@@ -255,7 +255,7 @@ describe('the services status', () => {
     await screen.findByRole('status');
     api.operatorServices.mockRejectedValueOnce(new ApiError(401));
 
-    await userEvent.click(screen.getByRole('button', { name: 'Check now' }));
+    await userEvent.click(screen.getByRole('button', { name: words.services.checkNow }));
 
     expect(await screen.findByRole('dialog', { name: words.passkey.endedTitle })).toBeTruthy();
     expect(screen.getByText(words.services.oneBuild)).toBeTruthy();

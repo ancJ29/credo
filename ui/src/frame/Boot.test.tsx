@@ -9,7 +9,7 @@ describe('Boot', () => {
   it('waits without a message', () => {
     draw(<Boot status="loading" onRetry={vi.fn()} />);
 
-    expect(screen.getByLabelText('Loading')).toBeTruthy();
+    expect(screen.getByLabelText(DICTIONARIES.en.common.loading)).toBeTruthy();
     expect(screen.queryByRole('alert')).toBeNull();
   });
 
@@ -25,8 +25,8 @@ describe('Boot', () => {
     const onRetry = vi.fn();
     draw(<Boot status="unavailable" onRetry={onRetry} />);
 
-    expect(screen.getByRole('alert').textContent).toContain('service is unavailable');
-    await userEvent.click(screen.getByRole('button', { name: 'Try again' }));
+    expect(screen.getByRole('alert').textContent).toBe(DICTIONARIES.en.common.unavailable);
+    await userEvent.click(screen.getByRole('button', { name: DICTIONARIES.en.common.retry }));
     expect(onRetry).toHaveBeenCalledOnce();
   });
 });

@@ -83,6 +83,10 @@ import { DICTIONARIES } from './i18n';
 import { createFakeApi, createFakePasskeys, fakeParts, parseCue } from './fake';
 import { PasskeyNotGiven } from './passkeys';
 
+const words = DICTIONARIES.en;
+/** A label that carries a star is found by its word inside it, as the dictionary spells it. */
+const labelled = (word: string) => new RegExp(word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+
 const memory = (initial: Record<string, string> = {}) => {
   const kept = new Map(Object.entries(initial));
   return {
@@ -256,7 +260,14 @@ describe('the fake Api', () => {
       'importProducts',
       importProductsReplySchema,
       await api.importProducts([
-        { code: 'vt-90', name: 'Nhập', unit: 'bao', price: 5000, stocked: true, extra: {} },
+        {
+          code: 'vt-90',
+          name: 'Nhập',
+          unit: 'bao',
+          price: 5000,
+          stocked: true,
+          extra: {},
+        },
       ]),
     );
     // the orders, on a fake whose setup is the data set's
@@ -1184,9 +1195,30 @@ describe('the fake Api’s customers and products', () => {
     ]);
 
     const products = await api.importProducts([
-      { code: 'vt-90', name: 'Một', unit: 'bao', price: 5000, stocked: true, extra: {} },
-      { code: 'VT-91', name: 'Giá sai', unit: 'bao', price: 0, stocked: true, extra: {} },
-      { code: 'VT-001', name: 'Đã có', unit: 'bao', price: 5000, stocked: true, extra: {} },
+      {
+        code: 'vt-90',
+        name: 'Một',
+        unit: 'bao',
+        price: 5000,
+        stocked: true,
+        extra: {},
+      },
+      {
+        code: 'VT-91',
+        name: 'Giá sai',
+        unit: 'bao',
+        price: 0,
+        stocked: true,
+        extra: {},
+      },
+      {
+        code: 'VT-001',
+        name: 'Đã có',
+        unit: 'bao',
+        price: 5000,
+        stocked: true,
+        extra: {},
+      },
     ]);
     expect(
       products.results.map((result) => (result.kind === 'added' ? 'added' : result.reason)),
@@ -1550,9 +1582,9 @@ describe('the cue', () => {
 });
 
 async function signInAs() {
-  await userEvent.type(await screen.findByLabelText(/Username/), DEMO_ROOT_NAME);
-  await userEvent.type(screen.getByLabelText(/Password/), 'pw');
-  await userEvent.click(screen.getByRole('button', { name: 'Sign In' }));
+  await userEvent.type(await screen.findByLabelText(labelled(words.auth.username)), DEMO_ROOT_NAME);
+  await userEvent.type(screen.getByLabelText(labelled(words.auth.password)), 'pw');
+  await userEvent.click(screen.getByRole('button', { name: words.auth.submit }));
 }
 
 describe('?fake', () => {
@@ -1582,7 +1614,7 @@ describe('?fake', () => {
       />,
     );
     await signInAs();
-    expect(await screen.findByRole('heading', { level: 2, name: 'Orders' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { level: 2, name: words.nav.orders })).toBeTruthy();
     expect(fakeParts('', memory())).toBeNull();
   });
 
@@ -1592,7 +1624,7 @@ describe('?fake', () => {
 
     await signInAs();
 
-    expect(await screen.findByRole('heading', { level: 2, name: 'Orders' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { level: 2, name: words.nav.orders })).toBeTruthy();
     expect(device.authId()).toBe('fake.session');
   });
 
@@ -1619,12 +1651,12 @@ describe('?fake', () => {
     drawApp(<App api={api} device={device} passkeys={passkeys} build="dev" test />);
 
     await signInAs();
-    await userEvent.click(await screen.findByRole('button', { name: 'Try again' }));
+    await userEvent.click(await screen.findByRole('button', { name: words.common.retry }));
 
-    const button = await screen.findByRole('button', { name: 'Sign In' });
+    const button = await screen.findByRole('button', { name: words.auth.submit });
     expect(button.hasAttribute('disabled')).toBe(false);
     await signInAs();
-    expect(await screen.findByRole('heading', { level: 2, name: 'Orders' })).toBeTruthy();
+    expect(await screen.findByRole('heading', { level: 2, name: words.nav.orders })).toBeTruthy();
     expect(device.authId()).toBe('fake.session');
   });
 });

@@ -16,12 +16,19 @@ describe('deleting a colleague', () => {
   it('B2 row 2: the page says what goes and that they are signed out at once; a touch made for this act then deletes them and the list comes back without them', async () => {
     const { api } = open(DEMO_COLLEAGUE_ID);
 
-    expect(await screen.findByRole('heading', { level: 2, name: 'Delete Minh Quân' })).toBeTruthy();
+    expect(
+      await screen.findByRole('heading', {
+        level: 2,
+        name: words.team.deleteTitle.replace('{{name}}', 'Minh Quân'),
+      }),
+    ).toBeTruthy();
     expect(screen.getByText(words.team.deleteIntro.replace('{{name}}', 'Minh Quân'))).toBeTruthy();
     expect(api.deleteOperator).not.toHaveBeenCalled();
     await userEvent.click(await deleteButton());
 
-    expect(await screen.findByRole('heading', { level: 2, name: 'Operators' })).toBeTruthy();
+    expect(
+      await screen.findByRole('heading', { level: 2, name: words.nav.operators }),
+    ).toBeTruthy();
     expect(api.operatorPasskeyConfirmOptions).toHaveBeenCalledExactlyOnceWith('delete-operator');
     expect(api.deleteOperator).toHaveBeenCalledExactlyOnceWith(DEMO_COLLEAGUE_ID, {
       confirm: expect.objectContaining({ token: 'fake.token' }) as unknown,
@@ -46,7 +53,9 @@ describe('deleting a colleague', () => {
     open(DEMO_COLLEAGUE_ID, { cue: 'deleteOperator:404' });
     await userEvent.click(await deleteButton());
 
-    expect(await screen.findByRole('heading', { level: 2, name: 'Operators' })).toBeTruthy();
+    expect(
+      await screen.findByRole('heading', { level: 2, name: words.nav.operators }),
+    ).toBeTruthy();
   });
 
   it('B2 row 4: a touch not given deletes no one; the page stays', async () => {
@@ -58,11 +67,10 @@ describe('deleting a colleague', () => {
     expect(screen.getByRole('button', { name: words.team.deleteMake })).toBeTruthy();
   });
 
-  it('B2 row 5: a failure says they may not have been deleted, since the service may have done it; a 401 opens the prompt', async () => {
+  it('B2 row 5: a failure says so; a 401 opens the prompt', async () => {
     open(DEMO_COLLEAGUE_ID, { cue: 'deleteOperator:503' });
     await userEvent.click(await deleteButton());
     expect((await screen.findByRole('alert')).textContent).toBe(words.team.deleteFailed);
-    expect(words.team.deleteFailed).toMatch(/may not have been deleted/);
     expect(screen.getByRole('button', { name: words.team.deleteMake })).toBeTruthy();
   });
 
@@ -81,7 +89,12 @@ describe('deleting a colleague', () => {
   it('B2: says it all in Vietnamese', async () => {
     open(DEMO_COLLEAGUE_ID, { language: 'vi' });
 
-    expect(await screen.findByRole('heading', { level: 2, name: 'Xóa Minh Quân' })).toBeTruthy();
+    expect(
+      await screen.findByRole('heading', {
+        level: 2,
+        name: DICTIONARIES.vi.team.deleteTitle.replace('{{name}}', 'Minh Quân'),
+      }),
+    ).toBeTruthy();
     await userEvent.click(screen.getByRole('button', { name: DICTIONARIES.vi.team.deleteMake }));
     expect(
       await screen.findByRole('heading', { level: 2, name: DICTIONARIES.vi.nav.operators }),

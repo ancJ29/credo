@@ -25,6 +25,12 @@ const dom = (markup: string) => {
 };
 
 /** Whether a record has a note the page draws: a text that is not empty, never an array index. */
+/** A key with no words shows as the key: a dotted name that starts with a group, bar a file name. */
+const KEY = new RegExp(
+  `(?<![A-Za-z_.])(${Object.keys(DICTIONARIES.en).join('|')})(?!\\.(?:xlsx|csv)\\b)(\\.[a-z][A-Za-z0-9_]*)+`,
+);
+const showsKey = (line: string) => KEY.test(line);
+
 const hasNote = (one: { extra: Record<string, unknown> }) =>
   typeof one.extra['note'] === 'string' && one.extra['note'] !== '';
 
@@ -98,13 +104,11 @@ describe('the app’s own screens, drawn', () => {
     const state = stateOf(3, 'save-failed');
     const [vi, en] = LANGUAGES.map((language) => drawnWords(state.screen, state.colour, language));
 
-    expect(en).toContain(
-      'alert: The settings were not saved. What you typed is still here: try again.',
-    );
+    expect(en).toContain(`alert: ${DICTIONARIES.en.settings.saveFailed}`);
     expect(en).toContain('textbox "Company name" = "Minh Phát Sài Gòn"');
     expect(vi).toContain('heading: Cài đặt');
     expect(vi).not.toEqual(en);
-    expect([...vi, ...en].filter((line) => /\b[a-z]+\.[a-zA-Z]+\b/.test(line))).toEqual([]);
+    expect([...vi, ...en].filter(showsKey)).toEqual([]);
   });
 
   it('gives the same words each time a screen is drawn', () => {
@@ -325,10 +329,7 @@ describe('the passkeys walk, drawn', () => {
         for (const line of PASSKEY_PROOF[key](DICTIONARIES[language])) {
           expect(words, `${key} ${language}`).toContain(line);
         }
-        expect(
-          words.filter((line) => /\b[a-z]+\.[a-zA-Z]+\b/.test(line)),
-          key,
-        ).toEqual([]);
+        expect(words.filter(showsKey), key).toEqual([]);
       }
     }
   });
@@ -364,10 +365,7 @@ describe('the services walk, drawn', () => {
         for (const line of SERVICES_PROOF[key](DICTIONARIES[language])) {
           expect(words, `${key} ${language}`).toContain(line);
         }
-        expect(
-          words.filter((line) => /\b[a-z]+\.[a-zA-Z]+\b/.test(line)),
-          key,
-        ).toEqual([]);
+        expect(words.filter(showsKey), key).toEqual([]);
       }
     }
   });
@@ -395,10 +393,7 @@ describe('the root password walk, drawn', () => {
         for (const line of ROOT_PROOF[key](DICTIONARIES[language])) {
           expect(words, `${key} ${language}`).toContain(line);
         }
-        expect(
-          words.filter((line) => /\b[a-z]+\.[a-zA-Z]+\b/.test(line)),
-          key,
-        ).toEqual([]);
+        expect(words.filter(showsKey), key).toEqual([]);
       }
     }
   });
@@ -446,10 +441,7 @@ describe('the client delete walk, drawn', () => {
         for (const line of DELETE_PROOF[key](DICTIONARIES[language])) {
           expect(words, `${key} ${language}`).toContain(line);
         }
-        expect(
-          words.filter((line) => /\b[a-z]+\.[a-zA-Z]+\b/.test(line)),
-          key,
-        ).toEqual([]);
+        expect(words.filter(showsKey), key).toEqual([]);
       }
     }
   });
@@ -466,10 +458,7 @@ describe('the operators walk, drawn', () => {
         for (const line of TEAM_PROOF[key](DICTIONARIES[language])) {
           expect(words, `${key} ${language}`).toContain(line);
         }
-        expect(
-          words.filter((line) => /\b[a-z]+\.[a-zA-Z]+\b/.test(line)),
-          key,
-        ).toEqual([]);
+        expect(words.filter(showsKey), key).toEqual([]);
       }
     }
   });
@@ -504,11 +493,7 @@ describe('the app’s own scenes, drawn', () => {
         // taken out of a line before it is looked at.
         expect(
           // a dictionary key left showing; the demo file's name is not one
-          words.filter((line) =>
-            /\b[a-z]+\.[a-zA-Z]+\b/.test(
-              line.replaceAll(/[\w-]+\.xlsx/g, '').replace(/\S+@\S+/g, ''),
-            ),
-          ),
+          words.filter((line) => showsKey(line.replace(/\S+@\S+/g, ''))),
           key,
         ).toEqual([]);
       }
@@ -524,7 +509,7 @@ describe('the app’s own scenes, drawn', () => {
     await expect(
       drawnSceneWords(lacking, 'en', { limits: { findFor: 100, stillFor: 10, stillAtMost: 50 } }),
     ).rejects.toThrow(
-      'walk a-walk, screen x-1-nothing: step 1 ({"press":"staff.empty"}): found no button, link or choice named “No one is on the list yet.”',
+      `walk a-walk, screen x-1-nothing: step 1 ({"press":"staff.empty"}): found no button, link or choice named “${DICTIONARIES.en.staff.empty}”`,
     );
   });
 

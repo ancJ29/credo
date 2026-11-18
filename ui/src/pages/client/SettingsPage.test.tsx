@@ -6,6 +6,10 @@ import { draw } from '../../../tests/render';
 import { ApiError, type Api } from '../../api';
 import { SettingsPage } from './SettingsPage';
 
+import { DICTIONARIES } from '../../i18n';
+
+const words = DICTIONARIES.en;
+const starting = (word: string) => new RegExp(`^${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`);
 const config: TenantConfig = {
   name: 'Minh Phát',
   logo: 'data:image/png;base64,AAAA',
@@ -32,9 +36,9 @@ describe('a save the BFF refuses on the settings page', () => {
         onForbidden={onForbidden}
       />,
     );
-    await userEvent.type(await screen.findByLabelText(/^Company name/), 'x');
+    await userEvent.type(await screen.findByLabelText(starting(words.settings.name)), 'x');
 
-    await userEvent.click(screen.getByRole('button', { name: 'Save' }));
+    await userEvent.click(screen.getByRole('button', { name: words.settings.save }));
 
     expect(onSignedOut).toHaveBeenCalledOnce();
     expect(onForbidden).not.toHaveBeenCalled();

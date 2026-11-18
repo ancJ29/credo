@@ -3,6 +3,7 @@ import { screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { drawApp } from '../tests/render';
 import { ApiError } from './api';
+import { DICTIONARIES } from './i18n';
 import { PasskeyNotGiven } from './passkeys';
 import { App, sceneParts } from './scene';
 
@@ -95,7 +96,9 @@ describe('a scene’s parts', () => {
       '/staff',
     );
 
-    expect(await screen.findByRole('heading', { level: 2, name: 'Staff' })).toBeTruthy();
+    expect(
+      await screen.findByRole('heading', { level: 2, name: DICTIONARIES.en.staff.title }),
+    ).toBeTruthy();
     expect(holder.getAttribute('data-mantine-color-scheme')).toBe('light');
     // the page's own element is left alone, both while the app boots and once it is drawn
     expect(document.documentElement.getAttribute('data-mantine-color-scheme')).toBeNull();
