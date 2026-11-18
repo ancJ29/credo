@@ -2,6 +2,7 @@ packages:
   - bff
   - scripts
   - shared
+  - site
   - ui
   - visual
   - walk
@@ -12,16 +13,32 @@ engineStrict: true
 # tsx brings esbuild, whose postinstall replaces the JS shim pnpm links with the raw binary. The
 # shim finds the binary through the @esbuild/<platform> optional dependency without it.
 allowBuilds:
+  # Docusaurus brings core-js, whose postinstall only prints a funding banner.
+  core-js: false
   esbuild: false
+
+# hast-util-raw 9.2.0 (2026-11-06), under Docusaurus's plain-Markdown loader, calls parse5's
+# tokenizer.flushCharacters, which the locked parse5 8.0.1 lacks, so every .md page failed to compile;
+# 9.1.0 is its newest release two weeks old, on parse5 7.
+overrides:
+  hast-util-raw: 9.1.0
 
 # Each at its newest release two weeks old on 2026-10-21, exact for what ships, a caret for
 # types and tooling that only check.
 catalog:
+  # The docs site; the newest releases two weeks old on 2026-11-18 (3.10.2, of 2026-07-10), moved together.
+  '@docusaurus/core': 3.10.2
+  '@docusaurus/plugin-content-docs': 3.10.2
+  '@docusaurus/preset-classic': 3.10.2
+  '@docusaurus/theme-mermaid': 3.10.2
+  '@docusaurus/types': 3.10.2
   '@eslint/js': ^10.0.0
   '@fastify/aws-lambda': 6.4.2
   '@fontsource-variable/noto-sans': 5.3.0
   '@mantine/core': 9.6.3
   '@mantine/hooks': 9.6.3
+  # Docusaurus core's peer for the Markdown's components; the newest release two weeks old on 2026-11-18.
+  '@mdx-js/react': 3.1.1
   '@playwright/test': 1.64.0
   # The passkey ceremonies in the browser; the newest release two weeks old on 2026-10-30, its types inside.
   '@simplewebauthn/browser': 14.0.0

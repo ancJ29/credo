@@ -17,7 +17,8 @@ const COLOUR = String.raw`/#[0-9a-fA-F]{3,8}\b|\b(rgb|hsl)a?\(/`;
 export default defineConfig(
   // services/c-storage/ is a Go project with its own face and gate (its CLAUDE.md line 2). ui/frame-mock/ is
   // a static look for the human to judge, its data written from the app's own files: no product code;
-  // ui/signin-mock/ is the same for the sign-in screens.
+  // ui/signin-mock/ is the same for the sign-in screens. site/build/ and site/.docusaurus/ are the docs site's
+  // build and Docusaurus's generated files.
   {
     ignores: [
       '**/dist/',
@@ -26,6 +27,8 @@ export default defineConfig(
       'services/c-storage/',
       'ui/frame-mock/',
       'ui/signin-mock/',
+      'site/build/',
+      'site/.docusaurus/',
     ],
   },
   js.configs.recommended,
