@@ -3,7 +3,7 @@
 > **Decided** 2026-10-27: the machine's decisions on the service as built, written at the human's
 > request for one memo for it, so each section below holds one decision or one hazard in place of
 > a memo each. Arguments kept from the old service's memos where they still hold. **Amended**
-> 2026-11-11: a box holds many tenants, not one client.
+> 2026-11-18, from the knowledge proposal: the store decision's argument, SQLite over DynamoDB.
 
 ## At a glance
 
@@ -56,6 +56,25 @@ Drawn from [`server.go`](../../internal/server/server.go),
 **No test catches** a save that does not name what it read, which still overwrites, or a copy
 taken by hand mid-write ([412](#a-write-on-a-moved-record-is-refused),
 [the second copy](#a-second-copy-follows-the-file-within-a-second)).
+
+## The store is SQLite, not DynamoDB
+
+The human decided it on 2026-11-11, closing the final architecture's discussion: "Let go with
+SQLite, event in the worst case, one box per client still acceptable, while dynamoDB have cost
+explosion risk and very hard to rollback". The argument was written only in the orchestrator's day
+record, `worktrees/archive/2026-11-11-status.md` on the orchestrator branch; this is its home on
+`main`.
+
+- *Rejected:* DynamoDB. *Its price:* billing by the request, so its risk is runaway use, a loop or a
+  retry that runs the bill up with no ceiling; at the stated load its base price was low, so the base
+  was never the reason. And leaving it is very hard: every record moves out of a store with another
+  model, where SQLite's records are one file this service already copies
+  ([the second copy](#a-second-copy-follows-the-file-within-a-second)).
+- *Price of the choice:* one writer at a time on each file ([below](#one-writer-at-a-time)), so a
+  box's write rate is the ceiling, and growth is more boxes rather than a bigger store.
+- **"One box per client still acceptable" is the human's worst case, not a chosen shape.** It says
+  how far the choice may fall and still stand. The shape is a separate decision of the human's, the
+  pooled one ([at a glance](#at-a-glance)).
 
 ## The internal key gates every path
 
