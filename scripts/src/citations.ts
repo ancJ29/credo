@@ -23,6 +23,8 @@ const LIVING: { show: string; test: RegExp }[] = [
   { show: 'docs/operator-guide.md', test: /^docs\/operator-guide\.md$/ },
   { show: 'docs/client-readiness.md', test: /^docs\/client-readiness\.md$/ },
   { show: 'docs/decisions.md', test: /^docs\/decisions\.md$/ },
+  // The partners' pages: they say little of their own and link to the page that holds each fact.
+  { show: 'docs/partners/*.md', test: /^docs\/partners\/[^/]+\.md$/ },
   // A part's behaviour memo is living: it states what that part promises now. One entry a memo, so
   // a page gone from the tree is named by the report rather than passing as an empty set. The
   // undated memos beside them hold one decision each and are not in the set.
