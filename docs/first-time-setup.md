@@ -13,7 +13,7 @@ to copy and paste, with what you will see under it.
 | Go | 1.26 (`services/c-storage/go.mod`'s `toolchain`) | the two services: the storage and the activity log |
 | ShellCheck, cfn-lint and Ruby | 0.11.0, 1.46.0, any | only a change to `ops/`, rows 3 to 5 of [the gate](../CLAUDE.md#the-gate) |
 
-Working on ridge needs a few more, which [the ridge guide](ridge-guide.md#once-the-first-time) lists.
+Working on ridge needs a few more, which [the operator guide](operator-guide.md#what-the-terminal-needs) lists.
 
 ## 2. Get the code
 

@@ -20,6 +20,5 @@ something goes wrong.
 | [`docs/products.md`](docs/products.md) | the app · the operator console · the walk · the demo set · the tooling · checking a piece on ridge · known gaps |
 | [`docs/README.md`](docs/README.md) | putting a changed record back · a bug's first fifteen minutes · the logs · every document · the order to read them |
 | [`docs/operator-guide.md`](docs/operator-guide.md) | once, the first time · everyday · a change to ship · a client · operators · ridge down and back · something wrong · restore · more boxes |
-| [`docs/ridge-guide.md`](docs/ridge-guide.md) | deploy · check · take down and bring back · the operator and demo copies · a new root password · restoring records |
 | [`docs/open-items.md`](docs/open-items.md) | everything still to do, numbered |
 | [`CLAUDE.md`](CLAUDE.md) | for coding sessions · the gate's seven checks · the facts the code does not show |

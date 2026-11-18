@@ -104,7 +104,7 @@ question.
 
 - **Who can check:** anyone holding a demo copy's link and its root password. The `-1` copies are
   `p1`'s, the `-2` copies `p2`'s and the `-3` copies the human's. The human sends a partner their link
-  and password by their own channel, as [the ridge guide](ridge-guide.md) asks of the remake.
+  and password by their own channel, as [the operator guide](operator-guide.md#remake-the-six-demo-copies) asks of the remake.
 - **What a yes and a no each start:** a yes means the piece has passed the fourth stage, and the
   human's page lists it as live on ridge with what was read. A no, with the step where it went wrong,
   reopens the piece with those words.
