@@ -484,10 +484,10 @@ no password: the copies are made first, all six by `ops/demo-remake.sh ridge` ([
 ## Previews on Cloudflare Pages
 
 `ops/pages-preview.sh` is the one body of every preview deploy: it sends a static folder to the Pages project as a
-preview at a branch, behind Access, never production, and checks that both addresses refuse a visitor. Two cases call it.
+preview at a branch, never production; a preview is open by its link, with no sign-in, as the page is. Two cases call it.
 For both, set `CLOUDFLARE_PAGES_PROJECT` (the Pages project's name) and either `CLOUDFLARE_API_TOKEN` with
 `CLOUDFLARE_ACCOUNT_ID` (the walks workflow's secrets) or neither after a `wrangler login`;
-`CLOUDFLARE_PAGES_PRODUCTION_BRANCH` only if it is not `main`. It needs Node 26, `npm`, `curl`, `jq` and `tar`, and
+`CLOUDFLARE_PAGES_PRODUCTION_BRANCH` only if it is not `main`. It needs Node 26, `npm`, `jq` and `tar`, and
 installs wrangler 4.151.0 (the workflow's) into a temp folder. Its parameters: `--folder <dir>` (a folder on disk) or
 `--worktree <dir> --sub <path>` (that worktree's folder as committed at its HEAD, by `git archive`; a dirty tree is
 refused); `--branch <name>` (the preview's branch); `--commit <sha>` and `--stem <log name>` (optional).
@@ -507,12 +507,11 @@ bash <credo root>/wip-app-frame-mock/ops/pages-preview.sh --worktree <credo root
 Uncommitted files are not sent.
 
 Read the terminal, where the two addresses show (never in the log, `logs/<YYYYMMDD-HHMM>-<stem>.log` in the credo
-root). A good ending is `project found`, `refused: a redirect to Access's sign-in` twice, `== verdict: good` and `== done`.
+root). A good ending is `project found`, `== verdict: good` and `== done`.
 - **== refused: ...:** nothing was changed; the line names why (no folder or no `index.html`, a dirty worktree, no
-  project name, no credential, a missing tool, the production branch, a project not in the account, or a preview
-  address that answers a visitor: turn Access on for the project's previews first).
-- **FAIL: an address ANSWERS the page without Access:** the terminal shows the command that takes the deployment
-  down; run it now.
+  project name, no credential, a missing tool, the production branch, or a project not in the account).
+- **== verdict: bad: ...:** the line names what failed (wrangler did not install, its deploy exited non-zero, or the
+  deployment's address was not in its output).
 
 ## The full run
 

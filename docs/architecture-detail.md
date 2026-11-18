@@ -23,7 +23,7 @@ needs before touching any of it, is on
 | `ui/` | every screen a person sees: the client app and the operator console, one bundle split by address | everything anyone sees, and the walks and the visual report with it |
 | `bff/` | one Fastify app behind two entries, holding every rule: who is calling, what they may do, what a record's key is | every rule. c-storage enforces none of them |
 | `shared/` | what the two halves agree on: the wire contract, the record layout, the permission catalogue, the bounds | the halves drift apart in silence |
-| `services/c-storage/` | six HTTP routes over one SQLite file, in Go, with no framework and no router library | all data. Its file is copied to a bucket within a second, a copy not yet run on an environment |
+| `services/c-storage/` | six HTTP routes over one SQLite file, in Go, with no framework and no router library | all data. Its file is copied to a bucket within a second, a copy run on ridge on 2026-11-13 and a restore read back there |
 | `services/audit-backbone/` | a second Go service, in this repository and called by the back end for every change a person makes (locally; shipped by the release, not yet run on ridge) | the history of every change, once it runs on ridge ([the activity log](activity-log.md)) |
 | `scripts/` | the local lanes — `pnpm stack`, `pnpm fake`, `pnpm demo` — and the steps the ops scripts hand to the product's own code | any way to run or seed anything locally, and the BFF's route tests |
 | `visual/` | the walks page: the app's own screens drawn without a browser | the one artefact a non-coder judges a screen from |
@@ -333,8 +333,8 @@ third-party code builds *before* the AWS role is assumed (`ci.yml`'s comment "Th
 to the point of naming the one function and the one instance
 (`ops/env.yml`'s `DeployRole`). Two other workflows:
 [`seed.yml`](../.github/workflows/seed.yml) brings ridge's demo copies up to yesterday when somebody runs it (it has no schedule), and
-[`walks.yml`](../.github/workflows/walks.yml) deploys the walks page to Cloudflare Pages behind
-Access — the only deploy target that is not AWS.
+[`walks.yml`](../.github/workflows/walks.yml) deploys the walks page to Cloudflare Pages, open by its
+link — the only deploy target that is not AWS.
 
 One hazard the split creates: a change set that updates the `Bff` resource can restore its inline
 503 stub and empty environment, so the human re-runs the latest deploy afterwards
@@ -437,9 +437,8 @@ nightly copy to S3 under a put-only role on the box, none of it built, deferred 
 ([open item 6](open-items.md)). The continuous-copy piece replaced it: Litestream copies each save to the
 environment's own bucket through an S3 gateway door, the box's role may put, get and list under its own
 path and holds no delete, and the records sit on a disk of their own (`ops/env.yml`'s `CopyBucket`,
-`BoxRole` and `RecordsVolume`). **It is built and guarded on written input, and no environment has run it
-yet**, so until the human's changes and the drill have run, a deployment's one SQLite file is still the only
-copy that has been proved readable. The restore runs on the box under its own role, which is why the role
+`BoxRole` and `RecordsVolume`). **It ran on ridge on 2026-11-13**, where the drill read a restored file holding a
+save made before a reboot ([the recap](recaps/2026-11-12-continuous-copy.md)). The restore runs on the box under its own role, which is why the role
 reads; the first plan's "may only put" was dropped for that reason.
 
 ## Where these pages' facts came from

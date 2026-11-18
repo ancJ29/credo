@@ -63,6 +63,9 @@ run on an environment**: the human's changes, the release and the drill are stil
 `ops/check.sh` says whether a copy is fresh, and `ops/restore.sh` brings it back
 ([the runbook](../ops/README.md#restoring-the-records)).
 
+*Corrected 2026-11-18:* the copy ran on ridge on 2026-11-13, and `ops/drill.sh ridge` read a restored file holding a
+save made before a reboot ([the recap](recaps/2026-11-12-continuous-copy.md)).
+
 What the item did not say is what the box's disk did. As of `0f7d69c1` (`main` before the piece) the root volume holding that file
 carried `DeleteOnTermination: true`, with no `DeletionPolicy` and no snapshot (the device is now at
 [`ops/env.yml`](../ops/env.yml), the `BlockDeviceMappings` of `Box`). So anything that terminated or replaced the instance took every
@@ -260,6 +263,10 @@ its steps.
    thing that cannot be recovered from. The deletion policy is live on ridge; the continuous copy, its
    check and its restore are written and guarded, and what remains is the human's: the two template
    changes, the release and the drill that reads a restored file ([open item 6](open-items.md)).
+   *Corrected 2026-11-18:* the copy, its check and its restore ran on ridge on 2026-11-13, the drill reading a
+   restored file that held a save made before a reboot ([the recap](recaps/2026-11-12-continuous-copy.md)),
+   and one demo copy was restored alone ([its recap](recaps/2026-11-13-store-pages-copy.md)); a restore onto
+   a box named with `--box` ran only on stand-ins ([its recap](recaps/2026-11-17-move-fixes.md)).
 2. **The tree guard widened: done.** `ops_match_main` covers every deployed path, `scripts/`
    included (open item 130, fixed).
 3. **A client-stack mode, or a refusal, on `check.sh` and `drill.sh`: done.** The check only reads

@@ -29,7 +29,7 @@ flowchart LR
     bff["the BFF<br/>[Lambda, arm64] bff/ with shared/ · every rule in the system"]
     subgraph box["the services · the environment's box, every tenant in it<br/>[EC2 t4g.nano]"]
       cs["c-storage<br/>[Go service, systemd] six routes, no rules"]
-      db[("the records<br/>[one SQLite file] copied to its own bucket within a second · built, not yet run on an environment; ridge holds only invented companies")]
+      db[("the records<br/>[one SQLite file] copied to its own bucket within a second · run on ridge on 2026-11-13, a restore read back there; ridge holds only invented companies")]
     end
     more["more boxes, each holding the tenants the operator puts on it<br/>[EC2] the pooled shape · the back end reaches them, none is added on ridge yet"]
   end

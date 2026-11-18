@@ -1,4 +1,4 @@
-# The walks page, built on a runner and published to Cloudflare Pages behind Cloudflare Access.
+# The walks page, built on a runner and published to Cloudflare Pages, open by its link.
 # The build job holds no secret; the deploy job holds the Cloudflare token and runs only on main.
 # A red here is a defect to fix, never a run to repeat.
 # Why it is shaped so: docs/plans/2026-10-28-walks-share.md.
@@ -127,13 +127,6 @@ jobs:
         run: |
           bash ops/walks-digest.sh "$RUNNER_TEMP/page"
           [ "$(bash ops/walks-digest.sh --sum "$RUNNER_TEMP/page")" = "$WANT" ] || { echo "the page differs from the build's" >&2; exit 1; }
-      # The project's own address is behind Access only by its own application; the project's
-      # switch covers previews. An address that answers stops the deploy before any upload.
-      - name: The project's address refuses a visitor
-        if: ${{ !env.ACT }}
-        env:
-          PROJECT: ${{ secrets.CLOUDFLARE_PAGES_PROJECT }}
-        run: bash ops/walks-refused.sh "https://$PROJECT.pages.dev/"
       - name: Node for wrangler
         if: ${{ !env.ACT }}
         uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -153,10 +146,9 @@ jobs:
         run: |
           "$RUNNER_TEMP/wrangler/node_modules/.bin/wrangler" pages deploy "$RUNNER_TEMP/page" \
             --project-name "$PROJECT" --branch main --commit-hash "$GITHUB_SHA"
-      # The list's lines carry the account's id; only the address is read out of it.
+      # The list's lines carry the account's id; walks-served.sh prints only the address, and that is dropped.
       - name: The newest production deploy carries this commit
         if: ${{ !env.ACT }}
-        id: served
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
           CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
@@ -165,11 +157,5 @@ jobs:
         run: |
           "$RUNNER_TEMP/wrangler/node_modules/.bin/wrangler" pages deployment list \
             --project-name "$PROJECT" --environment production --json >"$RUNNER_TEMP/deploys.json"
-          address=$(bash ops/walks-served.sh "$GITHUB_SHA" <"$RUNNER_TEMP/deploys.json")
-          echo "address=$address" >>"$GITHUB_OUTPUT"
+          bash ops/walks-served.sh "$GITHUB_SHA" <"$RUNNER_TEMP/deploys.json" >/dev/null
           echo "the newest production deploy carries ${GITHUB_SHA:0:7}"
-      - name: The deploy's own address refuses a visitor
-        if: ${{ !env.ACT }}
-        env:
-          ADDRESS: ${{ steps.served.outputs.address }}
-        run: bash ops/walks-refused.sh "$ADDRESS"

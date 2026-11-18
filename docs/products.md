@@ -58,7 +58,7 @@ Usage and costs, and Activity, are menu entries with an empty "coming soon" page
 | `walk/run.sh` | One command runs any walk, green only when fake, stack and stack again match pixel for pixel; it needs the human's own terminal. Many walks run in three lanes at once. It keeps a claim on its browser and says in one line if the browser is removed mid-run. | local | in `main` | `bash walk/run.sh <walk> [--moved <screen>] [--write] [--serial]` | [`recaps/2026-10-31-walk-steady.md`](recaps/2026-10-31-walk-steady.md), [`recaps/2026-11-07-browser-guard.md`](recaps/2026-11-07-browser-guard.md) |
 | `ops/full-run.sh` (the full run) | Runs all twelve walks in three lanes (run 1 writes each walk's bases on its own reads, under a lock of its own, and the verdict names what moved), then run 2 as a byte compare of run 1's pictures against the bases; green only when every count is 0. 16 minutes in the adoption run, about 70 the serial way. | local | in `main` | `bash ops/full-run.sh` in the human's terminal | [`recaps/2026-11-04-full-run-speed.md`](recaps/2026-11-04-full-run-speed.md), [`recaps/2026-11-06-walk-machinery.md`](recaps/2026-11-06-walk-machinery.md) |
 | `pnpm report` (the walks page build) | Builds the walks page: 100 screens in two languages, each shown full window, answered yes or no in one key (Yes to all per walk), with a memo on a No. | local | in `main` | `pnpm report`, open the built file from disk | [`recaps/2026-11-03-walks-page.md`](recaps/2026-11-03-walks-page.md) |
-| The deployed walks page | The same page for partners (`p1`, `p2`), behind a sign-in by emailed code; `walks.yml` redeploys it on a push to `main` that touches it. | the walks page's hosting (Cloudflare Pages) | in `main` | the page by name, "walks"; `ops/walks-preview.sh` for a private preview | [`recaps/2026-10-29-walks-share.md`](recaps/2026-10-29-walks-share.md) |
+| The deployed walks page | The same page for partners (`p1`, `p2`), open by its link, with no sign-in; `walks.yml` redeploys it on a push to `main` that touches it. | the walks page's hosting (Cloudflare Pages) | in `main` | the page by name, "walks"; `ops/walks-preview.sh` for a preview | [`recaps/2026-10-29-walks-share.md`](recaps/2026-10-29-walks-share.md) |
 | The design system's gallery | A page of our own, no Storybook: the legacy app's colours, type and spacing read from the theme, Mantine's button and field in it, then eleven sample components in three levels (atoms, molecules, organisms), each in its states. A lint rule keeps a level importing only from below; no screen of the app changed. | local and ridge | landing 2 of 3 (one home for the colours, light only): no picture moved, your run green; in `main`: five sign-in parts added, eleven in all, your look yes; landing 3 (the legacy's values on the cards, headers, menu and dialog) on the branch design-system: 728 of 786 pictures moved, your first picture run green, your second run green with every picture the same and no base written, your look at the walks page open; on the branch `gallery-workbench`: the gallery at its own address, the parts in a list, one part at a time, your look on ridge, on a computer and a phone, yes 2026-11-17 | `/48b74d079/gallery` at the app's address, on ridge or locally; in `ui/`, `pnpm exec vite --open /48b74d079/gallery` (Ctrl-C ends it) | [`recaps/2026-11-16-design-system-skeleton.md`](recaps/2026-11-16-design-system-skeleton.md), [`recaps/2026-11-17-gallery-workbench.md`](recaps/2026-11-17-gallery-workbench.md), [`plans/2026-11-12-design-system.md`](plans/2026-11-12-design-system.md) |
 
 The human uses the page as the confirmation form: answers are kept in the browser under the name
@@ -94,7 +94,7 @@ typed, and the pasted block is what the machine reads; a No becomes a case
 | One company's records copied, a long list in pages | The store answers a list in pages and the back end reads them all, so a company past 1,000 records still sees a whole list. The operator copies one company's records to another store and compares them, and puts one demo copy back from the continuous copy while the others keep their later changes. | local, ridge | in `main`, tested on local stores and a stand-in box; <!-- FILL: do not write a result, a count, a time or a log name --> | `ops/company-restore.sh ridge <code>` | [`recaps/2026-11-13-store-pages-copy.md`](recaps/2026-11-13-store-pages-copy.md) |
 | `ops/legacy-capture.sh` | Signs in to the legacy app as its root and pictures the screens a file names, on a PC and a phone, opening only and never saving; for whoever compares the legacy with the new app. | the human's terminal only | on `legacy-capture`; run green 11-04 | `bash ops/legacy-capture.sh` (asks for the address, name and password) | [`recaps/2026-11-04-legacy-capture.md`](recaps/2026-11-04-legacy-capture.md) |
 | API access log | Every call to a client's API leaves one line in a 14-day log group (time, address, path, answer); a guard refuses a template that loses it. The address, measured once: three calls through the distribution on ridge (2026-11-08, 18:11) left three lines with one address, a public one outside AWS's published ranges and consistent with the caller's own, not an edge node; why is not established (item 157). Throttled calls (429) appear here only. | ridge (applied) | in `main` and live on ridge: the change set ran green there on 2026-11-08 at 17:10 (the project's logs folder, `logs/2026-11-08-171042-stack-ridge.log`, exit 0), and three lines were read back from the log group at 18:12, each carrying all ten fields of the stage's format (the project's logs folder, `logs/20261108-1809-ridge-access-log-read.log`) | `/aws/apigateway/credo-ridge` | [`recaps/2026-11-08-access-log.md`](recaps/2026-11-08-access-log.md) |
-| The watch (four alarms, a topic, Slack) | Four alarms on an environment (the app's calls failing, the back end's errors, the back end refusing work, the box failing its check), each alarm and its return to normal sent to one topic, which AWS's Slack app carries into one channel when the stack is given the two Slack IDs; for the human. | ridge (not applied) | written in `ops/env.yml` and guarded in `ops/test.sh`, in `main`; not applied to ridge, nothing forced yet | the Slack steps, then `ops/stack.sh env ridge` ([the watch](../ops/README.md#the-watch)) | [`recaps/2026-11-12-slack-alarm.md`](recaps/2026-11-12-slack-alarm.md) |
+| The watch (four alarms, a topic, Slack) | Four alarms on an environment (the app's calls failing, the back end's errors, the back end refusing work, the box failing its check), each alarm and its return to normal sent to one topic, which AWS's Slack app carries into one channel when the stack is given the two Slack IDs; for the human. | ridge (applied) | in `main` and live on ridge: applied there on 2026-11-13, and one alarm forced there, its alarm and its return to normal each reaching the channel | the Slack steps, then `ops/stack.sh env ridge` ([the watch](../ops/README.md#the-watch)) | [`recaps/2026-11-12-slack-alarm.md`](recaps/2026-11-12-slack-alarm.md) |
 
 ## Check a piece on ridge, without code
 
@@ -144,6 +144,30 @@ Open the app's ridge address with `/48b74d079/gallery` after it. No sign-in. You
 You should see, on the phone, the list above the part, and nothing scrolling sideways.
 
 **Question: does it read as the mock you said yes to, on both?** Say yes or no; with a no, say the step number where it went wrong.
+
+## Next, in order
+
+What comes next, in the order the board holds it:
+
+1. The working rules are trimmed on a schedule, once their pages pass their word limit, rather than when
+   someone happens to notice.
+2. Pinning the test browser's version gets a home the index can find; today only one recap records it. It
+   waits for the check of the documents' citations, which touches the same pages.
+3. CI's runs on this machine, the wait for the test lock and CI's cache are each brought under 15 minutes.
+   It waits behind this week's milestones.
+4. The scripts that picture the legacy app's screens, parked for now.
+5. The parked open items, taken up again.
+
+Open items a newcomer can take first, each small:
+
+- [Item 63](open-items.md): one page test for the root-password page when the BFF refuses (403), copied
+  from its 503 test. Safe: a test on the fake alone, no credential and no rule to decide.
+- [Item 58](open-items.md): the walks page's two builds run one after the other, so `NODE_ENV` comes back
+  as it was. Safe: build code on this machine alone, nothing deployed and nothing to decide.
+- [Item 475](open-items.md): a doc comment moved back above its function, a test's label and a stale
+  comment reworded. Safe: words in comments and a label, no behaviour changes.
+
+This section is refreshed at each evening's push.
 
 ## Known gaps
 
