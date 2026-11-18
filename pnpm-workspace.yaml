@@ -13,6 +13,8 @@ engineStrict: true
 # tsx brings esbuild, whose postinstall replaces the JS shim pnpm links with the raw binary. The
 # shim finds the binary through the @esbuild/<platform> optional dependency without it.
 allowBuilds:
+  # Docusaurus brings core-js, whose postinstall only prints a funding banner.
+  core-js: false
   esbuild: false
 
 # Each at its newest release two weeks old on 2026-10-21, exact for what ships, a caret for
