@@ -1,5 +1,5 @@
 # c-storage
-Stack: Go 1.26, modernc.org/sqlite · Gate: make check · Ship: none yet
+Stack: Go 1.25 (both modules' floor; c-storage builds on 1.26.7), modernc.org/sqlite · Gate: make check · Ship: none yet
 
 Key-value records for the BFF, each under its own service: one Go binary, one SQLite file, one
 listener. Seven routes, each with a caller in [the app frame](../../docs/plans/2026-10-27-app-frame.md) or
