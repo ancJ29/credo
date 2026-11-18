@@ -27,7 +27,7 @@ const (
 // taken binds a loopback port and keeps it, so a Run asked for it must fail.
 func taken(t *testing.T) string {
 	t.Helper()
-	ln, err := server.Listen("127.0.0.1", "0")
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatalf("Listen: %v", err)
 	}
@@ -77,13 +77,77 @@ func TestRunRefusesToStartWithoutItsDatabaseOrItsPort(t *testing.T) {
 	}
 }
 
+// A listener on every interface would make a firewall the only thing between the network and the
+// port: Run binds the one address it is given, whichever family, and the other loopback on the
+// same port stays shut.
+func TestRunBindsTheAddressItIsGiven(t *testing.T) {
+	others := map[string]string{"127.0.0.1": "::1"}
+	// Only the ::1 case needs IPv6; a host without it still tests 127.0.0.1.
+	if probe, err := net.Listen("tcp", "[::1]:0"); err == nil {
+		probe.Close()
+		others["::1"] = "127.0.0.1"
+	} else {
+		t.Logf("no IPv6 loopback on this host, ::1 not tested: %v", err)
+	}
+	for addr, other := range others {
+		port := freeOnBoth(t)
+		c := cfg(t, port)
+		c.ListenAddr = addr
+		ctx, cancel := context.WithCancel(context.Background())
+		ran := make(chan error, 1)
+		go func() { ran <- Run(ctx, c) }()
+		answered(t, net.JoinHostPort(addr, port), ran)
+		if conn, err := net.Dial("tcp", net.JoinHostPort(other, port)); err == nil {
+			conn.Close()
+			t.Errorf("Run on %s also answered on %s", addr, other)
+		}
+		cancel()
+		if err := <-ran; err != nil {
+			t.Fatalf("Run on %s = %v, want a clean stop", addr, err)
+		}
+	}
+}
+
+// freeOnBoth is a port no listener holds on either loopback, as far as a bind can tell.
+func freeOnBoth(t *testing.T) string {
+	t.Helper()
+	ln, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatalf("Listen: %v", err)
+	}
+	port := strconv.Itoa(ln.Addr().(*net.TCPAddr).Port)
+	ln.Close()
+	if six, err := net.Listen("tcp", net.JoinHostPort("::1", port)); err == nil {
+		six.Close()
+	}
+	return port
+}
+
+// answered waits, at most 3 s, until addr takes a connection; ran ending first is the failure.
+func answered(t *testing.T, addr string, ran <-chan error) {
+	t.Helper()
+	deadline := time.Now().Add(3 * time.Second)
+	for time.Now().Before(deadline) {
+		if conn, err := net.Dial("tcp", addr); err == nil {
+			conn.Close()
+			return
+		}
+		select {
+		case err := <-ran:
+			t.Fatalf("Run on %s ended before it answered: %v", addr, err)
+		case <-time.After(20 * time.Millisecond):
+		}
+	}
+	t.Fatalf("Run did not answer on %s within 3 s", addr)
+}
+
 // started runs serve on a fresh loopback listener, over a file holding one
 // service, until the test ends. Like Run, it closes the database only after
 // serve returns; done carries serve's answer once that is so.
 func started(t *testing.T, grace time.Duration) (dbPath string, ln net.Listener, stop context.CancelFunc, done <-chan error) {
 	t.Helper()
 	dbPath = filepath.Join(t.TempDir(), "c-storage.db")
-	db, err := sqlitedb.Open(dbPath, store.Schema)
+	db, err := sqlitedb.Open(dbPath, store.Schema, store.Version)
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
@@ -91,7 +155,7 @@ func started(t *testing.T, grace time.Duration) (dbPath string, ln net.Listener,
 	if err := st.Register(context.Background(), "svc", accessKey); err != nil {
 		t.Fatalf("register: %v", err)
 	}
-	if ln, err = server.Listen("127.0.0.1", "0"); err != nil {
+	if ln, err = net.Listen("tcp", "127.0.0.1:0"); err != nil {
 		t.Fatalf("Listen: %v", err)
 	}
 	ctx, stop := context.WithCancel(context.Background())
@@ -167,7 +231,7 @@ func TestAWriteInFlightAtShutdownCommits(t *testing.T) {
 		t.Fatalf("serve = %v, want a clean stop", err)
 	}
 	// The file is read back after the stop, as the next start would find it.
-	db, err := sqlitedb.Open(dbPath, store.Schema)
+	db, err := sqlitedb.Open(dbPath, store.Schema, store.Version)
 	if err != nil {
 		t.Fatalf("reopen: %v", err)
 	}

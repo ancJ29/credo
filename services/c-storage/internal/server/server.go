@@ -3,7 +3,6 @@
 package server
 
 import (
-	"net"
 	"net/http"
 
 	"credo/c-storage/internal/auth"
@@ -100,11 +99,4 @@ func (s *Server) health(next http.Handler) http.Handler {
 		}
 		next.ServeHTTP(w, r)
 	})
-}
-
-// Listen binds one address, which config has already made a single IP address and never an
-// unspecified one: loopback by default, or the box's private address, so no other interface
-// answers whatever a firewall says. TestListenBindsTheAddressItIsGiven.
-func Listen(addr, port string) (net.Listener, error) {
-	return net.Listen("tcp", net.JoinHostPort(addr, port))
 }

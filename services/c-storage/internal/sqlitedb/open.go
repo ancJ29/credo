@@ -15,17 +15,15 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-// version is the user_version a file holds once schema is applied.
-const version = 1
-
 // Open creates the parent directory if needed, opens the file, and applies
-// schema when the file is new.
+// schema when the file is new, stamping it at version, the user_version the
+// schema's owner gives it.
 //
 // Handlers write concurrently, each on a connection of its own, so every
 // transaction begins IMMEDIATE: a read-modify-write takes the write lock at
 // BEGIN, and busy_timeout is what makes the others wait their turn rather than
 // fail. WAL lets reads go on meanwhile.
-func Open(path string, schema string) (*sql.DB, error) {
+func Open(path, schema string, version int) (*sql.DB, error) {
 	if err := os.MkdirAll(filepath.Dir(path), 0o750); err != nil {
 		return nil, fmt.Errorf("create data dir: %w", err)
 	}
@@ -42,7 +40,7 @@ func Open(path string, schema string) (*sql.DB, error) {
 	// sql.Open only looks the driver up, and the import above registers it;
 	// apply's first read is what opens the file.
 	db, _ := sql.Open("sqlite", dsn)
-	if err := apply(db, schema); err != nil {
+	if err := apply(db, schema, version); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("%s: %w", path, err)
 	}
@@ -53,7 +51,7 @@ func Open(path string, schema string) (*sql.DB, error) {
 // transaction. Any other file is refused: at user_version 0 with a table, it
 // is one this binary did not make, and running on its columns would fail
 // later, on a caller's request, instead of now.
-func apply(db *sql.DB, schema string) error {
+func apply(db *sql.DB, schema string, version int) error {
 	var have, tables int
 	if err := db.QueryRow(`SELECT user_version, (SELECT count(*) FROM sqlite_schema WHERE type = 'table')
 		FROM pragma_user_version`).Scan(&have, &tables); err != nil {

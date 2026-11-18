@@ -167,22 +167,35 @@ func (s *Server) removeRecord(w http.ResponseWriter, r *http.Request) {
 	case err != nil:
 		httpx.Internal(w, err)
 	default:
-		w.WriteHeader(http.StatusNoContent)
+		httpx.NoContent(w)
 	}
+}
+
+// serviceBody is what register and rekey both take.
+type serviceBody struct {
+	Code      string `json:"code"`
+	AccessKey string `json:"accessKey"`
+}
+
+// decodeService reads a serviceBody whose code and key are both set, and answers the refusal
+// itself when it cannot: false means the response is already written.
+func decodeService(w http.ResponseWriter, r *http.Request) (serviceBody, bool) {
+	var body serviceBody
+	if !httpx.Decode(w, r, &body) {
+		return body, false
+	}
+	if body.Code == "" || body.AccessKey == "" {
+		httpx.BadRequest(w, "code and accessKey are non-empty strings")
+		return body, false
+	}
+	return body, true
 }
 
 // registerService answers a taken code 409, which a caller that only needs the
 // service to exist reads as registered.
 func (s *Server) registerService(w http.ResponseWriter, r *http.Request) {
-	var body struct {
-		Code      string `json:"code"`
-		AccessKey string `json:"accessKey"`
-	}
-	if !httpx.Decode(w, r, &body) {
-		return
-	}
-	if body.Code == "" || body.AccessKey == "" {
-		httpx.BadRequest(w, "code and accessKey are non-empty strings")
+	body, ok := decodeService(w, r)
+	if !ok {
 		return
 	}
 	err := s.store.Register(r.Context(), body.Code, body.AccessKey)
@@ -199,15 +212,8 @@ func (s *Server) registerService(w http.ResponseWriter, r *http.Request) {
 // rekeyService replaces a registered service's key, 404 for a code that is not registered. The
 // records stay; the old key is refused from the answer on.
 func (s *Server) rekeyService(w http.ResponseWriter, r *http.Request) {
-	var body struct {
-		Code      string `json:"code"`
-		AccessKey string `json:"accessKey"`
-	}
-	if !httpx.Decode(w, r, &body) {
-		return
-	}
-	if body.Code == "" || body.AccessKey == "" {
-		httpx.BadRequest(w, "code and accessKey are non-empty strings")
+	body, ok := decodeService(w, r)
+	if !ok {
 		return
 	}
 	err := s.store.Rekey(r.Context(), body.Code, body.AccessKey)

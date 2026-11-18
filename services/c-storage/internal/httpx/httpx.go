@@ -52,6 +52,11 @@ func Decode(w http.ResponseWriter, r *http.Request, v any) bool {
 	return true
 }
 
+// NoContent is a success with nothing to say.
+func NoContent(w http.ResponseWriter) {
+	w.WriteHeader(http.StatusNoContent)
+}
+
 // BadRequest echoes details because the caller can act on them.
 func BadRequest(w http.ResponseWriter, details string) {
 	JSON(w, http.StatusBadRequest, ErrorBody{Error: "Bad request", Details: details})
