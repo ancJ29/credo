@@ -11,13 +11,12 @@
 > stops resolving.
 
 **What exists.** `services/audit-backbone/` holds a finished Go service: 22 Go files, nine internal
-packages and `cmd/server`, its own SQLite file, its own gate, five rules `AB1` to `AB5`. **The back end
+packages and `cmd/server`, its own SQLite file, its own gate, four rules `AB1`, `AB2`, `AB4` and `AB5` (`AB3` retired). **The back end
 calls it:** every route that changes a client's data declares its entry in `bff/src/audit.ts`'s
 `declare`, and one hook in `buildApp` (`bff/src/app.ts`) sends the entry to the service's keyed
 write before the reply. The local copy starts the service beside c-storage (`scripts/src/stack.ts`'s
-`startStack`). **On the box it is shipped, and has not yet run there:** `ops/release.sh` installs it as its own unit,
-`ops/audit-backbone.service`, beside c-storage's, and the CI workflow gates it in its own `audit` job.
-No release has carried it to ridge yet, so nothing on ridge is read. Its store, the one path for its writes and
+`startStack`). **On the box it runs on ridge beside c-storage, released 2026-11-15:** `ops/release.sh` installs it as its own unit,
+`ops/audit-backbone.service`, beside c-storage's, and the CI workflow gates it in its own `audit` job. Its store, the one path for its writes and
 reads, is `Store` in `services/audit-backbone/internal/activity/store.go`. What was changed on the way in
 and what was left behind is its recap, [`recaps/2026-11-09-audit-backbone-move.md`](recaps/2026-11-09-audit-backbone-move.md).
 
@@ -214,7 +213,7 @@ so that nobody re-derives it from scratch in six weeks. That costing is not in t
 
 - **The service's 22 Go files were not read.** Everything here about its behaviour comes from its own
   guideline, `services/audit-backbone/CLAUDE.md`, read whole, its `Makefile` whole,
-  `services/audit-backbone/internal/config/config.go`, and the declarations of `Writer.Do` and `Store` and
+  `services/audit-backbone/internal/config/config.go`, and the declarations of `Store` and of its write path (a batch writer then, removed 2026-11-18) and
   nothing else of their files.
 - **The counts are relayed, not re-derived** — the 39 deliberate write sites, the 11 with the actor
   in scope and the 28 without, and the 15 that must never be logged come from an earlier costing of
