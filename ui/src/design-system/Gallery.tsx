@@ -1,12 +1,4 @@
-import {
-  Burger,
-  Button,
-  Collapse,
-  MantineProvider,
-  NativeSelect,
-  Text,
-  Title,
-} from '@mantine/core';
+import { Burger, Button, Collapse, MantineProvider, Select, Text, Title } from '@mantine/core';
 import { IconChevronRight } from '@tabler/icons-react';
 import { CREDO_COLOUR } from '@credo/shared';
 import { Fragment, useState, type ReactNode } from 'react';
@@ -175,7 +167,13 @@ function Fold({
 }
 
 /** The design system's parts as a workbench: a list by level and kind that folds and hides, one part at a time, light whatever the device asks, in a colour theme of the viewer's choosing. */
-export function Gallery() {
+export function Gallery({
+  test,
+}: {
+  /** Tests set Mantine's test mode: jsdom has no layout, so in the default mode a dropdown reads
+   * its field as out of sight and hides itself. */
+  test?: boolean;
+}) {
   const { pathname } = useLocation();
   const entry = partAt(pathname);
   const [listShown, setListShown] = useState(true);
@@ -206,16 +204,21 @@ export function Gallery() {
     </Link>
   );
   const picker = (
-    <NativeSelect
+    <Select
       size="xs"
-      aria-label="Colour theme"
+      label="Colour theme"
       data={THEMES}
       value={colour}
-      onChange={(event) => choose(event.currentTarget.value)}
+      allowDeselect={false}
+      onOptionSubmit={choose}
     />
   );
   return (
-    <MantineProvider theme={themeOf(colour)} forceColorScheme="light">
+    <MantineProvider
+      theme={themeOf(colour)}
+      forceColorScheme="light"
+      env={test ? 'test' : 'default'}
+    >
       <title>Credo: the design system’s gallery</title>
       <meta name="robots" content="noindex" />
       <div className={classes.root}>

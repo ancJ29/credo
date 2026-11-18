@@ -1,4 +1,5 @@
 import { render, screen, within } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { describe, expect, it, vi } from 'vitest';
 import { Gallery } from './Gallery';
@@ -10,16 +11,19 @@ vi.mock('@credo/shared', async (importOriginal) => ({
 }));
 
 describe('Gallery, the app’s colour in capitals', () => {
-  it('the colour themes: the app’s colour written in capitals still opens the chooser on its own palette, marked', () => {
+  it('the colour themes: the app’s colour written in capitals still opens the chooser on its own palette, marked', async () => {
     render(
       <MemoryRouter initialEntries={['/48b74d079/gallery']}>
-        <Gallery />
+        <Gallery test />
       </MemoryRouter>,
     );
-    const chooser = screen.getByRole<HTMLSelectElement>('combobox', { name: 'Colour theme' });
+    const chooser = screen.getByRole<HTMLInputElement>('combobox', { name: 'Colour theme' });
 
-    expect(chooser.value).toBe('#3e618c');
-    expect(within(chooser).getByRole('option', { name: 'Steel · the app’s' })).toBeDefined();
-    expect(chooser.selectedOptions[0].textContent).toBe('Steel · the app’s');
+    expect(chooser.value).toBe('Steel · the app’s');
+    await userEvent.setup().click(chooser);
+    const marked = within(await screen.findByRole('listbox')).getByRole('option', {
+      selected: true,
+    });
+    expect(marked.textContent).toBe('Steel · the app’s');
   });
 });

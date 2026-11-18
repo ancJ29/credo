@@ -35,7 +35,7 @@ const BASE = '/48b74d079/gallery';
 function open(path: string) {
   return render(
     <MemoryRouter initialEntries={[path]}>
-      <Gallery />
+      <Gallery test />
     </MemoryRouter>,
   );
 }
@@ -306,11 +306,14 @@ describe('Gallery', () => {
       vi.restoreAllMocks();
     });
 
-    const chooser = () => screen.getByRole('combobox', { name: 'Colour theme' });
-    const options = () =>
-      within(chooser())
-        .getAllByRole('option')
-        .map((option) => option.textContent);
+    const chooser = () => screen.getByRole<HTMLInputElement>('combobox', { name: 'Colour theme' });
+    // Mantine's picker draws its options in a list of its own, once it is opened.
+    const choose = async (name: string) => {
+      const user = userEvent.setup();
+      await user.click(chooser());
+      await user.click(within(await screen.findByRole('listbox')).getByRole('option', { name }));
+    };
+    const STEEL = 'Steel · the app’s';
     // The colour every part reads, as Mantine writes it for the provider drawn last.
     const brand7 = () =>
       [...document.querySelectorAll('style[data-mantine-styles]')]
@@ -323,10 +326,17 @@ describe('Gallery', () => {
         .getAllByTitle(/^brand \d$/)
         .map((swatch) => swatch.getAttribute('style'));
 
-    it('the colour themes: the picker offers every stock palette by name, steel, emerald and terracotta among them, and opens on the app’s own', () => {
+    it('the colour themes: the picker is Mantine’s own, labelled in sight, offers every stock palette by name, steel, emerald and terracotta among them, and opens on the app’s own', async () => {
+      const user = userEvent.setup();
       open(BASE);
+      expect(chooser().tagName).toBe('INPUT');
+      expect(screen.getByText('Colour theme').tagName).toBe('LABEL');
+      expect(chooser().value).toBe(STEEL);
+      expect(brand7()).toBe(CREDO_COLOUR);
 
-      expect(options()).toEqual([
+      await user.click(chooser());
+      const options = within(await screen.findByRole('listbox')).getAllByRole('option');
+      expect(options.map((option) => option.textContent)).toEqual([
         'Terracotta',
         'Sandstone',
         'Forest',
@@ -337,8 +347,14 @@ describe('Gallery', () => {
         'Ocean',
         'Coin',
       ]);
-      expect(PALETTES.map(({ name }) => name)).toHaveLength(options().length);
-      expect((chooser() as HTMLSelectElement).value).toBe(CREDO_COLOUR);
+      expect(PALETTES.map(({ name }) => name)).toHaveLength(options.length);
+      expect(options.filter((option) => option.getAttribute('aria-selected') === 'true')).toEqual([
+        options[6],
+      ]);
+
+      // Picking the theme already chosen keeps it: the picker is never left empty.
+      await user.click(options[6]);
+      expect(chooser().value).toBe(STEEL);
       expect(brand7()).toBe(CREDO_COLOUR);
     });
 
@@ -346,17 +362,16 @@ describe('Gallery', () => {
       window.localStorage.setItem('credo-gallery-theme', '#123456');
       open(BASE);
 
-      expect((chooser() as HTMLSelectElement).value).toBe(CREDO_COLOUR);
+      expect(chooser().value).toBe(STEEL);
       expect(brand7()).toBe(CREDO_COLOUR);
     });
 
     it('the colour themes: choosing one redraws every part in it, the Foundations’ palette included, and the browser remembers it', async () => {
-      const user = userEvent.setup();
       open(BASE);
       const before = swatches();
       const emerald = PALETTES.find(({ name }) => name === 'emerald')!;
 
-      await user.selectOptions(chooser(), 'Emerald');
+      await choose('Emerald');
       expect(brand7()).toBe(emerald.shades[7]);
       const after = swatches();
       expect(after).toHaveLength(10);
@@ -364,14 +379,14 @@ describe('Gallery', () => {
 
       cleanup();
       open(BASE);
-      expect((chooser() as HTMLSelectElement).value).toBe(emerald.shades[7]);
+      expect(chooser().value).toBe('Emerald');
+      expect(brand7()).toBe(emerald.shades[7]);
       expect(swatches()).toEqual(after);
     });
 
     it('the colour themes: they are the gallery’s alone, the app outside it keeps its own colour, and with no browser storage the gallery still draws and switches', async () => {
-      const user = userEvent.setup();
       open(BASE);
-      await user.selectOptions(chooser(), 'Terracotta');
+      await choose('Terracotta');
       cleanup();
 
       // The app as `App.tsx` draws it, at the operator's door, which wears credo's own colour.
@@ -386,8 +401,8 @@ describe('Gallery', () => {
         throw new Error('no storage');
       });
       open(BASE);
-      expect((chooser() as HTMLSelectElement).value).toBe(CREDO_COLOUR);
-      await user.selectOptions(chooser(), 'Emerald');
+      expect(chooser().value).toBe(STEEL);
+      await choose('Emerald');
       expect(brand7()).toBe(PALETTES.find(({ name }) => name === 'emerald')!.shades[7]);
     });
   });
