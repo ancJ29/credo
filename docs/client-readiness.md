@@ -63,6 +63,9 @@ run on an environment**: the human's changes, the release and the drill are stil
 `ops/check.sh` says whether a copy is fresh, and `ops/restore.sh` brings it back
 ([the runbook](../ops/README.md#restoring-the-records)).
 
+*Corrected 2026-11-18:* the copy ran on ridge on 2026-11-13, and `ops/drill.sh ridge` read a restored file holding a
+save made before a reboot ([the recap](recaps/2026-11-12-continuous-copy.md)).
+
 What the item did not say is what the box's disk did. As of `0f7d69c1` (`main` before the piece) the root volume holding that file
 carried `DeleteOnTermination: true`, with no `DeletionPolicy` and no snapshot (the device is now at
 [`ops/env.yml`](../ops/env.yml), the `BlockDeviceMappings` of `Box`). So anything that terminated or replaced the instance took every

@@ -33,8 +33,9 @@ change**, because the log's ten fields hold no identity and no body
 ([`ops/env.yml`](../ops/env.yml), the `Format` of `AccessLogSettings`), and **what the value was before**. A correction can
 only be made forward, from what the client themselves knows it should be.
 
-The recorded part of this gap is [open item 6](open-items.md), the nightly backup and its restore,
-waiting on a signed client. **The other half — that nothing records who changed a record — is in
+The recorded part of this gap is [open item 6](open-items.md), the continuous copy and its restore,
+which ran on ridge on 2026-11-13 ([the recap](recaps/2026-11-12-continuous-copy.md)) and hold no real
+client's records yet. **The other half — that nothing records who changed a record — is in
 no open item**, which is worth knowing when this is priced.
 
 ## A bug is reported and you have fifteen minutes
