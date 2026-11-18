@@ -1,8 +1,10 @@
 # credo
 
-Credo is a web app for a business's office and its drivers. Office staff sign in, keep customers and
-products, take and confirm orders, and settle each driver's day; drivers use their phones to see the
-day's deliveries and mark them delivered with a photo.
+Credo is a web app that runs the daily orders and deliveries of small and medium businesses, from the
+office that takes an order to the driver who delivers it. One system serves many client companies at
+once, each seeing only its own people and records. Each company makes the app its own through
+settings, such as its name, logo, colours and the staff details it keeps, rather than through code
+written for it.
 
 ## Where to look
 
