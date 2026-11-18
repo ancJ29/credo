@@ -76,11 +76,14 @@ func TestRunRefusesToStartWithoutItsDatabaseOrItsPorts(t *testing.T) {
 // before, if given, runs against the database before serve starts.
 func started(t *testing.T, grace time.Duration, before func(*sql.DB)) (db *sql.DB, keyed, open net.Listener, stop context.CancelFunc, done <-chan error) {
 	t.Helper()
-	db, err := sqlitedb.Open(filepath.Join(t.TempDir(), "activities.db"), activity.Schema, activity.SchemaVersion)
+	path := filepath.Join(t.TempDir(), "activities.db")
+	db, err := sqlitedb.Open(path, activity.Schema, activity.SchemaVersion)
 	if err != nil {
 		t.Fatalf("open: %v", err)
 	}
 	t.Cleanup(func() { db.Close() })
+	reads := sqlitedb.OpenReads(path)
+	t.Cleanup(func() { reads.Close() })
 	if before != nil {
 		before(db)
 	}
@@ -91,7 +94,7 @@ func started(t *testing.T, grace time.Duration, before func(*sql.DB)) (db *sql.D
 	}
 	ctx, stop := context.WithCancel(context.Background())
 	served := make(chan error, 1)
-	go func() { served <- serve(ctx, db, writeKey, "v", keyed, open, grace) }()
+	go func() { served <- serve(ctx, db, reads, writeKey, "v", keyed, open, grace) }()
 	t.Cleanup(stop)
 	return db, keyed, open, stop, served
 }

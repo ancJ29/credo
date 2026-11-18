@@ -79,9 +79,11 @@ on 2026-11-18 with that writer, and its id stays unused.
 - **`Store.Append` returns only after its commit.** Never answer before it:
   the 201 names committed ids
   ([a-201-means-committed](docs/memo/a-201-means-committed.md)).
-- **Writes are plain transactions, as in c-storage.** Every transaction begins `IMMEDIATE` and
-  waits on `busy_timeout` for the write lock (`Open` in `services/audit-backbone/internal/sqlitedb/open.go`),
-  held by `TestAppendsAtOnceAllLand`.
+- **Writes are plain transactions on one connection.** `Open` in
+  `services/audit-backbone/internal/sqlitedb/open.go` returns a pool of one connection, so concurrent
+  writes queue in Go's pool rather than race for the lock past `busy_timeout`, which a hundred at once
+  outlasted; each transaction still begins `IMMEDIATE` (`TestAppendsAtOnceAllLand`). The feeds read on
+  a pool of their own, `OpenReads`, beside a write in progress (`TestAFeedReadsWhileAWriteIsHeld`).
 - **The schema's version sits beside the schema:** `SchemaVersion` in
   `services/audit-backbone/internal/activity/store.go`, raised in the same commit as any change to
   `Schema`. A file at `user_version` 0 is taken and stamped, never refused as c-storage refuses one,

@@ -40,12 +40,14 @@ func Run(ctx context.Context, cfg *config.Config, buildVersion string) error {
 		return fmt.Errorf("open the activities database: %w", err)
 	}
 	defer db.Close()
+	reads := sqlitedb.OpenReads(cfg.DBPath)
+	defer reads.Close()
 
 	keyed, open, err := bind(cfg)
 	if err != nil {
 		return err
 	}
-	return serve(ctx, db, cfg.WriteKey, buildVersion, keyed, open, shutdownGrace)
+	return serve(ctx, db, reads, cfg.WriteKey, buildVersion, keyed, open, shutdownGrace)
 }
 
 // bind opens the two listeners: the keyed one on the configured address (the box's private
@@ -67,8 +69,8 @@ func bind(cfg *config.Config) (keyed, open net.Listener, err error) {
 // serve runs the process on two bound listeners until ctx ends or one of them
 // stops on its own, which ends the process too: a port that no longer answers
 // is a restart, not a half-working service.
-func serve(ctx context.Context, db *sql.DB, writeKey, buildVersion string, keyed, open net.Listener, grace time.Duration) error {
-	store := activity.NewStore(db, activity.NewIDFactory())
+func serve(ctx context.Context, db, reads *sql.DB, writeKey, buildVersion string, keyed, open net.Listener, grace time.Duration) error {
+	store := activity.NewStore(db, reads, activity.NewIDFactory())
 	srv := server.Build(writeKey, server.Domains{Reader: store, Writer: store}, buildVersion, time.Now)
 	sweepCtx, stopSweep := context.WithCancel(ctx)
 	var wg sync.WaitGroup

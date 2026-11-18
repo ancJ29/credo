@@ -61,21 +61,24 @@ type Writer interface {
 	Append(ctx context.Context, inputs []Input, now time.Time) ([]string, error)
 }
 
-// Store implements both, plus the retention sweep that lifecycle runs.
+// Store implements both, plus the retention sweep that lifecycle runs. writes
+// is sqlitedb.Open's one connection and reads sqlitedb.OpenReads' pool, so a
+// feed never waits behind a write.
 type Store struct {
-	db  *sql.DB
-	ids *IDFactory
+	writes *sql.DB
+	reads  *sql.DB
+	ids    *IDFactory
 }
 
-func NewStore(db *sql.DB, ids *IDFactory) *Store {
-	return &Store{db: db, ids: ids}
+func NewStore(writes, reads *sql.DB, ids *IDFactory) *Store {
+	return &Store{writes: writes, reads: reads, ids: ids}
 }
 
 // inTx runs fn in one transaction and commits it, so a write returns only once
 // it is durable (docs/memo/a-201-means-committed.md); an error from fn rolls
 // it back whole.
 func (s *Store) inTx(ctx context.Context, fn func(*sql.Tx) error) error {
-	tx, err := s.db.BeginTx(ctx, nil)
+	tx, err := s.writes.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
@@ -149,7 +152,7 @@ func (s *Store) feed(ctx context.Context, scope, column, clientID, id, rawCursor
 	query += ` ORDER BY id DESC LIMIT ?`
 	args = append(args, limit+1)
 
-	rows, err := s.db.QueryContext(ctx, query, args...)
+	rows, err := s.reads.QueryContext(ctx, query, args...)
 	if err != nil {
 		return Page{}, err
 	}
