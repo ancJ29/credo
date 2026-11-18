@@ -27,6 +27,14 @@ const config: Config = {
   // 'detect' reads a .md file as plain Markdown, so a { or < in prose does not break the build.
   markdown: { format: 'detect', mermaid: true },
   themes: ['@docusaurus/theme-mermaid'],
+  plugins: [
+    // The mermaid theme's browser code imports its optional ELK layouts, which are not installed and
+    // which no diagram here uses, so that import resolves to an empty module.
+    () => ({
+      name: 'no-elk-layouts',
+      configureWebpack: () => ({ resolve: { alias: { '@mermaid-js/layout-elk': false } } }),
+    }),
+  ],
   presets: [
     [
       'classic',
