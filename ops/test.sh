@@ -5663,7 +5663,7 @@ check "a call with two packages is a usage refusal, exit 2" 2 "$GRC"
 
 # case 13: the verdict names the gate it is not
 gate_run -- shared
-check "case 13: the log names make check as c-storage's own gate" 1 "$(grep -c "make check in services/c-storage" "$GLOG" || true)"
+check "case 13: the log names make check as each Go service's own gate" 1 "$(grep -cF "not covered: each Go service's own gate, make check in services/<name>/" "$GLOG" || true)"
 
 # case 8: the load is waited for, and the wait is logged
 gate_run GATE_UPTIME_FILE="$GW/load-high" -- shared
