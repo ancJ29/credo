@@ -16,9 +16,8 @@ record is one key holding its current value ([`shared/src/records.ts#L7`](../sha
 so a save overwrites. No record carries who wrote it or what it held before — searched for
 `changedBy`, `updatedBy`, a revision and a history across `shared/src`, `bff/src` and
 `services/c-storage/internal`, and there is none — and no copy of a real client's records has yet been
-read back: the continuous copy of the records ran on ridge on 2026-11-13, where a drill read a restored file
-holding a save made before a reboot ([the recap](recaps/2026-11-12-continuous-copy.md)), and ridge holds only
-invented companies ([open item 6](open-items.md))
+read back: whether the continuous copy has run on ridge is in [`products.md`](products.md), and ridge holds
+only invented companies ([open item 6](open-items.md))
 
 What **can** be established in the first minutes:
 
@@ -33,8 +32,8 @@ change**, because the log's ten fields hold no identity and no body
 ([`ops/env.yml`](../ops/env.yml), the `Format` of `AccessLogSettings`), and **what the value was before**. A correction can
 only be made forward, from what the client themselves knows it should be.
 
-The recorded part of this gap is [open item 6](open-items.md), the continuous copy and its restore,
-which ran on ridge on 2026-11-13 ([the recap](recaps/2026-11-12-continuous-copy.md)) and hold no real
+The recorded part of this gap is [open item 6](open-items.md), the continuous copy and its restore
+(whether they have run on ridge is in [`products.md`](products.md)), and they hold no real
 client's records yet. **The other half — that nothing records who changed a record — is in
 no open item**, which is worth knowing when this is priced.
 

@@ -47,7 +47,10 @@ A question on the left, the page that answers it on the right: each kind of note
 one home named here, and every other page points to it
 ([the rule](docs/conventions/documentation.md#one-fact-one-home)). A home outside `main` (the
 orchestrator branch, the sessions' own worktree; the kit's rules every project shares; a session's
-memory) is named with where it is, since no link on `main` reaches it.
+memory) is named with where it is, since no link on `main` reaches it. **The kit** is the set of
+working rules (`rules.md`) and skills that every project of the human who directs the sessions starts
+from; it lives outside this repository, so a collaborator on another machine holds it only if the
+human shares it, and every rule credo needs to hold is in [collaboration](docs/conventions/collaboration.md).
 
 | You want to know | Open |
 | --- | --- |
@@ -55,7 +58,7 @@ memory) is named with where it is, since no link on `main` reaches it.
 | how sign-in works | [docs/architecture.md, "One request, end to end"](docs/architecture.md#one-request-end-to-end) |
 | how to read a partner's returned words in | [docs/operator-guide.md, "Read a partner's returned words in"](docs/operator-guide.md#read-a-partners-returned-words-in) |
 | what is still to do | [docs/open-items.md](docs/open-items.md) |
-| what you, the human, have to do now, and the command for each | worktrees/glance.md on the orchestrator branch, which names the commands; a command an operator repeats is in [docs/operator-guide.md](docs/operator-guide.md) |
+| what you, the human, have to do now, and the command for each | worktrees/glance.md on the orchestrator branch, which names the page that holds the commands (worktrees/next-actions.md); a command an operator repeats is in [docs/operator-guide.md](docs/operator-guide.md) |
 | where one piece stands now | its own file, worktrees/pieces/ on the orchestrator branch; the human's pages (worktrees/glance.md) are drawn from it |
 | what a run cost in minutes and size | worktrees/runs.tsv on the orchestrator branch, one row a run |
 | how sessions work, a rule that holds in every project | the kit's rules.md, outside this repository; credo's own rules are in [docs/conventions/collaboration.md](docs/conventions/collaboration.md), and a session's memory points to them and holds neither |

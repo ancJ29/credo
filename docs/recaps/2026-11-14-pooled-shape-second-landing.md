@@ -1,6 +1,6 @@
 # Companies pooled on boxes, second landing, recap, 2026-11-14
 
-Written before the landing on `pre-merge`.
+Written before the landing on `pre-merge`; the ridge sitting's line was filled once it ran, on 2026-11-19.
 
 | An operator growing an environment | Before | Now |
 | --- | --- | --- |
@@ -20,7 +20,7 @@ The reread of the fix said may merge, with four new Lows: A, B, C are items 463 
 
 ## Still yours
 
-- Ridge's sitting, dated 2026-11-15: add the second box, check both, remove it. <!-- FILL: the verdict of the sitting, not yet known -->
+- Ridge's sitting, planned for 2026-11-15: add the second box, check both, remove it. It ran on 2026-11-16: the second box was added, both boxes released and checked (the home box's check red on its own list only, fixed since) and the box removed again, so ridge holds one box ([`docs/products.md`](../products.md), row F).
 - No look of yours is open for this landing.
 - The whole check on `pre-merge`, then `main`. <!-- FILL: the verdict of each, not yet known -->
 - Left after this landing: step 7, the move of a company between boxes, its review, and ridge's sitting for it.

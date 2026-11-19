@@ -2097,11 +2097,11 @@ Item 507's citation of `ui/src/design-system/theme.ts#L18-L21` named a file step
 
 `docs/conventions/documentation.md#L255-L257`, under "Never in a doc", forbids "Deploy state ... who shipped what, where and when, and what was eyeballed", while `README.md#L67` makes `docs/products.md` the home of what runs on ridge and that page's State column holds exactly such lines (`#L91`, `#L101`, `#L102`). A writer who follows the convention would cut the rows. Fix: one line in "Never in a doc" that names the products page's State column as the exception. *Trigger:* the next change to `documentation.md`'s "Never in a doc", or a writer cutting a State line on that rule.
 
-## 613. Hand-off 5 contradicts the same range's other lines — the machine; `[OPEN]` (the review before main, 2026-11-19, Low)
+## 613. Hand-off 5 contradicts the same range's other lines — the machine; `[FIXED]` 2026-11-19 by the moves' finishing pass: hand-off 5 says a rule bound for the kit waits in `collaboration.md`, named on the board's carry line, and the three restated limits, push state, the task's size and the remake are pointers to the kit's rules with credo's own additions said as credo's (the review before main, 2026-11-19, Low)
 
 `docs/conventions/collaboration.md#L158` says a rule that holds in every project goes to the kit's `rules.md` instead, while the same file holds such rules at `#L120` (forwarded material, left waiting to be carried to the kit), `#L127-L134` (no browser, no credentialed cloud CLI, the human's own worktree) and `#L278-L281` (push state), the last three restating the kit's own. Fix: hand-off 5 says a rule bound for the kit waits here, named on the board's carry line, until the kit's own session takes it. *Trigger:* the kit's next release, or the next rule that holds in every project.
 
-## 614. "The kit" is used on `main` and never said — the machine; `[OPEN]` (the review before main, 2026-11-19, Low)
+## 614. "The kit" is used on `main` and never said — the machine; `[FIXED]` 2026-11-19 by the moves' finishing pass: `README.md`'s Where to look says what the kit is and that it lives outside this repository (the review before main, 2026-11-19, Low)
 
 It appears only in lines the range added (`README.md#L49`, `#L61`, `docs/conventions/collaboration.md#L158`, `docs/conventions/documentation.md#L112`); a newcomer or another collaborator's session cannot tell what or where it is. Fix: one sentence where it first appears (`README.md#L49`) saying what it is and that it lives outside this repository. *Trigger:* a collaborator joining, or the next change to those lines.
 

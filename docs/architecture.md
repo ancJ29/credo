@@ -54,14 +54,15 @@ a store. **A frame is a group of boxes that belong together, and where that grou
 what it holds runs inside it:** the edge is the three things `ops/` declares in front of the system,
 the VPC is a network with no way out of it, and the box is one small server carrying the services.
 **Every arrow is one way, from the caller to the thing it calls, and says what passes.** A **dashed**
-box and arrow are **built**; what runs on ridge is in [`products.md`](products.md): the back end writes an entry to
+box and arrow are built and mark what an ordinary read does not touch (an entry written for a change, a
+further box, a picture); what runs on ridge is in [`products.md`](products.md). The first dashed box: the back end writes an entry to
 `services/audit-backbone/` for every change a person makes, in the local copy, and the release carries it to the
 box beside c-storage — the whole of that is [`docs/activity-log.md`](activity-log.md). The
-second dashed box is **built in the back end** (whether it runs on ridge is [`products.md`](products.md)): the further boxes of the pooled
+second is **built in the back end** (whether it runs on ridge is [`products.md`](products.md)): the further boxes of the pooled
 shape, each holding the tenants the operator puts on it, which [where a tenant's records
 live](#where-a-tenants-records-live) describes. The back end and the local stack reach a second box
 today, and the operator can move a company from one to another, and a box is added to an environment by command
-(`ops/README.md`, "Adding a box"); whether either has run on ridge is in [`products.md`](products.md). The third dashed box is **built**, its run on ridge in [`products.md`](products.md): the
+(`ops/README.md`, "Adding a box"); whether either has run on ridge is in [`products.md`](products.md). The third is **built**, its run on ridge in [`products.md`](products.md): the
 photo store, where a delivery's picture lives so that records hold only its object's name. The back end
 holds the bucket's key and signs, but the VPC has no way out to R2, so the phone and the office's page
 carry the picture themselves; the back end writes the photo's record and refuses to mark a request
