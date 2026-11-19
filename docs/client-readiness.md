@@ -12,8 +12,9 @@
 >
 > **Read "a client's stack" below as the first stack that holds a real tenant's data.** The page was
 > written when each client was to have a stack of its own; since 2026-11-11 the shape intended for
-> production, and not built, pools tenants on boxes in one stack per environment
-> ([how a call finds its tenant's box](architecture-detail.md#how-a-call-finds-its-tenants-box)).
+> production pools tenants on boxes in one stack per environment
+> ([how a call finds its tenant's box](architecture-detail.md#how-a-call-finds-its-tenants-box); what of it is built is in
+> [the detail page](architecture-detail.md#pooled-on-boxes-in-the-same-one-stack-what-is-built-and-what-is-not)).
 > The page was not re-read against that shape.
 
 ## Operations and safety

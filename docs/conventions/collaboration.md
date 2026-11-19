@@ -156,7 +156,7 @@ The loop is drawn [at a glance](#at-a-glance). Five hand-offs, each with its rul
 5. **A correction becomes memory. Given twice, it becomes a convention here**, on the human's
    yes; a rule that holds in every project is bound for the kit's `rules.md` instead (the kit is
    [named in the front page](../../README.md#where-to-look)). Until the kit's own session takes it, it
-   waits here, named on the board's "Carry to the kit" line (worktrees/status.md on the
+   waits here, listed in the Ahead stub new-carry-to-the-kit.md (in worktrees/pieces on the
    orchestrator branch). Once a rule has its home, its memory note shrinks to a pointer to it and
    holds no text of the rule.
    *Rejected:* a new rule after the first correction. The rules then grow faster than a session

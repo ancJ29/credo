@@ -11,10 +11,11 @@
 the BFF, the app's back end.** Today that is every tenant of an environment; in the pooled shape, it is one group of them
 ([what is built](../../../../docs/architecture-detail.md#pooled-on-boxes-in-the-same-one-stack-what-is-built-and-what-is-not)). The routing needs
 no change here, since the service reads nothing per tenant
-(`services/c-storage/internal/config/config.go`'s `Load`); the one change the pooled shape asks of
-it, not built, is a reading of its disk used and free for the operator's choice of box, which its
-health answer cannot carry (`services/c-storage/internal/server/server.go`'s `healthBody`, two
-fields and no more). Every request passes these checks:
+(`services/c-storage/internal/config/config.go`'s `Load`); the pooled shape's one need of it, the
+free disk for the operator's choice of box, is read through its status answer (`freeBytes`, in
+`services/c-storage/internal/server/handlers.go`'s `status`), which its health answer cannot
+carry (`services/c-storage/internal/server/server.go`'s `healthBody`, two fields and no more);
+its disk used is not read. Every request passes these checks:
 
 ```mermaid
 flowchart TD

@@ -2087,3 +2087,19 @@ The whole `ops/test.sh` took about six minutes with the machine at a low load, a
 ## 624. A page of 2026-11-13's failures, and a read of it, were decided and never made — the machine; `[OPEN]` (the board's parked list, decided 2026-11-13 13:38, Low)
 
 The day's decision was a page listing that day's failures, then a read of it by the Fable model: the hand-written change-set fixtures that modelled neither real set, the page's rerun button not taking twice, a Monitor that missed an exit line without a newline, and act's `audit` job at 13 minutes 45 with its cache refused. No such page is on disk. Fix: decide whether each of the four still holds, file those that do, and drop this entry. *Trigger:* the next read of how a session's failures were met.
+
+## 625. The size rule in collaboration says the kit's word "kind" while its reason argues for the shape — the machine; `[OPEN]` (the evening review before main, 2026-11-19, Low)
+
+`docs/conventions/collaboration.md#L245-L249` says "the minutes of the last run of the same kind", then its *Why* says the kind's mean mixes two shapes; `main` said "the same shape, never of its kind", and the machine sizes by shape. The file's head (`#L5-L7`) lists where credo's wording wins and leaves this rule out, so the kit's "kind" wins. Fix: say "the same shape (the kit says kind; credo's wording wins here)" and add the rule to the head's list. *Trigger:* the next change to the size rule, or the kit's next release.
+
+## 626. The documentation convention's new line names a home, which the line above it rejects — the machine; `[OPEN]` (the evening review before main, 2026-11-19, Low)
+
+`docs/conventions/documentation.md#L118-L121` names `architecture-detail.md` as the home of whether a part is built, while `#L116-L117` rejects listing homes in the convention ("a second list is the copy this rule forbids"); the front page's Where to look already declares that home. Fix: keep the hazard (a page that words "not built" itself is a copy; it points to the home Where to look names) and drop the page's name. *Trigger:* the next change to `documentation.md`.
+
+## 627. What comes next is copied onto main from a home outside it — the machine; `[OPEN]` (the evening review before main, 2026-11-19, Low)
+
+`docs/products.md#L156` holds the order of what comes next, refreshed each evening from the human's page on the orchestrator branch, while `docs/conventions/documentation.md#L111-L113` says a home outside `main` is named and never copied in, and the front page names `products.md` that home. Fix: either `products.md` is the home and the human's page draws from it, or `documentation.md` names this copy as its one exception with its writer. *Trigger:* the next evening refresh of the order, or the move of main.
+
+## 628. A partner's words read in is fenced in two pages — the machine; `[OPEN]` (the evening review before main, 2026-11-19, Low)
+
+`ops/README.md#L564` and `docs/operator-guide.md#L301` each hold the `ops/words-in.sh` command, in two forms, and the front page sends the operator to the guide; the move of the human's commands took only the four ridge commands. Fix: the runbook's step 3 points to the guide's section, as its four ridge steps do. *Trigger:* the next change to either command block.
