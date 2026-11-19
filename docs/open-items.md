@@ -2103,3 +2103,7 @@ The day's decision was a page listing that day's failures, then a read of it by 
 ## 628. A partner's words read in is fenced in two pages — the machine; `[OPEN]` (the evening review before main, 2026-11-19, Low)
 
 `ops/README.md#L564` and `docs/operator-guide.md#L301` each hold the `ops/words-in.sh` command, in two forms, and the front page sends the operator to the guide; the move of the human's commands took only the four ridge commands. Fix: the runbook's step 3 points to the guide's section, as its four ridge steps do. *Trigger:* the next change to either command block.
+
+## 629. The gallery's Show buttons carry a hidden name different from their visible words, and the tests press them by the hidden one — the machine; `[OPEN]` (the gallery review before main, 2026-11-19, Low)
+
+`ui/src/design-system/Gallery.tsx#L88` and `#L98` set `aria-label="All states side by side"` and `"One state at a time"` over the visible "Side by side" and "One at a time"; `Gallery.test.tsx` presses both by the hidden name, so the visible words can change and stay green, which kept the products card's step 3 stale unseen, and a screen reader's user hears other words than a sighted one reads. Fix: drop the labels and press by the visible words, or put the visible words back to the labels. *Trigger:* the next change to the Show switch's words, or the next read of the gallery's tests.
