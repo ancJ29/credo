@@ -15,7 +15,9 @@ may do; a page reads its data; and then the answer decides what they see.
 ```mermaid
 flowchart TD
   open["a person opens an address"] --> gal{"/48b74d079/gallery<br/>or below it?"}
-  gal -- "yes" --> gallery["the design system's gallery:<br/>asks no company, no sign-in"]
+  gal -- "yes" --> pc{"a computer?"}
+  pc -- "yes" --> gallery["the design system's gallery:<br/>asks no company, no sign-in"]
+  pc -- "a phone or a tablet" --> notfound["the not-found screen"]
   gal -- "no" --> which{"/operator or<br/>/operator/… ?"}
   which -- "no" --> client["the client app:<br/>the company's settings,<br/>then who is signed in"]
   which -- "yes" --> operator["the operator console:<br/>asks no company"]
