@@ -357,24 +357,18 @@ in the credo root's `logs/`.
    (its records disk goes with it, after the stack's own snapshot of it, which stays) and the two log groups,
    each read back as gone. `RIDGE_KEEP_DISK_SNAPSHOT=1` takes one more snapshot of the records disk first.
 
-   ```
-   cd <the worktree at main> && bash ops/destroy.sh ridge
-   ```
+   The command to paste is in [the operator guide, "Take ridge down (Friday night)"](../docs/operator-guide.md#take-ridge-down-friday-night).
 
 2. Up, about 15 minutes. It runs `ops/stack.sh env ridge`, `ops/release.sh ridge`, `ops/app.sh ridge` and
    `ops/check.sh ridge` in that order, then turns the two workflows on and reads them back active. A red
    stops it at that step with the workflows still off; run it again.
 
-   ```
-   cd <the worktree at main> && bash ops/remake.sh ridge
-   ```
+   The command to paste is in [the operator guide, "Bring ridge back (Monday morning)"](../docs/operator-guide.md#bring-ridge-back-monday-morning).
 
 3. The operator, whose one-time link you open at the new address to make your passkey (see
    [the operator](#the-operator)).
 
-   ```
-   cd <the worktree at main> && bash ops/operator.sh ridge
-   ```
+   The command to paste is in [the operator guide, "Make the first operator on ridge"](../docs/operator-guide.md#make-the-first-operator-on-ridge).
 
 What each log's last lines read:
 
@@ -428,9 +422,7 @@ Once, from a terminal; it takes about 10 minutes (up to 15) plus your typing, an
 2. Run it, then type one password for each partner (`p1`, `p2`, then yours), each twice, and `remake ridge` when
    it lists the six copies. A password is never shown, logged or kept.
 
-   ```
-   cd <the worktree at main> && bash ops/demo-remake.sh ridge
-   ```
+   The command to paste is in [the operator guide, "Remake the six demo copies"](../docs/operator-guide.md#remake-the-six-demo-copies).
 
 3. Read the log: it ends on `the 6 demo copies on ridge are remade`, each copy compared at 0 differ after its
    copy. A line `== refused: <why>` (exit 2) means nothing was deleted, a store on this Mac that did not start
