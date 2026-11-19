@@ -20,7 +20,7 @@
 
 **The answer is no, and the gap is not in the product.** The product's isolation holds. What is
 missing is that a client's own stack cannot be operated or recovered, and the one copy of a
-client's data can be destroyed by an ordinary change; the copy that answers it is built and has not yet been run.
+client's data can be destroyed by an ordinary change; the copy that answers it is built and has not yet been run. *Corrected 2026-11-19:* it has run on ridge, as the corrections lower on this page say, and what runs on ridge now is [`products.md`](products.md)'s first lines.
 
 ### The isolation holds, and it is enforced
 

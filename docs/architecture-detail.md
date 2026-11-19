@@ -130,7 +130,7 @@ without the listener's two, since API Gateway is the listener
 > boxes included, and a box added to an environment by command; what has run on ridge is in
 > [`products.md`](products.md).
 
-### Built today: one stack, one box on ridge, every tenant in it
+### Built today: one stack, one box in an environment, every tenant in it
 
 - **The stacks.** Three templates make three kinds of stack, and only `ops/stack.sh` makes them
   (`network | github | env <name>`): the network under every environment (`ops/stack.sh`'s
@@ -439,8 +439,7 @@ nightly copy to S3 under a put-only role on the box, none of it built, deferred 
 ([open item 6](open-items.md)). The continuous-copy piece replaced it: Litestream copies each save to the
 environment's own bucket through an S3 gateway door, the box's role may put, get and list under its own
 path and holds no delete, and the records sit on a disk of their own (`ops/env.yml`'s `CopyBucket`,
-`BoxRole` and `RecordsVolume`). **It ran on ridge on 2026-11-13**, where the drill read a restored file holding a
-save made before a reboot ([the recap](recaps/2026-11-12-continuous-copy.md)). The restore runs on the box under its own role, which is why the role
+`BoxRole` and `RecordsVolume`). **What ran on ridge is in [`products.md`](products.md).** The restore runs on the box under its own role, which is why the role
 reads; the first plan's "may only put" was dropped for that reason.
 
 ## Where these pages' facts came from

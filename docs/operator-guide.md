@@ -543,16 +543,15 @@ You will see the removal refused, naming the five pieces of the box; it passes w
 A developer's own copy of the app is [the quick start](quick-start.md). The gate, the walks' full run and the
 Pages previews are a developer's, in [`ops/README.md`](../ops/README.md).
 
-## What has not run yet
+## What no recap records as run
 
-- Whether the remake of the demo copies and a demo copy's root password have run on the real ridge is in
-  [`products.md`](products.md).
-- Putting the records back from the copy ran on ridge on 2026-11-13, and so did one demo copy alone. A
-  restore onto a box named with `--box` ran only on stand-ins, and no recap records one onto a blank disk on
-  ridge. Treat those two as untried.
-- Taking ridge down, bringing it back and making the operator ran on the real ridge on 2026-11-12: the
-  take-down took about 5.5 minutes, the bring-back about 7.5 and the operator 13 seconds, each ending 0.
-  Whether the operator's passkey was then made is not yet recorded.
+What runs on ridge is [`products.md`](products.md)'s first lines; this list is only what this runbook
+treats as untried.
+
+- A demo copy's root password set on the real ridge by `ops/root-password.sh`: no recap records it.
+- A restore onto a box named with `--box` ran only on stand-ins, and no recap records one onto a blank
+  disk on ridge.
+- Whether the operator's passkey was made after ridge was remade.
 - The press of **Run workflow** has not yet been recorded as run.
 - The region block, and every block on this page that names a placeholder in angle brackets, was written
   for this page and has not yet been pasted.

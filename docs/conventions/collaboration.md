@@ -2,8 +2,9 @@
 
 > **Decided** 2026-10-27. Binds every person and every agent working here. This file holds the rules
 > and the reason each exists; their history is in `git log`.
-> **Last amended** 2026-11-11, from the human's proposal that a finished piece land on `pre-merge`,
-> checked whole there at most every two hours, so a lane takes `pre-merge` in, not `main`.
+> **Last amended** 2026-11-19, so that a rule the kit's `rules.md` holds is a pointer here, not a copy.
+> Where this file words a kit rule its own way (hand-offs 2 and 4, the confirmation points, the four
+> stages), the wording here is credo's and wins.
 
 ## At a glance
 
@@ -124,14 +125,12 @@ The loop is drawn [at a glance](#at-a-glance). Five hand-offs, each with its rul
    forwards a read to have it weighed, and calling it theirs closes the decision they have not
    made.
 
-   **Three limits have no capability to ask for, so they are the human's hand, named as such.**
-   No browser starts in the agent's sandbox, so every walk and every picture run is the human's
-   own terminal, and a screenshot is read from there, never described from memory. A credentialed
-   cloud CLI is never run here; the machine hands the exact command instead. The human's
-   `experiment` worktree is never read, written, merged, pruned or cleaned — by a brief, a script
-   or a session, not even a `git status`. *Why:* the first two cannot authenticate or start at
-   all, and the third is the human's own place to try things, which any naming or cleanup rule
-   would sweep.
+   **Three limits have no capability to ask for, so they are the human's hand.** The kit's
+   `rules.md` holds the three (no browser in the sandbox, no credentialed cloud CLI, a worktree the
+   human names as theirs), and this file does not restate them. Credo's own: the human's
+   `experiment` worktree is that worktree, never read, written, merged, pruned or cleaned by a
+   brief, a script or a session, not even a `git status`; and a screenshot is read from the
+   human's terminal, never described from memory.
 4. **A recap is written for the evaluator, and so is every other text the human reads.** The
    recap says what shipped, what was rejected and at what price, and what remains the human's;
    it is never a log of commands. Every other text the human reads — a relayed stop, a status
@@ -155,8 +154,11 @@ The loop is drawn [at a glance](#at-a-glance). Five hand-offs, each with its rul
    reader: the human asked for this in these words on 2026-11-10 — don't use code like A1, B1, B2,
    just plain text.
 5. **A correction becomes memory. Given twice, it becomes a convention here**, on the human's
-   yes; a rule that holds in every project goes to the kit's `rules.md` instead. Once a rule has
-   its home, its memory note shrinks to a pointer to it and holds no text of the rule.
+   yes; a rule that holds in every project is bound for the kit's `rules.md` instead (the kit is
+   [named in the front page](../../README.md#where-to-look)). Until the kit's own session takes it, it
+   waits here, named on the board's "Carry to the kit" line (worktrees/status.md on the
+   orchestrator branch). Once a rule has its home, its memory note shrinks to a pointer to it and
+   holds no text of the rule.
    *Rejected:* a new rule after the first correction. The rules then grow faster than a session
    can read them.
 
@@ -240,20 +242,14 @@ flowchart LR
   ([running a check on this machine](qa.md#running-a-check-on-this-machine), which holds the lock,
   the load and the log's shape for every kind of session). That queue, not the work, is the real
   limit when two lanes are open.
-- **A task's size is the minutes of the last run of the same shape**, never of its kind, a
-  default, a budget or a planner's estimate. A step that must find its own evidence — code in a
-  worktree with its own gate — runs about its size; a step transcribed from a design already
-  settled on paper, or a remake, runs at a fifth or less. A first run of a shape is about five
-  minutes a step. The budget is a different number and only a stuck task's stop: three times the
-  size and at least 15 minutes, or the same red met on two tries. *Why:* the kind's mean mixes
-  the two shapes and is wrong both ways, and a guessed size plans the day around minutes the work
-  never takes.
-- **A remake of what already works is a copy plus its changes, in minutes:** a one-off kept, a
-  script or a page for one more case. The original's checks are rerun, and there is no new test
-  suite, no lock and no review for an act that can be undone. A script for one more case is a
-  parameter on its helper in `ops/`, never a copy of its body. *Why:* the original's checks
-  already hold what a new suite would test, and a copy briefed as new work costs several times
-  its minutes.
+- **A task's size and budget are the kit's rule** (the minutes of the last run of the same kind; a
+  budget is only where a stuck task stops). Credo's addition: a step that must find its own evidence
+  (code in a worktree with its own gate) runs about its size; a step transcribed from a design
+  already settled on paper, or a remake, runs at a fifth or less. *Why:* the kind's mean mixes the
+  two shapes and is wrong both ways.
+- **A remake of what already works is the kit's rule** (a copy plus its changes, its checks rerun,
+  no new suite, lock or review for an act that can be undone). Credo's addition: a script for one
+  more case is a parameter on its helper in `ops/`, never a copy of its body.
 - **A piece's record is its own file and its row in the runs log**, never a paragraph rewritten
   each morning: what the piece will mean when done and for whom, what is true now, what is left,
   all in plain words. The machine's own numbers live in the runs log alone (hand-off 4). *Why:* one
@@ -277,6 +273,5 @@ flowchart LR
   under a session.
 - **A push is handed only when something needs it now:** a remote run that is the verdict a
   branch waits on, a deploy, or a commit someone else needs. Everything else stays local until
-  the human's own next push, and push state — a count, an unpushed branch — is never written on a
-  status line. *Why:* the human pushes on their own schedule, so the count is noise in every
-  status read.
+  the human's own next push. Push state (a count, an unpushed branch) is never written on a status
+  line: the kit's rule, not restated here.
