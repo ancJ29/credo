@@ -65,7 +65,8 @@ human shares it, and every rule credo needs to hold is in [collaboration](docs/c
 | how a part is built, a fact about the architecture | [docs/architecture-detail.md](docs/architecture-detail.md); [docs/architecture.md](docs/architecture.md) summarises it |
 | how code is written here | [docs/conventions/code.md](docs/conventions/code.md) |
 | what a partner may read | [docs/partners/](docs/partners/README.md) |
-| what is being built now, and in what order | [docs/products.md, "Next, in order"](docs/products.md#next-in-order) |
+| what is being built now | the board, worktrees/status.md on the orchestrator branch (the docs site cannot read it); where one piece stands has its own row |
+| what comes next, in order | [docs/products.md, "Next, in order"](docs/products.md#next-in-order) |
 | what we decided, and why | [docs/decisions.md](docs/decisions.md), newest first |
 | what runs on ridge now | [docs/products.md](docs/products.md), its first lines |
 | what the machine has learned, by kind of task | worktrees/skills/ on the orchestrator branch, a folder for each kind of task with its SKILL.md |

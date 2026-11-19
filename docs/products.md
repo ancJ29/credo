@@ -153,7 +153,7 @@ You should see, on the phone, the list above the part, and nothing scrolling sid
 
 ## Next, in order
 
-What comes next, in the order the board holds it:
+What comes next, in the order the human's page on the orchestrator branch lists it (the evening's session refreshes this list from it):
 
 1. The working rules are trimmed on a schedule, once their pages pass their word limit, rather than when
    someone happens to notice.

@@ -403,7 +403,7 @@ its costs and its rejected alternatives. These parts of it are no longer true, a
   when function URLs turned out not to be offered there. It is regained since 2026-11-13: CloudFront sends a
   secret key as `x-front-door-key` on every call it passes on, and the back end's first hook
   (`bff/src/server.ts`'s `buildBff`) refuses any call without it, so the address answers a 403 to everyone
-  but the front door. [Open item 121](open-items.md) is closed by it, and
+  but the front door. The front door's key closes what open item 121 recorded, and
   [`ops/keys.sh`](../ops/keys.sh) replaces the key with no call refused. Two logs record a call, and they are not
   the same age. The function has written a line per request to its own group all along: nothing in
   `bff/src/lambda-main.ts#L3` turns the logger off, so the `logger = true` default of `bff/src/server.ts`'s `buildBff` stands

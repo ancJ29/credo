@@ -135,7 +135,7 @@ The API in front of the BFF answered anyone until 2026-11-13: one catch-all rout
 a second with bursts of 50. Nobody had decided it; it followed from the Region not offering Lambda function
 URLs. It now answers a call only if it carries the front door's key: CloudFront adds it to every call it passes
 on (the comment above `ops/env.yml`'s `Api`), the back end's first hook refuses any other with a 403
-(`bff/src/server.ts`'s `buildBff`), and [open item 121](open-items.md), which recorded the history, is
+(`bff/src/server.ts`'s `buildBff`), and the open item that recorded the history is
 closed. The throttle still bounds what a stream of refused calls costs, and a call that carries the key still
 meets the client header, the session and the permission check.
 
@@ -203,7 +203,7 @@ true of the door and not necessarily of the data. Open item 133.
 
 ### Every key is replaceable by one script
 
-*Closed 2026-11-13 ([open item 134](open-items.md)):* `ops/keys.sh <env> front-door`, `internal`, `admin` or
+*Closed 2026-11-13 (open item 134, its entry deleted when done):* `ops/keys.sh <env> front-door`, `internal`, `admin` or
 `service` replaces one of the four keys in its order and reads the old value back refused; the runbook is
 [`ops/README.md`'s keys](../ops/README.md). What follows is the read as it stood, kept for its reasons.
 
@@ -218,7 +218,7 @@ two the BFF needs sit in the function's environment as plain variables
 (`ops/app.sh` writes them through its `bff-env.json`), so anyone in the account who can read a function's
 configuration reads them — the comment above `fn=$(aws lambda get-function-configuration` in `ops/check.sh`
 says so, and the check reads only the fields it needs (`BFF_FN_QUERY` in `ops/lib.sh`), never the keys. Rotating by hand means editing the box's file, re-pushing the function's environment,
-and re-registering the service; the order is not written down anywhere. Open item 134.
+and re-registering the service; the order is not written down anywhere. That was open item 134.
 
 Masking itself is thorough: every run remembers each secret and searches its own log for it at the
 end ([`ops/lib.sh`](../ops/lib.sh), `on_exit`'s search of the log for each secret). Two known weaknesses in *how* it searches are
@@ -466,7 +466,7 @@ of them is new; what is new is saying which ones cost a client money or a record
   says, the only route to a fix for a client runs through that gate.
 
 What flatters the product in a demo, specifically: the demo data has one note-bearing customer and
-one without ([open item 100](open-items.md)), seven days of orders is exactly what the demo shows,
+one without (an open item of 2026-11-05, closed), seven days of orders is exactly what the demo shows,
 and every price in the demo is stable for the length of a presentation — so findings 5 above and the
 seven-day list are invisible in every walk and every screenshot taken so far.
 

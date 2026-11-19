@@ -17,7 +17,6 @@ docs/open-items.md	20261106-1329-walk-machinery-step5-gate.log
 docs/open-items.md	20261106-1337-walk-machinery-step5-gate.log
 docs/open-items.md	20261106-1343-walk-machinery-step5-gate.log
 docs/open-items.md	logs/2026-11-08-171042-stack-ridge.log
-docs/open-items.md	logs/2026-11-08-171042-stack-ridge.log
 docs/open-items.md	logs/20261030-1242-employee-list-fix-pass-check.log
 docs/open-items.md	logs/20261101-0839-ci-timeouts-review-scene-hang.log
 docs/open-items.md	logs/20261101-0852-orders-delivery-check.log
@@ -34,7 +33,6 @@ docs/open-items.md	logs/20261108-1205-money-defects-clients-delete-alone.log
 docs/open-items.md	logs/20261108-1214-github-reds-run-42380906824.failed.txt
 docs/open-items.md	logs/20261108-1214-github-reds-run-42426192862.failed.txt
 docs/open-items.md	logs/20261108-1715-ridge-box-fence-receipt.log
-docs/open-items.md	logs/20261108-1809-ridge-access-log-read.log
 docs/open-items.md	logs/20261108-1809-ridge-access-log-read.log
 docs/plans/2026-10-28-ridge-app.md	logs/2026-10-28-205251-stack-ridge.log
 docs/plans/2026-10-28-ridge-app.md	logs/2026-10-28-215737-stack-ridge.log
