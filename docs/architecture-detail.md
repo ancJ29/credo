@@ -24,7 +24,7 @@ needs before touching any of it, is on
 | `bff/` | one Fastify app behind two entries, holding every rule: who is calling, what they may do, what a record's key is | every rule. c-storage enforces none of them |
 | `shared/` | what the two halves agree on: the wire contract, the record layout, the permission catalogue, the bounds | the halves drift apart in silence |
 | `services/c-storage/` | six HTTP routes over one SQLite file, in Go, with no framework and no router library | all data. Its file is copied to a bucket within a second, a copy run on ridge on 2026-11-13 and a restore read back there |
-| `services/audit-backbone/` | a second Go service, in this repository and called by the back end for every change a person makes (locally; shipped by the release, not yet run on ridge) | the history of every change, once it runs on ridge ([the activity log](activity-log.md)) |
+| `services/audit-backbone/` | a second Go service, in this repository and called by the back end for every change a person makes (locally; shipped by the release) | the history of every change ([the activity log](activity-log.md); whether it runs on ridge is [`products.md`](products.md)) |
 | `scripts/` | the local lanes — `pnpm stack`, `pnpm fake`, `pnpm demo` — and the steps the ops scripts hand to the product's own code | any way to run or seed anything locally, and the BFF's route tests |
 | `visual/` | the walks page: the app's own screens drawn without a browser | the one artefact a non-coder judges a screen from |
 | `site/` | the docs site: the repository's own Markdown shown in place for readers who do not code, by Docusaurus (its config, its sidebar and its link rewrite; [`docs.yml`](../.github/workflows/docs.yml) builds it on every push that changes a page it shows and publishes it from `main`) | the documents a partner reads without opening the repository, and the red for a page that no longer renders |
@@ -220,7 +220,7 @@ without the listener's two, since API Gateway is the listener
   sign-in try leaves a wait record there, so any record would not do). `deleteClient` itself,
   handed no box (the terminal's callers), refuses a line or a deletion record naming another, and,
   whatever store it is handed, a line that `isMoving`.
-- **Moving a company between boxes.** Built, and not yet run on ridge, which holds one box. The
+- **Moving a company between boxes.** Built; whether it has run on ridge, which holds one box, is [`products.md`](products.md). The
   operator starts it from the clients list (`ui/src/pages/operator/ClientsPage.tsx`, shown when
   `api.operatorBoxes` answers more than one box), the page is
   `ui/src/pages/operator/MoveClientPage.tsx`, and the route is one `POST` on the company's path
@@ -275,7 +275,7 @@ without the listener's two, since API Gateway is the listener
   a box:* real tenants' data is live and reading a change set is no longer assurance enough that a
   back-end change cannot restart a pooled box, or someone other than the human must be able to
   change some boxes and not others.
-- **The address.** Built in the code and the template, not yet run on ridge.
+- **The address.** Built in the code and the template; whether it runs on ridge is [`products.md`](products.md).
   `<tenant-code>.<credo-domain>` on the one distribution, through one free ACM certificate for
   `*.<credo-domain>` in `us-east-1` (made by hand, since CloudFront takes no other Region's) and one
   wildcard DNS name; the screens read the code from the address instead of the link, and
@@ -465,8 +465,8 @@ this page is named at [the end](#what-this-page-did-not-read).
 [`ops/env.yml`](../ops/env.yml) (`ops/env.yml`'s `Distribution`, `Api`, `Bff` and `Box`),
 `bff/src/lambda.ts`, `shared/src/c-storage.ts`'s `createCStorageClient` and
 `services/c-storage/internal/server/server.go`'s `func Build(`. The two dashed boxes are drawn from
-no deployment: the activity log is built and not on ridge, and the further boxes are the pooled
-shape, built in the back end and the local stack and not on ridge.
+no deployment: the activity log is built, and the further boxes are the pooled
+shape, built in the back end and the local stack; what runs on ridge is [`products.md`](products.md).
 
 ## What this page did not read
 

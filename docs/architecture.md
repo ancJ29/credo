@@ -33,7 +33,7 @@ flowchart LR
     end
     more["more boxes, each holding the tenants the operator puts on it<br/>[EC2] the pooled shape · the back end reaches them, none is added on ridge yet"]
   end
-  ab["audit-backbone<br/>[Go service, in the repo] the activity log · shipped to the box by the release, not yet run on ridge"]
+  ab["audit-backbone<br/>[Go service, in the repo] the activity log · shipped to the box by the release"]
   r2[("the delivery photos<br/>[Cloudflare R2] a private bucket per environment, outside the VPC · built, not yet run on ridge")]
   browser -- "asks for a screen, then calls /api/*" --> cdn
   cdn -- "serves the UI's files, cached" --> s3
@@ -41,7 +41,7 @@ flowchart LR
   api -- "invokes, handing over the request as an event" --> bff
   bff -- "reads and writes records, under two keys" --> cs
   cs -- "stores each record under its key" --> db
-  bff -. "posts one activity entry for every change · not yet run on ridge" .-> ab
+  bff -. "posts one activity entry for every change" .-> ab
   bff -. "intended: to the box the tenant's record names" .-> more
   bff -. "signs a five-minute address for one picture; never calls R2" .-> r2
   browser -. "sends or reads that picture at the signed address, past the edge" .-> r2
