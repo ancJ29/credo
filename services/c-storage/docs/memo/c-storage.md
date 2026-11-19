@@ -8,9 +8,8 @@
 ## At a glance
 
 **c-storage keeps the records of every tenant the BFF sends it in one SQLite file, and answers only
-the BFF, the app's back end.** Today that is every tenant of an environment; in the pooled shape,
-intended and not built, it is one group of them
-([the detail page](../../../../docs/architecture-detail.md#how-a-call-finds-its-tenants-box)). The routing needs
+the BFF, the app's back end.** Today that is every tenant of an environment; in the pooled shape, it is one group of them
+([what is built](../../../../docs/architecture-detail.md#pooled-on-boxes-in-the-same-one-stack-what-is-built-and-what-is-not)). The routing needs
 no change here, since the service reads nothing per tenant
 (`services/c-storage/internal/config/config.go`'s `Load`); the one change the pooled shape asks of
 it, not built, is a reading of its disk used and free for the operator's choice of box, which its

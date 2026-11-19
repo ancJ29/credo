@@ -134,8 +134,8 @@ box of its own is then a configuration value and a deploy, not a rewrite. The ch
 memory beside the box's free memory and stays red on any out-of-memory kill; its readings on ridge are in the
 activity log's recap, and [open item 2](open-items.md) is what the figure settles.
 
-**In the pooled shape, intended and not built**
-([how a call finds its tenant's box](architecture-detail.md#how-a-call-finds-its-tenants-box)), the
+**In the pooled shape**
+([what is built](architecture-detail.md#pooled-on-boxes-in-the-same-one-stack-what-is-built-and-what-is-not)), the
 audit store is routed by the same tenant record as storage, one store a group of tenants, so the
 question above becomes whether it fits beside `c-storage` on a group's box. A store has one write
 key (`services/audit-backbone/internal/config/config.go`'s `Load` reads `ACTIVITY_WRITE_KEY`), so a
