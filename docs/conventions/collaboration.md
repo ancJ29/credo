@@ -117,6 +117,13 @@ The loop is drawn [at a glance](#at-a-glance). Five hand-offs, each with its rul
    any code; it never carries a candidate fix of the briefer's own. *Why:* a named candidate
    sends the agent to defend someone else's guess.
 
+   **Forwarded material is its author's.** A review, message or page the human passes on is named
+   by its author ("the other agent's review") on every surface, never taken as the human's view;
+   its findings are checked against the repository before any is relayed, and a decision it
+   raises that is the human's stays open for the human's own second opinion. *Why:* the human
+   forwards a read to have it weighed, and calling it theirs closes the decision they have not
+   made.
+
    **Three limits have no capability to ask for, so they are the human's hand, named as such.**
    No browser starts in the agent's sandbox, so every walk and every picture run is the human's
    own terminal, and a screenshot is read from there, never described from memory. A credentialed
@@ -148,7 +155,8 @@ The loop is drawn [at a glance](#at-a-glance). Five hand-offs, each with its rul
    reader: the human asked for this in these words on 2026-11-10 — don't use code like A1, B1, B2,
    just plain text.
 5. **A correction becomes memory. Given twice, it becomes a convention here**, on the human's
-   yes. *Rejected:* a new rule after the first correction. The rules then grow faster than a
+   yes; a rule that holds in every project goes to the kit's `rules.md` instead. Once a rule has
+   its home, its memory note shrinks to a pointer to it and holds no text of the rule. *Rejected:* a new rule after the first correction. The rules then grow faster than a
    session can read them.
 
 ## Confirmation points
