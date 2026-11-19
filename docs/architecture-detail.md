@@ -201,8 +201,8 @@ without the listener's two, since API Gateway is the listener
 **Whether the pooled shape is built, stated once, here.** It is built in the code and the template: the
 back end's reach to a second box, the operator's choice of box and the move of a company between
 boxes, the terminal and the local stack with two boxes, and a box added to an environment by command
-(a loop in `ops/env.yml`). It has not been added to ridge, which still runs one box
-([`products.md`](products.md) holds what has run). **Not built:** production's own stack, the list of
+(a loop in `ops/env.yml`). Whether a second box has run on ridge is in
+[`products.md`](products.md). **Not built:** production's own stack, the list of
 boxes read from the stack's outputs at each deploy, and the audit store's own box. Every other page
 points here for this and does not word it again.
 
@@ -271,7 +271,7 @@ points here for this and does not word it again.
   opened mid-move offers to go on or to stop.
 - **The boxes and their keys.** Built: the keys stay in the back end's environment
   (`STORAGE_BOXES`), and the operator's list is the boxes that environment holds. **Not built:** the
-  list from the stack's outputs at each deploy; no box has been added to ridge's stack. By an estimate the keys of about twenty boxes fit under the function's 4 KB
+  list from the stack's outputs at each deploy. By an estimate the keys of about twenty boxes fit under the function's 4 KB
   limit; past that the keys go to a secret store, and the record
   still holds none.
 - **One stack per environment, every box in it.** Built in the template; the stack of production is

@@ -195,7 +195,7 @@ its disk runs out before its requests, writes or memory do. So production is to 
 environment, holding several boxes. This is the human's own shape, from 2026-11-10 and 2026-11-11.
 What is built is the back end's reach to a second box, the operator's choice of box, the local
 stack with two boxes, the move of a company between boxes and a box added to an environment by command.
-What is not built, and what has not been added to ridge, is
+What is not built is
 [the detail page's](architecture-detail.md#pooled-on-boxes-in-the-same-one-stack-what-is-built-and-what-is-not)
 to say; what has run on ridge is in [`products.md`](products.md).
 
