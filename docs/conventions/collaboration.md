@@ -156,8 +156,9 @@ The loop is drawn [at a glance](#at-a-glance). Five hand-offs, each with its rul
    just plain text.
 5. **A correction becomes memory. Given twice, it becomes a convention here**, on the human's
    yes; a rule that holds in every project goes to the kit's `rules.md` instead. Once a rule has
-   its home, its memory note shrinks to a pointer to it and holds no text of the rule. *Rejected:* a new rule after the first correction. The rules then grow faster than a
-   session can read them.
+   its home, its memory note shrinks to a pointer to it and holds no text of the rule.
+   *Rejected:* a new rule after the first correction. The rules then grow faster than a session
+   can read them.
 
 ## Confirmation points
 
