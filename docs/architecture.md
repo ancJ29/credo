@@ -33,7 +33,7 @@ flowchart LR
     end
     more["more boxes, each holding the tenants the operator puts on it<br/>[EC2] the pooled shape · the back end reaches them, none is added on ridge yet"]
   end
-  ab["audit-backbone<br/>[Go service, in the repo] the activity log · shipped to the box by the release, not yet run on ridge"]
+  ab["audit-backbone<br/>[Go service, in the repo] the activity log · shipped to the box by the release"]
   r2[("the delivery photos<br/>[Cloudflare R2] a private bucket per environment, outside the VPC · built, not yet run on ridge")]
   browser -- "asks for a screen, then calls /api/*" --> cdn
   cdn -- "serves the UI's files, cached" --> s3
@@ -41,7 +41,7 @@ flowchart LR
   api -- "invokes, handing over the request as an event" --> bff
   bff -- "reads and writes records, under two keys" --> cs
   cs -- "stores each record under its key" --> db
-  bff -. "posts one activity entry for every change · not yet run on ridge" .-> ab
+  bff -. "posts one activity entry for every change" .-> ab
   bff -. "intended: to the box the tenant's record names" .-> more
   bff -. "signs a five-minute address for one picture; never calls R2" .-> r2
   browser -. "sends or reads that picture at the signed address, past the edge" .-> r2
@@ -54,14 +54,14 @@ a store. **A frame is a group of boxes that belong together, and where that grou
 what it holds runs inside it:** the edge is the three things `ops/` declares in front of the system,
 the VPC is a network with no way out of it, and the box is one small server carrying the services.
 **Every arrow is one way, from the caller to the thing it calls, and says what passes.** A **dashed**
-box and arrow are **built and not yet run on ridge**: the back end writes an entry to
+box and arrow are **built and not shown running on ridge** (what runs there is [`products.md`](products.md)): the back end writes an entry to
 `services/audit-backbone/` for every change a person makes, in the local copy, and the release carries it to the
-box beside c-storage, its first run there still to be read — the whole of that is [`docs/activity-log.md`](activity-log.md). The
-second dashed box is **built in the back end and not on ridge**: the further boxes of the pooled
+box beside c-storage — the whole of that is [`docs/activity-log.md`](activity-log.md). The
+second dashed box is **built in the back end** (whether it runs on ridge is [`products.md`](products.md)): the further boxes of the pooled
 shape, each holding the tenants the operator puts on it, which [where a tenant's records
 live](#where-a-tenants-records-live) describes. The back end and the local stack reach a second box
 today, and the operator can move a company from one to another; no command yet adds a box to ridge's
-stack, so the move has not run there. The third dashed box is **built and not on ridge**: the
+stack, so the move has not run there. The third dashed box is **built**, its run on ridge in [`products.md`](products.md): the
 photo store, where a delivery's picture lives so that records hold only its object's name. The back end
 holds the bucket's key and signs, but the VPC has no way out to R2, so the phone and the office's page
 carry the picture themselves; the back end writes the photo's record and refuses to mark a request

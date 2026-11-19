@@ -1,10 +1,10 @@
-# The activity log: built in the back end, shipped to the box by the release, not yet run on ridge
+# The activity log: built in the back end and shipped to the box by the release
 
 > **Written** 2026-11-09 as the decisions, **rewritten** 2026-11-10 once the back end wrote its
 > entries ([the plan](plans/2026-11-10-audit-bff.md)), and **amended** 2026-11-13 once the release, the
 > deploy and the check carried it to the box ([the plan](plans/2026-11-12-activity-log.md)). What is built is
 > said as built and cited by name; what is still only decided (the history screen, a mitigation) is said as
-> decided, and what has not yet run on ridge is said as not read.
+> decided, and whether it runs on ridge is read in [`products.md`](products.md), never here.
 >
 > **This page is one of the citation check's living documents** (`scripts/src/citations.ts`'s
 > `LIVING`), so every name it cites is greped in the file that is named and the gate reds when one
@@ -60,12 +60,7 @@ in the function's settings; the box's security group admits the log's writing po
 group alone (`ops/env.yml`'s `BoxFromBffActivity`). `ops/check.sh` reads the unit, both listeners, the key
 file and the commit the log names, adds one customer through the app's address and finds that entry on the
 box by its record, with no key in it, and prints each program's memory beside the box's free memory.
-**Not yet read on ridge:** a release that names the commit on both `/health` reads, the customer's entry
-found by the check, and the memory figures: the human's push, and the check after it, are what read them.
-Until a stack run and a release have happened there, the function reads `AUDIT_URL` and `AUDIT_KEY` as
-optional, together or not at all (`bff/src/env.ts`), and each change is saved and writes the request-log
-line a lost entry writes. Its file is not yet copied: the continuous copy of the records takes it in a later
-step of the plan.
+**Whether it runs on ridge** is a row of [`products.md`](products.md) ("The activity log"), not a line here. Until a stack run and a release have happened somewhere, the function reads `AUDIT_URL` and `AUDIT_KEY` as optional, together or not at all (`bff/src/env.ts`), and each change is saved and writes the request-log line a lost entry writes. Its file is not yet copied: the continuous copy of the records takes it in a later step of the plan.
 
 ### The path, as built
 
