@@ -15,7 +15,7 @@ packages and `cmd/server`, its own SQLite file, its own gate, four rules `AB1`, 
 calls it:** every route that changes a client's data declares its entry in `bff/src/audit.ts`'s
 `declare`, and one hook in `buildApp` (`bff/src/app.ts`) sends the entry to the service's keyed
 write before the reply. The local copy starts the service beside c-storage (`scripts/src/stack.ts`'s
-`startStack`). **On the box it runs on ridge beside c-storage, released 2026-11-15:** `ops/release.sh` installs it as its own unit,
+`startStack`). **On the box it is released beside c-storage (whether it runs on ridge is in [`products.md`](products.md)):** `ops/release.sh` installs it as its own unit,
 `ops/audit-backbone.service`, beside c-storage's, and the CI workflow gates it in its own `audit` job. Its store, the one path for its writes and
 reads, is `Store` in `services/audit-backbone/internal/activity/store.go`. What was changed on the way in
 and what was left behind is its recap, [`recaps/2026-11-09-audit-backbone-move.md`](recaps/2026-11-09-audit-backbone-move.md).
@@ -131,8 +131,8 @@ measurement needs the environment running, which is the human's hand.
 
 **So the plan put it on the same box and left the other door open: the hook points at a URL (`AUDIT_URL`).** A
 box of its own is then a configuration value and a deploy, not a rewrite. The check prints each program's
-memory beside the box's free memory and stays red on any out-of-memory kill; its first reading on ridge
-is not yet taken, and [open item 2](open-items.md) is what the figure settles.
+memory beside the box's free memory and stays red on any out-of-memory kill; its readings on ridge are in the
+activity log's recap, and [open item 2](open-items.md) is what the figure settles.
 
 **In the pooled shape, intended and not built**
 ([how a call finds its tenant's box](architecture-detail.md#how-a-call-finds-its-tenants-box)), the

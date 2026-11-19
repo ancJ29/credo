@@ -402,7 +402,7 @@ entry, which each declaring route names itself (`bff/src/audit.ts`'s `declare`).
 - *The record carries no history; the activity log does.* Every route that changes a client's data
   declares an entry the back end sends to the audit service before it replies, with the actor and the
   record before and after ([the activity log](../activity-log.md)); a failed entry is logged and never
-  refuses the change. On ridge those entries are not yet written.
+  refuses the change. Whether they are written on ridge is in [`products.md`](../products.md).
 - *Price of the choice:* a record restored from a backup cannot be told from one a person saved, and
   a wrong value in a record has no history to read it out of.
 

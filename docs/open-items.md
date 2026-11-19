@@ -2092,3 +2092,31 @@ Item 507's citation of `ui/src/design-system/theme.ts#L18-L21` named a file step
 ## 606. The site's link rewrite reads the working tree, and two of its edge cases are unhandled — the machine; `[OPEN]` (the docs site's review, 2026-11-18, Low)
 
 `site/links.ts#L42` turns a link into a GitHub link when its file exists on disk, not in git, so a file the repository ignores (a local log, a build output) becomes a GitHub link that opens nothing; `#L45` writes the decoded path back, so a link with an encoded space (`%20`) leaves a raw space in the GitHub address; and `#L40`'s `decodeURI` throws on a stray `%`, an unnamed `URIError` that fails the build without naming the page or the link. Fix: read existence from `git ls-files` once per build, re-encode the path with `encodeURI`, and catch the decode to name the page and the link. *Trigger:* the next change to `links.ts`, or a page linking an ignored file or a name with a space or a `%`.
+
+## 612. A convention forbids the deploy state the declared home holds — the machine; `[OPEN]` (the review before main, 2026-11-19, Medium)
+
+`docs/conventions/documentation.md#L255-L257`, under "Never in a doc", forbids "Deploy state ... who shipped what, where and when, and what was eyeballed", while `README.md#L67` makes `docs/products.md` the home of what runs on ridge and that page's State column holds exactly such lines (`#L91`, `#L101`, `#L102`). A writer who follows the convention would cut the rows. Fix: one line in "Never in a doc" that names the products page's State column as the exception. *Trigger:* the next change to `documentation.md`'s "Never in a doc", or a writer cutting a State line on that rule.
+
+## 613. Hand-off 5 contradicts the same range's other lines — the machine; `[OPEN]` (the review before main, 2026-11-19, Low)
+
+`docs/conventions/collaboration.md#L158` says a rule that holds in every project goes to the kit's `rules.md` instead, while the same file holds such rules at `#L120` (forwarded material, left waiting to be carried to the kit), `#L127-L134` (no browser, no credentialed cloud CLI, the human's own worktree) and `#L278-L281` (push state), the last three restating the kit's own. Fix: hand-off 5 says a rule bound for the kit waits here, named on the board's carry line, until the kit's own session takes it. *Trigger:* the kit's next release, or the next rule that holds in every project.
+
+## 614. "The kit" is used on `main` and never said — the machine; `[OPEN]` (the review before main, 2026-11-19, Low)
+
+It appears only in lines the range added (`README.md#L49`, `#L61`, `docs/conventions/collaboration.md#L158`, `docs/conventions/documentation.md#L112`); a newcomer or another collaborator's session cannot tell what or where it is. Fix: one sentence where it first appears (`README.md#L49`) saying what it is and that it lives outside this repository. *Trigger:* a collaborator joining, or the next change to those lines.
+
+## 615. Where the one review's findings are listed has no home on `main` — the machine; `[OPEN]` (the review before main, 2026-11-19, Low)
+
+`docs/conventions/qa.md#L110-L111` says "Each finding is listed and tagged `[FIXED]` ..." and, since the range cut "in the recap", names no place; the `pre-main-review` skill names its own folder on the orchestrator branch. Fix: name the place in the rule, or say it is the orchestrator branch's review page. *Trigger:* the next change to rule 5, or a reader asking where the list is.
+
+## 616. The review skill's questions miss three duties `main` gives the reviewer, and QA lists the questions again — the machine; `[OPEN]` (the review before main, 2026-11-19, Low)
+
+`docs/conventions/qa.md#L105` (each test against its case), `#L351` (each new coverage hint against its reason) and `docs/conventions/documentation.md#L72` (a rule's line in the human version read beside it) are duties of rule 5's reviewer that the skill's questions do not list; `qa.md#L103-L105` lists the questions the skill lists too, in different words. None applied to the docs-only range. Fix: the skill points to rule 5 for the questions and adds the three duties; QA keeps the list. *Trigger:* the next review before `main` that touches code or a rule.
+
+## 617. The products page has two writers and names one — the machine; `[OPEN]` (the review before main, 2026-11-19, Low)
+
+`docs/products.md#L12` says "The page stays true at each piece's recap" and `docs/conventions/documentation.md#L182` says the same, while piece 180 changed five rows with no recap and made the `inventory` skill a writer of the page. Fix: the page and the convention name both writers, the recap and the inventory, with the rule that each row is read on disk when written. *Trigger:* the next inventory run, or the next recap that changes a row.
+
+## 618. "What is being built now, and in what order" has two homes on `main` — the machine; `[OPEN]` (the review before main, 2026-11-19, Medium)
+
+`README.md#L64` sends it to `docs/products.md#L154` ("Next, in order", which says "in the order the board holds it", `#L156`, and holds no "now"), while `docs/README.md#L108` sends it to the orchestrator branch's board. A reader following either gets half of it. Fix: one home for "now" (the board) and one for "next" (the products page), each row of both indexes saying which. *Trigger:* the next change to either index.
