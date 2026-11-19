@@ -11,7 +11,7 @@ and the store only keeps what it is handed** — which is why the picture below 
 and why the walk under it is short.
 
 **Every tenant of an environment shares that back end and, today, that environment's one box.**
-The shape for production, built in the back end and not yet on ridge, keeps the one back end and
+The shape for production, built in the back end (what runs on ridge is in [`products.md`](products.md)), keeps the one back end and
 pools the tenants on several boxes, all in the environment's one stack;
 [where a tenant's records live](#where-a-tenants-records-live) says which part is which.
 
@@ -29,12 +29,12 @@ flowchart LR
     bff["the BFF<br/>[Lambda, arm64] bff/ with shared/ · every rule in the system"]
     subgraph box["the services · the environment's box, every tenant in it<br/>[EC2 t4g.nano]"]
       cs["c-storage<br/>[Go service, systemd] six routes, no rules"]
-      db[("the records<br/>[one SQLite file] copied to its own bucket within a second · run on ridge on 2026-11-13, a restore read back there; ridge holds only invented companies")]
+      db[("the records<br/>[one SQLite file] copied to its own bucket within a second · whether it runs on ridge is in products.md; ridge holds only invented companies")]
     end
-    more["more boxes, each holding the tenants the operator puts on it<br/>[EC2] the pooled shape · the back end reaches them, none is added on ridge yet"]
+    more["more boxes, each holding the tenants the operator puts on it<br/>[EC2] the pooled shape · the back end reaches them · whether one runs on ridge is in products.md"]
   end
   ab["audit-backbone<br/>[Go service, in the repo] the activity log · shipped to the box by the release"]
-  r2[("the delivery photos<br/>[Cloudflare R2] a private bucket per environment, outside the VPC · built, not yet run on ridge")]
+  r2[("the delivery photos<br/>[Cloudflare R2] a private bucket per environment, outside the VPC · built; whether it runs on ridge is in products.md")]
   browser -- "asks for a screen, then calls /api/*" --> cdn
   cdn -- "serves the UI's files, cached" --> s3
   cdn -- "forwards every /api/* call, never cached" --> api
@@ -54,14 +54,14 @@ a store. **A frame is a group of boxes that belong together, and where that grou
 what it holds runs inside it:** the edge is the three things `ops/` declares in front of the system,
 the VPC is a network with no way out of it, and the box is one small server carrying the services.
 **Every arrow is one way, from the caller to the thing it calls, and says what passes.** A **dashed**
-box and arrow are **built and not shown running on ridge** (what runs there is [`products.md`](products.md)): the back end writes an entry to
+box and arrow are **built**; what runs on ridge is in [`products.md`](products.md): the back end writes an entry to
 `services/audit-backbone/` for every change a person makes, in the local copy, and the release carries it to the
 box beside c-storage — the whole of that is [`docs/activity-log.md`](activity-log.md). The
 second dashed box is **built in the back end** (whether it runs on ridge is [`products.md`](products.md)): the further boxes of the pooled
 shape, each holding the tenants the operator puts on it, which [where a tenant's records
 live](#where-a-tenants-records-live) describes. The back end and the local stack reach a second box
-today, and the operator can move a company from one to another; no command yet adds a box to ridge's
-stack, so the move has not run there. The third dashed box is **built**, its run on ridge in [`products.md`](products.md): the
+today, and the operator can move a company from one to another, and a box is added to an environment by command
+(`ops/README.md`, "Adding a box"); whether either has run on ridge is in [`products.md`](products.md). The third dashed box is **built**, its run on ridge in [`products.md`](products.md): the
 photo store, where a delivery's picture lives so that records hold only its object's name. The back end
 holds the bucket's key and signs, but the VPC has no way out to R2, so the phone and the office's page
 carry the picture themselves; the back end writes the photo's record and refuses to mark a request
@@ -158,7 +158,7 @@ and nothing the store enforces, and why a box holds one tenant or twenty with no
 
 **The second service is `services/audit-backbone/`.** The activity log: a keyed writer and a token-gated
 reader over its own SQLite file, in this repository with a gate of its own, called by the back end
-on every change a person makes, in the local copy, and shipped to the box by the release without yet having run on ridge ([the activity log](activity-log.md)). The back end finds it by two settings, `AUDIT_URL` and `AUDIT_KEY`, both or neither.
+on every change a person makes, in the local copy, and shipped to the box by the release; whether it runs on ridge is in [`products.md`](products.md) ([the activity log](activity-log.md)). The back end finds it by two settings, `AUDIT_URL` and `AUDIT_KEY`, both or neither.
 
 **Running it on this Mac is `scripts/`, and reaching a machine is `ops/`.** A step belongs to
 `scripts/` when it must run the product's own code, so every product rule holds on the way through;
@@ -193,8 +193,8 @@ gave, under ten thousand calls and five hundred records a day each, one small bo
 its disk runs out before its requests, writes or memory do. So production is to stay one stack per
 environment, holding several boxes. This is the human's own shape, from 2026-11-10 and 2026-11-11.
 What is built is the back end's reach to a second box, the operator's choice of box, the local
-stack with two boxes, and the move of a company between boxes; a box added to ridge by one command
-is not built yet, and the move has not run on ridge.
+stack with two boxes, the move of a company between boxes and a box added to an environment by command;
+what has run on ridge is in [`products.md`](products.md).
 
 - **What is pooled.** The back end, the HTTP API and the distribution are shared by every tenant.
   The first box is the home box: it keeps the list of companies and the operator's records, and any
@@ -222,7 +222,7 @@ is not built yet, and the move has not run on ridge.
   reads nothing about tenants at all.
 - **The address.** Each tenant at `<tenant-code>.<credo-domain>`, through the distribution that
   already serves the screens, under one wildcard certificate, and the operator at one name of its
-  own (`operator.<credo-domain>`): built in the code and the template, to be run on ridge. The domain
+  own (`operator.<credo-domain>`): built in the code and the template (what runs on ridge is in [`products.md`](products.md)). The domain
   is a setting of the stack, never written into the code.
 - **What it costs.** The one back end holds every box's key, and on a shared box the back end's own
   check is the only wall between that box's tenants: one box down stops all of them, and a restore
@@ -247,7 +247,7 @@ breach.** Most are held by a reader of the diff, which is worth knowing before r
 | **No clock, no randomness and no runtime beyond the web's in `shared/`.** A day arrives as text and `fetch` as a parameter | nothing. A reviewer reading the diff |
 | **No second file builds a record key.** The layout has one home | the company's client (`bff/src/records/records.ts`'s `tenantStorage`), which refuses any key outside the company's prefix before it is sent; no lint rule forces a key through `recordKeys`, and `buildApp` still holds the whole client for the code's index, the deletions' marks, the operator's records and `/health` |
 | **No concept of a tenant in c-storage.** Its one isolation unit is the *service*, and the BFF is a single service holding every client | nothing structural, and it is the design rather than a slip. Isolation itself is tested, at the route level, for the sign-in and settings routes (`bff/src/tenants.route.test.ts`), the two operator routes that reach one client only (`bff/src/routes/clients-delete.route.test.ts`, `bff/src/routes/operator-root-password.route.test.ts`), and, with two companies in one service, for the customer and product lists, orders, deliveries and their photo, people (read, save, archive, password set), the drivers list and closed days (`bff/src/routes/cross-tenant.route.test.ts`); `bff/src/routes/lists.route.test.ts` proves only that each company sees its own list, across services. The cross-company file covers some of the orders and deliveries routes; the rest are listed in open item 227 |
-| **No record itself carries who changed it, or what it held before** | nothing on the record. The history is in the activity log's own entries, written by the back end for every change in the local copy; on ridge they are written once the release has carried the log there, and none has yet ([the activity log](activity-log.md)) |
+| **No record itself carries who changed it, or what it held before** | nothing on the record. The history is in the activity log's own entries, written by the back end for every change in the local copy; whether they are written on ridge is in [`products.md`](products.md) ([the activity log](activity-log.md)) |
 | **No untested statement, branch, function or line** in the five TypeScript packages that have tests, nor outside the entry point of either Go service. `walk/` is typechecked and linted and runs no test of its own | **the gate.** Each of the five declares all four thresholds at 100 %, a step of `pnpm check`; each Go service's own `make check` holds its own |
 | **No citation in a living document naming a file that is not there** | **the gate.** The citation check greps the named file for the named symbol |
 | **No dependency that quietly needs cgo** | **the gate.** Both Go gates cross-compile for the box's `arm64`, so it fails here rather than at ship time |

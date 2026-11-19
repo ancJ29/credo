@@ -758,9 +758,9 @@ tunnel to its subnet's range. No alarm watches a box added (open item 447).
 `DeleteOnTermination: false` (`ops/env.yml`, the comment above `Box`). That keeps a disk. It does not
 make the records come back, and **nobody has done either path below**: every step is written from
 what `ops/lib.sh`, `ops/release.sh`, `ops/c-storage.service` and `ops/env.yml` show, and a step marked
-*untested* is a guess from AWS's or systemd's documented behaviour, not something seen on a box. There
-is no copy of any client's records that has been read back: the continuous copy is built and has not run
-on an environment ([open item 6](../docs/open-items.md)), so the paths below are for a bad day before it. The
+*untested* is a guess from AWS's or systemd's documented behaviour, not something seen on a box. Whether
+the continuous copy has run on ridge is in [`docs/products.md`](../docs/products.md); the paths below are for a
+bad day before a client's records have a copy read back. The
 first real run of either path is a drill, and until then treat these as notes for a bad day, not a
 rehearsed procedure. Region `ap-southeast-5`, your own AWS session, every `aws` line yours to run.
 

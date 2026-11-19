@@ -23,7 +23,7 @@ needs before touching any of it, is on
 | `ui/` | every screen a person sees: the client app and the operator console, one bundle split by address | everything anyone sees, and the walks and the visual report with it |
 | `bff/` | one Fastify app behind two entries, holding every rule: who is calling, what they may do, what a record's key is | every rule. c-storage enforces none of them |
 | `shared/` | what the two halves agree on: the wire contract, the record layout, the permission catalogue, the bounds | the halves drift apart in silence |
-| `services/c-storage/` | six HTTP routes over one SQLite file, in Go, with no framework and no router library | all data. Its file is copied to a bucket within a second, a copy run on ridge on 2026-11-13 and a restore read back there |
+| `services/c-storage/` | six HTTP routes over one SQLite file, in Go, with no framework and no router library | all data. Its file is copied to a bucket within a second, what runs on ridge is in [`products.md`](products.md) |
 | `services/audit-backbone/` | a second Go service, in this repository and called by the back end for every change a person makes (locally; shipped by the release) | the history of every change ([the activity log](activity-log.md); whether it runs on ridge is [`products.md`](products.md)) |
 | `scripts/` | the local lanes — `pnpm stack`, `pnpm fake`, `pnpm demo` — and the steps the ops scripts hand to the product's own code | any way to run or seed anything locally, and the BFF's route tests |
 | `visual/` | the walks page: the app's own screens drawn without a browser | the one artefact a non-coder judges a screen from |
@@ -127,8 +127,8 @@ without the listener's two, since API Gateway is the listener
 > **Built today** is cited by file and symbol. The pooled shape the human gave on 2026-11-10 and
 > 2026-11-11, priced in two research pages kept outside this repository, is built in the back end,
 > the operator's form and pages, the terminal and the local stack, the move of a company between
-> boxes included; what stays **intended, not built** is a box added to ridge by one command, and
-> the move has not yet been run on ridge, which holds one box.
+> boxes included, and a box added to an environment by command; what has run on ridge is in
+> [`products.md`](products.md).
 
 ### Built today: one stack, one box on ridge, every tenant in it
 
@@ -220,7 +220,7 @@ without the listener's two, since API Gateway is the listener
   sign-in try leaves a wait record there, so any record would not do). `deleteClient` itself,
   handed no box (the terminal's callers), refuses a line or a deletion record naming another, and,
   whatever store it is handed, a line that `isMoving`.
-- **Moving a company between boxes.** Built; whether it has run on ridge, which holds one box, is [`products.md`](products.md). The
+- **Moving a company between boxes.** Built; whether it has run on ridge is in [`products.md`](products.md). The
   operator starts it from the clients list (`ui/src/pages/operator/ClientsPage.tsx`, shown when
   `api.operatorBoxes` answers more than one box), the page is
   `ui/src/pages/operator/MoveClientPage.tsx`, and the route is one `POST` on the company's path

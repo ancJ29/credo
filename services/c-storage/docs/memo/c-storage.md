@@ -287,9 +287,8 @@ The database file (`DB_PATH`) holds the records. Litestream, which the unit star
 its child, copies each committed change to the environment's own bucket about once a second, so a lost disk
 costs about a second of saves where it once cost everything since the last backup. The copy is not this
 service's: it is `ops/c-storage.service`'s and `ops/litestream.yml`'s, and its check and restore are
-[the runbook's](../../../../ops/README.md#restoring-the-records). It is built and not yet run on an environment, so
-this section states what the scripts do, not what a drill has read back; the piece closes
-[open item 6](../../../../docs/open-items.md).
+[the runbook's](../../../../ops/README.md#restoring-the-records). Whether it has run on ridge is in
+[`docs/products.md`](../../../../docs/products.md); this section states what the scripts do, not what a drill has read back.
 
 - **The service reports two readings the copy's check needs**, behind the internal key: the free bytes of
   the disk under the file and the time of the last committed write, empty until the first since the process
