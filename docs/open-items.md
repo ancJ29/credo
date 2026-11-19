@@ -670,12 +670,6 @@ The full run named "sv-5-unavailable" and moved 0 of its 6 pictures, so 210 pict
 
 The run printed "walk/run.sh: child setpgid (11085 to 11085): Operation not permitted" (`20261104-1447-palettes-full-run.log`, line 996), in lane 2's driver walk, which still passed 6 of 6 and exited 0. A lane's child could not set its own process group, so the stop path's KILL may not reach that group. Harmless here. *Trigger:* the next piece touching `walk/run.sh`.
 
-## 90. The frame draws its side column even when empty — the machine; **Done (customer-cards, 2026-11-05)**; was `[DEFERRED]` (staff-cards, plan step 5, review, Opus, 2026-11-04, Low)
-
-`ui/src/parts/DetailCards.tsx#L12` always draws `side`. A viewer who gets no side panel (photo field off, neither root nor allowed to delete) sees the details at 7/12 beside a blank. *Trigger:* the first detail page that takes the frame. *Fix:* make `side` optional and give `main` the full 12 when it is absent.
-
-**Done (customer-cards, `a71e6a1`, 2026-11-05).** The fix is the one named: `side` is optional and `main` spans 12 when it is absent (`ui/src/parts/DetailCards.tsx#L12-L13`), held by `ui/src/parts/DetailCards.test.tsx#L12-L20`; the customer with no note is its first live case. What is left of the symptom — a side passed but empty — is item 99.
-
 ## 92. The card's avatar condition is untested — the machine; `[DEFERRED]` (staff-list, review, Opus, 2026-11-04, Low)
 
 The photo-off and photo checks read the table row only (`ui/src/pages/client/StaffRecord.test.tsx#L67-L70`, `#L565`); the phone card's avatar condition has no test of its own. *Fix:* the same two checks scoped to the card, when the card is next touched.
@@ -700,18 +694,6 @@ The BFF stores `extra` untouched (`shared/src/extra.ts#L3-L5`), so a stored non-
 
 A real browser's date input never yields a day that is not one, so `dayIsValid` (`shared/src/fields.ts#L117`) guards an older browser's text fallback; it is right and covered, and its refusal is tested with the input made a text input. *Cost:* none to keep; *trigger:* none, noted so a reader does not look for the path.
 
-## 99. An empty side still draws its column — the machine; **Done (orders-cards, 2026-11-06)**; was `[DEFERRED]` (customer-cards, review, Opus, 2026-11-05, Low)
-
-Item 90's fix reads `side !== undefined` (`ui/src/parts/DetailCards.tsx#L13`), so the two other ways a page says "nothing here" still draw a blank 5/12 column: `side={null}` and the usual `side={has && <Card />}`, which is `false` when `has` is false. The person's page passes a `<Stack>` that is always defined (`ui/src/pages/client/PersonPage.tsx#L552`), so a viewer with no photo field, not the root and not allowed to delete still reads the details at 7/12 beside a blank — the case item 90 opened. *Fix:* treat a falsy side as absent, or have the person's page pass `undefined` when every panel is out; line 58's milestone 2 is in that file. *Trigger:* the next detail page or the next change to the person's page's side.
-
-**Done (orders-cards, `d96f810`, 2026-11-06).** Of the two fixes named above this build took the first: a falsy `side` counts as absent (`ui/src/parts/DetailCards.tsx#L11`, `#L14-L15`), held for `null`, `false` and `undefined` alike by `ui/src/parts/DetailCards.test.tsx#L34-L43`. That closes the two shapes this item opened with — `side={null}` and the usual `side={has && <Card />}` — and the order's page is the live proof: a new order passes `side={existing && <OrderActions/>}`, which is `null` there (`ui/src/pages/client/OrderPage.tsx#L256`), and the built screen draws one column at 100 %. **The second fix was not made, so the case this item was opened for survives the fix that closes it:** the person's page still passes an always-truthy `<Stack>` (`ui/src/pages/client/PersonPage.tsx#L552-L553`), so a viewer with no photo field, neither the root nor allowed to delete, still reads the details at 7/12 beside a blank half. That residue is **item 106**, where it is now held with its own fix and trigger — read the two together before believing the blank half is gone everywhere.
-
-## 100. The walk and the page disagree on what "has a note" means — the machine; **Done (products-cards, 2026-11-06)**; was `[DEFERRED]` (customer-cards, review, Opus, 2026-11-05, Info)
-
-The walk picks its two customers by `'note' in one.extra` (`walk/specs/lists.spec.ts#L18-L19`, `visual/src/walks.ts#L183-L184`), while the page draws the Note card on the text being non-empty (`ui/src/pages/client/CustomerPage.tsx#L19`, `#L68`). A customer whose `note` is `''` or not a string would be the walk's "noted" one and show no Note card, so screen 10 would fail on a heading that is correctly absent. The data set has no such customer, so nothing fails today. *Fix:* pick by the same rule the page uses. *Trigger:* a change to the data set's customers, or a second page that draws a conditional card.
-
-**Done (products-cards, `02bbebc`, 2026-11-06).** The fix is the one named: all four pickers read a `hasNote` of "a string that is not empty", the page's own rule — `walk/specs/lists.spec.ts#L17-L19`, `visual/src/walks.ts#L181-L183`, `visual/src/words.test.tsx#L26-L28`, and `visual/src/walks.test.ts#L668`, whose opener check no longer reads `DEMO_CUSTOMERS[0]` by index. The customers' two records are unchanged by the new rule (only `KH-001` carries a `note`, and it is a non-empty string), which step 2's picture compare proves: 118 screens against `main`'s 116, with screens 10 and 11 byte-identical. What is left — the rule written out four times with nothing shared — is item 105.
-
 ## 102. The QR landing card's heading sits outside the announced region — the machine; `[DEFERRED]` (signin-look, review, Opus, 2026-11-05, Low)
 
 `ui/src/pages/client/QrLanding.tsx#L34` moved `role="status"` from the card onto the inner `Stack`, so the heading ("Signing you in" / "This code cannot sign you in") now sits outside the announced region and a screen reader hears only the body text and the button. Every word is unchanged and no test or walk reads the region. *Fix:* move the one attribute back to the element that holds the heading. *Trigger:* the first accessibility pass over the doors, or the next change to `QrLanding`.
@@ -726,11 +708,11 @@ Case 8's `BEFORE` table (`ui/src/i18n/words.test.tsx#L10-L11`) was hand-written 
 
 ## 105. One rule for "has a note", written out six times — the machine; `[DEFERRED]` (products-cards, review, Opus, 2026-11-06, Low)
 
-Item 100 is closed by making every picker read the page's rule, but each reads its own copy of it: `walk/specs/lists.spec.ts#L18-L19`, `visual/src/walks.ts#L183-L184`, `visual/src/words.test.tsx#L27-L28`, the inline pair in `visual/src/walks.test.ts#L668`, and a fifth shape in the unit test, `ui/src/pages/client/ListPage.test.tsx#L12` with `#L240` and `#L301`. The pages themselves hold the sixth, as the truthiness of `textIn` (`ui/src/listSheet.ts#L63`, used at `ui/src/parts/ProductForm.tsx#L55` and `ui/src/parts/CustomerForm.tsx#L34` and `#L36`). Nothing fails today — all six agree — but the next change to what a page counts as a note (a trim, say, so that a note of spaces draws no card) moves one and leaves five, and the red appears only in the human's full picture run, where a walk opens the record it still calls noted and waits for a heading that is correctly absent. *Fix:* export the rule once beside `textIn` (`noteOf`, or `hasNote` taking `extra`) and add `./lists` to `ui/package.json`'s exports, which today offers `./import-demo`, `./mock`, `./scene` and `./words` only; the walk and the visual package already import `@credo/ui/words`, so both can take it. *Trigger:* the next change to how a page decides to draw a conditional card, or a seventh copy of the rule.
+The walk and the page once disagreed on what "has a note" means; products-cards (2026-11-06) made every picker read the page's rule, but each reads its own copy of it: `walk/specs/lists.spec.ts#L18-L19`, `visual/src/walks.ts#L183-L184`, `visual/src/words.test.tsx#L27-L28`, the inline pair in `visual/src/walks.test.ts#L668`, and a fifth shape in the unit test, `ui/src/pages/client/ListPage.test.tsx#L12` with `#L240` and `#L301`. The pages themselves hold the sixth, as the truthiness of `textIn` (`ui/src/listSheet.ts#L63`, used at `ui/src/parts/ProductForm.tsx#L55` and `ui/src/parts/CustomerForm.tsx#L34` and `#L36`). Nothing fails today — all six agree — but the next change to what a page counts as a note (a trim, say, so that a note of spaces draws no card) moves one and leaves five, and the red appears only in the human's full picture run, where a walk opens the record it still calls noted and waits for a heading that is correctly absent. *Fix:* export the rule once beside `textIn` (`noteOf`, or `hasNote` taking `extra`) and add `./lists` to `ui/package.json`'s exports, which today offers `./import-demo`, `./mock`, `./scene` and `./words` only; the walk and the visual package already import `@credo/ui/words`, so both can take it. *Trigger:* the next change to how a page decides to draw a conditional card, or a seventh copy of the rule.
 
 ## 106. The person's page can still draw a blank half, and no test says so — the machine; `[DEFERRED]` (orders-cards, review, Opus, 2026-11-06, Low)
 
-Item 99 is marked done on the first of the two fixes it named, and this is the second, unmade: the case that item was opened for is still live. The person's page passes `side={<Stack>…</Stack>}` (`ui/src/pages/client/PersonPage.tsx#L552-L553`), an element that is always truthy, and every panel inside it is conditional (`#L554`, `#L564`, `#L567`, `#L577`, `#L587`, `#L590`). A viewer who is not the root, may not delete and has no photo field gets an empty `Stack`, so `DetailColumns` still draws the details at 7/12 beside a blank 5/12 — the symptom item 90 opened. No screen shows it: of the 116 built screens 40 draw a 5/12 column and none of them is empty, so the fix would move no picture. Nothing tests the case either: only `ui/src/parts/DetailCards.test.tsx` and `ui/src/pages/client/OrdersPages.test.tsx` read a grid column, so the person's page's own tests (`ui/src/pages/client/StaffPages.test.tsx`) never count its columns. *Fix:* have the page pass `undefined` when every panel is out — one `const` over the six conditions — with a test for that viewer; or, narrower, let `DetailColumns` count an element with no rendered children as none. *Trigger:* the next change to the person's page's side, or a client whose office staff are neither root nor deleters.
+Orders-cards (2026-11-06) made a falsy `side` count as absent, the first of the two fixes the frame's empty-column item named; this is the second, unmade: the case that item was opened for is still live. The person's page passes `side={<Stack>…</Stack>}` (`ui/src/pages/client/PersonPage.tsx#L552-L553`), an element that is always truthy, and every panel inside it is conditional (`#L554`, `#L564`, `#L567`, `#L577`, `#L587`, `#L590`). A viewer who is not the root, may not delete and has no photo field gets an empty `Stack`, so `DetailColumns` still draws the details at 7/12 beside a blank 5/12 — the symptom the frame's empty side column was first filed for. No screen shows it: of the 116 built screens 40 draw a 5/12 column and none of them is empty, so the fix would move no picture. Nothing tests the case either: only `ui/src/parts/DetailCards.test.tsx` and `ui/src/pages/client/OrdersPages.test.tsx` read a grid column, so the person's page's own tests (`ui/src/pages/client/StaffPages.test.tsx`) never count its columns. *Fix:* have the page pass `undefined` when every panel is out — one `const` over the six conditions — with a test for that viewer; or, narrower, let `DetailColumns` count an element with no rendered children as none. *Trigger:* the next change to the person's page's side, or a client whose office staff are neither root nor deleters.
 
 ## 107. The new column tests count every grid column in the document — the machine; `[DEFERRED]` (orders-cards, review, Opus, 2026-11-06, Info)
 
@@ -772,14 +754,6 @@ Deferred from line 64.1's review, not a fault of the piece. If a customer's writ
 ## 120. A non-string `phone`, `address` or `note` is erased by a customer save — the machine; `[DEFERRED]` (edit-customer, review of line 64.1, 2026-11-07, Low)
 
 Deferred from line 64.1's review, not a fault of the piece. The customer save rebuilds those three keys from the body, so a stored value that is not a string is erased, where the employee's own-fields path deliberately keeps a stored value it cannot render. Reachable only through a direct call, not through the UI's sheet reader, which writes strings. *Trigger:* a second writer of customer records (an importer or another client); then keep an unrenderable value as the employee's path does.
-
-## 121. The API address in front of the BFF answers anyone — the human; `[FIXED]` by the front door's key (`docs/plans/2026-11-11-front-door-keys.md`, 2026-11-13); was *partly closed* by the access log (2026-11-08) and the wall *parked* until a client signs (the architecture page, 2026-11-07)
-
-*Closed 2026-11-13 by the front door's key:* CloudFront sends a key on every call it passes on, and the back end's first hook refuses any call without it; the address answers a 403 to anyone else. Not yet seen on ridge: that stage is the human's. As it stood:
-
-*Readable half, done in the access log (`docs/plans/2026-11-08-access-log.md`):* the one stage now has an access log, `ApiLogs` at `/aws/apigateway/credo-${Env}` for 14 days, and a guard in `ops/test.sh` (`api_log_guard`) that reddens if a later change takes it away. **It is live on ridge**: the change set ran green there at 17:10 (the project's logs folder, `logs/2026-11-08-171042-stack-ridge.log`) and three lines were read back at 18:12 (`logs/20261108-1809-ridge-access-log-read.log`). **The wall is not done and stays open and parked as the human's**; this closure covers only the readable half, never the signed origin, the key or the WAF. The log does not name the client whose records were read (item 152). **More useful than written, measured 2026-11-08 18:11:** a call through the distribution left a line carrying one public address consistent with the caller's own, so a guessing run against a real client would leave its own address in the log, which is what this item wanted to be able to read; one run, cause open (item 157). As filed:
-
-The day-one plan specified that only CloudFront would call the back end ([the architecture plan](plans/2026-10-27-architecture.md), its diagram and "Each client gets its own back end"), signed by origin access control on a Lambda function URL. Function URLs are not offered in the Region, so CloudFront reaches an API Gateway HTTP API instead ([ridge-app's call 2](plans/2026-10-28-ridge-app.md#the-humans-calls)), and the signed-origin property went with the function URL and was never regained. **Nobody decided this**: it followed from the Region's limit. Until this item, no open item and no convention recorded it — the template's own comment was the only place it was stated, and then [the architecture page](architecture.md), which is what raised it. What stands today: payload 2.0, one catch-all route, one stage, 10 requests a second with bursts of 50 and, then, nothing logged at the stage (the function's own group already held a line per request, which this item did not say); the API's address answers anyone and the throttle bounds what that costs (`ops/env.yml#L285`). The position is accepted rather than broken, on the same premise item 6 gives for deferring the backup: ridge holds no real client records, and both premises stop being true on the same day. No fix is proposed here — what a signed origin, a key or a WAF would be worth is weighed when the conditions are known. *Trigger:* a client signs, or real client data reaches any deployment, whichever comes first.
 
 ## 122. A run green in every pass is turned red by a browser that vanishes before the join, and `--write` still writes — the machine; `[DEFERRED]` (browser-guard, review of line 72, 2026-11-07, Low)
 
@@ -826,39 +800,6 @@ anyone being told. *Fix:* a read of the deletion records on the Clients page or 
 unfinished deletion is visible and can be pressed on. *Severity:* Low on ridge, where the data is invented; it is
 what makes the delete's promise in `docs/products.md` true or not for a real client. *Trigger:* a client's deletion
 seen stopping part way, or the first deletion of real records.
-
-## 134. No rotation path for any of the four keys, and two of them are plain Lambda variables — the machine; `[FIXED]` for the path (`ops/keys.sh`, 2026-11-13); was *parked* until a key must be replaced (the client-readiness read, 2026-11-07)
-
-*Fixed 2026-11-13 (`docs/plans/2026-11-11-front-door-keys.md`):* `ops/keys.sh <env> front-door`, `internal`, `admin` or `service` replaces one key in its order and reads the old value back refused; the runbook is `ops/README.md`'s keys. **Still true:** the two keys the BFF needs sit in the function's environment as plain variables. Not yet run on ridge. As filed:
-
-c-storage's internal key and super-admin key are made once from the kernel into a root-only file and a release
-never rewrites them — one that found them changed refuses (`ops/release.sh#L91-L109`, `ops/lib.sh#L598-L601`). The
-BFF's own service code and access key are made once the same way (`ops/app.sh#L100-L115`, "present, left as it is").
-Nothing in `ops/` rotates any of the four: there is no script, and no order written down. The two the BFF needs sit
-in the function's environment as plain variables (`ops/app.sh#L134-L140`), so anyone in the account who can read a
-function's configuration reads them, which `ops/check.sh#L140` notes while taking care not to print them. Rotating
-by hand means editing the box's file, re-pushing the function's environment and re-registering the service, in that
-order. *Fix:* one script that does the three in order and reads back, or the order written into `ops/README.md` as
-a runbook entry. Related: item 50 (how the end-of-run search handles the keys it already holds). *Trigger:* a key
-that must be replaced — a leak found by the end-of-run search, or an operator leaving — or before a client's own
-stack.
-
-## 135. A clerk cannot add a customer or a product: the import is the root's alone and no page offers an add — the machine proposes the form, the human decides which right it sits under; `[FIXED]` (add records, `4552e6ea` to `cee6a814`, 2026-11-08, High; was *parked*, the client-readiness read)
-
-*Fixed in add records (`4552e6ea` to `cee6a814`, recap `docs/recaps/2026-11-08-add-records.md`):* an Add path now exists beside the import on both lists, for whoever holds `orders.canEdit`: `POST /api/customers` and `POST /api/products` through the import's own row rule and write, an Add button on each list, and a page that copies the detail form with the code box open. **The import is still root-only**, deliberately, and a review re-proved it with a test using a person holding every permission; the closure does not open it. The right chosen is `orders.canEdit`, because the catalogue holds no `orders.canCreate` and that right already makes records on these pages. As filed:
-
-The only way a record enters the customers or the products list is the Excel import, and the import is the
-root's: `bff/src/routes/lists.ts#L141` calls `mustBeRoot`, and `ui/src/ClientApp.tsx#L393` says why in its own
-comment — "Only the root imports (case-table row 22): no permission allows it." Neither list page draws an
-Add, and the Import button is drawn for the root alone (`ui/src/pages/client/ListPage.tsx#L26`), so a person with
-`orders.canEdit` sees no path at all, not even a refused one. That person can already *correct* a customer
-and a product on its page (`bff/src/routes/lists.ts#L212`, the same right), so the gap is the add and the add only.
-**What it costs a real client:** a new customer telephones, and the order cannot be taken until the owner
-signs in and builds a spreadsheet. Of everything the client-readiness read found, this is the one that
-blocks the first order. *Fix:* one add form a list, over the add path the import already uses
-(`bff/src/routes/lists.ts`'s `addRow`), under a right the human names — `orders.canEdit`, as the correction is, is
-the cheapest answer and the weaker decision. *Severity:* High for a first client; none for ridge, where the
-demo seed writes both lists. *Trigger:* the first client takes an order.
 
 ## 136. No price can be set on an order line, and a total must be at least 1 — the human decides whether a client prices by hand; *parked* until a client asks for a price of its own (the client-readiness read, 2026-11-07)
 
@@ -980,7 +921,7 @@ A record's key is its uuid, not its code (`bff/src/routes/lists.ts#L116`, `#L157
 
 **Also not known: the end user's own address.** The stage's `$context.identity.sourceIp` is the immediate TCP connection, and it was read here as a CloudFront edge node for a call through the distribution; **the run of 2026-11-08 18:11 on ridge overturned that** (three calls through the distribution, three lines, one public address outside AWS's published ranges, consistent with the caller's own; see item 157). An HTTP API's access-log format still cannot carry the viewer's `X-Forwarded-For` (only `$context` variables, and `$request.header.*` is not among them), which is a reading of the template, not measured. The function's trail cannot recover it either: Fastify is built with no `trustProxy` (none in `bff/src`). Whether the adapter gives Fastify a remote address at all would need a run. So the stage's log is now measured to name a caller's address for a call through the distribution, once; the function's trail is not known to.
 
-**Trigger:** a client signs, or real client data reaches any deployment, whichever comes first, the same as item 121's wall. *Fix, a sketch and not a design:* join the two trails on one id, or have the BFF log the client's code on a read, whichever the reading shows is cheaper.
+**Trigger:** a client signs, or real client data reaches any deployment, whichever comes first, the same as the wall in front of the API's address had (the front door's key closed it, 2026-11-13). *Fix, a sketch and not a design:* join the two trails on one id, or have the BFF log the client's code on a read, whichever the reading shows is cheaper.
 
 ## 153. The access log's route field carries no information — the machine; `[OPEN]` (the access log, 2026-11-08, Low)
 
@@ -1002,7 +943,7 @@ The seed's whole sizing rests on one measured rate, about 7.5 minutes of writes 
 
 Measured on ridge, 2026-11-08 at 18:11 (`logs/20261108-1809-ridge-access-log-read.log`, outside git): three calls through the distribution left three lines in `/aws/apigateway/credo-ridge` carrying one and the same public address, outside AWS's published ranges (the orchestrating session's check of that date, not re-run) and consistent with the caller's own. The earlier prose in `docs/client-readiness.md`, `docs/products.md` and the access log's plan and recap said an edge node would be there instead; that was reasoning and is corrected. So the log group, 14 days of retention, holds callers' real public addresses: a person's address is personal data in some places, and no document recorded that it was being kept.
 
-*To decide, not decided here:* (1) who the addresses are acceptable to, and who may read the group; (2) whether a client must be told its API's callers' addresses are kept; (3) whether 14 days is the right retention. *Also open, smaller:* why the field shows the caller and not an edge node, when `$context.identity.sourceIp` is documented as the immediate connection's address; one run, one caller, one network, and no mechanism is claimed. *Trigger:* before a client signs, or before real client data reaches a deployment, whichever comes first, the same as item 121's wall.
+*To decide, not decided here:* (1) who the addresses are acceptable to, and who may read the group; (2) whether a client must be told its API's callers' addresses are kept; (3) whether 14 days is the right retention. *Also open, smaller:* why the field shows the caller and not an edge node, when `$context.identity.sourceIp` is documented as the immediate connection's address; one run, one caller, one network, and no mechanism is claimed. *Trigger:* before a client signs, or before real client data reaches a deployment, whichever comes first, the same as the wall in front of the API's address had (the front door's key closed it, 2026-11-13).
 
 ## 158. The blank-`--take` rows pin the symptom, not the order of the two lines that produce it — the machine; `[DEFERRED]` (the change-set-cause piece's review, 2026-11-08, Low)
 
@@ -1357,12 +1298,6 @@ The services page (`ui/src/pages/operator/ServicesPage.tsx`) reads `shared/src/w
 ## 276. A list screen still takes its whole list in one answer — the machine; *parked* (the store's pages and copy plan, 2026-11-11, Low)
 
 After `docs/plans/2026-11-11-store-pages-copy.md` the store answers in pages and the back end's `every` (`bff/src/records/records.ts`) reads them all, so a customer, product or staff list past 1,000 comes back whole, in one answer, and the order page still loads both whole lists for its pickers (`ui/src/pages/client/OrderPage.tsx`'s `api.listCustomers()` and `api.listProducts()`). Nothing on screen asks for a part today, and the lists of the human's companies are far under any size a phone cannot draw. Fix: a list screen that asks for a page or a search, and pickers that search the back end. *Trigger:* the first company whose list a phone draws slowly, or whose answer nears the back end's answer limit, which that plan did not read.
-
-## 246. The terminal scripts reach a company's records with the whole store, so the pooled shape must route them too — the machine; `[FIXED]` in the pooled shape's first landing, 2026-11-14 (the one-company storage client's plan, 2026-11-11, Medium)
-
-*Fixed 2026-11-14:* the four scripts go through `tenantStorage` over the home box, and the seed and the root password script refuse by name, writing nothing, a copy whose line names another box (item 271 keeps the seed's side). The review's Medium 2 found the sentence on `ridge.ts` below untrue: `deleteClient` swept the home box whatever the line named, so it now refuses a line or a deletion record naming another box when its caller hands none, and `ridge.ts`'s `copy-company` and `drill-record` refuse such a line by name. Not reachable on a deployed environment yet: no line names another box there. As filed:
-
-The back end's calls for one company go through that company's client once the one-company storage client lands (`docs/plans/2026-11-11-store-one-company.md`), but the scripts build a company's keys and call the whole client themselves: `scripts/src/demo/apply.ts`, `scripts/src/demo/apply-support.ts`, `scripts/src/demo/ledger.ts` and `scripts/src/root-password.ts` (a search of `scripts/src` for `recordKeys.tenant(` and the record helpers). Today one service holds every company, so they reach the right records. In the pooled shape a company's records sit on the box its index names, and each of these must find that box first, or it writes to the wrong one. `scripts/src/ridge.ts` and `scripts/src/generator.ts` reach a company only through `@credo/bff/clients`' `createClient` and `deleteClient`, which was taken to follow the back end without a change (untrue for the delete: it needed the box handed or refused, see the closure above). *Fix:* the pooled shape's plan routes each script through `tenantStorage` over the company's box. *Trigger:* that plan.
 
 ## 241. The log count misses a bare name in Markdown dress and one elided with an ellipsis — the machine; `[DEFERRED]` (the dead log citations' review reread, 2026-11-11, Low)
 
@@ -1818,7 +1753,7 @@ The function's `APP_ORIGIN` is written only by `bff_settings_set`, which only `o
 
 ## 484. The `ops` limit's pin sits inside the scripts' guard, so a red names the wrong gate — the machine; `[DEFERRED]` (the reread of the jobs' limits, 2026-11-15, Low)
 
-In `ops/test.sh`, `scripts_guards` holds the `ops` job's 19-minute pin, so a red reads "the scripts' gate lacks: [ops: a 19-minute cap]", and the passes row after the function names only the scripts' gate. *Fix:* give the pin its own guard named for `ops`, or retitle the row to cover both.
+In `ops/test.sh`, `scripts_guards` holds the `ops` job's 20-minute pin, so a red reads "the scripts' gate lacks: [ops: a 20-minute cap]", and the passes row after the function names only the scripts' gate. *Fix:* give the pin its own guard named for `ops`, or retitle the row to cover both.
 
 ## 486. The route's JPEG-only rule has two homes, and the photo record is read and written in the route module (the review of the delivery photos, 2026-11-15, Low) — the machine; `[DEFERRED]`
 
@@ -2093,17 +2028,29 @@ Item 507's citation of `ui/src/design-system/theme.ts#L18-L21` named a file step
 
 `site/links.ts#L42` turns a link into a GitHub link when its file exists on disk, not in git, so a file the repository ignores (a local log, a build output) becomes a GitHub link that opens nothing; `#L45` writes the decoded path back, so a link with an encoded space (`%20`) leaves a raw space in the GitHub address; and `#L40`'s `decodeURI` throws on a stray `%`, an unnamed `URIError` that fails the build without naming the page or the link. Fix: read existence from `git ls-files` once per build, re-encode the path with `encodeURI`, and catch the decode to name the page and the link. *Trigger:* the next change to `links.ts`, or a page linking an ignored file or a name with a space or a `%`.
 
+## 607. `architecture-detail.md` says CI has twelve jobs, and `ci.yml` has fifteen — the machine; `[OPEN]` (the docs site's reread, 2026-11-18, Low)
+
+`docs/architecture-detail.md#L325` (the paragraph "What CI does") counts twelve jobs and says the `app` job waits on seven package jobs, `app-bff` to `app-walk`; `.github/workflows/ci.yml` holds fifteen keys under `jobs:` (`check`, `audit`, `e2e`, the seven package jobs, the two scripts jobs `scripts-shard` and `scripts-stages`, `app`, `ops` and `deploy`), and the `app` job's last line (`#L649`) still echoes "all six package gates are green". Fix: say fifteen and name the two scripts jobs in the paragraph, and make the echo say seven. *Trigger:* the next change to `ci.yml`'s jobs or to that paragraph.
+
+## 608. c-storage's database has no bound on its write connections — the machine; `[OPEN]` (the audit store's fix, 2026-11-18, Low)
+
+`services/c-storage/internal/sqlitedb/open.go#L22` (`Open`'s comment) has each handler write on a connection of its own, each transaction beginning IMMEDIATE and `busy_timeout(5000)` making the others wait; no call bounds the pool (`SetMaxOpenConns` is not in the file), so a burst opens as many connections as it has handlers. The audit store had the same shape and was bounded to one writer connection with a reader pool beside it (`services/audit-backbone/internal/sqlitedb/open.go#L42` and `#L54`). Fix: the same split in c-storage, or a line in `Open`'s comment saying why its load never needs it. *Trigger:* the next change to `Open`, or a measured `database is locked` under load.
+
+## 609. A queued audit write waits as long as its request lives — the machine; `[OPEN]` (the audit store's fix review, 2026-11-18, Low)
+
+The audit store's writer pool is one connection (`services/audit-backbone/internal/sqlitedb/open.go#L42`), and `Store.inTx` (`services/audit-backbone/internal/activity/store.go#L81`) asks for it with `BeginTx` on the request's own context, so a write queued behind a slow one is bounded by nothing but the caller's patience: the servers set a header timeout and no write timeout. Fix: give `inTx` a deadline of its own, shorter than the callers' patience, and a test that a write held past it is refused. *Trigger:* the next change to the store's write path, or a slow write seen on ridge.
+
+## 610. The audit store's reader pool can write — the machine; `[OPEN]` (the audit store's fix review, 2026-11-18, Low)
+
+`OpenReads` (`services/audit-backbone/internal/sqlitedb/open.go#L54-L57`) opens the feeds' pool with `busy_timeout(5000)` and no `query_only`, so a statement run through it that writes would take the write lock beside the one writer connection; today only selects go through it. Fix: add the `query_only(1)` pragma to the pool and a test that a write through it fails. *Trigger:* the next change to `OpenReads` or to what the feeds run.
+
+## 611. Every whole check prints a `grep` error for a log folder that holds no log — the machine; `[OPEN]` (the whole checks of 2026-11-18, Low: noise, not a red)
+
+The signal case of the demo remake's tests sets `OPS_LOG_DIR` to `$E2E/logs-dr-sig` (`ops/test.sh#L4710`), and a `grep` over `logs-dr-sig/*.log` finds no file and prints "No such file or directory" in every whole check, its test's `ok` beside it, so a reader of the log meets an error line that is not one. Fix: find which `grep` reads that folder and make it quiet or give it the file it expects. *Trigger:* the next change to the demo remake's tests in `ops/test.sh`.
+
 ## 612. A convention forbids the deploy state the declared home holds — the machine; `[OPEN]` (the review before main, 2026-11-19, Medium)
 
 `docs/conventions/documentation.md#L255-L257`, under "Never in a doc", forbids "Deploy state ... who shipped what, where and when, and what was eyeballed", while `README.md#L67` makes `docs/products.md` the home of what runs on ridge and that page's State column holds exactly such lines (`#L91`, `#L101`, `#L102`). A writer who follows the convention would cut the rows. Fix: one line in "Never in a doc" that names the products page's State column as the exception. *Trigger:* the next change to `documentation.md`'s "Never in a doc", or a writer cutting a State line on that rule.
-
-## 613. Hand-off 5 contradicts the same range's other lines — the machine; `[FIXED]` 2026-11-19 by the moves' finishing pass: hand-off 5 says a rule bound for the kit waits in `collaboration.md`, named on the board's carry line, and the three restated limits, push state, the task's size and the remake are pointers to the kit's rules with credo's own additions said as credo's (the review before main, 2026-11-19, Low)
-
-`docs/conventions/collaboration.md#L158` says a rule that holds in every project goes to the kit's `rules.md` instead, while the same file holds such rules at `#L120` (forwarded material, left waiting to be carried to the kit), `#L127-L134` (no browser, no credentialed cloud CLI, the human's own worktree) and `#L278-L281` (push state), the last three restating the kit's own. Fix: hand-off 5 says a rule bound for the kit waits here, named on the board's carry line, until the kit's own session takes it. *Trigger:* the kit's next release, or the next rule that holds in every project.
-
-## 614. "The kit" is used on `main` and never said — the machine; `[FIXED]` 2026-11-19 by the moves' finishing pass: `README.md`'s Where to look says what the kit is and that it lives outside this repository (the review before main, 2026-11-19, Low)
-
-It appears only in lines the range added (`README.md#L49`, `#L61`, `docs/conventions/collaboration.md#L158`, `docs/conventions/documentation.md#L112`); a newcomer or another collaborator's session cannot tell what or where it is. Fix: one sentence where it first appears (`README.md#L49`) saying what it is and that it lives outside this repository. *Trigger:* a collaborator joining, or the next change to those lines.
 
 ## 615. Where the one review's findings are listed has no home on `main` — the machine; `[OPEN]` (the review before main, 2026-11-19, Low)
 
@@ -2117,6 +2064,26 @@ It appears only in lines the range added (`README.md#L49`, `#L61`, `docs/convent
 
 `docs/products.md#L12` says "The page stays true at each piece's recap" and `docs/conventions/documentation.md#L182` says the same, while piece 180 changed five rows with no recap and made the `inventory` skill a writer of the page. Fix: the page and the convention name both writers, the recap and the inventory, with the rule that each row is read on disk when written. *Trigger:* the next inventory run, or the next recap that changes a row.
 
-## 618. "What is being built now, and in what order" has two homes on `main` — the machine; `[OPEN]` (the review before main, 2026-11-19, Medium)
+## 619. The first attempt of GitHub's `scripts-shard (2)` red of 2026-11-15 was never read — the human; `[OPEN]` (the board's parked list, 2026-11-15, Low)
 
-`README.md#L64` sends it to `docs/products.md#L154` ("Next, in order", which says "in the order the board holds it", `#L156`, and holds no "now"), while `docs/README.md#L108` sends it to the orchestrator branch's board. A reader following either gets half of it. Fix: one home for "now" (the board) and one for "next" (the products page), each row of both indexes saying which. *Trigger:* the next change to either index.
+The job was red on its first attempt at 16:45 and green on its rerun (run 43700424182); a job's log needs a credential this sandbox has not, so the log is unread and the red is not yet known to be flaky. Fix: read it in the human's terminal with `gh run view 43700424182 --attempt 1 --log-failed` before anyone calls the job flaky. *Trigger:* the next red of a scripts shard, or the word "flaky" said of it.
+
+## 620. The ShellCheck step's two-minute limit is tight under load — the machine; `[OPEN]` (the board's parked list, 2026-11-15, Low)
+
+`.github/workflows/ci.yml#L714` gives the ShellCheck step `timeout-minutes: 2`; it took 33 to 47 seconds on GitHub and passed two minutes under load here. Fix: raise it with the next change to `ci.yml`. *Trigger:* the next change to `ci.yml`.
+
+## 621. One scripts test file sets the scripts path's floor on CI — the machine; `[OPEN]` (the board's parked list, 2026-11-15, Low)
+
+`scripts/src/ridge-remake.test.ts` ran 282 seconds on GitHub, longer than any other file, so the scripts' shards cannot go below it. Fix: split it into files of one case each so the shards balance. *Trigger:* someone waits on the scripts' CI.
+
+## 622. The photo bucket's cross-origin rule is not set, and names no company yet — the human; `[OPEN]` (the board's parked list, 2026-11-15, Low)
+
+No file in `ops/` carries a cross-origin rule for the photo bucket. The orchestrator branch's research page of 2026-11-15 on the bucket's origins recommends one entry, the pattern `https://*.ridge.<domain>` for each company's own address, plus the app's address spelled out. Fix: set the rule once ridge has its domain, then run the probe's fifth check. *Trigger:* ridge's domain is set.
+
+## 623. The whole `ops/test.sh` takes about six minutes at a low load, and once took fifty — the machine; `[OPEN]` (the board's parked list, 2026-11-16, Low)
+
+The whole `ops/test.sh` took about six minutes with the machine at a low load, and 50 minutes once (2026-11-16, 11:59), with no cause read. Fix: time its stages in one run under a high load and in one under a low, and name what grew. *Trigger:* the next run past fifteen minutes, or the next change to the script's stages.
+
+## 624. A page of 2026-11-13's failures, and a read of it, were decided and never made — the machine; `[OPEN]` (the board's parked list, decided 2026-11-13 13:38, Low)
+
+The day's decision was a page listing that day's failures, then a read of it by the Fable model: the hand-written change-set fixtures that modelled neither real set, the page's rerun button not taking twice, a Monitor that missed an exit line without a newline, and act's `audit` job at 13 minutes 45 with its cache refused. No such page is on disk. Fix: decide whether each of the four still holds, file those that do, and drop this entry. *Trigger:* the next read of how a session's failures were met.
