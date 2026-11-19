@@ -1,8 +1,12 @@
-import { render, screen, within } from '@testing-library/react';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
-import { describe, expect, it } from 'vitest';
+import { CREDO_COLOUR } from '@credo/shared';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+import { openApp } from '../../tests/open';
 import { Gallery } from './Gallery';
+import { ENTRIES } from './entries';
+import { PALETTES } from './palettes';
 
 // Every component file of the three folders, by level and name: the list must hold each.
 const FILES = Object.keys(
@@ -31,18 +35,20 @@ const BASE = '/48b74d079/gallery';
 function open(path: string) {
   return render(
     <MemoryRouter initialEntries={[path]}>
-      <Gallery />
+      <Gallery test />
     </MemoryRouter>,
   );
 }
 
 const list = () => within(screen.getByRole('navigation', { name: 'Parts' }));
 const part = () => within(screen.getByRole('article'));
-// Each state is a region named for it, so a sample's own headings are not taken for states.
+const bar = () => within(screen.getByRole('banner'));
+const about = () => within(screen.getByRole('complementary', { name: 'About this part' }));
+// Each state is a figure named for it, so a sample's own headings are not taken for states.
 const stateNames = () =>
   part()
-    .getAllByRole('region')
-    .map((region) => region.getAttribute('aria-label'));
+    .getAllByRole('figure')
+    .map((figure) => figure.getAttribute('aria-label'));
 
 describe('Gallery', () => {
   it('4: lists Foundations, Atoms, Molecules and Organisms in order, each with its count and every component file of its level', () => {
@@ -69,7 +75,6 @@ describe('Gallery', () => {
     open(`${BASE}/organisms/door-card`);
 
     expect(part().getByRole('heading', { level: 2, name: 'DoorCard' })).toBeDefined();
-    expect(part().getByText('Organisms')).toBeDefined();
     expect(part().getByText(/^A door’s card|^A door's card/)).toBeDefined();
     expect(part().getByText('name: string · logo?: string · children: ReactNode')).toBeDefined();
     expect(stateNames()).toEqual(['Sign-in', 'Login link']);
@@ -208,6 +213,250 @@ describe('Gallery', () => {
     open(BASE);
 
     expect(document.documentElement.getAttribute('data-mantine-color-scheme')).toBe('light');
+  });
+
+  it('the side list: a button hides the whole list so the part takes the width, and shows it again', async () => {
+    const user = userEvent.setup();
+    open(`${BASE}/organisms/door-card`);
+
+    await user.click(screen.getByRole('button', { name: 'Hide the list' }));
+    expect(screen.queryByRole('navigation', { name: 'Parts' })).toBeNull();
+    expect(part().getByRole('heading', { level: 2, name: 'DoorCard' })).toBeDefined();
+    expect(
+      screen.getByRole('button', { name: 'Show the list' }).getAttribute('aria-expanded'),
+    ).toBe('false');
+
+    await user.click(screen.getByRole('button', { name: 'Show the list' }));
+    expect(list().getByRole('link', { name: 'DoorCard' })).toBeDefined();
+    expect(
+      screen.getByRole('button', { name: 'Hide the list' }).getAttribute('aria-expanded'),
+    ).toBe('true');
+  });
+
+  it('the side list: each group folds its parts away and unfolds them again, the others left open', async () => {
+    const user = userEvent.setup();
+    open(`${BASE}/organisms/door-card`);
+    const atoms = () => within(list().getByRole('region', { name: 'Atoms' }));
+
+    expect(atoms().getAllByRole('link').length).toBeGreaterThan(0);
+    await user.click(list().getByRole('button', { name: 'Atoms' }));
+    expect(atoms().queryAllByRole('link')).toHaveLength(0);
+    expect(list().getByRole('button', { name: 'Atoms' }).getAttribute('aria-expanded')).toBe(
+      'false',
+    );
+    expect(list().getByRole('link', { name: 'DoorCard' })).toBeDefined();
+    expect(list().getByRole('link', { name: 'Values' })).toBeDefined();
+
+    await user.click(list().getByRole('button', { name: 'Atoms' }));
+    expect(atoms().getByRole('link', { name: 'FieldLabel' })).toBeDefined();
+    expect(list().getByRole('button', { name: 'Atoms' }).getAttribute('aria-expanded')).toBe(
+      'true',
+    );
+  });
+
+  it('the side list: a part with a kind sits under its kind inside its group, read from its own entry, and a kind folds its parts', async () => {
+    const user = userEvent.setup();
+    open(`${BASE}/atoms/field-label`);
+
+    const kinded = ENTRIES.filter((entry) => entry.kind !== undefined);
+    expect(kinded.length).toBeGreaterThan(0);
+    for (const entry of kinded) {
+      const group = within(list().getByRole('region', { name: entry.group }));
+      const kind = within(group.getByRole('region', { name: entry.kind }));
+      expect(kind.getByRole('link', { name: entry.name })).toBeDefined();
+    }
+    // A part with no kind sits straight under its group.
+    const values = list().getByRole('link', { name: 'Values' });
+    expect(values.closest('section')?.getAttribute('aria-label')).toBe('Foundations');
+
+    const first = kinded[0];
+    const kind = () => within(list().getByRole('region', { name: first.kind }));
+    await user.click(list().getByRole('button', { name: first.kind }));
+    expect(kind().queryByRole('link', { name: first.name })).toBeNull();
+    await user.click(list().getByRole('button', { name: first.kind }));
+    expect(kind().getByRole('link', { name: first.name })).toBeDefined();
+  });
+
+  it('the side list: a group and a kind folded stay folded when the list is hidden and shown again', async () => {
+    const user = userEvent.setup();
+    open(`${BASE}/atoms/field-label`);
+    const folded = (name: string) =>
+      list().getByRole('button', { name }).getAttribute('aria-expanded');
+
+    await user.click(list().getByRole('button', { name: 'Atoms' }));
+    await user.click(list().getByRole('button', { name: 'Cards' }));
+    await user.click(screen.getByRole('button', { name: 'Hide the list' }));
+    await user.click(screen.getByRole('button', { name: 'Show the list' }));
+
+    expect(folded('Atoms')).toBe('false');
+    expect(
+      within(list().getByRole('region', { name: 'Atoms' })).queryAllByRole('link'),
+    ).toHaveLength(0);
+    expect(folded('Cards')).toBe('false');
+    expect(
+      within(list().getByRole('region', { name: 'Cards' })).queryAllByRole('link'),
+    ).toHaveLength(0);
+    expect(folded('Molecules')).toBe('true');
+    expect(list().getByRole('link', { name: 'PageHeader' })).toBeDefined();
+  });
+
+  describe('the colour themes', () => {
+    afterEach(() => {
+      window.localStorage.clear();
+      vi.restoreAllMocks();
+    });
+
+    const chooser = () => screen.getByRole<HTMLInputElement>('combobox', { name: 'Colour theme' });
+    // Mantine's picker draws its options in a list of its own, once it is opened.
+    const choose = async (name: string) => {
+      const user = userEvent.setup();
+      await user.click(chooser());
+      await user.click(within(await screen.findByRole('listbox')).getByRole('option', { name }));
+    };
+    const STEEL = 'Steel · the app’s';
+    // The colour every part reads, as Mantine writes it for the provider drawn last.
+    const brand7 = () =>
+      [...document.querySelectorAll('style[data-mantine-styles]')]
+        .map((style) => /--mantine-color-brand-7:\s*([^;]+);/.exec(style.textContent ?? '')?.[1])
+        .filter((value) => value !== undefined)
+        .at(-1)
+        ?.toLowerCase();
+    const swatches = () =>
+      part()
+        .getAllByTitle(/^brand \d$/)
+        .map((swatch) => swatch.getAttribute('style'));
+
+    it('the colour themes: the picker is Mantine’s own, labelled in sight, offers every stock palette by name, steel, emerald and terracotta among them, and opens on the app’s own', async () => {
+      const user = userEvent.setup();
+      open(BASE);
+      expect(chooser().tagName).toBe('INPUT');
+      expect(screen.getByText('Colour theme').tagName).toBe('LABEL');
+      expect(chooser().value).toBe(STEEL);
+      expect(brand7()).toBe(CREDO_COLOUR);
+
+      await user.click(chooser());
+      const options = within(await screen.findByRole('listbox')).getAllByRole('option');
+      expect(options.map((option) => option.textContent)).toEqual([
+        'Terracotta',
+        'Sandstone',
+        'Forest',
+        'Autumn',
+        'Olive',
+        'Emerald',
+        'Steel · the app’s',
+        'Ocean',
+        'Coin',
+      ]);
+      expect(PALETTES.map(({ name }) => name)).toHaveLength(options.length);
+      expect(options.filter((option) => option.getAttribute('aria-selected') === 'true')).toEqual([
+        options[6],
+      ]);
+
+      // Picking the theme already chosen keeps it: the picker is never left empty.
+      await user.click(options[6]);
+      expect(chooser().value).toBe(STEEL);
+      expect(brand7()).toBe(CREDO_COLOUR);
+    });
+
+    it('the colour themes: a remembered value no palette has opens on the app’s own colour', () => {
+      window.localStorage.setItem('credo-gallery-theme', '#123456');
+      open(BASE);
+
+      expect(chooser().value).toBe(STEEL);
+      expect(brand7()).toBe(CREDO_COLOUR);
+    });
+
+    it('the colour themes: choosing one redraws every part in it, the Foundations’ palette included, and the browser remembers it', async () => {
+      open(BASE);
+      const before = swatches();
+      const emerald = PALETTES.find(({ name }) => name === 'emerald')!;
+
+      await choose('Emerald');
+      expect(brand7()).toBe(emerald.shades[7]);
+      const after = swatches();
+      expect(after).toHaveLength(10);
+      after.forEach((style, at) => expect(style).not.toBe(before[at]));
+
+      cleanup();
+      open(BASE);
+      expect(chooser().value).toBe('Emerald');
+      expect(brand7()).toBe(emerald.shades[7]);
+      expect(swatches()).toEqual(after);
+    });
+
+    it('the colour themes: they are the gallery’s alone, the app outside it keeps its own colour, and with no browser storage the gallery still draws and switches', async () => {
+      open(BASE);
+      await choose('Terracotta');
+      cleanup();
+
+      // The app as `App.tsx` draws it, at the operator's door, which wears credo's own colour.
+      openApp('/operator', { operator: true });
+      expect(brand7()).toBe(CREDO_COLOUR);
+      cleanup();
+
+      vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+        throw new Error('no storage');
+      });
+      vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+        throw new Error('no storage');
+      });
+      open(BASE);
+      expect(chooser().value).toBe(STEEL);
+      await choose('Emerald');
+      expect(brand7()).toBe(PALETTES.find(({ name }) => name === 'emerald')!.shades[7]);
+    });
+  });
+
+  it('the workbench: the top bar carries the title and the part’s path, and neither a tagline nor the page’s address', () => {
+    open(`${BASE}/organisms/door-card`);
+
+    expect(bar().getByRole('heading', { level: 1, name: 'Design system' })).toBeDefined();
+    expect(bar().getByText('Organisms / Cards /')).toBeDefined();
+    expect(bar().getByText('DoorCard')).toBeDefined();
+    expect(screen.queryByText('Every part, one at a time')).toBeNull();
+    expect(screen.queryByText(BASE)).toBeNull();
+    expect(bar().queryByRole('combobox')).toBeNull();
+  });
+
+  it('the workbench: a part with no kind has its group and name for a path, and an address naming no part has none', () => {
+    open(BASE);
+    expect(bar().getByText('Foundations /')).toBeDefined();
+    expect(bar().getByText('Values')).toBeDefined();
+    cleanup();
+
+    open(`${BASE}/organisms/no-such-part`);
+    expect(bar().queryByText(/\//)).toBeNull();
+  });
+
+  it('the workbench: the right column holds the part’s name, description, props, the Show switch, the states to pick and the theme picker', async () => {
+    const user = userEvent.setup();
+    open(`${BASE}/organisms/door-card`);
+
+    expect(about().getByRole('heading', { level: 2, name: 'DoorCard' })).toBeDefined();
+    expect(about().getByText(/^A door’s card|^A door's card/)).toBeDefined();
+    expect(about().getByRole('heading', { level: 3, name: 'Props' })).toBeDefined();
+    expect(about().getByText('name: string · logo?: string · children: ReactNode')).toBeDefined();
+    expect(about().getByRole('heading', { level: 3, name: 'Show' })).toBeDefined();
+    expect(about().getByRole('combobox', { name: 'Colour theme' })).toBeDefined();
+    expect(about().queryAllByRole('figure')).toHaveLength(0);
+
+    await user.click(about().getByRole('button', { name: 'One state at a time' }));
+    expect(about().getByRole('button', { name: 'Login link' })).toBeDefined();
+  });
+
+  it('the workbench: each state is a plate on the stage with its name under it, outside the right column', () => {
+    open(`${BASE}/organisms/door-card`);
+
+    const plate = part().getByRole('figure', { name: 'Sign-in' });
+    expect(within(plate).getByText('Sign-in').tagName).toBe('FIGCAPTION');
+    expect(plate.closest('aside')).toBeNull();
+  });
+
+  it('the workbench: an address that names no part keeps the theme picker beside its message', () => {
+    open(`${BASE}/organisms/no-such-part`);
+
+    expect(screen.getByRole('combobox', { name: 'Colour theme' })).toBeDefined();
+    expect(screen.queryByRole('complementary', { name: 'About this part' })).toBeNull();
   });
 
   it('3: asks search engines not to list it and carries its title', () => {
