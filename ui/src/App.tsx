@@ -1,11 +1,14 @@
 import { lazy, Suspense } from 'react';
 import { useLocation } from 'react-router';
 import type { Api } from './api';
+import { BEFORE_CONFIG } from './brand';
 import { ClientApp } from './ClientApp';
+import { isComputer } from './computer';
 import type { DeviceStore } from './device';
 import { OperatorApp } from './OperatorApp';
+import { UnknownClient } from './pages/client/UnknownClient';
 import type { Passkeys } from './passkeys';
-import type { Look } from './frame/Providers';
+import { type Look, Providers } from './frame/Providers';
 
 type Props = {
   api: Api;
@@ -41,11 +44,18 @@ const isGalleryPath = (pathname: string) =>
 /** The gallery's code, samples and words are a chunk of their own: a client's phone never fetches it. */
 const Gallery = lazy(() => import('./design-system/Gallery').then((m) => ({ default: m.Gallery })));
 
-/** The whole app: the gallery at `/48b74d079/gallery`, the operator's page at `/operator`, a
- * client's at every other address. */
+/** The whole app: the gallery at `/48b74d079/gallery` (for a computer: a phone or a tablet gets
+ * the not-found screen there), the operator's page at `/operator`, a client's at every other address. */
 export function App(props: Props) {
   const { pathname } = useLocation();
   if (isGalleryPath(pathname)) {
+    if (!isComputer(navigator)) {
+      return (
+        <Providers {...BEFORE_CONFIG} test={props.test} {...props.look}>
+          <UnknownClient />
+        </Providers>
+      );
+    }
     return (
       <Suspense fallback={null}>
         <Gallery />

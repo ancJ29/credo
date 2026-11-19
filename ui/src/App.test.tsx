@@ -435,6 +435,52 @@ describe('the app', () => {
     }
   });
 
+  const IPHONE =
+    'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1';
+  const ANDROID_TABLET =
+    'Mozilla/5.0 (Linux; Android 13; SM-X700) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+  const IPAD_AS_MAC =
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15';
+
+  /** The gallery is for a computer: a phone, a tablet and an iPad that reports itself as a Mac get
+   * the app's not-found screen at its address, and the gallery's code is never asked for. */
+  it.each([
+    ['a phone', IPHONE, 'iPhone', 5],
+    ['a tablet', ANDROID_TABLET, 'Linux armv81', 5],
+    ['an iPad that reports itself as a Mac', IPAD_AS_MAC, 'MacIntel', 5],
+  ])('The gallery answers %s with the not-found screen', async (_who, agent, platform, touch) => {
+    vi.stubGlobal('navigator', { userAgent: agent, platform, maxTouchPoints: touch });
+    try {
+      const { api } = setup({}, unlinked, '/48b74d079/gallery/atoms/door-card');
+
+      expect(
+        await screen.findByRole('heading', { name: wordsVi.unknownClient.title }),
+      ).toBeTruthy();
+      expect(screen.queryByRole('heading', { name: 'Design system' })).toBeNull();
+      for (const call of Object.values(api)) {
+        if (vi.isMockFunction(call)) expect(call).not.toHaveBeenCalled();
+      }
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
+  it('The gallery opens as it does on a Mac with no touch screen', async () => {
+    vi.stubGlobal('navigator', {
+      userAgent: IPAD_AS_MAC,
+      platform: 'MacIntel',
+      maxTouchPoints: 0,
+    });
+    try {
+      setup({}, unlinked, '/48b74d079/gallery');
+
+      expect(await screen.findByRole('heading', { name: 'Design system' })).toBeTruthy();
+      expect(screen.queryByRole('heading', { name: wordsVi.unknownClient.title })).toBeNull();
+    } finally {
+      vi.unstubAllGlobals();
+    }
+  });
+
   it('A near miss of the gallery’s address is the client’s app', async () => {
     setup({}, signedIn, '/48b74d079/galleryx');
     expect(await screen.findAllByRole('heading', { name: words.nav.orders })).not.toHaveLength(0);
