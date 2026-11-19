@@ -198,6 +198,14 @@ without the listener's two, since API Gateway is the listener
 
 ### Pooled on boxes in the same one stack: what is built, and what is not
 
+**Whether the pooled shape is built, stated once, here.** It is built in the code and the template: the
+back end's reach to a second box, the operator's choice of box and the move of a company between
+boxes, the terminal and the local stack with two boxes, and a box added to an environment by command
+(a loop in `ops/env.yml`). It has not been added to ridge, which still runs one box
+([`products.md`](products.md) holds what has run). **Not built:** production's own stack, the list of
+boxes read from the stack's outputs at each deploy, and the audit store's own box. Every other page
+points here for this and does not word it again.
+
 - **The groups.** The operator puts each tenant on a box when adding it, seeing each box's free disk
   and companies, and the code holds no grouping rule and no number. The disk is the first limit, at
   about 300 MB a year a tenant at the human's figures (under 10,000 calls and 500 records a
@@ -263,15 +271,15 @@ without the listener's two, since API Gateway is the listener
   opened mid-move offers to go on or to stop.
 - **The boxes and their keys.** Built: the keys stay in the back end's environment
   (`STORAGE_BOXES`), and the operator's list is the boxes that environment holds. **Not built:** the
-  list from the stack's outputs at each deploy; a stack's box is added by the human's command in a
-  step not yet taken. By an estimate the keys of about twenty boxes fit under the function's 4 KB
+  list from the stack's outputs at each deploy; no box has been added to ridge's stack. By an estimate the keys of about twenty boxes fit under the function's 4 KB
   limit; past that the keys go to a secret store, and the record
   still holds none.
-- **One stack per environment, every box in it.** Not built. The network and the GitHub provider
-  stay apart, since one is under every environment and the other is one per account. The plan is a
-  loop in `ops/env.yml` over a list of added boxes, each the home box's block under its own names, so
-  that a change set names each box it would restart. Adding a tenant is the operator's form and no
-  stack update; adding a box will be one `ops/stack.sh env <name>`. *What flips it to a small stack
+- **One stack per environment, every box in it.** Built in the template; the stack of production is
+  not. The network and the GitHub provider
+  stay apart, since one is under every environment and the other is one per account. A
+  loop in `ops/env.yml` over a list of added boxes, each the home box's block under its own names,
+  lets a change set name each box it would restart. Adding a tenant is the operator's form and no
+  stack update; adding a box is one `ops/stack.sh env <name> --more-boxes <list>`. *What flips it to a small stack
   a box:* real tenants' data is live and reading a change set is no longer assurance enough that a
   back-end change cannot restart a pooled box, or someone other than the human must be able to
   change some boxes and not others.
@@ -415,15 +423,14 @@ its costs and its rejected alternatives. These parts of it are no longer true, a
 - **"A name under our domain per client, in Cloudflare, with an ACM certificate in `us-east-1`"**.
   There is no Route53, ACM or custom domain anywhere in the repository; the distribution uses
   CloudFront's own certificate and name (`ops/env.yml`'s `CloudFrontDefaultCertificate`). The
-  pooled shape keeps a name a tenant but, as intended and not built, puts every one under one wildcard
-  certificate on the one distribution, rather than a certificate and a stack a client
+  pooled shape keeps a name a tenant but puts every one under one wildcard
+  certificate on the one distribution (built in the code and the template), rather than a certificate and a stack a client
   ([how a call finds its tenant's box](#how-a-call-finds-its-tenants-box)).
 - **"One stack per client"**, the human's answer of 2026-10-27, recorded in the plan, to its
   question "One stack per client, or one shared". The human's own pooled shape of 2026-11-10 and
   2026-11-11 replaces it:
   one stack per environment, its tenants pooled on boxes, and a tenant's own stack kept for a
-  contract that needs its keys apart. Its boxes are built in the back end and the local stack and
-  not added to ridge, so today's one box per environment is still the whole of what runs there.
+  contract that needs its keys apart ([what is built](#pooled-on-boxes-in-the-same-one-stack-what-is-built-and-what-is-not)).
 - **"Left behind from the old app, until something calls it: … audit-backbone"**
   (`docs/plans/2026-10-27-architecture.md`'s `Left behind from the old app`, its decision 7). Half of
   that went wrong on 2026-11-09: the service is in this repository, with its own gate

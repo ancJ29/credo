@@ -5,9 +5,9 @@ Numbered, never renumbered; an entry is deleted when done
 
 **"A client's own stack" or "a client's stack", in a trigger or a severity below, means the first
 stack that holds a real tenant's data.** The items were written when each client was to have a
-stack of its own; since 2026-11-11 the shape intended for production, and not built, is one stack
-per environment with its tenants pooled on boxes
-([how a call finds its tenant's box](architecture-detail.md#how-a-call-finds-its-tenants-box)), so
+stack of its own; since 2026-11-11 the shape for production is one stack
+per environment with its tenants pooled on boxes (what of it is built is in
+[the detail page](architecture-detail.md#pooled-on-boxes-in-the-same-one-stack-what-is-built-and-what-is-not)), so
 such a trigger fires at that environment's stack, not at a stack for each client.
 
 ## 1. A client's server that stops reaches no one — the machine proposes, the human places the alert; waits for a signed client (the architecture plan, 2026-10-27)
@@ -39,7 +39,7 @@ gateway, its Instance Connect Endpoint; the S3 gateway endpoint is not there yet
 `ops/github.yml`, the account's OIDC provider for GitHub's tokens, and `ops/env.yml`, one
 environment's stack (subnet, box, the role its deploys take; with piece 1 its function, bucket and
 distribution). ridge is the first stack from each. Production is one more stack from `env.yml`,
-and still waits for a client; in the pooled shape, intended and not built, it holds every tenant
+and still waits for a client; in the pooled shape it holds every tenant
 group's box, and its tenants' names sit under one wildcard certificate requested in `us-east-1`
 (the stack's `Domain` and `CertificateArn` settings; ridge's is the next act of the human's),
 with one wildcard name in Cloudflare

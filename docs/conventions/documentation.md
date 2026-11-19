@@ -115,6 +115,10 @@ to rot, because the change that breaks it touches no line there.
   of note and fact each sat in one to nine places with no declared home, and the copies drifted.
   *Rejected:* the homes listed in this convention as well: a second list is the copy this rule
   forbids, and the front page is the page a reader opens first.
+- **Whether a part of the architecture is built is stated in
+  [`architecture-detail.md`](../architecture-detail.md) alone; `architecture.md` summarises it and
+  every other page points there.** A page that words "intended" or "not built" itself is the copy
+  that went stale on 2026-11-19, the pooled shape called built in one page and not built in two.
 - **A comment or doc states the rule that holds here, never how the old code got it wrong.**
 - **Before writing a WHY, grep a distinctive phrase of it.** If a home exists, extend it there.
   Delete any comment whose loss costs nothing.
