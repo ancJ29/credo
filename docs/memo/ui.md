@@ -297,22 +297,28 @@ moves a shade at a time and the nearer pass wins. The theme's `variantColorResol
 (`ui/src/design-system/appTheme.ts`) and the checks' `iconColor` read it, and `credoVariables`
 (`ui/src/design-system/cssVariables.ts`) writes it as `--credo-on-filled`, `--credo-on-header`,
 `--credo-on-menu`, `--credo-header-gradient`, `--credo-menu-gradient` and each wash at its share of the
-ink (`--credo-on-header-12`, `-18`, `-22`, `-55`, `-90`, `--credo-on-menu-05`, `-10`), so a screen
-reads a variable and the same markup serves every colour.
+ink (`HEADER_WASHES` and `MENU_WASHES` in `ui/src/design-system/tokens.ts`, by role: `--credo-header-hover`
+to `--credo-language-picked`, `--credo-menu-hover`, `--credo-menu-current`), so a screen reads a
+variable and the same markup serves every colour.
+
+Brand-coloured text on white follows a second rule, `onWhite` (`ui/src/design-system/onBrand.ts`): the
+first shade from 6, for links, or from 7, for the frame's brand text, that reaches 4.5:1 on white, a
+shade darker at a time, else the theme's darkest grey (amber's case). `credoVariables` writes the
+links' shade as Mantine's `--mantine-color-anchor`, `-brand-text` and `-brand-outline` for every
+colour, and the frame's as `--credo-brand-text`.
 
 - _The surprise:_ **a client's buttons may sit one shade darker than the colour's primary.** A colour
   that reads neither ink at shade 6 (the walks' company's `#2f7d6d`: white 4.37, dark 4.06) has its
   filled parts at shade 7, hover 8, in white. Where the filled parts move, `credoVariables` also
   rewrites Mantine's `--mantine-color-brand-filled` and `-filled-hover` (a button or check with no
-  colour of its own reads those by name) and pins `--mantine-color-brand-text` to shade 6, so
-  brand-coloured text on a light ground is not moved by it.
+  colour of its own reads those by name). Links and brand text on white follow `onWhite` for every
+  colour, so the walks' company's links sit at its shade 7 (4.91:1) and emerald's at 7 (5.48:1).
 - _Where the rule keeps white at today's shades_, steel and brick among the stock six, the theme
   returns Mantine's own parts and the markup is as it was; only emerald's buttons take dark text.
-- _Held by:_ `ui/src/design-system/onBrand.test.ts` (the rule), `appTheme.test.tsx` (the parts),
+- _Held by:_ `ui/src/design-system/onBrand.test.ts` (the rule, `onWhite` included), `appTheme.test.tsx` (the parts, the links),
   `ui/src/frame/Shell.test.tsx` and `ui/src/pages/SignIn.test.tsx` (the header, the menu and the
   buttons on the gradient).
-- _Not covered:_ the text and the switch's thumb on a light ground, in the client's colour (item
-  636).
+- _Not covered:_ the switch's thumb on a light colour's checked track (item 636).
 
 ## Where the rest is
 

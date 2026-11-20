@@ -63,7 +63,7 @@ its shade 7 (4.91:1). *Rejected:* darkening each primary until white passes; Man
 ## Landing B: colours named by role, and one home for each value
 
 Each role is a `--credo-<role>` variable written once by `credoVariables`, or Mantine's own slot where
-it has one; `FRAME_COLOURS`' value names (`tokens.ts#L52-L55`) go. Named by what each is for:
+it has one; `FRAME_COLOURS`' value names (once in `tokens.ts`) go. Named by what each is for:
 
 | Role | Today | Read by |
 | --- | --- | --- |
@@ -82,7 +82,7 @@ it has one; `FRAME_COLOURS`' value names (`tokens.ts#L52-L55`) go. Named by what
 rule): `onWhite(shades, from)`, beside `onBrand`, gives the first shade from `from` that reaches 4.5:1
 on white, a shade darker at a time, else the theme's darkest grey (amber). From 6 for links, written
 as Mantine's `--mantine-color-anchor`, `-brand-text` and `-brand-outline` (A's pin of `-brand-text`,
-`cssVariables.ts#L43`, goes); from 7 for `brand-text`, so the back link and the frame's brand text stay
+once in `cssVariables.ts`, went); from 7 for `brand-text`, so the back link and the frame's brand text stay
 at 7 on every stock colour and the walks' company. **The walks move in one place:** the company's links
 go from shade 6 to its own 7 (4.37 to 4.91:1), since the rule serves every colour, not emerald alone;
 steel's and brick's stay. Emerald's links take 7 (5.48:1), seen in the gallery. *Rejected:* the memo's
@@ -99,14 +99,14 @@ atom and status map, which rewrite those lines.
 `SPACING` (`tokens.ts#L7-L8`), and the theme reads them (`ui/src/design-system/appTheme.ts#L154-L155`),
 since the theme imports the tokens; `TOKENS.badgeRadius` and `TOKENS.cardPadding` (`tokens.ts#L21`,
 `#L33`) read the tables' `sm` and `lg`, closing items 508 and 596; `doorPadding`, `doorBody` and `logoTile` stay component settings, said in the doc comment. The
-gradients' angles, 135 and 180 (`cssVariables.ts#L34-L35`), come from `tokens.ts`, and the washes
+gradients' angles, 135 and 180 (`cssVariables.ts#L32-L33`), come from `tokens.ts`, and the washes
 become one table of numbers. `todayOf` (`onBrand.ts#L74`) becomes `beforeOf`, the gallery's "Today"
 column "Before", since in `main` that state is no longer today.
 
-**The check extends:** case 7 (`ui/src/design-system/literals.test.ts#L10`) refuses
-`--mantine-color-<name>-<n>` in a stylesheet outside the design system; the lint refuses a numbered
+**The check extends:** case 10 (`ui/src/design-system/literals.test.ts#L25`) refuses a numbered
+shade and `--mantine-color-<name>-<n>` in a `.css`, `.ts` or `.tsx` file outside the design system; the lint refuses a numbered
 shade (`brand.7`) and that variable in `.ts`/`.tsx`, as selectors of the one `no-restricted-syntax`
-block (`eslint.config.js#L75-L87`), since a second block over the same files replaces its options.
+block (`eslint.config.js#L76-L94`), since a second block over the same files replaces its options.
 
 ## Landing C: type by name
 
@@ -124,11 +124,11 @@ stylesheets. The check then refuses a numeric `fw=`, `fz=`, `fontWeight`, `font-
 
 The picture run draws the walks' company, credo's steel, and brick after one settings step
 (`walk/specs/piece-1.spec.ts#L163`). So B's first step adds `visual/src/resolved.test.ts`: every
-screen of the walks page, drawn as the capture draws it (`visual/src/capture.ts`'s `matchingRules`),
-each element's declarations resolved, under the six colours and four typed ones (the company's,
+screen of the walks page, drawn as the capture draws it, each element's declarations resolved by the check's own
+resolver (the theme's variables beating the app stylesheet's, as in the page), under the six colours and four typed ones (the company's,
 `#d97757`, pure red, amber), class names left out, being hashed. One hash a screen and colour, against
 `visual/src/resolved.pinned.txt` from the tree A landed. Equal resolved styles draw equal pixels, so its
-0 holds steps 5, 6, 9 and 10 on every colour; step 7 rewrites it by `--write`, its diff read. It stays
+0 holds steps 5, 6, 9 and 10 on every colour; step 7 rewrote it with `RESOLVED_WRITE=1`, its diff read. It stays
 standing; the skeleton piece's look changes rewrite it the same way.
 
 Each colour has its own theme variables, and a scene that draws from the config colour itself is not
@@ -187,13 +187,15 @@ shape, else piece 126's. One recap, step 11, before C lands, not one a landing.
       (step 1's shape: a new module and its cases). _Evidence:_ commit bf6b6ce9; red on a planted role
       value (run 21:05); green on a renamed class (21:08) and again on `.button`, which has rules in
       `frame.module.css` (21:51, 14 of 14), both gates exit 0 (21:54, 21:57).
-- [ ] **5. The roles.** The table in `tokens.ts` and `credoVariables`, the 32 references and A's names
+- [x] **5. The roles.** The table in `tokens.ts` and `credoVariables`, the 32 references and A's names
       moved, D's two tokens, the angles, `beforeOf`; Values lists the roles; case 12. _Done when:_ the
       gates exit 0, `resolved.pinned.txt` unchanged. **24 min** (step 2's shape).
       _Evidence:_ commit 9a6437ea; case 12 red on the old values planted back (22:13, both
       halves), green; the ui and visual gates exit 0 (22:14, 22:17), `resolved.pinned.txt` byte-equal
-      to the one step 4 committed. The count held: 32 references moved (30 in stylesheets and
-      components, `BackLink`'s `brand.7`, `OrderPage`'s `orange.9`), and the roles are
+      to the one step 4 committed, read under the resolver 5b then found wrong; proved again under 5b's
+      fixed check (the 23:05 run, 15 passed, exit 0), which reads step 5's pins on step 4's `ui/`. The
+      count held: 32 references moved (30 in stylesheets and components, `BackLink`'s `brand.7` among
+      the 5 in `components/`, then `OrderPage`'s `orange.9` and `SignIn.tsx`'s ground), and the roles are
       `ROLES`, `HEADER_WASHES`, `MENU_WASHES` in `tokens.ts`; `gray.6` reads `dimmed`; the angles are
       `ANGLES`; `todayOf` is `beforeOf`, the gallery's column "Before", and Values draws the roles.
       *Where it differs from the plan:* the radii and the spacing table are written in `tokens.ts`
@@ -242,7 +244,10 @@ shape, else piece 126's. One recap, step 11, before C lands, not one a landing.
 - [ ] **9. The styles.** The 19 weights, 3 stylesheet weights, 5 sizes and 24 captions moved; Type
       lists each style; case 14 red once. _Done when:_ the gates exit 0, the pinned file unchanged.
       **13 min** (piece 126's step 4).
-- [ ] **10. Weights and sizes refused.** Case 13, red once each. _Done when:_ the gates exit 0.
+- [ ] **10. Weights and sizes refused.** Case 13, red once each. The shade block's message
+      (`eslint.config.js#L90`), "A shade is named in the design system; a screen reads a role.", is
+      reworded in the same lint block: "Name no shade here: read a role, `var(--credo-<role>)` of
+      `ui/src/design-system/tokens.ts`'s `ROLES`, or Mantine's `dimmed`." _Done when:_ the gates exit 0.
       **20 min** (piece 126's step 7).
 - [ ] **11. The recap.** `docs/recaps/2026-11-20-design-fixes.md`: the commits, the two rules, each
       colour's ratios, the check's patterns and red receipts, the picture counts, what was rejected
