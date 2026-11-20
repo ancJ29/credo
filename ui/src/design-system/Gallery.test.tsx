@@ -2,11 +2,14 @@ import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { CREDO_COLOUR } from '@credo/shared';
+import { DEMO_CONFIG } from '@credo/shared/demo';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { openApp } from '../../tests/open';
 import { Gallery } from './Gallery';
 import { ENTRIES } from './entries';
+import { onBrand, todayOf, type Surface } from './onBrand';
 import { PALETTES } from './palettes';
+import { shadesOf } from './appTheme';
 
 // Every component file of the three folders, by level and name: the list must hold each.
 const FILES = Object.keys(
@@ -59,7 +62,7 @@ describe('Gallery', () => {
       .map((heading) => heading.textContent);
     expect(heads).toEqual(['Foundations', 'Atoms', 'Molecules', 'Organisms']);
     expect(found.length).toBeGreaterThan(0);
-    expect(list().getByRole('region', { name: 'Foundations' }).textContent).toContain('2');
+    expect(list().getByRole('region', { name: 'Foundations' }).textContent).toContain('3');
     for (const [level, heading] of Object.entries(HEADINGS)) {
       const files = found.filter((file) => file.level === level);
       const group = within(list().getByRole('region', { name: heading }));
@@ -201,6 +204,65 @@ describe('Gallery', () => {
     expect(part().getByText(/^Gaps: /)).toBeDefined();
   });
 
+  it('9: On the brand draws the six colours’ header, buttons and menu, today’s and the rule’s, each with its ratio', () => {
+    open(`${BASE}/foundations/on-the-brand`);
+
+    expect(stateNames()).toEqual(['Buttons', 'Header', 'Menu']);
+    const surfaces: [string, Surface][] = [
+      ['Buttons', 'filled'],
+      ['Header', 'header'],
+      ['Menu', 'menu'],
+    ];
+    expect(PALETTES).toHaveLength(6);
+    for (const [state, surface] of surfaces) {
+      const plate = within(part().getByRole('figure', { name: state }));
+      expect(plate.getAllByRole('row')).toHaveLength(9);
+      for (const { name, shades } of PALETTES) {
+        const row = within(
+          plate
+            .getByRole('rowheader', { name: `${name[0].toUpperCase()}${name.slice(1)}` })
+            .closest('tr')!,
+        );
+        const tuple = shadesOf(shades[7]);
+        const said = (pick: ReturnType<typeof onBrand>) => `${pick.ink} ${pick.least.toFixed(2)}:1`;
+        expect(row.getAllByText(/:1$/).map((node) => node.textContent)).toEqual([
+          said(todayOf(tuple, surface)),
+          said(onBrand(tuple, surface)),
+        ]);
+      }
+    }
+    // Two typed colours follow the six on each surface: the walks' company's moves a shade under
+    // white, and a light one gets dark text.
+    for (const [state, surface] of surfaces) {
+      const plate = within(part().getByRole('figure', { name: state }));
+      for (const colour of [DEMO_CONFIG.colour, '#d97757']) {
+        const row = within(
+          plate.getByRole('rowheader', { name: `Typed ${colour}` }).closest('tr')!,
+        );
+        const tuple = shadesOf(colour);
+        const said = (pick: ReturnType<typeof onBrand>) => `${pick.ink} ${pick.least.toFixed(2)}:1`;
+        expect(row.getAllByText(/:1$/).map((node) => node.textContent)).toEqual([
+          said(todayOf(tuple, surface)),
+          said(onBrand(tuple, surface)),
+        ]);
+      }
+    }
+    const light = within(part().getByRole('figure', { name: 'Buttons' }))
+      .getByRole('rowheader', { name: 'Typed #d97757' })
+      .closest('tr')!;
+    expect(within(light).getByText(/^dark [4-9]\.\d\d:1$/)).toBeDefined();
+    const company = within(part().getByRole('figure', { name: 'Buttons' }))
+      .getByRole('rowheader', { name: 'Typed #2f7d6d' })
+      .closest('tr')!;
+    expect(within(company).getByText('white 4.91:1')).toBeDefined();
+    // Emerald's buttons, the one stock change: white fails today at 3.77, dark reads at 4.71.
+    const emerald = within(part().getByRole('figure', { name: 'Buttons' }))
+      .getByRole('rowheader', { name: 'Emerald' })
+      .closest('tr')!;
+    expect(within(emerald).getByText(/^white [0-3]\.\d\d:1$/)).toBeDefined();
+    expect(within(emerald).getByText(/^dark [4-9]\.\d\d:1$/)).toBeDefined();
+  });
+
   it('12: draws no picture of the old app beside any part', () => {
     open(`${BASE}/organisms/door-card`);
 
@@ -326,7 +388,7 @@ describe('Gallery', () => {
         .getAllByTitle(/^brand \d$/)
         .map((swatch) => swatch.getAttribute('style'));
 
-    it('the colour themes: the picker is Mantine’s own, labelled in sight, offers every stock palette by name, steel, emerald and terracotta among them, and opens on the app’s own', async () => {
+    it('the colour themes: the picker is Mantine’s own, labelled in sight, offers every stock palette by name, steel, emerald and brick among them, and opens on the app’s own', async () => {
       const user = userEvent.setup();
       open(BASE);
       expect(chooser().tagName).toBe('INPUT');
@@ -337,19 +399,16 @@ describe('Gallery', () => {
       await user.click(chooser());
       const options = within(await screen.findByRole('listbox')).getAllByRole('option');
       expect(options.map((option) => option.textContent)).toEqual([
-        'Terracotta',
-        'Sandstone',
-        'Forest',
-        'Autumn',
-        'Olive',
-        'Emerald',
         'Steel · the app’s',
-        'Ocean',
-        'Coin',
+        'Emerald',
+        'Brick',
+        'Bronze',
+        'Plum',
+        'Indigo',
       ]);
       expect(PALETTES.map(({ name }) => name)).toHaveLength(options.length);
       expect(options.filter((option) => option.getAttribute('aria-selected') === 'true')).toEqual([
-        options[6],
+        options[0],
       ]);
 
       // Picking the theme already chosen keeps it: the picker is never left empty.
@@ -386,7 +445,7 @@ describe('Gallery', () => {
 
     it('the colour themes: they are the gallery’s alone, the app outside it keeps its own colour, and with no browser storage the gallery still draws and switches', async () => {
       open(BASE);
-      await choose('Terracotta');
+      await choose('Brick');
       cleanup();
 
       // The app as `App.tsx` draws it, at the operator's door, which wears credo's own colour.

@@ -28,6 +28,14 @@ describe('the join page', () => {
     expect(api.operatorMe).not.toHaveBeenCalled();
   });
 
+  it('7: the button to make a passkey wears the header’s gradient and its text', async () => {
+    openApp(PATH);
+
+    const button = await screen.findByRole('button', { name: words.passkey.makeButton });
+    expect(button.getAttribute('style')).toContain('var(--credo-header-gradient)');
+    expect(button.style.color).toBe('var(--credo-on-header)');
+  });
+
   it('says so when the operator who made the link has been deleted', async () => {
     openApp(PATH, {
       override: (api, original) =>

@@ -33,7 +33,7 @@ export const FRESH: TenantConfig = {
 export const TYPED: TenantConfig = {
   ...FILLED,
   name: 'Minh Phát Sài Gòn',
-  colour: '#d97757',
+  colour: '#9e2d20',
 };
 
 /** What the root typed with the header and the menu on white. */

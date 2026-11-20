@@ -12,26 +12,15 @@ import {
   PasswordInput,
   rem,
   Table,
+  defaultVariantColorsResolver,
+  type VariantColorsResolver,
 } from '@mantine/core';
-import { paletteOfColour } from './palettes';
+import { gradientOf, onBrand, type Pick, todayOf } from './onBrand';
+import { NEUTRAL, paletteOfColour } from './palettes';
 import classes from './theme.module.css';
 import { TOKENS } from './tokens';
 
 const FONT = '"Noto Sans Variable", sans-serif';
-
-/** The old app's greys: the guest screens' ground and the card's edge. */
-const NEUTRAL: MantineColorsTuple = [
-  '#fafafa',
-  '#f5f5f5',
-  '#e5e5e5',
-  '#d4d4d4',
-  '#9ca3af',
-  '#6b7280',
-  '#4b5563',
-  '#374151',
-  '#1f2937',
-  '#111827',
-];
 
 /** The old app's own grey, green and red, in place of Mantine's. They stay fixed: no tenant sets them. */
 const GRAY: MantineColorsTuple = [
@@ -71,11 +60,11 @@ const RED: MantineColorsTuple = [
   '#7f1d1d',
 ];
 
-/** The brand's own gradient, from its shade 7 to its shade 9: the header and the primary button. */
-export const BRAND_GRADIENT = TOKENS.brandGradient;
+/** The header's ground, the brand's gradient over the shades the rule picks (`--credo-header-gradient`, written by `credoVariables`): the header, the sign-in band and the buttons beside it. */
+export const BRAND_GRADIENT = 'var(--credo-header-gradient)';
 
-/** The side menu's ground, from the brand's shade 9 down to its shade 8. */
-export const MENU_GRADIENT = TOKENS.menuGradient;
+/** The side menu's ground, over the shades the rule picks (`--credo-menu-gradient`). */
+export const MENU_GRADIENT = 'var(--credo-menu-gradient)';
 
 type Rgb = [number, number, number];
 
@@ -105,18 +94,55 @@ export function shadesOf(colour: string) {
 }
 
 /**
+ * Mantine's filled and gradient parts of the brand, with the text the rule picks for the colour: the
+ * filled parts' ground and hover at the shades it names, the gradient button over the header's.
+ * Where the rule keeps white at today's shades the result is Mantine's own.
+ */
+/** The pick's text as Mantine names it: its own white, or the dark grey itself. */
+const textOf = (pick: Pick) => (pick.ink === 'white' ? 'var(--mantine-color-white)' : pick.colour);
+
+const variantColorResolver: VariantColorsResolver = (input) => {
+  const base = defaultVariantColorsResolver(input);
+  if (input.color !== 'brand') return base;
+  const shades = input.theme.colors['brand'];
+  const surface =
+    input.variant === 'filled' ? 'filled' : input.variant === 'gradient' ? 'header' : null;
+  if (!surface) return base;
+  const pick = onBrand(shades, surface);
+  const today = todayOf(shades, surface);
+  if (pick.ink === today.ink && pick.span.join() === today.span.join()) return base;
+  if (surface === 'header')
+    return {
+      ...base,
+      background: gradientOf(TOKENS.buttonGradient.deg, pick.span),
+      color: textOf(pick),
+    };
+  return {
+    ...base,
+    background: `var(--mantine-color-brand-${pick.span[0]})`,
+    hover: `var(--mantine-color-brand-${pick.span[1]})`,
+    color: textOf(pick),
+  };
+};
+
+/**
  * The old app's look, coloured by the tenant's brand: only `brand` follows the tenant; the greys,
  * the green, the red, the font, the radii, the shadows and the underlined fields are fixed. Also the
  * design system's own entries: the main shade, a small-cornered badge, a table row's pale hover, a
  * centred dialog with a large title, the gradient button and a labelled divider. Light only.
  */
-export const themeOf = (colour: string) =>
-  createTheme({
-    colors: { brand: shadesOf(colour), neutral: NEUTRAL, gray: GRAY, green: GREEN, red: RED },
+export const themeOf = (colour: string) => {
+  const shades = shadesOf(colour);
+  const filled = onBrand(shades, 'filled');
+  const today = todayOf(shades, 'filled');
+  const changes = filled.ink !== today.ink || filled.span.join() !== today.span.join();
+  return createTheme({
+    colors: { brand: shades, neutral: NEUTRAL, gray: GRAY, green: GREEN, red: RED },
     primaryColor: 'brand',
     // The main colour at shade 6; shade 7 stays the company's colour itself.
     primaryShade: TOKENS.primaryShade,
     defaultGradient: TOKENS.buttonGradient,
+    variantColorResolver,
     fontFamily: FONT,
     // A page's title is its level-2 heading, drawn at the old app's h3, in bold (700).
     headings: {
@@ -137,13 +163,22 @@ export const themeOf = (colour: string) =>
     cursorType: 'pointer',
     components: {
       // Mantine's Checkbox sets its own `sm`, past the theme's default radius.
-      Checkbox: Checkbox.extend({ defaultProps: { radius: 'md' } }),
+      // The mark follows the filled parts' text; their ground follows by the variables (`credoVariables`).
+      Checkbox: Checkbox.extend({
+        defaultProps: {
+          radius: 'md',
+          iconColor: filled.ink === 'dark' ? filled.colour : undefined,
+        },
+      }),
       Input: Input.extend({ classNames: { input: classes.input, wrapper: classes.wrapper } }),
       PasswordInput: PasswordInput.extend({
         classNames: { root: classes.passwordRoot, input: classes.password },
       }),
       InputWrapper: Input.Wrapper.extend({ styles: { label: { fontWeight: 500 } } }),
-      Badge: Badge.extend({ defaultProps: { radius: TOKENS.badgeRadius } }),
+      // A plain badge reads its text from Mantine's stylesheet, white; named filled, it reads the rule.
+      Badge: Badge.extend({
+        defaultProps: { radius: TOKENS.badgeRadius, variant: changes ? 'filled' : undefined },
+      }),
       Divider: Divider.extend({
         defaultProps: { labelPosition: 'center' },
         styles: { label: TOKENS.dividerLabel },
@@ -155,3 +190,4 @@ export const themeOf = (colour: string) =>
       }),
     },
   });
+};

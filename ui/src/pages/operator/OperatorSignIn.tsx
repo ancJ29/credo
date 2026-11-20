@@ -40,7 +40,7 @@ export function OperatorSignIn({ status, onSubmit, languages, onLanguage }: Prop
           size="md"
           loading={status === 'busy'}
           leftSection={<IconFingerprint size={20} />}
-          style={{ background: BRAND_GRADIENT }}
+          style={{ background: BRAND_GRADIENT, color: 'var(--credo-on-header)' }}
           onClick={onSubmit}
         >
           {t('passkey.signInButton')}

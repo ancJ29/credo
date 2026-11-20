@@ -22,11 +22,6 @@ export const TOKENS = {
   sectionTitle: { fw: 700, lts: 0.5 },
   /** A section card's padding, in px. */
   cardPadding: 24,
-  /** The brand's own gradient, from its shade 7 to its shade 9: the header and the primary button. The door card's bar has its own, at 90°. */
-  brandGradient: `linear-gradient(${BRAND_SHADES.deg}deg, var(--mantine-color-brand-${BRAND_SHADES.from}) 0%, var(--mantine-color-brand-${BRAND_SHADES.to}) 100%)`,
-  /** The side menu's ground, from the brand's shade 9 down to its shade 8. */
-  menuGradient:
-    'linear-gradient(180deg, var(--mantine-color-brand-9) 0%, var(--mantine-color-brand-8) 100%)',
   /** The company logo's tile, in px: 44 square, corners of 10 (the legacy's card head). */
   logoTile: { size: 44, radius: 10 },
   /** The brand's gradient button: from shade 7 to shade 9, at 135 degrees, as Mantine's gradient variant reads it. */
@@ -52,17 +47,11 @@ export const TOKENS = {
 } as const;
 
 /** The colours the frame's stylesheets and the shell draw that Mantine has no slot for, written as
- * `--credo-<name>` variables by the theme's resolver. */
+ * `--credo-<name>` variables by the theme's resolver. The text on the client's colour, its washes and
+ * the header's and menu's gradients follow the colour, so `credoVariables` writes them (`onBrand.ts`). */
 export const FRAME_COLOURS = {
   white: '#fff',
   'ink-04': 'rgba(0, 0, 0, 0.04)',
-  'white-05': 'rgba(255, 255, 255, 0.05)',
-  'white-10': 'rgba(255, 255, 255, 0.1)',
-  'white-12': 'rgba(255, 255, 255, 0.12)',
-  'white-18': 'rgba(255, 255, 255, 0.18)',
-  'white-90': 'rgba(255, 255, 255, 0.9)',
-  'white-22': 'rgba(255, 255, 255, 0.22)',
-  'white-55': 'rgba(255, 255, 255, 0.55)',
 } as const;
 
 /** The frame's sizes, weights, lines and shadows that Mantine has no slot for, written as

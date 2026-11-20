@@ -71,9 +71,10 @@ describe('the staff list', () => {
     ]);
     expect(screen.queryByLabelText('Show people who left')).toBeNull();
     // the chip is a filled badge in the theme's primary, with the design system's 4-px corners: no colour of its own
+    // but the rule's pick for this company's green, whose buttons move to shade 7 under white
     const chip = within(lan).getByText(words.staff.chipActive).closest('.mantine-Badge-root');
     expect(chip?.getAttribute('style')).toBe(
-      '--badge-radius: calc(0.25rem * var(--mantine-scale));',
+      '--badge-radius: calc(0.25rem * var(--mantine-scale)); --badge-bg: var(--mantine-color-brand-7); --badge-color: var(--mantine-color-white); --badge-bd: calc(0.0625rem * var(--mantine-scale)) solid transparent;',
     );
 
     await user.selectOptions(status, words.staff.statusInactive);
