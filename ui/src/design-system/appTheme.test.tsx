@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { CREDO_COLOUR } from '@credo/shared';
 import { Badge, Button, Checkbox, Divider, MantineProvider } from '@mantine/core';
 import { render, screen } from '@testing-library/react';
@@ -5,6 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { credoVariables } from './cssVariables';
 import { PALETTES } from './palettes';
 import { BRAND_GRADIENT, shadesOf, themeOf } from './appTheme';
+import { RADII, SPACING, TOKENS } from './tokens';
 
 describe('shadesOf', () => {
   it('gives ten shades, the lightest first, shade 7 the brand colour itself', () => {
@@ -99,7 +101,7 @@ describe('11: the app’s theme is the design system’s, for every company’s 
       expect(defaultGradient).toEqual({ from: 'brand.7', to: 'brand.9', deg: 135 });
       expect(components?.Badge?.defaultProps).toMatchObject({ radius: '4px' });
       expect(components?.Table?.defaultProps).toMatchObject({
-        highlightOnHoverColor: 'var(--mantine-color-brand-0)',
+        highlightOnHoverColor: 'var(--credo-brand-tint)',
       });
       expect(components?.Modal?.defaultProps).toMatchObject({ centered: true });
       expect(components?.Modal?.styles).toEqual({
@@ -235,5 +237,22 @@ describe('the design system’s gradient button and divider', () => {
   it('keeps the app’s own entries, the fields’ line included', () => {
     expect(themeOf('#2f7d6d').components?.Input).toBeDefined();
     expect(themeOf('#2f7d6d').fontFamily).toContain('Noto Sans Variable');
+  });
+});
+
+describe('12: the badge’s corners and the card’s padding are written once, read from the theme', () => {
+  it('are the theme’s own sm radius and lg spacing, handed to Mantine as the one table', () => {
+    const theme = themeOf('#2f7d6d');
+    expect(theme.radius).toBe(RADII);
+    expect(theme.spacing).toBe(SPACING);
+    expect(TOKENS.badgeRadius).toBe(RADII.sm);
+    expect(TOKENS.cardPadding).toBe(SPACING.lg);
+    expect(theme.components?.Badge?.defaultProps).toMatchObject({ radius: theme.radius?.sm });
+  });
+
+  it('are not written again in the tokens’ own text', () => {
+    const text = readFileSync(`${import.meta.dirname}/tokens.ts`, 'utf8');
+    const values = text.slice(text.indexOf('export const TOKENS'));
+    expect(values).not.toMatch(/badgeRadius: '|cardPadding: \d/);
   });
 });

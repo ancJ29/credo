@@ -6,72 +6,72 @@
 /* The white header: neutral 0 to paint, 8 for text, 7 for icons, 2 for the edge, as the old app's
    light variant. */
 .header {
-  background: var(--mantine-color-neutral-0);
-  color: var(--mantine-color-neutral-8);
-  border-bottom: 1px solid var(--mantine-color-neutral-2);
+  background: var(--credo-surface);
+  color: var(--credo-text);
+  border-bottom: 1px solid var(--credo-border);
 }
 
 .brand {
-  color: var(--mantine-color-brand-7);
+  color: var(--credo-brand-text);
 }
 
 .brandName {
-  color: var(--mantine-color-neutral-8);
+  color: var(--credo-text);
 }
 
 .button {
-  color: var(--mantine-color-neutral-7);
+  color: var(--credo-text-muted);
 }
 
 .button:hover {
-  background: var(--credo-ink-04);
+  background: var(--credo-hover-ink);
 }
 
 .user {
-  background: var(--credo-ink-04);
+  background: var(--credo-hover-ink);
 }
 
 .avatar {
-  border-color: var(--mantine-color-neutral-3);
-  background: var(--mantine-color-brand-1);
-  color: var(--mantine-color-brand-9);
+  border-color: var(--credo-border-strong);
+  background: var(--credo-brand-tint-strong);
+  color: var(--credo-on-brand-tint);
 }
 
 .badge {
-  background: var(--mantine-color-brand-1);
-  color: var(--mantine-color-brand-9);
+  background: var(--credo-brand-tint-strong);
+  color: var(--credo-on-brand-tint);
 }
 
 /* The white menu: the open page on the brand's shade 0, its text 9, its mark 7. */
 .menu {
-  background: var(--mantine-color-neutral-0);
-  color: var(--mantine-color-neutral-8);
-  border-right: 1px solid var(--mantine-color-neutral-2);
+  background: var(--credo-surface);
+  color: var(--credo-text);
+  border-right: 1px solid var(--credo-border);
 }
 
 .item {
-  color: var(--mantine-color-neutral-8);
+  color: var(--credo-text);
 }
 
 .item svg {
-  color: var(--mantine-color-neutral-7);
+  color: var(--credo-text-muted);
 }
 
 .item:hover {
-  background: var(--credo-ink-04);
+  background: var(--credo-hover-ink);
 }
 
 .item[aria-current='page'] {
-  background: var(--mantine-color-brand-0);
-  color: var(--mantine-color-brand-9);
+  background: var(--credo-brand-tint);
+  color: var(--credo-on-brand-tint);
 }
 
 .item[aria-current='page'] svg {
-  color: var(--mantine-color-brand-7);
+  color: var(--credo-brand-text);
 }
 
 .item[aria-current='page']::after {
-  border-right-color: var(--mantine-color-brand-7);
+  border-right-color: var(--credo-brand-text);
 }
 
 /* The hidden menu as a PC's strip of icons, 60 wide (Mantine's navbar width), each page's name in a
@@ -91,8 +91,8 @@
   padding: 4px 10px;
   transform: translateY(-50%);
   border-radius: 6px;
-  background: var(--mantine-color-neutral-8);
-  color: var(--credo-white);
+  background: var(--credo-tip);
+  color: var(--credo-on-tip);
   font-size: 13px;
   font-weight: 500;
   white-space: nowrap;

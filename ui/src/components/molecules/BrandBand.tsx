@@ -10,8 +10,8 @@ export function BrandBand({ name, logo }: { name: string; logo?: string }) {
       gap="md"
       style={{
         padding: TOKENS.doorPadding,
-        background: 'var(--mantine-color-brand-0)',
-        borderBottom: '1px solid var(--mantine-color-brand-1)',
+        background: 'var(--credo-brand-tint)',
+        borderBottom: '1px solid var(--credo-brand-tint-strong)',
       }}
     >
       <LogoTile logo={logo} alt={name} />

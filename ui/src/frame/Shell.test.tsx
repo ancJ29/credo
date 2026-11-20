@@ -10,6 +10,7 @@ import { Providers } from './Providers';
 import { MemoryRouter } from 'react-router';
 import { shadesOf } from '../design-system/appTheme';
 import { onBrand } from '../design-system/onBrand';
+import { HEADER_WASHES } from '../design-system/tokens';
 import { type Look, Shell } from './Shell';
 
 const frameCss = readFileSync(join(import.meta.dirname, 'frameLook.module.css'), 'utf8');
@@ -65,8 +66,8 @@ describe('the header and the menu follow the colour', () => {
       expect(value('header-gradient'), colour).toBe(
         `linear-gradient(135deg, var(--mantine-color-brand-${pick.span[0]}) 0%, var(--mantine-color-brand-${pick.span.at(-1)}) 100%)`,
       );
-      for (const share of [12, 18, 22, 55, 90])
-        expect(value(`on-header-${share}`), colour).toBe(`rgba(${r}, ${g}, ${b}, ${share / 100})`);
+      for (const [role, share] of Object.entries(HEADER_WASHES))
+        expect(value(role), colour).toBe(`rgba(${r}, ${g}, ${b}, ${share / 100})`);
       expect(header.style.color, colour).toBe('var(--credo-on-header)');
       drawn.unmount();
     }
@@ -74,13 +75,19 @@ describe('the header and the menu follow the colour', () => {
     const light = inColour('#d97757');
     expect(light.value('on-header')).toBe('#111827');
     expect(light.value('header-gradient')).toContain('brand-5) 0%, var(--mantine-color-brand-7)');
-    expect(light.value('on-header-12')).toBe('rgba(17, 24, 39, 0.12)');
+    expect(light.value('header-hover')).toBe('rgba(17, 24, 39, 0.12)');
     light.drawn.unmount();
   });
 
   it('7: the stylesheet’s header, buttons, chip, avatar and badge read the header’s variables, none white', () => {
     expect(frameStyles).not.toContain('--credo-white');
-    for (const name of ['on-header', 'on-header-12', 'on-header-18', 'on-header-90'])
+    for (const name of [
+      'on-header',
+      'header-hover',
+      'header-badge',
+      'header-avatar',
+      'header-avatar-edge',
+    ])
       expect(frameStyles).toContain(`var(--credo-${name})`);
   });
 
@@ -94,8 +101,8 @@ describe('the header and the menu follow the colour', () => {
       expect(value('menu-gradient'), colour).toBe(
         `linear-gradient(180deg, var(--mantine-color-brand-${pick.span[0]}) 0%, var(--mantine-color-brand-${pick.span.at(-1)}) 100%)`,
       );
-      expect(value('on-menu-05'), colour).toBe(`rgba(${r}, ${g}, ${b}, 0.05)`);
-      expect(value('on-menu-10'), colour).toBe(`rgba(${r}, ${g}, ${b}, 0.1)`);
+      expect(value('menu-hover'), colour).toBe(`rgba(${r}, ${g}, ${b}, 0.05)`);
+      expect(value('menu-current'), colour).toBe(`rgba(${r}, ${g}, ${b}, 0.1)`);
       expect(menu.style.color, colour).toBe('var(--credo-on-menu)');
       drawn.unmount();
     }
@@ -105,8 +112,8 @@ describe('the header and the menu follow the colour', () => {
     expect(amber.value('menu-gradient')).toContain('brand-8) 0%, var(--mantine-color-brand-7)');
     amber.drawn.unmount();
     expect(frameStyles).toContain('color: var(--credo-on-menu)');
-    expect(frameStyles).toContain('var(--credo-on-menu-05)');
-    expect(frameStyles).toContain('var(--credo-on-menu-10)');
+    expect(frameStyles).toContain('var(--credo-menu-hover)');
+    expect(frameStyles).toContain('var(--credo-menu-current)');
   });
 });
 
@@ -500,16 +507,16 @@ describe('Shell', () => {
     expect(sideMenu().hasAttribute('data-white')).toBe(true);
 
     const header7 = rule('.header');
-    expect(header7).toContain('var(--mantine-color-neutral-0)');
-    expect(header7).toContain('var(--mantine-color-neutral-8)');
-    expect(header7).toContain('var(--mantine-color-neutral-2)');
+    expect(header7).toContain('var(--credo-surface)');
+    expect(header7).toContain('var(--credo-text)');
+    expect(header7).toContain('var(--credo-border)');
     const item = rule('.item');
-    expect(item).toContain('var(--mantine-color-neutral-8)');
-    expect(rule('.item svg')).toContain('var(--mantine-color-neutral-7)');
+    expect(item).toContain('var(--credo-text)');
+    expect(rule('.item svg')).toContain('var(--credo-text-muted)');
     const open = rule(".item[aria-current='page']");
-    expect(open).toContain('var(--mantine-color-brand-0)');
-    expect(open).toContain('var(--mantine-color-brand-9)');
-    expect(rule(".item[aria-current='page'] svg")).toContain('var(--mantine-color-brand-7)');
+    expect(open).toContain('var(--credo-brand-tint)');
+    expect(open).toContain('var(--credo-on-brand-tint)');
+    expect(rule(".item[aria-current='page'] svg")).toContain('var(--credo-brand-text)');
   });
 
   it('7: The white header draws the company’s name by the grey rule, never by an inline colour', () => {
@@ -517,7 +524,7 @@ describe('Shell', () => {
     const white = screen.getByRole('heading', { level: 1 });
     expect(white.getAttribute('style') ?? '').not.toContain('color');
     expect(white.className).toContain('brandName');
-    expect(rule('.brandName')).toContain('var(--mantine-color-neutral-8)');
+    expect(rule('.brandName')).toContain('var(--credo-text)');
     cleanup();
 
     looked({ whiteHeader: false, whiteMenu: true, menuIcons: false });

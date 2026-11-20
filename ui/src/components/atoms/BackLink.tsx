@@ -7,7 +7,7 @@ export function BackLink({ href, children }: { href: string; children: string })
     <Anchor
       href={href}
       size="sm"
-      c="brand.7"
+      c="var(--credo-brand-text)"
       style={{ display: 'inline-flex', gap: 6, alignItems: 'center' }}
     >
       <IconArrowLeft size={14} aria-hidden />

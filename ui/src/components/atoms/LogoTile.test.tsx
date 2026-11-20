@@ -20,7 +20,7 @@ describe('LogoTile', () => {
     expect(tile.style.width).toBe('44px');
     expect(tile.style.height).toBe('44px');
     expect(tile.style.borderRadius).toBe('10px');
-    expect(tile.style.border).toBe('1px solid var(--mantine-color-brand-2)');
+    expect(tile.style.border).toBe('1px solid var(--credo-brand-line)');
   });
 
   it('1: draws nothing when there is no logo', () => {

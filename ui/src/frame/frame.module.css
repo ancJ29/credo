@@ -34,7 +34,7 @@
 }
 
 .button:hover {
-  background: var(--credo-on-header-12);
+  background: var(--credo-header-hover);
 }
 
 .user {
@@ -45,7 +45,7 @@
   padding: 4px 8px;
   border-radius: 8px;
   color: inherit;
-  background: var(--credo-on-header-12);
+  background: var(--credo-header-chip);
 }
 
 .avatar {
@@ -54,15 +54,15 @@
   justify-content: center;
   width: 28px;
   height: 28px;
-  border: 1.5px solid var(--credo-on-header-90);
+  border: 1.5px solid var(--credo-header-avatar-edge);
   border-radius: 8px;
-  background: var(--credo-on-header-18);
+  background: var(--credo-header-avatar);
   font-size: 11px;
   font-weight: 700;
 }
 
 .badge {
-  background: var(--credo-on-header-18);
+  background: var(--credo-header-badge);
   color: var(--credo-on-header);
 }
 
@@ -90,13 +90,13 @@
 }
 
 .item:hover {
-  background: var(--credo-on-menu-05);
+  background: var(--credo-menu-hover);
 }
 
 /* The open page: washed in white, no change of weight, with a notch 15 wide and 20 high at the
    menu's right edge opening onto the page. */
 .item[aria-current='page'] {
-  background: var(--credo-on-menu-10);
+  background: var(--credo-menu-current);
 }
 
 .item[aria-current='page']::after {
@@ -124,7 +124,7 @@
   align-items: center;
   justify-content: center;
   min-height: 56px;
-  color: var(--mantine-color-gray-6);
+  color: var(--mantine-color-dimmed);
 }
 
 .barIcon {
@@ -138,9 +138,9 @@
 
 /* The open page on the brand's shade 1. */
 .barLink[aria-current='page'] .barIcon {
-  background: var(--mantine-color-brand-1);
-  color: var(--mantine-color-brand-7);
-  box-shadow: 0 4px 12px color-mix(in srgb, var(--mantine-color-brand-7) 25%, transparent);
+  background: var(--credo-brand-tint-strong);
+  color: var(--credo-brand-text);
+  box-shadow: 0 4px 12px color-mix(in srgb, var(--credo-brand-text) 25%, transparent);
 }
 
 .moreRow {

@@ -1,6 +1,6 @@
 import { IconCheck } from '@tabler/icons-react';
 import { shadesOf } from './appTheme';
-import { onBrand, todayOf, type Pick, type Surface } from './onBrand';
+import { onBrand, beforeOf, type Pick, type Surface } from './onBrand';
 import { PALETTES } from './palettes';
 
 const SIZES = { fontSize: 13, fontWeight: 600, borderRadius: 4, padding: '6px 12px' } as const;
@@ -66,28 +66,28 @@ const ROWS = [
   { label: 'Typed #d97757', shades: shadesOf('#d97757') as readonly string[] },
 ];
 
-/** The six stock colours and two typed ones on one surface, today's white beside the rule's pick, each with its least ratio. */
+/** The six stock colours and two typed ones on one surface, the white before the rule beside the rule's pick, each with its least ratio. */
 export function OnTheBrand({ surface }: { surface: Surface }) {
   return (
     <table style={{ borderCollapse: 'collapse' }}>
       <thead>
         <tr>
           <th scope="col">Colour</th>
-          <th scope="col">Today</th>
+          <th scope="col">Before</th>
           <th scope="col">The rule</th>
         </tr>
       </thead>
       <tbody>
         {ROWS.map(({ label, shades }) => {
           const tuple = shades as unknown as Parameters<typeof onBrand>[0];
-          const today = todayOf(tuple, surface);
+          const before = beforeOf(tuple, surface);
           const rule = onBrand(tuple, surface);
           return (
             <tr key={label}>
               <th scope="row" style={{ textAlign: 'left', paddingRight: 12 }}>
                 {label}
               </th>
-              {[today, rule].map((pick, at) => (
+              {[before, rule].map((pick, at) => (
                 <td key={at} style={{ padding: '4px 16px 4px 0' }}>
                   <Sample surface={surface} shades={shades} pick={pick} />
                   <div style={{ fontSize: 12 }}>{said(pick)}</div>

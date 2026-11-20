@@ -1,7 +1,7 @@
 import { globSync, readFileSync } from 'node:fs';
 import { describe, expect, it, vi } from 'vitest';
 import { draw } from '../../tests/render';
-import { FRAME_COLOURS } from '../design-system/tokens';
+import { ROLES } from '../design-system/tokens';
 
 const scheme = () => document.documentElement.getAttribute('data-mantine-color-scheme');
 
@@ -23,10 +23,10 @@ describe('Providers', () => {
     }
   });
 
-  it("The frame's colours are written with the tokens' values, every one a source or stylesheet reads", () => {
+  it("The roles are written with the tokens' values, every one a source or stylesheet reads", () => {
     draw(<p>the page</p>);
     const style = document.querySelector('style[data-mantine-styles]')?.textContent ?? '';
-    const entries = Object.entries(FRAME_COLOURS);
+    const entries = Object.entries(ROLES);
     expect(entries.length).toBeGreaterThan(1);
     for (const [name, value] of entries) expect(style).toContain(`--credo-${name}: ${value};`);
 

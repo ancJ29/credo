@@ -7,7 +7,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { openApp } from '../../tests/open';
 import { Gallery } from './Gallery';
 import { ENTRIES } from './entries';
-import { onBrand, todayOf, type Surface } from './onBrand';
+import { onBrand, beforeOf, type Surface } from './onBrand';
+import { ROLES } from './tokens';
 import { PALETTES } from './palettes';
 import { shadesOf } from './appTheme';
 
@@ -198,10 +199,12 @@ describe('Gallery', () => {
   it('11: draws the values', () => {
     open(BASE);
 
-    expect(stateNames()).toEqual(['Palette', 'Type', 'Gaps']);
+    expect(stateNames()).toEqual(['Palette', 'Type', 'Gaps', 'Roles']);
     expect(part().getAllByTitle(/^brand \d$/)).toHaveLength(10);
     expect(part().getByText(/^Type: /)).toBeDefined();
     expect(part().getByText(/^Gaps: /)).toBeDefined();
+    for (const role of Object.keys(ROLES))
+      expect(part().getByText(new RegExp(`^--credo-${role}: `))).toBeDefined();
   });
 
   it('9: On the brand draws the six colours’ header, buttons and menu, today’s and the rule’s, each with its ratio', () => {
@@ -226,7 +229,7 @@ describe('Gallery', () => {
         const tuple = shadesOf(shades[7]);
         const said = (pick: ReturnType<typeof onBrand>) => `${pick.ink} ${pick.least.toFixed(2)}:1`;
         expect(row.getAllByText(/:1$/).map((node) => node.textContent)).toEqual([
-          said(todayOf(tuple, surface)),
+          said(beforeOf(tuple, surface)),
           said(onBrand(tuple, surface)),
         ]);
       }
@@ -242,7 +245,7 @@ describe('Gallery', () => {
         const tuple = shadesOf(colour);
         const said = (pick: ReturnType<typeof onBrand>) => `${pick.ink} ${pick.least.toFixed(2)}:1`;
         expect(row.getAllByText(/:1$/).map((node) => node.textContent)).toEqual([
-          said(todayOf(tuple, surface)),
+          said(beforeOf(tuple, surface)),
           said(onBrand(tuple, surface)),
         ]);
       }

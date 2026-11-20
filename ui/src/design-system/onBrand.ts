@@ -70,8 +70,8 @@ function attempt(shades: MantineColorsTuple, surface: Surface, ink: Ink, by: num
 export const gradientOf = (deg: number, span: readonly number[]) =>
   `linear-gradient(${deg}deg, var(--mantine-color-brand-${span[0]}) 0%, var(--mantine-color-brand-${span[span.length - 1]}) 100%)`;
 
-/** What the app draws today: white on the white span, whether it reads or not. */
-export const todayOf = (shades: MantineColorsTuple, surface: Surface) =>
+/** What the app drew before the rule (`main`'s state): white on the white span, whether it reads or not. */
+export const beforeOf = (shades: MantineColorsTuple, surface: Surface) =>
   attempt(shades, surface, 'white', 0);
 
 /**
@@ -87,5 +87,5 @@ export function onBrand(shades: MantineColorsTuple, surface: Surface): Pick {
       if (found.passes) return found;
     }
   }
-  return todayOf(shades, surface);
+  return beforeOf(shades, surface);
 }

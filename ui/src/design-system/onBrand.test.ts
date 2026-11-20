@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { themeOf, shadesOf } from './appTheme';
-import { contrast, onBrand, todayOf, type Surface } from './onBrand';
+import { contrast, onBrand, beforeOf, type Surface } from './onBrand';
 import { PALETTES } from './palettes';
 
 const SURFACES: Surface[] = ['filled', 'header', 'menu'];
@@ -61,7 +61,7 @@ describe('onBrand', () => {
       for (const surface of SURFACES) {
         const pick = onBrand(shades, surface);
         expect(pick.ink, `${name} ${surface}`).toBe('white');
-        expect(pick.span).toEqual(todayOf(shades, surface).span);
+        expect(pick.span).toEqual(beforeOf(shades, surface).span);
       }
     }
     // Emerald's header and menu stay white as today; only its buttons turn dark.

@@ -17,7 +17,7 @@ export function DoorCard({
     <Paper
       shadow="xl"
       radius="md"
-      style={{ overflow: 'hidden', border: '1px solid var(--mantine-color-neutral-3)' }}
+      style={{ overflow: 'hidden', border: '1px solid var(--credo-border-strong)' }}
     >
       <Box data-bar style={{ height: TOKENS.doorBar, background: TOKENS.doorBarGradient }} />
       <BrandBand name={name} logo={logo} />

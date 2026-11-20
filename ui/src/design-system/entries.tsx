@@ -25,6 +25,7 @@ import { DoorCard } from '../components/organisms/DoorCard';
 import { PageHeader } from '../components/organisms/PageHeader';
 import { SectionCard } from '../components/organisms/SectionCard';
 import { OnTheBrand } from './OnTheBrand';
+import { ROLES } from './tokens';
 
 /** A sample company logo for the tile: a plain shape, no real company's. */
 const SAMPLE_LOGO =
@@ -126,24 +127,45 @@ function Gaps() {
   return <Text size="sm">Gaps: {Object.values(theme.spacing).join(', ')}</Text>;
 }
 
+function Roles() {
+  return (
+    <Stack gap={4}>
+      {Object.entries(ROLES).map(([role, value]) => (
+        <Group key={role} gap="sm" wrap="nowrap">
+          <Paper
+            w={24}
+            h={24}
+            style={{ background: value, border: '1px solid var(--credo-border)' }}
+          />
+          <Text size="sm">
+            --credo-{role}: {value}
+          </Text>
+        </Group>
+      ))}
+    </Stack>
+  );
+}
+
 /** Every part of the design system, by level, each in its states: the table the gallery's list is drawn from. */
 export const ENTRIES: Entry[] = [
   {
     group: 'Foundations',
     name: 'Values',
-    description: "The brand's ten shades, the type and the gaps the theme gives every part.",
-    props: 'theme.colors.brand · theme.fontFamily · theme.spacing',
+    description:
+      "The brand's ten shades, the type, the gaps and the colour roles the theme gives every part.",
+    props: 'theme.colors.brand · theme.fontFamily · theme.spacing · ROLES',
     states: [
       { name: 'Palette', node: <Palette /> },
       { name: 'Type', node: <Type /> },
       { name: 'Gaps', node: <Gaps /> },
+      { name: 'Roles', node: <Roles /> },
     ],
   },
   {
     group: 'Foundations',
     name: 'On the brand',
     description:
-      "The text on a client's colour, today's white beside the rule's pick (white where it reaches 4.5:1, else dark), for each of the six stock colours and two typed ones, with the least ratio against the surface's shades.",
+      "The text on a client's colour, the white before the rule beside the rule's pick (white where it reaches 4.5:1, else dark), for each of the six stock colours and two typed ones, with the least ratio against the surface's shades.",
     props: 'onBrand(shades, surface) · surface: filled | header | menu',
     states: [
       { name: 'Buttons', node: <OnTheBrand surface="filled" /> },
