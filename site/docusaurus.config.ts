@@ -1,19 +1,15 @@
 import type { Config } from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
+import { existsSync, readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { githubLinks } from './links';
+import { MAP_PATH, checkLoaded, mapPages } from './map';
 
 // One docs plugin rooted at the repository, so every page is shown from its one path and a link
-// between two pages resolves inside the one instance. The dated plans and recaps are left out.
-const PAGES = [
-  'README.md',
-  'docs/*.md',
-  'docs/conventions/*.md',
-  'docs/memo/*.md',
-  'docs/partners/**/*.md',
-  'ops/README.md',
-  'services/*/README.md',
-  'services/*/docs/**/*.md',
-];
+// between two pages resolves inside the one instance. The pages are the docs map's, read from its text.
+const PAGES = mapPages(readFileSync(resolve(__dirname, '..', MAP_PATH), 'utf8'), (path) =>
+  existsSync(resolve(__dirname, '..', path)),
+);
 
 const config: Config = {
   title: 'credo',
@@ -30,6 +26,19 @@ const config: Config = {
   markdown: { format: 'detect', mermaid: true, hooks: { onBrokenMarkdownLinks: 'throw' } },
   themes: ['@docusaurus/theme-mermaid'],
   plugins: [
+    // Once every page is loaded: the pages the site holds are exactly the map's, the map served at `/`.
+    () => ({
+      name: 'map-load-check',
+      allContentLoaded({ allContent }) {
+        const docs = allContent['docusaurus-plugin-content-docs'] as {
+          default: { loadedVersions: { docs: { source: string; permalink: string }[] }[] };
+        };
+        checkLoaded(
+          docs.default.loadedVersions.flatMap((v) => v.docs),
+          PAGES,
+        );
+      },
+    }),
     // The mermaid theme's browser code imports its optional ELK layouts, which are not installed and
     // which no diagram here uses, so that import resolves to an empty module.
     () => ({

@@ -6,7 +6,7 @@
     "check": "bash ../ops/gate.sh site",
     "start": "docusaurus start",
     "build": "docusaurus build",
-    "test": "docusaurus build"
+    "test": "vitest run --coverage && docusaurus build"
   },
   "dependencies": {
     "@docusaurus/core": "catalog:",
@@ -19,6 +19,8 @@
   "devDependencies": {
     "@docusaurus/plugin-content-docs": "catalog:",
     "@docusaurus/types": "catalog:",
-    "@types/react": "catalog:"
+    "@types/react": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
+    "vitest": "catalog:"
   }
 }

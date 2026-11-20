@@ -14,7 +14,7 @@ const git = (...args: string[]) =>
 
 // The repository's address and the built commit: GitHub's own variables under Actions, else read
 // from git, so no address is written in the repository.
-export function githubBase(env: NodeJS.ProcessEnv = process.env): string {
+function githubBase(env: NodeJS.ProcessEnv = process.env): string {
   const sha = env.GITHUB_SHA || git('rev-parse', 'HEAD');
   let repo = env.GITHUB_REPOSITORY
     ? `${env.GITHUB_SERVER_URL || 'https://github.com'}/${env.GITHUB_REPOSITORY}`

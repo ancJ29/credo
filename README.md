@@ -64,11 +64,11 @@ human shares it, and every rule credo needs to hold is in [collaboration](docs/c
 | how sessions work, a rule that holds in every project | the kit's rules.md, outside this repository; credo's own rules are in [docs/conventions/collaboration.md](docs/conventions/collaboration.md), and a session's memory points to them and holds neither |
 | how a part is built, a fact about the architecture | [docs/architecture-detail.md](docs/architecture-detail.md); [docs/architecture.md](docs/architecture.md) summarises it |
 | how code is written here | [docs/conventions/code.md](docs/conventions/code.md) |
-| what a partner may read | [docs/partners/](docs/partners/README.md) |
+| what a partner may read | [the docs map](docs/partners/map.md), the one list of pages the docs site publishes |
 | what is being built now | the board, worktrees/status.md on the orchestrator branch (the docs site cannot read it); where one piece stands has its own row |
 | what comes next, in order | [docs/products.md, "Next, in order"](docs/products.md#next-in-order) |
 | what we decided, and why | [docs/decisions.md](docs/decisions.md), newest first |
 | what runs on ridge now | [docs/products.md](docs/products.md), its first lines |
 | what the machine has learned, by kind of task | worktrees/skills/ on the orchestrator branch, a folder for each kind of task with its SKILL.md |
-| these pages in one site, for partners | [site/CLAUDE.md](site/CLAUDE.md); `.github/workflows/docs.yml` builds it on a change and publishes it from `main` |
+| the pages of the map in one site, for partners | [site/CLAUDE.md](site/CLAUDE.md), which reads [the docs map](docs/partners/map.md); `.github/workflows/docs.yml` builds it on a change and publishes it from `main` |
 | every place credo keeps what it knows | [docs/README.md, "The documents, and what each answers"](docs/README.md#the-documents-and-what-each-answers) |

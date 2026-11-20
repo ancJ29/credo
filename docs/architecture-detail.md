@@ -27,7 +27,7 @@ needs before touching any of it, is on
 | `services/audit-backbone/` | a second Go service, in this repository and called by the back end for every change a person makes (locally; shipped by the release) | the history of every change ([the activity log](activity-log.md); whether it runs on ridge is [`products.md`](products.md)) |
 | `scripts/` | the local lanes — `pnpm stack`, `pnpm fake`, `pnpm demo` — and the steps the ops scripts hand to the product's own code | any way to run or seed anything locally, and the BFF's route tests |
 | `visual/` | the walks page: the app's own screens drawn without a browser | the one artefact a non-coder judges a screen from |
-| `site/` | the docs site: the repository's own Markdown shown in place for readers who do not code, by Docusaurus (its config, its sidebar and its link rewrite; [`docs.yml`](../.github/workflows/docs.yml) builds it on every push that changes a page it shows and publishes it from `main`) | the documents a partner reads without opening the repository, and the red for a page that no longer renders |
+| `site/` | the docs site: the repository's own Markdown shown in place for readers who do not code, by Docusaurus (its config, the docs map it reads, its sidebar and its link rewrite; [`docs.yml`](../.github/workflows/docs.yml) builds it on every push that changes a page it shows and publishes it from `main`) | the documents a partner reads without opening the repository, and the red for a page that no longer renders |
 | `walk/` | the browser walks: one spec a walk, every screen counted pixel by pixel | the end-to-end check |
 | `ops/` | three hand-written CloudFormation templates and the shell scripts; every AWS call in the repository is made here | every way to a machine |
 
