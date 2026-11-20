@@ -245,7 +245,7 @@ shape, else piece 126's. One recap, step 11, before C lands, not one a landing.
 
 **Landing C: type by name** (after B lands; your looks stay open meanwhile).
 
-- [ ] **9. The styles.** The 19 weights, 3 stylesheet weights, 5 sizes and 24 captions moved; Type
+- [x] **9. The styles.** The 19 weights, 3 stylesheet weights, 5 sizes and 24 captions moved; Type
       lists each style; case 14 red once. _Done when:_ the gates exit 0, the pinned file unchanged.
       **13 min** (piece 126's step 4).
       _Evidence:_ commit 3b93f29e; recounted first: 20 `fw=` (not 19), 3 stylesheet weights, 5 sizes, 24
@@ -272,9 +272,16 @@ shape, else piece 126's. One recap, step 11, before C lands, not one a landing.
       `resolved.test.ts`) and 8 (its header's overstatement) are done, and `MorePage` and `SignIn`
       read `TYPE.pageTitle`. `importFile.ts`'s `fontWeight: 'bold'` (a spreadsheet cell, not a
       screen) is a word, not a number, and the check leaves it.
-- [ ] **11. The recap.** `docs/recaps/2026-11-20-design-fixes.md`: the commits, the two rules, each
+- [x] **11. The recap.** `docs/recaps/2026-11-20-design-fixes.md`: the commits, the two rules, each
       colour's ratios, the check's patterns and red receipts, the picture counts, what was rejected
       (the memo's ask), C's run a marker. _Done when:_ the citation test exits 0. **9 min** (piece 126's).
+      _Evidence:_ commit 04a53cfb; the recap is 388 words against the 400 of this kind's cap, every
+      figure read on disk (410 and 162 pictures from the two base commits' file counts, the ratios and
+      counts from steps 3, 7, 8 and 9), C's run a marker, the gallery's row in `docs/products.md` updated in
+      the same commit, item 513 deleted (case 14 holds the spacing), the citation test exit 0 before
+      each commit. The review before `main`'s four blocks are fixed in 312a2220: step 9 ticked here,
+      point 5 reworded to what the page draws, item 513 gone, the open items' moved line numbers
+      followed and each read against its target; items 647 to 649 filed.
 - [ ] **12. Landing C.** As step 8, one run with no flags. _Done when:_ green, every count 0. **13 min,
       and your run.**
 
