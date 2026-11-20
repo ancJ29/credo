@@ -130,6 +130,9 @@ each element's declarations resolved, under the six colours and four typed ones 
 0 holds steps 5, 6, 9 and 10 on every colour; step 7 rewrites it by `--write`, its diff read. It stays
 standing; the skeleton piece's look changes rewrite it the same way.
 
+Each colour has its own theme variables, and a scene that draws from the config colour itself is not
+redrawn per colour. `RESOLVED_WRITE=1` rewrites the pinned file.
+
 ## The cases
 
 | # | The case | Held by |
@@ -178,9 +181,11 @@ shape, else piece 126's. One recap, step 11, before C lands, not one a landing.
 
 **Landing B: colours named by role, links readable** (from `pre-merge` at A's landing).
 
-- [ ] **4. The palette check.** `resolved.test.ts` and its file; case 11 red once on a planted role
+- [x] **4. The palette check.** `resolved.test.ts` and its file; case 11 red once on a planted role
       value, green on a class renamed in `frame.module.css`. _Done when:_ the gates exit 0. **17 min**
-      (step 1's shape: a new module and its cases).
+      (step 1's shape: a new module and its cases). _Evidence:_ commit bf6b6ce9; red on a planted role
+      value (run 21:05); green on a renamed class (21:08) and again on `.button`, which has rules in
+      `frame.module.css` (21:51, 14 of 14), both gates exit 0 (21:54, 21:57).
 - [ ] **5. The roles.** The table in `tokens.ts` and `credoVariables`, the 32 references and A's names
       moved, D's two tokens, the angles, `beforeOf`; Values lists the roles; case 12. _Done when:_ the
       gates exit 0, `resolved.pinned.txt` unchanged. **24 min** (step 2's shape).
