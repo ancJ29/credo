@@ -166,7 +166,7 @@ describe('the docs map', () => {
     });
 
     it('14. stops the build on a partner_page that is not on the map', () => {
-      expect(() => checkPairs(['docs/products.md'], reads({}))).toThrow(
+      expect(() => checkPairs([], reads({}), ['docs/products.md'])).toThrow(
         /docs\/products\.md names the partner_page docs\/partners\/what-credo-has\.md, which is not on the map/,
       );
     });
@@ -174,8 +174,21 @@ describe('the docs map', () => {
     it('15. stops the build on a partner_page whose source names another page', () => {
       expect(() =>
         checkPairs(
-          ['docs/products.md', 'docs/partners/what-credo-has.md'],
+          ['docs/partners/what-credo-has.md'],
           reads({ 'docs/partners/what-credo-has.md': '---\nsource: docs/other.md\n---\n' }),
+          ['docs/products.md'],
+        ),
+      ).toThrow(
+        /docs\/partners\/what-credo-has\.md does not name docs\/products\.md as its source/,
+      );
+    });
+
+    it('16. stops the build from the source side, its partner page off its own source', () => {
+      expect(() =>
+        checkPairs(
+          ['docs/partners/what-credo-has.md'],
+          reads({ 'docs/partners/what-credo-has.md': '---\ntitle: x\n---\n\n# The partner\n' }),
+          ['docs/products.md'],
         ),
       ).toThrow(
         /docs\/partners\/what-credo-has\.md does not name docs\/products\.md as its source/,
