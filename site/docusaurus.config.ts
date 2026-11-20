@@ -30,11 +30,13 @@ const config: Config = {
     () => ({
       name: 'map-load-check',
       allContentLoaded({ allContent }) {
-        const docs = allContent['docusaurus-plugin-content-docs'] as {
-          default: { loadedVersions: { docs: { source: string; permalink: string }[] }[] };
-        };
+        // Every docs plugin instance, by its id, so a second one is read as the default is.
+        const instances = allContent['docusaurus-plugin-content-docs'] as Record<
+          string,
+          { loadedVersions: { docs: { source: string; permalink: string }[] }[] }
+        >;
         checkLoaded(
-          docs.default.loadedVersions.flatMap((v) => v.docs),
+          Object.values(instances).flatMap((i) => i.loadedVersions.flatMap((v) => v.docs)),
           PAGES,
         );
       },

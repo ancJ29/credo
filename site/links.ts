@@ -30,7 +30,7 @@ function githubBase(env: NodeJS.ProcessEnv = process.env): string {
 
 type Node = { type: string; url?: string; children?: Node[] };
 
-// The remark plugin, run before Docusaurus resolves Markdown links. `pages` are the site's include globs.
+// The remark plugin, run before Docusaurus resolves Markdown links. `pages` are the map's pages, as repository paths.
 export function githubLinks(pages: string[], base: string = githubBase()) {
   const rewrite = (url: string, from: string): string => {
     if (/^([a-z][a-z0-9+.-]*:|#|\/)/i.test(url)) return url;
