@@ -256,11 +256,21 @@ shape, else piece 126's. One recap, step 11, before C lands, not one a landing.
       file's diff against step 8's is empty. The review's note 4 is done (the links drawn as Mantine's `Anchor`,
       Roles by name with the washes and `on-*`, each swatch the variable the app writes) and note 5 (`BRAND_TEXT_FROM`
       is the one home of the start shade).
-- [ ] **10. Weights and sizes refused.** Case 13, red once each. The shade block's message
+- [x] **10. Weights and sizes refused.** Case 13, red once each. The shade block's message
       (`eslint.config.js#L90`), "A shade is named in the design system; a screen reads a role.", is
       reworded in the same lint block: "Name no shade here: read a role, `var(--credo-<role>)` of
       `ui/src/design-system/tokens.ts`'s `ROLES`, or Mantine's `dimmed`." _Done when:_ the gates exit 0.
       **20 min** (piece 126's step 7).
+      _Evidence:_ commit 4a189bf5; case 13 (`literals.test.ts`, with the lint block's two new
+      selectors, the message reworded as written here) red once for each of `fw=`, `fz=`,
+      `fontWeight`, `fontSize`, `font-weight` and `font-size`, planted in a scratch file (the test
+      red on every one, the lint on the script forms), green with none planted; the ui and visual
+      gates exit 0 and the pinned file's diff against step 9's is empty. Item 309 closed. The
+      review's notes 6 (the "today" words in nine comments and test titles), 7 (the dead
+      `--credo-white` line, the stale `tokens.ts` comment about the gaps, the five unused exports of
+      `resolved.test.ts`) and 8 (its header's overstatement) are done, and `MorePage` and `SignIn`
+      read `TYPE.pageTitle`. `importFile.ts`'s `fontWeight: 'bold'` (a spreadsheet cell, not a
+      screen) is a word, not a number, and the check leaves it.
 - [ ] **11. The recap.** `docs/recaps/2026-11-20-design-fixes.md`: the commits, the two rules, each
       colour's ratios, the check's patterns and red receipts, the picture counts, what was rejected
       (the memo's ask), C's run a marker. _Done when:_ the citation test exits 0. **9 min** (piece 126's).
