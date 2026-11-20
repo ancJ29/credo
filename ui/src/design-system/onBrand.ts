@@ -66,6 +66,10 @@ function attempt(shades: MantineColorsTuple, surface: Surface, ink: Ink, by: num
   return { ink, colour: INKS[ink], span, ratios, least, passes: least >= MIN_RATIO };
 }
 
+/** A gradient from the first shade of a span to its last, as the `--mantine-color-brand-<n>` variables name them. */
+export const gradientOf = (deg: number, span: readonly number[]) =>
+  `linear-gradient(${deg}deg, var(--mantine-color-brand-${span[0]}) 0%, var(--mantine-color-brand-${span[span.length - 1]}) 100%)`;
+
 /** What the app draws today: white on the white span, whether it reads or not. */
 export const todayOf = (shades: MantineColorsTuple, surface: Surface) =>
   attempt(shades, surface, 'white', 0);

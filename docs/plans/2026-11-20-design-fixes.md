@@ -230,12 +230,31 @@ system's own earlier row of the same shape.
       mutation (the rule always white) still reddens cases 1 to 5; the walk's settings step, picking
       Brick, replayed in `ui/src/App.test.tsx` with the real router. Names in Vietnamese are the
       machine's (item 638). Look 1 reads six rows, where only emerald's buttons turn dark.
-- [ ] **2. The screens take it** (after your yes at point 1). The theme's resolver and the checks'
+- [x] **2. The screens take it** (after your yes at point 1). The theme's resolver and the checks'
       `iconColor`; `credoVariables` writes A's variables; the shell, the sign-in, join and operator
       pages and `frame.module.css` read them; `docs/memo/ui.md` and `ui/CLAUDE.md`'s design-system line
       grow. Cases 6 to 8, each red once; the frame's snapshots rewritten, each diff read to hold
       variable names alone. _Done when:_ the three gates exit 0. **16 min** (piece 126's steps 5 and 9,
       8 each).
+      _Evidence:_ code in this step's commit; `bash ops/gate.sh ui`, the citations test and `bash
+      ops/gate.sh visual` exit 0. The theme's `variantColorResolver` (filled and gradient parts) and the
+      checks' `iconColor` read `onBrand`; `credoVariables` writes `--credo-on-filled`, `-on-header`,
+      `-on-menu`, `-header-gradient`, `-menu-gradient` and the washes (`--credo-on-header-12`, `-18`,
+      `-22`, `-55`, `-90`, `--credo-on-menu-05`, `-10`), replacing the `white-*` names, and where the
+      filled parts move (the walks' company `#2f7d6d`, shade 7, hover 8) it rewrites Mantine's
+      `--mantine-color-brand-filled`, `-filled-hover` and pins `-brand-text` at shade 6, since a button,
+      check or badge with no colour of its own reads those by name; a plain badge is named filled only
+      where the rule changes it. Cases 6 (three mutations: the text always white, the check's icon
+      colour dropped, the hover shade as the ground's), 7 (the header's span fixed at 7 to 9; a sign-in
+      button and the join button each without the text) and 8 (the menu's text fixed white) each red
+      once and reverted. `frameKept`'s two changed snapshots (the operator's passkeys, the ways to sign
+      in) diffed to variable names alone: a gradient written out becomes `var(--credo-header-gradient)`
+      or `var(--credo-menu-gradient)`, `var(--credo-white)` becomes `var(--credo-on-header)` or
+      `var(--credo-on-menu)`; the session-ended prompt's did not change. The plan's `#d97757` menu is
+      today's (white, 9 to 8, 4.64), so it keeps its fade, not the one dark shade the
+      look-1 text promised; amber `#ffbf00` is a typed colour whose menu takes dark text over 8 to 7. `docs/memo/ui.md` and `ui/CLAUDE.md` grew; item 638
+      closed by the human's yes. Step 3's picture run: the walks' company's buttons, checks and chips
+      move to shade 7 (hover 8); credo's own steel and brick draw as today.
 - [ ] **3. Landing A.** `pre-merge` taken in; the landing; your run of all twelve walks with
       `--moved all --write` (its counts show credo's own screens at 0), then one with no flags; the
       bases committed alone.

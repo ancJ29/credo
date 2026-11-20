@@ -1,7 +1,8 @@
 import { CREDO_COLOUR } from '@credo/shared';
-import { Button, Divider, MantineProvider } from '@mantine/core';
+import { Badge, Button, Checkbox, Divider, MantineProvider } from '@mantine/core';
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
+import { credoVariables } from './cssVariables';
 import { PALETTES } from './palettes';
 import { BRAND_GRADIENT, shadesOf, themeOf } from './appTheme';
 
@@ -81,8 +82,7 @@ describe('the old app’s fixed look', () => {
   });
 
   it('draws the primary button’s gradient between the brand’s shades 7 and 9', () => {
-    expect(BRAND_GRADIENT).toContain('--mantine-color-brand-7');
-    expect(BRAND_GRADIENT).toContain('--mantine-color-brand-9');
+    expect(BRAND_GRADIENT).toBe('var(--credo-header-gradient)');
   });
 });
 
@@ -109,6 +109,84 @@ describe('11: the app’s theme is the design system’s, for every company’s 
       expect(components?.Input).toBeDefined();
     },
   );
+});
+
+describe('the filled parts take the rule’s pick', () => {
+  const drawn = (colour: string) => {
+    const { container } = render(
+      <MantineProvider theme={themeOf(colour)} cssVariablesResolver={credoVariables} env="test">
+        <Button>Go</Button>
+        <Badge>New</Badge>
+        <Checkbox label="Tick" defaultChecked />
+      </MantineProvider>,
+    );
+    const of = (selector: string) => container.querySelector(selector)?.getAttribute('style') ?? '';
+    const css = [...document.querySelectorAll('style')].map((el) => el.textContent).join('');
+    return {
+      css,
+      button: of('button'),
+      badge: of('.mantine-Badge-root'),
+      check: of('.mantine-Checkbox-root'),
+    };
+  };
+
+  it('6: a light colour’s buttons, badge and check wear dark text on shade 6, hover 5', () => {
+    const { css, button, badge, check } = drawn('#d97757');
+
+    expect(button).toContain('--button-color: #111827');
+    expect(badge).toContain('--badge-color: #111827');
+    expect(check).toContain('--checkbox-icon-color: #111827');
+    expect(css).toContain('--mantine-color-brand-filled: var(--mantine-color-brand-6)');
+    expect(css).toContain('--mantine-color-brand-filled-hover: var(--mantine-color-brand-5)');
+  });
+
+  it('6: a colour that reads neither text at shade 6 moves its buttons, badge and check to shade 7, hover 8, in white', () => {
+    const { css, button, badge, check } = drawn('#2f7d6d');
+
+    expect(button).toContain('--button-color: var(--mantine-color-white)');
+    expect(badge).toContain('--badge-bg: var(--mantine-color-brand-7)');
+    expect(check).not.toContain('#111827');
+    expect(css).toContain('--mantine-color-brand-filled: var(--mantine-color-brand-7)');
+    expect(css).toContain('--mantine-color-brand-filled-hover: var(--mantine-color-brand-8)');
+    expect(css).toContain('--mantine-color-brand-text: var(--mantine-color-brand-6)');
+  });
+
+  it('6: a colour where white passes at today’s shades draws Mantine’s own parts', () => {
+    const { css, button, badge } = drawn('#9E2D20');
+
+    expect(button).toContain('--button-color: var(--mantine-color-white)');
+    expect(badge).not.toContain('--badge-bg');
+    expect(css).toContain('--mantine-color-brand-filled: var(--mantine-color-brand-6)');
+    expect(css).toContain('--mantine-color-brand-filled-hover: var(--mantine-color-brand-7)');
+    expect(css).toContain('--mantine-color-brand-text: var(--mantine-color-brand-filled)');
+  });
+});
+
+describe('the gradient button follows the header’s pick', () => {
+  const gradient = (colour: string) => {
+    render(
+      <MantineProvider theme={themeOf(colour)} env="test">
+        <Button variant="gradient">Go</Button>
+      </MantineProvider>,
+    );
+    return screen.getByRole('button', { name: 'Go' }).getAttribute('style') ?? '';
+  };
+
+  it('6: a light colour’s gradient button wears dark text over shades 5 to 7', () => {
+    const style = gradient('#d97757');
+
+    expect(style).toContain(
+      '135deg, var(--mantine-color-brand-5) 0%, var(--mantine-color-brand-7)',
+    );
+    expect(style).toContain('--button-color: #111827');
+  });
+
+  it('6: a colour that keeps white on the header keeps Mantine’s own gradient', () => {
+    const style = gradient('#2f7d6d');
+
+    expect(style).toContain('var(--mantine-color-brand-7)');
+    expect(style).toContain('--button-color: var(--mantine-color-white)');
+  });
 });
 
 describe('the design system’s gradient button and divider', () => {

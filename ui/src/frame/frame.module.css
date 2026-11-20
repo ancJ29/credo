@@ -1,8 +1,8 @@
-/* The legacy app's frame: the header and the side menu wear the brand's colour with white text,
+/* The legacy app's frame: the header and the side menu wear the brand's colour with the text the rule picks (`onBrand.ts`),
    in the light scheme; the phone's bar stays on the page's own ground. */
 
 .header {
-  color: var(--credo-white);
+  color: var(--credo-on-header);
   border: 0;
 }
 
@@ -34,7 +34,7 @@
 }
 
 .button:hover {
-  background: var(--credo-white-12);
+  background: var(--credo-on-header-12);
 }
 
 .user {
@@ -45,7 +45,7 @@
   padding: 4px 8px;
   border-radius: 8px;
   color: inherit;
-  background: var(--credo-white-12);
+  background: var(--credo-on-header-12);
 }
 
 .avatar {
@@ -54,16 +54,16 @@
   justify-content: center;
   width: 28px;
   height: 28px;
-  border: 1.5px solid var(--credo-white-90);
+  border: 1.5px solid var(--credo-on-header-90);
   border-radius: 8px;
-  background: var(--credo-white-18);
+  background: var(--credo-on-header-18);
   font-size: 11px;
   font-weight: 700;
 }
 
 .badge {
-  background: var(--credo-white-18);
-  color: var(--credo-white);
+  background: var(--credo-on-header-18);
+  color: var(--credo-on-header);
 }
 
 /* A dropdown opened inside the header keeps the page's own text colour, not the header's white. */
@@ -83,20 +83,20 @@
   gap: 12px;
   min-height: 50px;
   padding: 0 12px;
-  color: var(--credo-white);
+  color: var(--credo-on-menu);
   font-size: var(--credo-menu-size);
   font-weight: var(--credo-menu-weight);
   text-decoration: none;
 }
 
 .item:hover {
-  background: var(--credo-white-05);
+  background: var(--credo-on-menu-05);
 }
 
 /* The open page: washed in white, no change of weight, with a notch 15 wide and 20 high at the
    menu's right edge opening onto the page. */
 .item[aria-current='page'] {
-  background: var(--credo-white-10);
+  background: var(--credo-on-menu-10);
 }
 
 .item[aria-current='page']::after {

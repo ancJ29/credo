@@ -39,9 +39,12 @@ a directory of your own making is not on this list and is not a directory (vites
   state (`ui/src/frame/Shell.tsx`'s `Shell`, `ui/src/frame/Loaded.tsx`'s `Loaded`).
 - **`parts/`**: a piece a screen is built from, that no route mounts
   (`ui/src/parts/DetailCards.tsx`'s `DetailCard`, `ui/src/parts/PageShell.tsx`'s `PageShell`).
-- **`design-system/`**: the look in one place: a token, the app's own theme and the nine palettes
+- **`design-system/`**: the look in one place: a token, the app's own theme and the six palettes
   (`ui/src/design-system/appTheme.ts`'s `themeOf`, which holds the main shade, the badge, table and dialog
-  entries, `ui/src/design-system/palettes.ts`'s `PALETTES`, and its `theme.module.css`), and the
+  entries and the resolver that gives a client's colour its text, `ui/src/design-system/palettes.ts`'s
+  `PALETTES`, and its `theme.module.css`; the text on a colour is `ui/src/design-system/onBrand.ts`'s
+  `onBrand`, written as `--credo-on-*` variables by `ui/src/design-system/cssVariables.ts`'s
+  `credoVariables`, which a screen reads and never names white), and the
   gallery page that shows the parts (`ui/src/design-system/Gallery.tsx`'s `Gallery`, served at `/48b74d079/gallery`; each part's entry is a row of `ui/src/design-system/entries.tsx`'s `ENTRIES`).
 - **`components/`**: a piece of the design system, in a level directory, with its gallery entry. Mantine
   stays the base: a piece joins when it is drawn a third time, never to wrap a Mantine part alone.
