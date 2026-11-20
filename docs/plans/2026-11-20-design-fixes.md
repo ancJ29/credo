@@ -4,12 +4,14 @@
 
 What it is for: the design system for its real user, the staff of a small business in Vietnam (the
 milestone of 2026-11-19). White text sits on a client's colour even where it cannot be read: on seven
-of the nine stock colours the buttons give 2.25 to 3.77:1, under the 4.5:1 small text needs. Your
+of the nine stock colours of 2026-11-04 the buttons gave 2.25 to 3.77:1, under the 4.5:1 small text needs (your
+pick of 2026-11-20 replaced the nine by six, of which only emerald's buttons fall under it; the case lives on in
+typed light colours). Your
 answer of 2026-11-20: "yes, switch to dark text, judged in the gallery first".
 
 ```mermaid
 flowchart LR
-  a1["1. the rule and the gallery<br/>no screen changed"] --> look1["your look<br/>nine colours, before and after"]
+  a1["1. the rule and the gallery<br/>no screen changed"] --> look1["your look<br/>six colours and two typed, before and after"]
   look1 -- yes --> a2["2-3. the screens take it"] --> look2["your look<br/>the walks page"]
   a2 --> b["4-7. colours named by role<br/>nothing moves"] --> look3["your look<br/>the gallery, 0 moved"]
   look3 -- yes --> c["8-10. type named<br/>nothing moves"] --> look4["your look<br/>the gallery, 0 moved"]
@@ -25,12 +27,12 @@ One slice: a client's colour, from the gallery to every screen of both apps, in 
 `pre-merge`, each walkable. **A**: the text on a client's colour follows the colour, its pictures
 moving on the colours that change. **B**: every colour a screen draws is read by what it is for, and
 `tokens.ts` holds each value once (the memo's D, item 508). **C**: weights and sizes read by name.
-B and C move no picture on any of the nine colours. The memo's order stands: A is what clients see,
+B and C move no picture on any of the six colours. The memo's order stands: A is what clients see,
 B makes A's names the norm, C needs neither.
 
 It follows `docs/plans/2026-11-12-design-system.md` (its landings 1 to 4: the home, the values, the
 gallery) and `docs/plans/2026-11-17-gallery-workbench.md` (the gallery at `/48b74d079/gallery`, its
-colour picker over the nine palettes). Light only stays (item 307). Stage 1 is step 1 on the gallery;
+colour picker over the palettes, six since your pick of 2026-11-20). Light only stays (item 307). Stage 1 is step 1 on the gallery;
 stage 2 each step's gates; stage 3 the gallery and the walks page; stage 4 is not stood up, since no
 resource, hop or key changes: ridge gets each landing by your push.
 
@@ -52,7 +54,7 @@ each claim it rests on in this worktree.
 - **"~78 `c=` props"**: 78 are `c="dimmed"`, Mantine's own role name; they stay.
 - **The read's "the walks draw one palette"**: they draw the data set's company in `#2f7d6d`, a typed
   colour (`shared/src/demo.ts#L30`), credo's own screens in steel (`shared/src/config.ts#L39`), and
-  terracotta after one settings step.
+  brick after one settings step (terracotta before the pick of six).
 - **"Small capitals written three ways, `lts=` in screens"**: no `lts=` exists; `TOKENS.fieldLabel` and
   `TOKENS.sectionTitle` (`tokens.ts#L20`, `#L22`) are each spread by one component.
 - **"Colour is locked down, case 7"**: two checks: case 7 reads the stylesheets
@@ -83,18 +85,18 @@ White wins where it reaches 4.5:1 against every shade of its span; else dark tex
 the span moves a shade at a time, darker under white, lighter under dark, the nearer pass winning.
 Dark is the theme's darkest grey, `NEUTRAL[9]` (`appTheme.ts#L33`), read. Shade 7, the client's
 colour, stays at one end of the header under either text. *Rejected:* darkening every primary until
-white passes (terracotta's turns brown, the brand gone); Mantine's `autoContrast`, whose
+white passes (a light colour such as terracotta's turns brown, the brand gone); Mantine's `autoContrast`, whose
 `luminanceThreshold: .3` is not the ratio and reaches neither the gradients nor the `--credo-*`
 colours. The theme's `variantColorResolver` (rest, hover, text) and the checks' `iconColor` apply
 it, so no screen holds a copy.
 
-Measured by this plan's scratch run of the rule (step 1's test measures again):
+Measured by this plan's scratch run of the rule on the nine stock colours of 2026-11-04, before your pick of six (step 1's test measures again; of those nine, only steel, emerald, shown below, and the typed colours remain to read):
 
 | Colour | Buttons | Header | Menu |
 | --- | --- | --- | --- |
-| terracotta, sandstone, autumn, olive, ocean, coin | dark, 6.70 to 7.88 | dark over 5 to 7, 5.22 to 6.25 | white over 9 alone, 4.77 to 6.31 |
+| terracotta, sandstone, autumn, olive, ocean, coin (all six left the stock set; a light typed colour such as `#d97757` stands for them) | dark, 6.70 to 7.88 | dark over 5 to 7, 5.22 to 6.25 | white over 9 alone, 4.77 to 6.31 |
 | emerald | dark, 4.71 | white as today, 5.48 | white as today, 7.68 |
-| forest, steel | white as today, 4.74 and 4.71 | white as today | white as today |
+| steel (forest, the other, left; brick, bronze, plum and indigo, new, keep white on every surface) | white as today, 4.74 and 4.71 | white as today | white as today |
 
 Typed colours: a grid of 4,096 (16 steps a channel) finds a pass on every surface. The walks'
 company, `#2f7d6d`, reads neither text at shade 6 (white 4.37, dark 4.06), so its buttons move to
@@ -147,16 +149,16 @@ the count being small: one `fz={12}` (`SignIn.tsx#L97`) and four pixel sizes in 
 The check then refuses a numeric `fw=`, `fz=`, `fontWeight` and `font-weight`/`font-size` outside the
 design system, closing item 309. Item 308 (the phone's smaller title) waits for your look.
 
-## The palette check: nothing moves on any of the nine
+## The palette check: nothing moves on any of the six
 
-The picture run draws the walks' company, credo's steel, and terracotta after one settings step
+The picture run draws the walks' company, credo's steel, and brick after one settings step
 (`walk/specs/piece-1.spec.ts#L163`); the gallery has none (item 515). So B's first step adds
 `visual/src/resolved.test.ts`: every screen of the walks page, drawn once as the capture draws it
 (`visual/src/capture.ts`'s `matchingRules`), its markup and matching rules with every variable
-resolved under each of the nine colours and three typed ones, the walks' company's, pure red and
+resolved under each of the six colours and three typed ones, the walks' company's, pure red and
 yellow (Mantine's `rem` read at scale 1), one
 hash a screen and colour, compared with `visual/src/resolved.pinned.txt`, written from the tree A
-landed. Equal resolved styles cannot draw a different pixel, so its 0 holds B and C on all nine. It
+landed. Equal resolved styles cannot draw a different pixel, so its 0 holds B and C on all six. It
 stays as a standing check; a later look change rewrites its file by `--write`, read as a diff. It
 rests on markup that is the same under every colour, which A's variables keep.
 
@@ -172,7 +174,7 @@ rests on markup that is the same under every colour, which A's variables keep.
 | 6 | Mantine's filled parts and the checks' mark take the pick at rest and on hover | `ui/src/design-system/appTheme.test.tsx` |
 | 7 | The header, the sign-in band and buttons and the join button draw the header's pick, their washes following | `ui/src/frame/Shell.test.tsx`, `ui/src/pages/SignIn.test.tsx` |
 | 8 | The menu draws the menu's pick | `ui/src/frame/Shell.test.tsx` |
-| 9 | The gallery's "On the brand" draws the nine colours' header, buttons and menu, today's and the rule's, each with its ratio | `ui/src/design-system/Gallery.test.tsx` |
+| 9 | The gallery's "On the brand" draws the six colours' and two typed ones' (the walks' company's and a light one) header, buttons and menu, today's and the rule's, each with its ratio | `ui/src/design-system/Gallery.test.tsx` |
 | 10 | No stylesheet or script outside the design system names a numbered shade | `literals.test.ts`, the lint block |
 | 11 | No resolved style of any screen moves on any of the twelve colours | `visual/src/resolved.test.ts` |
 | 12 | The badge's corners and the card's padding are written once, read from the theme | `appTheme.test.tsx` |
@@ -218,15 +220,16 @@ system's own earlier row of the same shape.
       _Done when:_ `bash ops/gate.sh ui`, the citation test and the walk package's typecheck and
       lint exit 0, and the removed names and shade 7s stand only in dated records. **15 min**
       (step 1's shape). Step 2 onward reads the six: no stock colour but emerald's buttons takes
-      dark text now, so the walk's terracotta step and point 2's "dark text" wording are the typed
-      colour's or the picked brick's, to be reread at step 3.
+      dark text now, so the walk's settings step (brick) keeps white text, and the dark-text case is
+      the typed light colour's, shown in the gallery's two typed rows and held by the unit tests;
+      the plan's text above reads so.
       _Evidence:_ code `b59c21ae`; `bash ops/gate.sh ui` and `bash ops/gate.sh walk` (its test step
       skipped by the gate) exit 0, the citations test exit 0; `git grep -n -i` for each removed
       name and shade 7 stands only in the decisions, the open items and these plans, and in
       `onBrand.test.ts`'s typed `#d97757`, the light colour that keeps the dark-text cases; case 4's
       mutation (the rule always white) still reddens cases 1 to 5; the walk's settings step, picking
       Brick, replayed in `ui/src/App.test.tsx` with the real router. Names in Vietnamese are the
-      machine's (item 637). Look 1 reads six rows, where only emerald's buttons turn dark.
+      machine's (item 638). Look 1 reads six rows, where only emerald's buttons turn dark.
 - [ ] **2. The screens take it** (after your yes at point 1). The theme's resolver and the checks'
       `iconColor`; `credoVariables` writes A's variables; the shell, the sign-in, join and operator
       pages and `frame.module.css` read them; `docs/memo/ui.md` and `ui/CLAUDE.md`'s design-system line
@@ -273,18 +276,19 @@ system's own earlier row of the same shape.
 
 ## The human's points
 
-1. **The nine colours, before and after (step 1).** In the gallery (in the piece's `ui/`,
+1. **The six colours and two typed, before and after (step 1).** In the gallery (in the piece's `ui/`,
    `pnpm exec vite --open /48b74d079/gallery`; Ctrl-C ends it), Foundations, "On the brand": each
-   colour's header, buttons, badge, check and menu, today's beside the new, with each ratio. Six
-   colours get dark text on a lighter header ending at their own colour, seven get dark button text
-   (emerald's too), six menus lose their fade for one even dark shade. Does each read as that client's colour, now
-   readable? A yes starts step 2; a no names the colour and surface, and step 1 reopens.
+   colour's header, buttons, badge, check and menu, today's beside the new, with each ratio. Of the six,
+   only emerald's buttons turn dark; below them two typed colours show the rest of the rule: the
+   walks' company's `#2f7d6d`, whose buttons move a shade under white, and a light `#d97757`, which gets
+   dark text on a lighter header ending at its own colour, dark button text and a menu that loses its
+   fade for one even dark shade. Does each read as that client's colour, now readable? A yes starts step 2; a no names the colour and surface, and step 1 reopens.
 2. **The screens, on the walks page (step 3).** Every client screen's buttons now wear the company's
-   own green, a shade darker, with white text; the screens after the colour turns terracotta show
-   dark text on the header and buttons; credo's own screens did not move. Does each read right? A
+   own green, a shade darker, with white text; the screens after the colour turns brick keep white
+   text, as no stock colour but emerald's buttons takes dark text now; credo's own screens did not move. Does each read right? A
    yes lets the push take it to ridge; a no names the screen, and step 2 reopens.
 3. **Colours named, nothing moved (step 7).** In the gallery, "Values" lists each colour by what it is
-   for, in whichever colour you pick; the palette check reads 0 moved over all nine and your run 0.
+   for, in whichever colour you pick; the palette check reads 0 moved over all six and your run 0.
    Do the names read as what each colour is for? A yes starts landing C; a no names the role, and
    step 5 reopens.
 4. **Type named, nothing moved (step 10).** "Values", Type, shows each text style by name with its
