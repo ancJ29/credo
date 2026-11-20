@@ -35,7 +35,8 @@ export const WORDS = {
 export async function digestOf(entry: string, win: Window = window) {
   const bytes = new TextEncoder().encode(GATE_PREFIX + entry);
   const digest = await win.crypto.subtle.digest('SHA-256', bytes);
-  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, '0')).join('');
+  // Array.from, not a spread: the docs build's loose Babel turns `[...typedArray]` into `[].concat(typedArray)`
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, '0')).join('');
 }
 
 /** Reads what this browser remembers; a blocked storage only means the box asks again. */
