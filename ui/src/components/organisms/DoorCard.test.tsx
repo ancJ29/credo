@@ -24,6 +24,6 @@ describe('DoorCard', () => {
     expect(band.contains(screen.getByRole('img', { name: 'Acme' }))).toBe(true);
     expect(body.style.padding).toBe('28px 40px 40px');
     expect(body.contains(screen.getByText('Inside'))).toBe(true);
-    expect((card as HTMLElement).style.border).toBe('1px solid var(--mantine-color-neutral-3)');
+    expect((card as HTMLElement).style.border).toBe('1px solid var(--credo-border-strong)');
   });
 });

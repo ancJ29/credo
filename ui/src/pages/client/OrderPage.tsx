@@ -218,7 +218,7 @@ function FormFields({
                     <Table.Td ta="right">
                       {number.format(price)}
                       {moved !== null && (
-                        <Text size="xs" c="orange.9">
+                        <Text size="xs" c="var(--credo-warning-text)">
                           {t('orders.priceMoved', { price: number.format(moved) })}
                         </Text>
                       )}

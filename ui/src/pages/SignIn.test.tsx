@@ -190,11 +190,11 @@ describe('the frame every door wears', () => {
         expect((button as HTMLElement).style.color, name).toBe('var(--credo-on-header)');
       }
       const group = screen.getByRole('group', { name: words.user.language });
-      expect(group.getAttribute('style'), name).toContain('var(--credo-on-header-55)');
+      expect(group.getAttribute('style'), name).toContain('var(--credo-language-edge)');
       expect(
         within(group).getByRole('button', { name: LANGUAGE_NAMES.en }).getAttribute('style'),
         name,
-      ).toContain('var(--credo-on-header-22)');
+      ).toContain('var(--credo-language-picked)');
       cleanup();
     }
     expect(seen).toBeGreaterThan(1);

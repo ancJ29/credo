@@ -70,8 +70,8 @@ function attempt(shades: MantineColorsTuple, surface: Surface, ink: Ink, by: num
 export const gradientOf = (deg: number, span: readonly number[]) =>
   `linear-gradient(${deg}deg, var(--mantine-color-brand-${span[0]}) 0%, var(--mantine-color-brand-${span[span.length - 1]}) 100%)`;
 
-/** What the app draws today: white on the white span, whether it reads or not. */
-export const todayOf = (shades: MantineColorsTuple, surface: Surface) =>
+/** What the app drew before the rule (`main`'s state): white on the white span, whether it reads or not. */
+export const beforeOf = (shades: MantineColorsTuple, surface: Surface) =>
   attempt(shades, surface, 'white', 0);
 
 /**
@@ -87,5 +87,39 @@ export function onBrand(shades: MantineColorsTuple, surface: Surface): Pick {
       if (found.passes) return found;
     }
   }
-  return todayOf(shades, surface);
+  return beforeOf(shades, surface);
+}
+
+/** What a link's rule picks for one colour: a shade of it, or the theme's darkest grey where no shade reads. */
+export type Link = {
+  /** The shade taken, or `null` where the darkest grey is. */
+  shade: number | null;
+  /** The text's colour, `#rrggbb`. */
+  colour: string;
+  /** What was taken, in words: `shade 7`, or `dark`. */
+  name: string;
+  /** The text's ratio on white. */
+  ratio: number;
+  /** The text as a stylesheet reads it: the brand's shade variable, or the grey itself. */
+  value: string;
+};
+
+/**
+ * The text of a link, or any brand-coloured text, on white: the first shade from `from` that reaches
+ * 4.5:1 on white, a shade darker at a time; where none does, the theme's darkest grey (amber's case).
+ */
+export function onWhite(shades: MantineColorsTuple, from: number): Link {
+  for (let shade = from; shade <= DARKEST; shade++) {
+    const ratio = contrast(WHITE, shades[shade]);
+    if (ratio >= MIN_RATIO)
+      return {
+        shade,
+        colour: shades[shade],
+        name: `shade ${shade}`,
+        ratio,
+        value: `var(--mantine-color-brand-${shade})`,
+      };
+  }
+  const colour = INKS.dark;
+  return { shade: null, colour, name: 'dark', ratio: contrast(WHITE, colour), value: colour };
 }

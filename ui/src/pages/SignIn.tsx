@@ -23,11 +23,11 @@ import { BRAND_GRADIENT } from '../design-system/appTheme';
 import { waitWords } from './waitWords';
 
 /** The page's own ground behind a door's card, the grey the signed-in pages sit on. */
-const GROUND = 'light-dark(var(--mantine-color-neutral-1), var(--mantine-color-body))';
+const GROUND = 'light-dark(var(--credo-surface-sunken), var(--mantine-color-body))';
 
 /** The language switch's outline, white on the coloured header. */
 const SWITCH = {
-  border: '1px solid var(--credo-on-header-55)',
+  border: '1px solid var(--credo-language-edge)',
   borderRadius: 6,
   overflow: 'hidden',
 };
@@ -97,7 +97,8 @@ export function SignInFrame({ brand, title, languages = [], onLanguage, children
                 fz={12}
                 fw={700}
                 style={{
-                  background: i18n.language === language ? 'var(--credo-on-header-22)' : undefined,
+                  background:
+                    i18n.language === language ? 'var(--credo-language-picked)' : undefined,
                 }}
                 onClick={() => onLanguage(language)}
               >

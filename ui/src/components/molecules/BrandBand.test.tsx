@@ -19,8 +19,8 @@ describe('BrandBand', () => {
     expect(name.style.fontWeight).toBe('700');
     const band = name.parentElement!;
     expect(band.style.getPropertyValue('--group-justify')).toBe('center');
-    expect(band.style.background).toBe('var(--mantine-color-brand-0)');
-    expect(band.style.borderBottom).toBe('1px solid var(--mantine-color-brand-1)');
+    expect(band.style.background).toBe('var(--credo-brand-tint)');
+    expect(band.style.borderBottom).toBe('1px solid var(--credo-brand-tint-strong)');
     expect(band.style.padding).toBe('28px 40px');
     expect(band.firstElementChild).toBe(screen.getByRole('img', { name: 'Acme' }));
   });

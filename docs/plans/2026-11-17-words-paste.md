@@ -84,7 +84,7 @@ load, the full-run lock and the gate lock in one loop (`ops/gate.sh#L101-L130`),
 (`ops/gate.sh#L43`). The script passes `GATE_WAIT_MAX=600` and prints the bound and its clock time first, so a
 paste waits 15 minutes at most (10 here, 5 at the landing); a give-up reads as "not run", never red. The ui
 check ran 64 to 78 seconds unwaited in today's runs. A partner's English word reddens the `ui`
-tests that query it by text (`docs/open-items.md#L2059`, item 549): that red stops the run with the
+tests that query it by text (`docs/open-items.md#L2051`, item 549): that red stops the run with the
 branch kept, and a session fixes the tests.
 
 **The landing, and what it refuses.** As the orchestrator lands: `git merge --no-ff --no-edit

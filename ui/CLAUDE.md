@@ -44,7 +44,11 @@ a directory of your own making is not on this list and is not a directory (vites
   entries and the resolver that gives a client's colour its text, `ui/src/design-system/palettes.ts`'s
   `PALETTES`, and its `theme.module.css`; the text on a colour is `ui/src/design-system/onBrand.ts`'s
   `onBrand`, written as `--credo-on-*` variables by `ui/src/design-system/cssVariables.ts`'s
-  `credoVariables`, which a screen reads and never names white), and the
+  `credoVariables`, which a screen reads and never names white; a screen names no numbered shade: it reads a
+  role of `ui/src/design-system/tokens.ts`'s `ROLES`, `HEADER_WASHES` or `MENU_WASHES`, a
+  `--credo-<role>` variable, or Mantine's own slot (`--mantine-color-body`, `-text`, `-default-border`,
+  `-default-hover`) and an avatar's `color="initials"`, while Mantine's colour names (`dimmed`, `red`, `orange`, `green`, `gray`,
+  `yellow`; about 195 uses in `ui/src` today) stay until the skeleton piece), and the
   gallery page that shows the parts (`ui/src/design-system/Gallery.tsx`'s `Gallery`, served at `/48b74d079/gallery`; each part's entry is a row of `ui/src/design-system/entries.tsx`'s `ENTRIES`).
 - **`components/`**: a piece of the design system, in a level directory, with its gallery entry. Mantine
   stays the base: a piece joins when it is drawn a third time, never to wrap a Mantine part alone.

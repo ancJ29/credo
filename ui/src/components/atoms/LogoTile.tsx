@@ -14,7 +14,7 @@ export function LogoTile({ logo, alt }: { logo?: string; alt: string }) {
         width: TOKENS.logoTile.size,
         height: TOKENS.logoTile.size,
         borderRadius: TOKENS.logoTile.radius,
-        border: '1px solid var(--mantine-color-brand-2)',
+        border: '1px solid var(--credo-brand-line)',
         objectFit: 'contain',
       }}
     />

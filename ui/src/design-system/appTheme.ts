@@ -15,10 +15,10 @@ import {
   defaultVariantColorsResolver,
   type VariantColorsResolver,
 } from '@mantine/core';
-import { gradientOf, onBrand, type Pick, todayOf } from './onBrand';
+import { gradientOf, onBrand, type Pick, beforeOf } from './onBrand';
 import { NEUTRAL, paletteOfColour } from './palettes';
 import classes from './theme.module.css';
-import { TOKENS } from './tokens';
+import { RADII, SPACING, TOKENS } from './tokens';
 
 const FONT = '"Noto Sans Variable", sans-serif';
 
@@ -109,8 +109,8 @@ const variantColorResolver: VariantColorsResolver = (input) => {
     input.variant === 'filled' ? 'filled' : input.variant === 'gradient' ? 'header' : null;
   if (!surface) return base;
   const pick = onBrand(shades, surface);
-  const today = todayOf(shades, surface);
-  if (pick.ink === today.ink && pick.span.join() === today.span.join()) return base;
+  const before = beforeOf(shades, surface);
+  if (pick.ink === before.ink && pick.span.join() === before.span.join()) return base;
   if (surface === 'header')
     return {
       ...base,
@@ -134,8 +134,8 @@ const variantColorResolver: VariantColorsResolver = (input) => {
 export const themeOf = (colour: string) => {
   const shades = shadesOf(colour);
   const filled = onBrand(shades, 'filled');
-  const today = todayOf(shades, 'filled');
-  const changes = filled.ink !== today.ink || filled.span.join() !== today.span.join();
+  const before = beforeOf(shades, 'filled');
+  const changes = filled.ink !== before.ink || filled.span.join() !== before.span.join();
   return createTheme({
     colors: { brand: shades, neutral: NEUTRAL, gray: GRAY, green: GREEN, red: RED },
     primaryColor: 'brand',
@@ -151,8 +151,8 @@ export const themeOf = (colour: string) => {
       sizes: { h2: { fontSize: rem(22), lineHeight: '1.4', fontWeight: '700' } },
     },
     defaultRadius: 'md',
-    radius: { xs: '2px', sm: '4px', md: '8px', lg: '12px', xl: '16px' },
-    spacing: { xs: '8px', sm: '12px', md: '16px', lg: '24px', xl: '32px' },
+    radius: RADII,
+    spacing: SPACING,
     shadows: {
       xs: '0 1px 2px rgba(0, 0, 0, 0.05)',
       sm: '0 1px 3px rgba(0, 0, 0, 0.1)',

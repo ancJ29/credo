@@ -7,7 +7,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { openApp } from '../../tests/open';
 import { Gallery } from './Gallery';
 import { ENTRIES } from './entries';
-import { onBrand, todayOf, type Surface } from './onBrand';
+import { contrast, onBrand, onWhite, beforeOf, type Surface } from './onBrand';
+import { ROLES } from './tokens';
 import { PALETTES } from './palettes';
 import { shadesOf } from './appTheme';
 
@@ -198,16 +199,18 @@ describe('Gallery', () => {
   it('11: draws the values', () => {
     open(BASE);
 
-    expect(stateNames()).toEqual(['Palette', 'Type', 'Gaps']);
+    expect(stateNames()).toEqual(['Palette', 'Type', 'Gaps', 'Roles']);
     expect(part().getAllByTitle(/^brand \d$/)).toHaveLength(10);
     expect(part().getByText(/^Type: /)).toBeDefined();
     expect(part().getByText(/^Gaps: /)).toBeDefined();
+    for (const role of Object.keys(ROLES))
+      expect(part().getByText(new RegExp(`^--credo-${role}: `))).toBeDefined();
   });
 
   it('9: On the brand draws the six colours’ header, buttons and menu, today’s and the rule’s, each with its ratio', () => {
     open(`${BASE}/foundations/on-the-brand`);
 
-    expect(stateNames()).toEqual(['Buttons', 'Header', 'Menu']);
+    expect(stateNames()).toEqual(['Buttons', 'Header', 'Menu', 'Links']);
     const surfaces: [string, Surface][] = [
       ['Buttons', 'filled'],
       ['Header', 'header'],
@@ -226,7 +229,7 @@ describe('Gallery', () => {
         const tuple = shadesOf(shades[7]);
         const said = (pick: ReturnType<typeof onBrand>) => `${pick.ink} ${pick.least.toFixed(2)}:1`;
         expect(row.getAllByText(/:1$/).map((node) => node.textContent)).toEqual([
-          said(todayOf(tuple, surface)),
+          said(beforeOf(tuple, surface)),
           said(onBrand(tuple, surface)),
         ]);
       }
@@ -242,7 +245,7 @@ describe('Gallery', () => {
         const tuple = shadesOf(colour);
         const said = (pick: ReturnType<typeof onBrand>) => `${pick.ink} ${pick.least.toFixed(2)}:1`;
         expect(row.getAllByText(/:1$/).map((node) => node.textContent)).toEqual([
-          said(todayOf(tuple, surface)),
+          said(beforeOf(tuple, surface)),
           said(onBrand(tuple, surface)),
         ]);
       }
@@ -261,6 +264,35 @@ describe('Gallery', () => {
       .closest('tr')!;
     expect(within(emerald).getByText(/^white [0-3]\.\d\d:1$/)).toBeDefined();
     expect(within(emerald).getByText(/^dark [4-9]\.\d\d:1$/)).toBeDefined();
+  });
+
+  it('19: On the brand draws a links row, before and after, each with its ratio', () => {
+    open(`${BASE}/foundations/on-the-brand`);
+
+    const plate = within(part().getByRole('figure', { name: 'Links' }));
+    expect(plate.getAllByRole('row')).toHaveLength(9);
+    const said = (link: ReturnType<typeof onWhite>) =>
+      `${link.shade === null ? 'dark' : `shade ${link.shade}`} ${link.ratio.toFixed(2)}:1`;
+    const labels = [
+      ...PALETTES.map(({ name, shades }) => [
+        `${name[0].toUpperCase()}${name.slice(1)}`,
+        shades[7],
+      ]),
+      [`Typed ${DEMO_CONFIG.colour}`, DEMO_CONFIG.colour],
+      ['Typed #d97757', '#d97757'],
+    ];
+    for (const [label, colour] of labels) {
+      const shades = shadesOf(colour);
+      const row = within(plate.getByRole('rowheader', { name: label }).closest('tr')!);
+      expect(row.getAllByText(/:1$/).map((node) => node.textContent)).toEqual([
+        `shade 6 ${contrast('#ffffff', shades[6]).toFixed(2)}:1`,
+        said(onWhite(shades, 6)),
+      ]);
+    }
+    // Emerald's links, the stock change: shade 6 reads 3.77 on white, shade 7 reads 5.48.
+    const emerald = within(plate.getByRole('rowheader', { name: 'Emerald' }).closest('tr')!);
+    expect(emerald.getByText('shade 6 3.77:1')).toBeDefined();
+    expect(emerald.getByText('shade 7 5.48:1')).toBeDefined();
   });
 
   it('12: draws no picture of the old app beside any part', () => {

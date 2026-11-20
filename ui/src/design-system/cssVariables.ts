@@ -1,11 +1,9 @@
 import type { CSSVariablesResolver } from '@mantine/core';
-import { gradientOf, onBrand, todayOf } from './onBrand';
-import { FRAME_COLOURS, FRAME_VALUES, TOKENS } from './tokens';
+import { beforeOf, gradientOf, onBrand, onWhite } from './onBrand';
+import { ANGLES, FRAME_VALUES, HEADER_WASHES, MENU_WASHES, ROLES, TOKENS } from './tokens';
 
-/** The washes on the header's ground, as percent of the text: the hover, the user's chip, the avatar, the badge, the language switch and its choice. */
-const HEADER_WASHES = [12, 18, 22, 55, 90] as const;
-/** The washes on the menu's ground: the hover and the open page. */
-const MENU_WASHES = ['05', '10'] as const;
+/** Where the frame's brand text starts looking for a shade that reads on white: the colour itself. */
+const BRAND_TEXT_FROM = 7;
 
 /** `#rrggbb` as `rgba(r, g, b, share)`, the share written as a decimal as the stylesheet's own were. */
 const wash = (hex: string, percent: number) => {
@@ -14,8 +12,8 @@ const wash = (hex: string, percent: number) => {
 };
 
 /**
- * Writes the frame's colours and values, which Mantine has no slot for, as `--credo-<name>`
- * variables; and what follows the client's colour: the text on the filled parts, the header and the
+ * Writes the roles (`tokens.ts`) and the frame's values, which Mantine has no slot for, as
+ * `--credo-<name>` variables; and what follows the client's colour: the text on the filled parts, the header and the
  * menu (`--credo-on-filled`, `-on-header`, `-on-menu`), the header's and menu's gradients over the
  * shades `onBrand` picks, and each wash at its share of the ground's text. Where the filled parts'
  * shades move, Mantine's own `filled` and `filled-hover` of the brand follow (the parts that read
@@ -26,31 +24,40 @@ export const credoVariables: CSSVariablesResolver = (theme) => {
   const [filled, header, menu] = (['filled', 'header', 'menu'] as const).map((surface) =>
     onBrand(shades, surface),
   );
-  const moved = filled.span.join() !== todayOf(shades, 'filled').span.join();
+  const moved = filled.span.join() !== beforeOf(shades, 'filled').span.join();
   const follows: Record<string, string> = {
     'on-filled': filled.colour,
     'on-header': header.colour,
     'on-menu': menu.colour,
-    'header-gradient': gradientOf(135, header.span),
-    'menu-gradient': gradientOf(180, menu.span),
+    'header-gradient': gradientOf(ANGLES.header, header.span),
+    'menu-gradient': gradientOf(ANGLES.menu, menu.span),
   };
-  for (const share of HEADER_WASHES) follows[`on-header-${share}`] = wash(header.colour, share);
-  for (const share of MENU_WASHES) follows[`on-menu-${share}`] = wash(menu.colour, Number(share));
+  for (const [role, share] of Object.entries(HEADER_WASHES))
+    follows[role] = wash(header.colour, share);
+  for (const [role, share] of Object.entries(MENU_WASHES)) follows[role] = wash(menu.colour, share);
   const light: Record<string, string> = moved
     ? {
         '--mantine-color-brand-filled': `var(--mantine-color-brand-${filled.span[0]})`,
         '--mantine-color-brand-filled-hover': `var(--mantine-color-brand-${filled.span[1]})`,
-        '--mantine-color-brand-text': `var(--mantine-color-brand-${TOKENS.primaryShade})`,
       }
     : {};
+  // Brand-coloured text on white follows the rule: Mantine's links, its brand text and outline from
+  // shade 6, the frame's brand text from 7 (`--credo-brand-text`).
+  const link = onWhite(shades, TOKENS.primaryShade).value;
+  follows['brand-text'] = onWhite(shades, BRAND_TEXT_FROM).value;
   return {
     variables: Object.fromEntries(
-      Object.entries({ ...FRAME_COLOURS, ...FRAME_VALUES, ...follows }).map(([name, value]) => [
+      Object.entries({ ...ROLES, ...FRAME_VALUES, ...follows }).map(([name, value]) => [
         `--credo-${name}`,
         value,
       ]),
     ),
-    light,
+    light: {
+      ...light,
+      '--mantine-color-anchor': link,
+      '--mantine-color-brand-text': link,
+      '--mantine-color-brand-outline': link,
+    },
     dark: {},
   };
 };

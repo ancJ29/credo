@@ -16,6 +16,6 @@ describe('BackLink', () => {
     expect(link.getAttribute('href')).toBe('/login');
     expect(link.firstElementChild?.tagName.toLowerCase()).toBe('svg');
     expect(link.lastChild?.textContent).toBe('Back to sign in');
-    expect(link.style.color).toBe('var(--mantine-color-brand-7)');
+    expect(link.style.color).toBe('var(--credo-brand-text)');
   });
 });
