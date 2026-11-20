@@ -272,6 +272,9 @@ system's own earlier row of the same shape.
       ends `== verdict: green: 35 comparisons, every raw count as asked` and `== done at 16:45:34`,
       every "full-1 to the bases" line at 0 moved, 0 new, 0 without a counterpart, 0 unreadable. The
       bases and the plan land on `pre-merge` with the branch, the orchestrator's next act.
+      The whole check of 2026-11-20 at 16:50 on `pre-merge` found two reds in `@credo/scripts`, fixed in the commit that follows: the
+      gallery's typed row took the walks' company colour from the demo data set, which put that company's name into the app's bundle (the
+      colour is now typed in `OnTheBrand.tsx`, inside the design system), and `words.test.ts` pinned 759 keys where the six palettes leave 756.
 
 **Landing B: colours named by role** (after step 3's landing, its base).
 
