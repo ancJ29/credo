@@ -219,10 +219,19 @@ shape, else piece 126's. One recap, step 11, before C lands, not one a landing.
       component (23:09) and on `--mantine-color-brand-7` in `frame.module.css`; the lint block's
       shade selector red on the same `brand.7` (23:09); both reverted, the ui and visual gates exit 0
       (23:10, 23:14), the citation test exit 0, the grep prints nothing, `resolved.pinned.txt` unchanged.
-- [ ] **7. The links follow the colour** (your answer on emerald). `onWhite`, cases 16 to 18 each red once; the links row, case
+- [x] **7. The links follow the colour** (your answer on emerald). `onWhite`, cases 16 to 18 each red once; the links row, case
       19; the variables; the pinned file rewritten; item 636's thumb measured. _Done when:_ the gates
       exit 0 and the pinned file's diff names no screen under steel, brick, bronze, plum or indigo.
       **17 min** (step 1's shape).
+      _Evidence:_ commit 52e277bb; cases 16 to 18 red once (the rule dropped, then its start moved a shade
+      later) and case 19 red with the links state removed (23:18, 23:19), the variables' case red
+      with the anchor pinned back; the ui and visual gates exit 0 (23:24, 23:29) and the citation test
+      exit 0. The ratios held as the plan wrote them: emerald's shade 6 3.77 and 7 5.48, the company's
+      4.37 and 4.91. The pinned file moved on emerald and the company (27 screens each, the same
+      ones, each with a link: anchor, brand text and outline from shade 6 to 7), and on terracotta,
+      pure red and amber (119 screens each, the frame's brand text moves too); none under steel,
+      brick, bronze, plum or indigo. Item 636's thumb measured: terracotta (2.91) and amber (1.61)
+      fail 3:1, the item stays open for the thumb alone.
 - [ ] **8. Landing B.** `pre-merge` taken in; your run with `--moved all --write`, every moved picture
       a company screen with a link, the operator walks 0; the bases committed alone; your run with no
       flags. _Done when:_ it reads green, every count 0. **14 min** (step 3's rows), **and your two
