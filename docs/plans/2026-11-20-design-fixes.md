@@ -189,6 +189,17 @@ shape, else piece 126's. One recap, step 11, before C lands, not one a landing.
 - [ ] **5. The roles.** The table in `tokens.ts` and `credoVariables`, the 32 references and A's names
       moved, D's two tokens, the angles, `beforeOf`; Values lists the roles; case 12. _Done when:_ the
       gates exit 0, `resolved.pinned.txt` unchanged. **24 min** (step 2's shape).
+      _Evidence:_ commit 9a6437ea; case 12 red on the old values planted back (22:13, both
+      halves), green; the ui and visual gates exit 0 (22:14, 22:17), `resolved.pinned.txt` byte-equal
+      to the one step 4 committed. The count held: 32 references moved (30 in stylesheets and
+      components, `BackLink`'s `brand.7`, `OrderPage`'s `orange.9`), and the roles are
+      `ROLES`, `HEADER_WASHES`, `MENU_WASHES` in `tokens.ts`; `gray.6` reads `dimmed`; the angles are
+      `ANGLES`; `todayOf` is `beforeOf`, the gallery's column "Before", and Values draws the roles.
+      *Where it differs from the plan:* the radii and the spacing table are written in `tokens.ts`
+      (`RADII`, `SPACING`) and the theme reads them, not the reverse, since the theme imports the
+      tokens; and `cardPadding` is that table's `24px`, not a `lg` variable, because the check read
+      the variable as Mantine's default 1.25rem, not the theme's 1.5rem (item 643). Items 508 and
+      596 are deleted.
 - [ ] **6. The shades refused.** Case 10, each half red once on a planted `brand.7`. _Done when:_ the
       gates exit 0 and `grep -rnE --exclude='*.test.*' '"[a-z]+\.[0-9]"|--mantine-color-[a-z]+-[0-9]'
       ui/src/pages ui/src/parts ui/src/frame ui/src/components` prints nothing. **20 min** (piece 126's
