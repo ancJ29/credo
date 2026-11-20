@@ -1,3 +1,7 @@
+---
+partner_page: docs/partners/what-credo-has.md
+---
+
 # What credo has on hand
 
 **What runs on ridge.** Ridge runs what `main` held at the last push whose `ci` run deployed it, and a push to `main`
@@ -111,32 +115,11 @@ question.
 - **Who can check:** anyone holding a demo copy's link and its root password. The `-1` copies are
   `p1`'s, the `-2` copies `p2`'s and the `-3` copies the human's. The human sends a partner their link
   and password by their own channel, as [the operator guide](operator-guide.md#remake-the-six-demo-copies) asks of the remake.
-- **What a yes and a no each start:** a yes means the piece has passed the fourth stage, and the
-  human's page lists it as live on ridge with what was read. A no, with the step where it went wrong,
-  reopens the piece with those words.
 - **The receipt:** within two hours of the check, the human runs one command in their own terminal
   that prints the card's calls from ridge's access log: time, method, path and answer, never an
   address or a browser's name.
 
-A card makes its own records for the check, so it does not depend on how fresh the demo copies are.
-
-### The delivery photos' card
-
-Open a `-3` copy on a PC and sign in as its root. You need a PC and a phone.
-
-1. Under Orders, press "New order", then "Choose a customer", "Choose a product", set the "Quantity"
-   and press "Add line". Press "Save draft".
-2. Press "Confirm the order", choose a driver under "Choose a driver", keep today's day and press
-   "Confirm". The order is confirmed and a delivery request is made.
-3. Under Staff, open that driver and press "Show a QR code".
-4. Scan the code with the phone. It opens My deliveries as the driver. Open today's request, press
-   "Delivered", take a photo and press "Send".
-5. Back on the PC, under Delivery requests, open that delivery.
-
-You should see your own picture under "Proof of delivery", not "The photo did not arrive."
-
-**Question: did your photo show on the office's page?** Say yes or no; with a no, say the step
-number where it went wrong.
+For partners, the plain version, with the delivery photos' card, is [What credo has today](partners/what-credo-has.md#check-a-piece-yourself-without-code).
 
 ### The gallery's card
 

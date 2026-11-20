@@ -17,7 +17,7 @@ A page marked "not yet written" is promised and still empty. A page's name opens
   - [What credo is, without code](README.md): for anyone new; answers "what is this, and which page is mine?"
   - Words we use: for anyone who meets a word they do not know; answers "what does this word mean?" **not yet written**
   - [Questions and answers](questions.md): for anyone with a question; answers "has someone asked this before?"
-  - [What credo has today and what comes next](../products.md): for anyone; answers "how far has it come, and what is built next?"
+  - [What credo has today](what-credo-has.md): for partners who show or check credo; answers "what works, what is missing, and how do I check a piece myself?"
 - **The product owner**
   - [For the product owner](product-owner.md): for the person who decides what credo does; answers "what do I read, and how do I ask for a change?"
   - [Can we take a client](../client-readiness.md): for the product owner; answers "is credo ready for a real client yet, and what is missing?"

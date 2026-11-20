@@ -3,12 +3,18 @@ import type * as Preset from '@docusaurus/preset-classic';
 import { existsSync, readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import { githubLinks } from './links';
-import { MAP_PATH, checkLoaded, mapPages } from './map';
+import { MAP_PATH, checkLoaded, checkPairs, mapPages } from './map';
 
 // One docs plugin rooted at the repository, so every page is shown from its one path and a link
 // between two pages resolves inside the one instance. The pages are the docs map's, read from its text.
 const PAGES = mapPages(readFileSync(resolve(__dirname, '..', MAP_PATH), 'utf8'), (path) =>
   existsSync(resolve(__dirname, '..', path)),
+);
+// A page written from a machine's page, and that page, name each other, or the build stops.
+checkPairs(PAGES, (path) =>
+  existsSync(resolve(__dirname, '..', path))
+    ? readFileSync(resolve(__dirname, '..', path), 'utf8')
+    : null,
 );
 
 const config: Config = {

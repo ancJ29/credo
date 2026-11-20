@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { checkLoaded, mapPages, mapSidebar } from './map';
+import { checkLoaded, checkPairs, mapPages, mapSidebar } from './map';
 
 const MAP = [
   '---',
@@ -126,6 +126,60 @@ describe('the docs map', () => {
           items: [{ type: 'doc', id: 'ops/README', label: 'The runbook' }],
         },
       ],
+    });
+  });
+
+  describe('a page and the page it was written from', () => {
+    const SOURCE = '---\npartner_page: docs/partners/what-credo-has.md\n---\n\n# The machine\n';
+    const PARTNER = '---\nsource: docs/products.md\n---\n\n# The partner\n';
+    const files: Record<string, string> = {
+      'docs/products.md': SOURCE,
+      'docs/partners/what-credo-has.md': PARTNER,
+      'docs/partners/README.md': '# No front matter\n',
+    };
+    const pages = ['docs/partners/README.md', 'docs/partners/what-credo-has.md'];
+    const reads = (over: Record<string, string>) => (p: string) =>
+      ({ ...files, ...over })[p] ?? null;
+
+    it('11. accepts a pair that names each other, and a page with no front matter', () => {
+      expect(() => checkPairs(pages, reads({}))).not.toThrow();
+      expect(() => checkPairs(['docs/products.md', ...pages], reads({}))).not.toThrow();
+    });
+
+    it('12. stops the build on a page whose source is not a file, naming both', () => {
+      expect(() =>
+        checkPairs(pages, (p) => (p === 'docs/products.md' ? null : reads({})(p))),
+      ).toThrow(
+        /docs\/partners\/what-credo-has\.md names the source docs\/products\.md, which does not exist/,
+      );
+    });
+
+    it('13. stops the build on a source that does not name the page back', () => {
+      expect(() =>
+        checkPairs(pages, reads({ 'docs/products.md': '---\ntitle: x\n---\n\n# The machine\n' })),
+      ).toThrow(
+        /docs\/products\.md does not name docs\/partners\/what-credo-has\.md as its partner_page/,
+      );
+      expect(() =>
+        checkPairs(pages, reads({ 'docs/products.md': '# The machine, no front matter\n' })),
+      ).toThrow(/does not name docs\/partners\/what-credo-has\.md as its partner_page/);
+    });
+
+    it('14. stops the build on a partner_page that is not on the map', () => {
+      expect(() => checkPairs(['docs/products.md'], reads({}))).toThrow(
+        /docs\/products\.md names the partner_page docs\/partners\/what-credo-has\.md, which is not on the map/,
+      );
+    });
+
+    it('15. stops the build on a partner_page whose source names another page', () => {
+      expect(() =>
+        checkPairs(
+          ['docs/products.md', 'docs/partners/what-credo-has.md'],
+          reads({ 'docs/partners/what-credo-has.md': '---\nsource: docs/other.md\n---\n' }),
+        ),
+      ).toThrow(
+        /docs\/partners\/what-credo-has\.md does not name docs\/products\.md as its source/,
+      );
     });
   });
 });

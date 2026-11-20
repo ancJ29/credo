@@ -20,7 +20,7 @@ in the runbook, [`ops/README.md`](../ops/README.md), and where the two differ th
 | more room for companies | [More boxes](#more-boxes) |
 
 Ridge is the one shared environment on AWS where somebody can check a piece without reading its code; a
-piece's card is in [Check a piece on ridge, without code](products.md#check-a-piece-on-ridge-without-code).
+piece's card is in [Check a piece yourself, without code](partners/what-credo-has.md#check-a-piece-yourself-without-code).
 When it is down, its records are gone and the demo copies with them.
 
 Every block finds the project's folder by itself, so you can paste it from any folder inside a checkout
