@@ -6,6 +6,7 @@ import type { Api } from '../../api';
 import { dayOf } from '../../day';
 import { Loaded } from '../../frame/Loaded';
 import { useLoad } from '../../page';
+import { TYPE } from '../../design-system/tokens';
 
 type Props = { api: Api; onSignedOut: () => void };
 
@@ -22,7 +23,7 @@ export function OperatorsPage({ api, onSignedOut }: Props) {
   return (
     <Stack gap="lg">
       <Group justify="space-between">
-        <Title order={2}>{t('nav.operators')}</Title>
+        <Title {...TYPE.pageTitle}>{t('nav.operators')}</Title>
         <Button component={Link} to="/operator/operators/new">
           {t('team.add')}
         </Button>

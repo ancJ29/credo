@@ -9,6 +9,7 @@ import {
   Stack,
   Text,
   TextInput,
+  Title,
   useMantineTheme,
 } from '@mantine/core';
 import type { ReactNode } from 'react';
@@ -25,7 +26,7 @@ import { DoorCard } from '../components/organisms/DoorCard';
 import { PageHeader } from '../components/organisms/PageHeader';
 import { SectionCard } from '../components/organisms/SectionCard';
 import { OnTheBrand, OnTheLinks } from './OnTheBrand';
-import { ROLES } from './tokens';
+import { HEADER_WASHES, MENU_WASHES, ROLES, TYPE, WEIGHTS } from './tokens';
 
 /** A sample company logo for the tile: a plain shape, no real company's. */
 const SAMPLE_LOGO =
@@ -117,9 +118,29 @@ function Palette() {
   );
 }
 
+/** Each text style by name, drawn as a screen reads it, and the weights by role. */
 function Type() {
   const theme = useMantineTheme();
-  return <Text size="sm">Type: {theme.fontFamily}</Text>;
+  return (
+    <Stack gap={4}>
+      <Text size="sm">Type: {theme.fontFamily}</Text>
+      <Title {...TYPE.pageTitle}>pageTitle</Title>
+      <Title order={3} {...TYPE.sectionLabel}>
+        sectionLabel
+      </Title>
+      <Text component="span" {...TYPE.fieldLabel}>
+        fieldLabel
+      </Text>
+      <Text {...TYPE.body}>body</Text>
+      <Text {...TYPE.bodyStrong}>bodyStrong</Text>
+      <Text {...TYPE.caption}>caption</Text>
+      {Object.entries(WEIGHTS).map(([role, weight]) => (
+        <Text key={role} fw={weight}>
+          weight {role}: {weight}
+        </Text>
+      ))}
+    </Stack>
+  );
 }
 
 function Gaps() {
@@ -127,21 +148,31 @@ function Gaps() {
   return <Text size="sm">Gaps: {Object.values(theme.spacing).join(', ')}</Text>;
 }
 
+/** Every colour role a screen reads, by name: the roles, the text on the client's colour, the washes on the header's and menu's ground. Each swatch draws the variable the app writes, so it follows the colour. */
+const ON_THE_BRAND = ['on-filled', 'on-header', 'on-menu'] as const;
+
 function Roles() {
+  const swatch = (role: string, ground?: string) => (
+    <Group key={role} gap="sm" wrap="nowrap">
+      <Paper
+        w={24}
+        h={24}
+        style={{
+          background: ground
+            ? `linear-gradient(var(--credo-${role}), var(--credo-${role})), var(${ground})`
+            : `var(--credo-${role})`,
+          border: '1px solid var(--credo-border)',
+        }}
+      />
+      <Text size="sm">{role}</Text>
+    </Group>
+  );
   return (
     <Stack gap={4}>
-      {Object.entries(ROLES).map(([role, value]) => (
-        <Group key={role} gap="sm" wrap="nowrap">
-          <Paper
-            w={24}
-            h={24}
-            style={{ background: value, border: '1px solid var(--credo-border)' }}
-          />
-          <Text size="sm">
-            --credo-{role}: {value}
-          </Text>
-        </Group>
-      ))}
+      {Object.keys(ROLES).map((role) => swatch(role))}
+      {ON_THE_BRAND.map((role) => swatch(role))}
+      {Object.keys(HEADER_WASHES).map((role) => swatch(role, '--credo-header-gradient'))}
+      {Object.keys(MENU_WASHES).map((role) => swatch(role, '--credo-menu-gradient'))}
     </Stack>
   );
 }

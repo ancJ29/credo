@@ -21,6 +21,7 @@ import classes from '../frame/frame.module.css';
 import { LANGUAGE_NAMES } from '../i18n';
 import { BRAND_GRADIENT } from '../design-system/appTheme';
 import { waitWords } from './waitWords';
+import { SIZES, WEIGHTS } from '../design-system/tokens';
 
 /** The page's own ground behind a door's card, the grey the signed-in pages sit on. */
 const GROUND = 'light-dark(var(--credo-surface-sunken), var(--mantine-color-body))';
@@ -81,7 +82,7 @@ export function SignInFrame({ brand, title, languages = [], onLanguage, children
           ) : (
             <IconBrandAdobe size={36} stroke={1.5} aria-hidden />
           )}
-          <Title order={1} size="h4" fw={600} c="inherit">
+          <Title order={1} size="h4" fw={WEIGHTS.emphasis} c="inherit">
             {brand.name}
           </Title>
         </Group>
@@ -94,8 +95,8 @@ export function SignInFrame({ brand, title, languages = [], onLanguage, children
                 aria-current={i18n.language === language}
                 px={8}
                 py={3}
-                fz={12}
-                fw={700}
+                fz={SIZES.chip}
+                fw={WEIGHTS.title}
                 style={{
                   background:
                     i18n.language === language ? 'var(--credo-language-picked)' : undefined,
@@ -124,7 +125,7 @@ export function SignInFrame({ brand, title, languages = [], onLanguage, children
           p={{ base: '24px 20px', sm: 32 }}
           style={{ border: '1px solid var(--mantine-color-default-border)' }}
         >
-          <Title order={2} fw={700} ta="center" mb="md">
+          <Title order={2} fw={WEIGHTS.title} ta="center" mb="md">
             {title}
           </Title>
           {children}

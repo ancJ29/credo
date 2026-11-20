@@ -12,6 +12,7 @@ import {
   type FieldsDraft,
   savedFrom,
 } from '../../parts/StaffFieldsEditor';
+import { TYPE } from '../../design-system/tokens';
 
 /** A unit being edited: `id` is absent until the BFF mints it, `key` tells the rows apart. */
 type Draft = {
@@ -58,7 +59,7 @@ function UnitList({ kind, drafts, onChange, nextKey }: ListProps) {
         <Title order={3}>
           {t(kind === 'departments' ? 'setup.departments' : 'setup.positions')}
         </Title>
-        <Text c="dimmed" size="sm">
+        <Text {...TYPE.caption}>
           {t(kind === 'departments' ? 'setup.departmentHint' : 'setup.positionHint')}
         </Text>
       </div>
@@ -127,7 +128,7 @@ function SetupForm({ setup, saving, outcome, onSave, onRefused, onReload }: Form
   return (
     <Stack gap="xl">
       <div>
-        <Title order={2}>{t('setup.title')}</Title>
+        <Title {...TYPE.pageTitle}>{t('setup.title')}</Title>
         <Text c="dimmed">{t('setup.intro')}</Text>
       </div>
       {outcome === 'saved' && (

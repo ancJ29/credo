@@ -1,9 +1,14 @@
 import type { CSSVariablesResolver } from '@mantine/core';
 import { beforeOf, gradientOf, onBrand, onWhite } from './onBrand';
-import { ANGLES, FRAME_VALUES, HEADER_WASHES, MENU_WASHES, ROLES, TOKENS } from './tokens';
-
-/** Where the frame's brand text starts looking for a shade that reads on white: the colour itself. */
-const BRAND_TEXT_FROM = 7;
+import {
+  ANGLES,
+  BRAND_TEXT_FROM,
+  FRAME_VALUES,
+  HEADER_WASHES,
+  MENU_WASHES,
+  ROLES,
+  TOKENS,
+} from './tokens';
 
 /** `#rrggbb` as `rgba(r, g, b, share)`, the share written as a decimal as the stylesheet's own were. */
 const wash = (hex: string, percent: number) => {

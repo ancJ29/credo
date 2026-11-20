@@ -17,6 +17,7 @@ import { useTranslation } from 'react-i18next';
 import { type Api, ApiError, hopOf, type ServicesCheck } from '../../api';
 import { timeOf } from '../../day';
 import { refusal } from '../../page';
+import { TYPE } from '../../design-system/tokens';
 
 type Props = {
   api: Api;
@@ -101,7 +102,7 @@ export function ServicesPage({ api, build, onSignedOut }: Props) {
   return (
     <Stack gap="lg">
       <Group justify="space-between">
-        <Title order={2}>{t('nav.services')}</Title>
+        <Title {...TYPE.pageTitle}>{t('nav.services')}</Title>
         <Button
           variant="default"
           loading={busy}
@@ -174,10 +175,8 @@ function Report({
           <Paper key={row.id} withBorder p="md" radius="md" aria-label={t(NAME[row.id][0])}>
             <Group justify="space-between" align="flex-start" wrap="nowrap">
               <Stack gap={2}>
-                <Text fw={600}>{t(NAME[row.id][0])}</Text>
-                <Text c="dimmed" size="sm">
-                  {t(NAME[row.id][1])}
-                </Text>
+                <Text {...TYPE.bodyStrong}>{t(NAME[row.id][0])}</Text>
+                <Text {...TYPE.caption}>{t(NAME[row.id][1])}</Text>
               </Stack>
               <Badge
                 color={row.state === 'answers' ? 'green' : row.state === 'silent' ? 'red' : 'gray'}
@@ -201,7 +200,7 @@ function Report({
         ))}
       </Stack>
       {ok && (
-        <Text c="dimmed" size="sm">
+        <Text {...TYPE.caption}>
           {t('services.checkedAt', { time: timeOf(ok.checkedAt, language) })}
         </Text>
       )}

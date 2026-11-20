@@ -29,8 +29,8 @@
   padding: 0 4px;
   border-radius: 6px;
   color: inherit;
-  font-size: 12px;
-  font-weight: 700;
+  font-size: var(--credo-chip-size);
+  font-weight: var(--credo-weight-title);
 }
 
 .button:hover {
@@ -57,8 +57,8 @@
   border: 1.5px solid var(--credo-header-avatar-edge);
   border-radius: 8px;
   background: var(--credo-header-avatar);
-  font-size: 11px;
-  font-weight: 700;
+  font-size: var(--credo-avatar-size);
+  font-weight: var(--credo-weight-title);
 }
 
 .badge {
@@ -150,7 +150,7 @@
   width: 100%;
   padding: 12px 16px;
   color: inherit;
-  font-size: 14px;
+  font-size: var(--credo-link-size);
   text-align: left;
   text-decoration: none;
 }

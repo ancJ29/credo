@@ -8,6 +8,7 @@ import { Loaded } from '../../frame/Loaded';
 import { refusal, useLoad } from '../../page';
 import { PasskeyNotGiven, type Passkeys } from '../../passkeys';
 import { touch } from '../../touch';
+import { TYPE } from '../../design-system/tokens';
 
 type Props = { api: Api; passkeys: Passkeys; onSignedOut: () => void };
 
@@ -70,7 +71,7 @@ export function OperatorLinkPage({ api, passkeys, onSignedOut }: Props) {
         </Stack>
       ) : made ? (
         <Stack gap="lg">
-          <Title order={2}>{t('team.linkMadeTitle')}</Title>
+          <Title {...TYPE.pageTitle}>{t('team.linkMadeTitle')}</Title>
           <Alert color="green" role="alert">
             {t('team.linkMadeIntro', { name: colleague.name })}
           </Alert>
@@ -91,7 +92,7 @@ export function OperatorLinkPage({ api, passkeys, onSignedOut }: Props) {
       ) : (
         <Stack gap="lg">
           <div>
-            <Title order={2}>{t('team.linkTitle', { name: colleague.name })}</Title>
+            <Title {...TYPE.pageTitle}>{t('team.linkTitle', { name: colleague.name })}</Title>
             <Text c="dimmed">
               {t(colleague.state === 'active' ? 'team.linkIntroActive' : 'team.linkIntroInvited', {
                 name: colleague.name,
@@ -105,9 +106,7 @@ export function OperatorLinkPage({ api, passkeys, onSignedOut }: Props) {
           )}
           <Paper withBorder p="md">
             <Stack gap="lg">
-              <Text size="sm" c="dimmed">
-                {t('team.linkTouch')}
-              </Text>
+              <Text {...TYPE.caption}>{t('team.linkTouch')}</Text>
               <Group>
                 <Button loading={busy} onClick={() => void give()}>
                   {t('team.linkMake')}

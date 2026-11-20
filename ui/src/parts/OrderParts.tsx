@@ -17,6 +17,7 @@ import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Loaded } from '../frame/Loaded';
 import { type PageProps, useLoad } from '../page';
+import { TYPE } from '../design-system/tokens';
 
 /** An amount in đồng as the language writes a number. */
 export function useMoney() {
@@ -53,10 +54,8 @@ export function CustomerBlock({ customer }: { customer: DeliveryRequest['custome
   const address = textIn(customer.extra['address']);
   return (
     <Stack gap={2}>
-      <Text fw={600}>{customer.name}</Text>
-      <Text size="sm" c="dimmed">
-        {customer.code}
-      </Text>
+      <Text {...TYPE.bodyStrong}>{customer.name}</Text>
+      <Text {...TYPE.caption}>{customer.code}</Text>
       {phone !== '' && <Text size="sm">{t('orders.phone', { phone })}</Text>}
       {address !== '' && <Text size="sm">{t('orders.address', { address })}</Text>}
     </Stack>
@@ -222,11 +221,7 @@ export function SendPanel({
                   value={day}
                   onChange={(event) => setDay(event.currentTarget.value)}
                 />
-                {hint !== undefined && (
-                  <Text size="sm" c="dimmed">
-                    {hint}
-                  </Text>
-                )}
+                {hint !== undefined && <Text {...TYPE.caption}>{hint}</Text>}
                 <Button type="submit" loading={busy} disabled={!ready}>
                   {submit}
                 </Button>

@@ -8,7 +8,7 @@ import { openApp } from '../../tests/open';
 import { Gallery } from './Gallery';
 import { ENTRIES } from './entries';
 import { contrast, onBrand, onWhite, beforeOf, type Surface } from './onBrand';
-import { ROLES } from './tokens';
+import { HEADER_WASHES, MENU_WASHES, ROLES, TYPE } from './tokens';
 import { PALETTES } from './palettes';
 import { shadesOf } from './appTheme';
 
@@ -203,8 +203,21 @@ describe('Gallery', () => {
     expect(part().getAllByTitle(/^brand \d$/)).toHaveLength(10);
     expect(part().getByText(/^Type: /)).toBeDefined();
     expect(part().getByText(/^Gaps: /)).toBeDefined();
-    for (const role of Object.keys(ROLES))
-      expect(part().getByText(new RegExp(`^--credo-${role}: `))).toBeDefined();
+    for (const style of Object.keys(TYPE)) expect(part().getByText(style)).toBeDefined();
+    for (const role of [
+      ...Object.keys(ROLES),
+      'on-filled',
+      'on-header',
+      'on-menu',
+      ...Object.keys(HEADER_WASHES),
+      ...Object.keys(MENU_WASHES),
+    ])
+      expect(part().getByText(role, { exact: true })).toBeDefined();
+    // A swatch draws the variable the app writes, not the table's value.
+    expect(part().getByText('brand-text', { exact: true }).previousElementSibling).toHaveProperty(
+      'style.background',
+      'var(--credo-brand-text)',
+    );
   });
 
   it('9: On the brand draws the six colours’ header, buttons and menu, today’s and the rule’s, each with its ratio', () => {

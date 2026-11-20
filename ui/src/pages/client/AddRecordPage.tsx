@@ -13,6 +13,7 @@ import type { ListKind } from '../../listSheet';
 import { type PageProps, refusal } from '../../page';
 import { CustomerForm } from '../../parts/CustomerForm';
 import { ProductForm } from '../../parts/ProductForm';
+import { TYPE } from '../../design-system/tokens';
 
 type Outcome = 'taken' | 'failed' | 'forbidden' | null;
 
@@ -113,7 +114,7 @@ function Add<V>({ kind, spec, page }: { kind: ListKind; spec: Spec<V>; page: Pag
   return (
     <Stack gap="lg">
       <div>
-        <Title order={2}>{t(`lists.${kind}.newTitle`)}</Title>
+        <Title {...TYPE.pageTitle}>{t(`lists.${kind}.newTitle`)}</Title>
         <Text c="dimmed">{t(`lists.${kind}.newIntro`)}</Text>
       </div>
       <Button component={Link} to={`/${kind}`} variant="subtle" style={{ alignSelf: 'flex-start' }}>

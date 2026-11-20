@@ -30,6 +30,7 @@ import { LANGUAGE_NAMES } from '../i18n';
 import { Loaded } from '../frame/Loaded';
 import { DetailCard } from './DetailCards';
 import { PALETTES, paletteOfColour } from '../design-system/palettes';
+import { TYPE, WEIGHTS } from '../design-system/tokens';
 
 type Props = {
   status: 'loading' | 'failed' | 'ready';
@@ -128,16 +129,14 @@ function SettingsForm({ config, outcome, saving, onSave, onReload, logoRefusal }
                 onChange={(event) => change({ name: event.currentTarget.value })}
               />
               <Stack gap={6}>
-                <Text size="sm" fw={500}>
+                <Text size="sm" fw={WEIGHTS.label}>
                   {t('settings.logo')}
                 </Text>
                 <Group>
                   {draft.logo ? (
                     <Image src={draft.logo} alt="" h={48} w={48} fit="contain" />
                   ) : (
-                    <Text size="sm" c="dimmed">
-                      {t('settings.logoNone')}
-                    </Text>
+                    <Text {...TYPE.caption}>{t('settings.logoNone')}</Text>
                   )}
                   <FileButton accept="image/*" onChange={chooseLogo}>
                     {(props) => (
@@ -259,7 +258,7 @@ export function Settings(props: Props) {
   return (
     <Stack gap="lg">
       <div>
-        <Title order={2}>{t('settings.title')}</Title>
+        <Title {...TYPE.pageTitle}>{t('settings.title')}</Title>
         <Text c="dimmed">{t('settings.intro')}</Text>
       </div>
       <Loaded status={props.status} onRetry={props.onRetry}>

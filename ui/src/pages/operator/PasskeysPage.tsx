@@ -9,6 +9,7 @@ import { Loaded } from '../../frame/Loaded';
 import { PasskeyAlreadyHere, PasskeyNotGiven, type Passkeys } from '../../passkeys';
 import { refusal, useLoad } from '../../page';
 import { touch } from '../../touch';
+import { TYPE } from '../../design-system/tokens';
 
 type Props = { api: Api; passkeys: Passkeys; onSignedOut: () => void };
 
@@ -68,7 +69,7 @@ export function PasskeysPage({ api, passkeys, onSignedOut }: Props) {
   return (
     <Stack gap="lg">
       <Group justify="space-between">
-        <Title order={2}>{t('passkey.title')}</Title>
+        <Title {...TYPE.pageTitle}>{t('passkey.title')}</Title>
         <Button
           loading={busy}
           leftSection={<IconFingerprint size={18} />}

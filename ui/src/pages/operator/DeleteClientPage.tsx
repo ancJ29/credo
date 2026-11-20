@@ -8,6 +8,7 @@ import { Loaded } from '../../frame/Loaded';
 import { refusal, useLoad } from '../../page';
 import { PasskeyNotGiven, type Passkeys } from '../../passkeys';
 import { touch } from '../../touch';
+import { TYPE } from '../../design-system/tokens';
 
 type Props = { api: Api; passkeys: Passkeys; onSignedOut: () => void };
 
@@ -130,7 +131,9 @@ export function DeleteClientPage({ api, passkeys, onSignedOut }: Props) {
       ) : (
         <Stack gap="lg">
           <div>
-            <Title order={2}>{t('operator.deleteClientTitle', { name: client.name })}</Title>
+            <Title {...TYPE.pageTitle}>
+              {t('operator.deleteClientTitle', { name: client.name })}
+            </Title>
           </div>
           <Alert color="red" role="note" title={client.code}>
             {t('operator.deleteClientIntro', { name: client.name })}
@@ -157,9 +160,7 @@ export function DeleteClientPage({ api, passkeys, onSignedOut }: Props) {
                   value={typed}
                   onChange={(event) => setTyped(event.currentTarget.value)}
                 />
-                <Text size="sm" c="dimmed">
-                  {t('operator.deleteClientTouch')}
-                </Text>
+                <Text {...TYPE.caption}>{t('operator.deleteClientTouch')}</Text>
                 <Group>
                   <Button type="submit" color="red" loading={busy}>
                     {t('operator.deleteClientMake')}

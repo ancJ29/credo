@@ -8,6 +8,7 @@ import { Alert, Button, Paper, Stack, Text, TextInput, Title } from '@mantine/co
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BoxChoice } from './BoxChoice';
+import { TYPE } from '../design-system/tokens';
 
 type Props = {
   /** Idle, waiting on the service, the last attempt failed, or the code was already taken. */
@@ -48,7 +49,7 @@ export function NewClient({ status, boxes = [], onSubmit }: Props) {
   return (
     <Stack gap="lg">
       <div>
-        <Title order={2}>{t('operator.newTitle')}</Title>
+        <Title {...TYPE.pageTitle}>{t('operator.newTitle')}</Title>
         <Text c="dimmed">{t('operator.newIntro')}</Text>
       </div>
       {status === 'failed' && (

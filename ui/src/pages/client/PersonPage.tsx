@@ -58,6 +58,7 @@ import {
   refusedPersonal,
 } from '../../parts/personalFields';
 import { noteOf, personalPhoneOf, phoneOf, unitName } from '../../staffNames';
+import { TYPE } from '../../design-system/tokens';
 
 const READ_ONLY = { input: { fontFamily: 'ui-monospace, monospace' } };
 type SaveOutcome = 'saved' | 'failed' | 'forbidden' | 'conflict' | null;
@@ -400,7 +401,7 @@ function PersonForm({
     <Stack gap="lg">
       <Group justify="space-between">
         <Stack gap={0}>
-          <Title order={2}>{employee.name}</Title>
+          <Title {...TYPE.pageTitle}>{employee.name}</Title>
           <Text c="dimmed">{employee.code}</Text>
         </Stack>
         {employee.archived && <Badge color="gray">{t('staff.left')}</Badge>}
@@ -537,9 +538,7 @@ function PersonForm({
               </DetailCard>
               {user.root && !employee.archived && (
                 <DetailCard icon={<IconShieldCheck size={14} />} title={t('person.permissions')}>
-                  <Text c="dimmed" size="sm">
-                    {t('person.permissionsIntro')}
-                  </Text>
+                  <Text {...TYPE.caption}>{t('person.permissionsIntro')}</Text>
                   <PermissionEditor
                     mode="each"
                     label={t('person.permissions')}

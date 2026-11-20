@@ -24,6 +24,7 @@ import { Loaded } from '../../frame/Loaded';
 import { INVALID } from '../../parts/ownFields';
 import { type PageProps, refusal, useLoad } from '../../page';
 import { saveAs } from '../../saveAs';
+import { TYPE } from '../../design-system/tokens';
 
 /** Why a file was not read, or read to nothing. */
 type FileProblem = 'too-big' | 'unreadable' | 'too-many' | 'no-name' | 'no-rows';
@@ -83,7 +84,7 @@ export function ImportPage(page: PageProps) {
   if (loaded.data) return <ImportForm page={page} {...loaded.data} />;
   return (
     <Stack gap="lg">
-      <Title order={2}>{t('import.title')}</Title>
+      <Title {...TYPE.pageTitle}>{t('import.title')}</Title>
       <Loaded status={loaded.status} onRetry={loaded.reload}>
         {null}
       </Loaded>
@@ -182,7 +183,7 @@ function ImportForm({
     const rest = held.filter((row) => !answered.some((one) => one.row === row)).length;
     return (
       <Stack gap="lg">
-        <Title order={2}>{t('import.doneTitle')}</Title>
+        <Title {...TYPE.pageTitle}>{t('import.doneTitle')}</Title>
         <Alert color="green" role="alert">
           {t('import.doneAdded', { count: added })}
         </Alert>
@@ -241,7 +242,7 @@ function ImportForm({
   return (
     <Stack gap="lg">
       <div>
-        <Title order={2}>{t(rows ? 'import.previewTitle' : 'import.title')}</Title>
+        <Title {...TYPE.pageTitle}>{t(rows ? 'import.previewTitle' : 'import.title')}</Title>
         {!rows && <Text c="dimmed">{t('import.intro')}</Text>}
       </div>
       {status === 'failed' && (
@@ -314,9 +315,7 @@ function ImportForm({
               <Button variant="default" onClick={() => void template()}>
                 {t('import.template')}
               </Button>
-              <Text c="dimmed" size="sm">
-                {t('import.templateHint')}
-              </Text>
+              <Text {...TYPE.caption}>{t('import.templateHint')}</Text>
             </Stack>
             <TextInput
               type="file"

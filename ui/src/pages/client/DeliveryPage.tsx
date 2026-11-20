@@ -16,6 +16,7 @@ import {
   useMoney,
 } from '../../parts/OrderParts';
 import { type PageProps, refusal, useLoad } from '../../page';
+import { TYPE } from '../../design-system/tokens';
 
 /** A delivery request opened to be read: its number, day and driver, the order it came from, the
  * customer with their phone and address, the lines and the total to collect, and for a delivered one
@@ -62,7 +63,9 @@ export function DeliveryPage(page: PageProps) {
         {doc && (
           <>
             <Group justify="space-between">
-              <Title order={2}>{t('orders.requestTitle', { number: doc.request.number })}</Title>
+              <Title {...TYPE.pageTitle}>
+                {t('orders.requestTitle', { number: doc.request.number })}
+              </Title>
               <StateBadge state={doc.request.state} />
             </Group>
             {cancelled && (
@@ -102,7 +105,9 @@ export function DeliveryPage(page: PageProps) {
               </Stack>
             </Paper>
             <LinesTable lines={doc.request.lines} total={doc.request.total} />
-            <Text fw={600}>{t('orders.collect', { total: money(doc.request.total) })}</Text>
+            <Text {...TYPE.bodyStrong}>
+              {t('orders.collect', { total: money(doc.request.total) })}
+            </Text>
             {doc.request.state === 'delivered' && (
               <ProofPhoto page={page} day={doc.request.day} id={doc.request.id} />
             )}

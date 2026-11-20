@@ -8,6 +8,7 @@ import { CopyText } from '../../parts/CopyText';
 import { refusal } from '../../page';
 import { PasskeyNotGiven, type Passkeys } from '../../passkeys';
 import { touch } from '../../touch';
+import { TYPE } from '../../design-system/tokens';
 
 type Props = { api: Api; passkeys: Passkeys; onSignedOut: () => void };
 
@@ -68,7 +69,7 @@ export function AddOperatorPage({ api, passkeys, onSignedOut }: Props) {
 
   return made ? (
     <Stack gap="lg">
-      <Title order={2}>{t('team.addedTitle')}</Title>
+      <Title {...TYPE.pageTitle}>{t('team.addedTitle')}</Title>
       <Alert color="green" role="alert">
         {t('team.addedIntro', { name: made.name })}
       </Alert>
@@ -94,7 +95,7 @@ export function AddOperatorPage({ api, passkeys, onSignedOut }: Props) {
   ) : (
     <Stack gap="lg">
       <div>
-        <Title order={2}>{t('team.newTitle')}</Title>
+        <Title {...TYPE.pageTitle}>{t('team.newTitle')}</Title>
         <Text c="dimmed">{t('team.newIntro')}</Text>
       </div>
       {problem !== null && (
@@ -114,9 +115,7 @@ export function AddOperatorPage({ api, passkeys, onSignedOut }: Props) {
               value={name}
               onChange={(event) => setName(event.currentTarget.value)}
             />
-            <Text size="sm" c="dimmed">
-              {t('team.touch')}
-            </Text>
+            <Text {...TYPE.caption}>{t('team.touch')}</Text>
             <Group>
               <Button type="submit" loading={busy}>
                 {t('team.make')}

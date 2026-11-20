@@ -6,6 +6,7 @@ import { shownDay } from '../../day';
 import { Loaded } from '../../frame/Loaded';
 import { StateBadge, useMoney } from '../../parts/OrderParts';
 import { type PageProps, useLoad } from '../../page';
+import { TYPE, WEIGHTS } from '../../design-system/tokens';
 
 const addressOf = (request: DeliveryRequest) => {
   const address = request.customer.extra['address'];
@@ -23,7 +24,7 @@ export function MyDeliveriesPage(page: PageProps) {
 
   return (
     <Stack gap="md">
-      <Title order={2}>{t('nav.myDeliveries')}</Title>
+      <Title {...TYPE.pageTitle}>{t('nav.myDeliveries')}</Title>
       <Text c="dimmed">
         {t('myDeliveries.forDay', { day: shownDay(day, i18n.language as Language) })}
       </Text>
@@ -43,14 +44,14 @@ export function MyDeliveriesPage(page: PageProps) {
             >
               <Stack gap={4}>
                 <Group justify="space-between">
-                  <Text fw={700}>{request.number}</Text>
+                  <Text fw={WEIGHTS.title}>{request.number}</Text>
                   <StateBadge state={request.state} />
                 </Group>
                 <Text>{request.customer.name}</Text>
-                <Text size="sm" c="dimmed">
-                  {addressOf(request)}
+                <Text {...TYPE.caption}>{addressOf(request)}</Text>
+                <Text {...TYPE.bodyStrong}>
+                  {t('orders.collect', { total: money(request.total) })}
                 </Text>
-                <Text fw={600}>{t('orders.collect', { total: money(request.total) })}</Text>
               </Stack>
             </Paper>
           ))

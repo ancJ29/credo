@@ -7,6 +7,7 @@ import { shownDay } from '../../day';
 import { Loaded } from '../../frame/Loaded';
 import { StateBadge, useMoney } from '../../parts/OrderParts';
 import { type PageProps, useLoad } from '../../page';
+import { TYPE } from '../../design-system/tokens';
 
 /** The last `weeks` weeks of orders ending today, newest first: each week is one call, since the
  * BFF answers at most seven days. */
@@ -33,7 +34,7 @@ export function OrdersPage(page: PageProps) {
   return (
     <Stack gap="lg">
       <Group justify="space-between">
-        <Title order={2}>{t('nav.orders')}</Title>
+        <Title {...TYPE.pageTitle}>{t('nav.orders')}</Title>
         {can(page.user, 'orders.canEdit') && (
           <Button component={Link} to="/orders/new">
             {t('orders.new')}
