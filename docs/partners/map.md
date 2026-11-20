@@ -20,7 +20,7 @@ A page marked "not yet written" is promised and still empty. A page's name opens
   - [What credo has today](what-credo-has.md): for partners who show or check credo; answers "what works, what is missing, and how do I check a piece myself?"
 - **The product owner**
   - [For the product owner](product-owner.md): for the person who decides what credo does; answers "what do I read, and how do I ask for a change?"
-  - [Can we take a client](../client-readiness.md): for the product owner; answers "is credo ready for a real client yet, and what is missing?"
+  - [Can we take a real client yet?](ready-for-a-client.md): for the product owner; answers "is credo ready for a real client yet, and what is missing?"
 - **The sales partner**
   - [For the sales partner](sales.md): for the person who shows credo to others; answers "what can I show, and where do I get my link?"
   - A demo, step by step: for the sales partner; answers "what do I open, say and point at in a first meeting?" **not yet written**
