@@ -210,10 +210,15 @@ shape, else piece 126's. One recap, step 11, before C lands, not one a landing.
       1,310 pinned hashes moved, each moved line one of the theme's own values read where the old
       resolver read Mantine's default (the brand blue to the colour, grey and red shades, radii and
       spacing, the font, the line height); the pages' pictures are unchanged. Item 643 is deleted.
-- [ ] **6. The shades refused.** Case 10, each half red once on a planted `brand.7`. _Done when:_ the
+- [x] **6. The shades refused.** Case 10, each half red once on a planted `brand.7`. _Done when:_ the
       gates exit 0 and `grep -rnE --exclude='*.test.*' '"[a-z]+\.[0-9]"|--mantine-color-[a-z]+-[0-9]'
       ui/src/pages ui/src/parts ui/src/frame ui/src/components` prints nothing. **20 min** (piece 126's
       step 7).
+      _Evidence:_ commit a644d480; case 10 in `literals.test.ts` (the test, over `.css`, `.ts` and
+      `.tsx` outside the design system, the mock and the tests) red on a planted `brand.7` in a
+      component (23:09) and on `--mantine-color-brand-7` in `frame.module.css`; the lint block's
+      shade selector red on the same `brand.7` (23:09); both reverted, the ui and visual gates exit 0
+      (23:10, 23:14), the citation test exit 0, the grep prints nothing, `resolved.pinned.txt` unchanged.
 - [ ] **7. The links follow the colour** (your answer on emerald). `onWhite`, cases 16 to 18 each red once; the links row, case
       19; the variables; the pinned file rewritten; item 636's thumb measured. _Done when:_ the gates
       exit 0 and the pinned file's diff names no screen under steel, brick, bronze, plum or indigo.
