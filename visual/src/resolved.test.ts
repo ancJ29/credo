@@ -290,10 +290,11 @@ function substitute(value: string, custom: Custom, depth = 0): string {
 export function linesOf(styled: Styled, root: Custom) {
   const customs: Custom[] = [];
   return styled.map((element, at) => {
-    const custom = new Map([
-      ...(element.parent < 0 ? root : customs[element.parent]),
-      ...element.own,
-    ]);
+    // On `<html>` the theme's style element comes after the app's stylesheet in the page, so its
+    // variables win over the stylesheet's own `:root` ones; below, an element's own win.
+    const custom = new Map(
+      element.parent < 0 ? [...element.own, ...root] : [...customs[element.parent], ...element.own],
+    );
     customs[at] = custom;
     const plain = [...element.plain]
       .map(([key, { value }]) => `${key.replaceAll(SEP, '|')}=${substitute(value, custom)}`)
@@ -372,6 +373,17 @@ describe('the resolved style of a screen', () => {
     const before = hashOf(resolvedLines(sheet, page('a'), 'en'));
     expect(hashOf(resolvedLines(sheet, page('a', '#222'), 'en'))).not.toBe(before);
     expect(hashOf(resolvedLines(sheet, page('a'), 'en', ':root{--c:#222}'))).not.toBe(before);
+  });
+
+  it('lets the theme win a root variable the app stylesheet also writes, as the page does', () => {
+    const lines = resolvedLines(
+      ':root{--c:#aaa;--d:#ddd}.a{color:var(--c);margin:var(--d)}',
+      `<p class="a">t</p>${theme('#222')}`,
+      'en',
+    );
+    const mine = lines.find((line) => line.includes(' p '))!;
+    expect(mine).toContain('|color=#222');
+    expect(mine).toContain('|margin=#ddd');
   });
 
   it('reads the cascade: inline over a rule, a layer under none, a fallback for a missing variable', () => {
