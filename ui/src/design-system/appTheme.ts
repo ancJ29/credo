@@ -13,25 +13,11 @@ import {
   rem,
   Table,
 } from '@mantine/core';
-import { paletteOfColour } from './palettes';
+import { NEUTRAL, paletteOfColour } from './palettes';
 import classes from './theme.module.css';
 import { TOKENS } from './tokens';
 
 const FONT = '"Noto Sans Variable", sans-serif';
-
-/** The old app's greys: the guest screens' ground and the card's edge. */
-const NEUTRAL: MantineColorsTuple = [
-  '#fafafa',
-  '#f5f5f5',
-  '#e5e5e5',
-  '#d4d4d4',
-  '#9ca3af',
-  '#6b7280',
-  '#4b5563',
-  '#374151',
-  '#1f2937',
-  '#111827',
-];
 
 /** The old app's own grey, green and red, in place of Mantine's. They stay fixed: no tenant sets them. */
 const GRAY: MantineColorsTuple = [

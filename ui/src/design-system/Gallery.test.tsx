@@ -6,7 +6,9 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { openApp } from '../../tests/open';
 import { Gallery } from './Gallery';
 import { ENTRIES } from './entries';
+import { onBrand, todayOf, type Surface } from './onBrand';
 import { PALETTES } from './palettes';
+import { shadesOf } from './appTheme';
 
 // Every component file of the three folders, by level and name: the list must hold each.
 const FILES = Object.keys(
@@ -59,7 +61,7 @@ describe('Gallery', () => {
       .map((heading) => heading.textContent);
     expect(heads).toEqual(['Foundations', 'Atoms', 'Molecules', 'Organisms']);
     expect(found.length).toBeGreaterThan(0);
-    expect(list().getByRole('region', { name: 'Foundations' }).textContent).toContain('2');
+    expect(list().getByRole('region', { name: 'Foundations' }).textContent).toContain('3');
     for (const [level, heading] of Object.entries(HEADINGS)) {
       const files = found.filter((file) => file.level === level);
       const group = within(list().getByRole('region', { name: heading }));
@@ -199,6 +201,41 @@ describe('Gallery', () => {
     expect(part().getAllByTitle(/^brand \d$/)).toHaveLength(10);
     expect(part().getByText(/^Type: /)).toBeDefined();
     expect(part().getByText(/^Gaps: /)).toBeDefined();
+  });
+
+  it('9: On the brand draws the nine colours’ header, buttons and menu, today’s and the rule’s, each with its ratio', () => {
+    open(`${BASE}/foundations/on-the-brand`);
+
+    expect(stateNames()).toEqual(['Buttons', 'Header', 'Menu']);
+    const surfaces: [string, Surface][] = [
+      ['Buttons', 'filled'],
+      ['Header', 'header'],
+      ['Menu', 'menu'],
+    ];
+    expect(PALETTES).toHaveLength(9);
+    for (const [state, surface] of surfaces) {
+      const plate = within(part().getByRole('figure', { name: state }));
+      expect(plate.getAllByRole('row')).toHaveLength(10);
+      for (const { name, shades } of PALETTES) {
+        const row = within(
+          plate
+            .getByRole('rowheader', { name: `${name[0].toUpperCase()}${name.slice(1)}` })
+            .closest('tr')!,
+        );
+        const tuple = shadesOf(shades[7]);
+        const said = (pick: ReturnType<typeof onBrand>) => `${pick.ink} ${pick.least.toFixed(2)}:1`;
+        expect(row.getAllByText(/:1$/).map((node) => node.textContent)).toEqual([
+          said(todayOf(tuple, surface)),
+          said(onBrand(tuple, surface)),
+        ]);
+      }
+    }
+    // Autumn's buttons: white fails today at 2.84 or so, dark reads.
+    const autumn = within(part().getByRole('figure', { name: 'Buttons' }))
+      .getByRole('rowheader', { name: 'Autumn' })
+      .closest('tr')!;
+    expect(within(autumn).getByText(/^white [0-3]\.\d\d:1$/)).toBeDefined();
+    expect(within(autumn).getByText(/^dark [4-9]\.\d\d:1$/)).toBeDefined();
   });
 
   it('12: draws no picture of the old app beside any part', () => {

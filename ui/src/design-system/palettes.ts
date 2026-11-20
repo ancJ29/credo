@@ -1,3 +1,5 @@
+import type { MantineColorsTuple } from '@mantine/core';
+
 /** The old app's nine stock palettes, in its order: each name and its ten shades, the lightest first. */
 export const PALETTES = [
   {
@@ -142,3 +144,17 @@ export const paletteOfColour = (colour: string) => {
   const lower = colour.toLowerCase();
   return PALETTES.find((palette) => palette.shades[7] === lower);
 };
+
+/** The old app's greys: the guest screens' ground and the card's edge. */
+export const NEUTRAL: MantineColorsTuple = [
+  '#fafafa',
+  '#f5f5f5',
+  '#e5e5e5',
+  '#d4d4d4',
+  '#9ca3af',
+  '#6b7280',
+  '#4b5563',
+  '#374151',
+  '#1f2937',
+  '#111827',
+];
