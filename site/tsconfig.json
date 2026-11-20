@@ -12,6 +12,7 @@
     "map.ts",
     "map.test.ts",
     "config.test.ts",
+    "gate-build.test.ts",
     "vitest.config.mts"
   ]
 }
