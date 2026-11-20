@@ -29,6 +29,6 @@ Each step's site build was made to fail once on a broken glossary link or a one-
 
 ## What is left
 
-- Item 632: the map's "ask the human", the QA branch's name, the front page's role list, the runbook.
+- Item 632: the QA branch's name, the front page's role list, the runbook.
 - Item 635.
 - The push that publishes the site is yours. No look is open.
