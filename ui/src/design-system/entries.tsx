@@ -24,7 +24,7 @@ import { SectionTitle } from '../components/molecules/SectionTitle';
 import { DoorCard } from '../components/organisms/DoorCard';
 import { PageHeader } from '../components/organisms/PageHeader';
 import { SectionCard } from '../components/organisms/SectionCard';
-import { OnTheBrand } from './OnTheBrand';
+import { OnTheBrand, OnTheLinks } from './OnTheBrand';
 import { ROLES } from './tokens';
 
 /** A sample company logo for the tile: a plain shape, no real company's. */
@@ -165,12 +165,13 @@ export const ENTRIES: Entry[] = [
     group: 'Foundations',
     name: 'On the brand',
     description:
-      "The text on a client's colour, the white before the rule beside the rule's pick (white where it reaches 4.5:1, else dark), for each of the six stock colours and two typed ones, with the least ratio against the surface's shades.",
-    props: 'onBrand(shades, surface) · surface: filled | header | menu',
+      "The text on a client's colour, the white before the rule beside the rule's pick (white where it reaches 4.5:1, else dark), for each of the six stock colours and two typed ones, with the least ratio against the surface's shades; and the links, shade 6 before beside the rule's pick on white.",
+    props: 'onBrand(shades, surface) · surface: filled | header | menu · onWhite(shades, from)',
     states: [
       { name: 'Buttons', node: <OnTheBrand surface="filled" /> },
       { name: 'Header', node: <OnTheBrand surface="header" /> },
       { name: 'Menu', node: <OnTheBrand surface="menu" /> },
+      { name: 'Links', node: <OnTheLinks /> },
     ],
   },
   {

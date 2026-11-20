@@ -89,3 +89,37 @@ export function onBrand(shades: MantineColorsTuple, surface: Surface): Pick {
   }
   return beforeOf(shades, surface);
 }
+
+/** What a link's rule picks for one colour: a shade of it, or the theme's darkest grey where no shade reads. */
+export type Link = {
+  /** The shade taken, or `null` where the darkest grey is. */
+  shade: number | null;
+  /** The text's colour, `#rrggbb`. */
+  colour: string;
+  /** What was taken, in words: `shade 7`, or `dark`. */
+  name: string;
+  /** The text's ratio on white. */
+  ratio: number;
+  /** The text as a stylesheet reads it: the brand's shade variable, or the grey itself. */
+  value: string;
+};
+
+/**
+ * The text of a link, or any brand-coloured text, on white: the first shade from `from` that reaches
+ * 4.5:1 on white, a shade darker at a time; where none does, the theme's darkest grey (amber's case).
+ */
+export function onWhite(shades: MantineColorsTuple, from: number): Link {
+  for (let shade = from; shade <= DARKEST; shade++) {
+    const ratio = contrast(WHITE, shades[shade]);
+    if (ratio >= MIN_RATIO)
+      return {
+        shade,
+        colour: shades[shade],
+        name: `shade ${shade}`,
+        ratio,
+        value: `var(--mantine-color-brand-${shade})`,
+      };
+  }
+  const colour = INKS.dark;
+  return { shade: null, colour, name: 'dark', ratio: contrast(WHITE, colour), value: colour };
+}

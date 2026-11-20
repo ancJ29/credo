@@ -70,6 +70,7 @@ export const ROLES = {
   border: 'var(--mantine-color-neutral-2)',
   'border-strong': 'var(--mantine-color-neutral-3)',
   'hover-ink': 'rgba(0, 0, 0, 0.04)',
+  /** The start; `credoVariables` moves it a shade darker where 7 does not read on white (`onWhite`). */
   'brand-text': 'var(--mantine-color-brand-7)',
   'brand-tint': 'var(--mantine-color-brand-0)',
   'brand-tint-strong': 'var(--mantine-color-brand-1)',

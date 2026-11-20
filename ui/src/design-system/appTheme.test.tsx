@@ -150,7 +150,9 @@ describe('the filled parts take the rule’s pick', () => {
     expect(check).not.toContain('#111827');
     expect(css).toContain('--mantine-color-brand-filled: var(--mantine-color-brand-7)');
     expect(css).toContain('--mantine-color-brand-filled-hover: var(--mantine-color-brand-8)');
-    expect(css).toContain('--mantine-color-brand-text: var(--mantine-color-brand-6)');
+    // Its shade 6 reads 4.37:1 on white, so its links and brand text take 7 (case 16).
+    expect(css).toContain('--mantine-color-brand-text: var(--mantine-color-brand-7)');
+    expect(css).toContain('--mantine-color-anchor: var(--mantine-color-brand-7)');
   });
 
   it('6: a colour where white passes at today’s shades draws Mantine’s own parts', () => {
@@ -160,7 +162,8 @@ describe('the filled parts take the rule’s pick', () => {
     expect(badge).not.toContain('--badge-bg');
     expect(css).toContain('--mantine-color-brand-filled: var(--mantine-color-brand-6)');
     expect(css).toContain('--mantine-color-brand-filled-hover: var(--mantine-color-brand-7)');
-    expect(css).toContain('--mantine-color-brand-text: var(--mantine-color-brand-filled)');
+    expect(css).toContain('--mantine-color-brand-text: var(--mantine-color-brand-6)');
+    expect(css).toContain('--mantine-color-anchor: var(--mantine-color-brand-6)');
   });
 });
 

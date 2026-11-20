@@ -1,6 +1,9 @@
 import type { CSSVariablesResolver } from '@mantine/core';
-import { beforeOf, gradientOf, onBrand } from './onBrand';
+import { beforeOf, gradientOf, onBrand, onWhite } from './onBrand';
 import { ANGLES, FRAME_VALUES, HEADER_WASHES, MENU_WASHES, ROLES, TOKENS } from './tokens';
+
+/** Where the frame's brand text starts looking for a shade that reads on white: the colour itself. */
+const BRAND_TEXT_FROM = 7;
 
 /** `#rrggbb` as `rgba(r, g, b, share)`, the share written as a decimal as the stylesheet's own were. */
 const wash = (hex: string, percent: number) => {
@@ -36,9 +39,12 @@ export const credoVariables: CSSVariablesResolver = (theme) => {
     ? {
         '--mantine-color-brand-filled': `var(--mantine-color-brand-${filled.span[0]})`,
         '--mantine-color-brand-filled-hover': `var(--mantine-color-brand-${filled.span[1]})`,
-        '--mantine-color-brand-text': `var(--mantine-color-brand-${TOKENS.primaryShade})`,
       }
     : {};
+  // Brand-coloured text on white follows the rule: Mantine's links, its brand text and outline from
+  // shade 6, the frame's brand text from 7 (`--credo-brand-text`).
+  const link = onWhite(shades, TOKENS.primaryShade).value;
+  follows['brand-text'] = onWhite(shades, BRAND_TEXT_FROM).value;
   return {
     variables: Object.fromEntries(
       Object.entries({ ...ROLES, ...FRAME_VALUES, ...follows }).map(([name, value]) => [
@@ -46,7 +52,12 @@ export const credoVariables: CSSVariablesResolver = (theme) => {
         value,
       ]),
     ),
-    light,
+    light: {
+      ...light,
+      '--mantine-color-anchor': link,
+      '--mantine-color-brand-text': link,
+      '--mantine-color-brand-outline': link,
+    },
     dark: {},
   };
 };
