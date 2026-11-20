@@ -4,7 +4,7 @@ This page is for a new developer or a tester, and for every session that plans a
 
 **These rules bind** every feature's plan, every test, every check run here and every landing on [pre-merge](../partners/words.md#pre-merge), the branch where finished work waits. Where they say "the human", they mean the project's owner.
 
-**In short.** Each feature starts with a case table, one behaviour a line. A test counts only if it has been seen failing once. A finished piece lands on pre-merge after a quick check. At most every two hours the [whole check](../partners/words.md#whole-check), the [gate](../partners/words.md#gate) of every package together, runs on pre-merge. Then comes one review by another model, and only then does [main](../partners/words.md#main), the branch that holds only checked code, move. The owner has up to five points in a feature, each a look: its [walk](../partners/words.md#walk), a page or a diagram, answered yes or no. A look is not a gate. The work goes on past it, and a no reopens the piece.
+**In short.** Each feature starts with a case table, one behaviour a line. A test counts only if it has been seen failing once when its behaviour breaks. A finished piece lands on pre-merge after a quick check. At most every two hours, sooner only when it is really needed and the machine is free, the [whole check](../partners/words.md#whole-check), the [gate](../partners/words.md#gate) of the six TypeScript packages together, runs on pre-merge. Then comes one review by another model, and only then does [main](../partners/words.md#main), the branch that holds only checked code, move. The owner has up to five points in a feature, each a look: its [walk](../partners/words.md#walk), a page or a diagram, answered yes or no. A look is not a gate. The work goes on past it, and a no reopens the piece.
 
 ## At a glance
 
@@ -20,7 +20,7 @@ flowchart LR
   red --> green["green · 100 %<br/>machine"]
   green --> merge["land on pre-merge<br/>machine, quick check"]
   merge --> on["work goes on<br/>machine"]
-  merge -. every two hours, sooner if needed .-> whole["whole check<br/>machine, on pre-merge"]
+  merge -. every two hours, sooner if needed and the machine is free .-> whole["whole check<br/>machine, on pre-merge"]
   whole --> review["one review<br/>machine, another model"]
   review --> main["main<br/>machine"]
   green --> walks["walks<br/>human, yes or no"]

@@ -11,7 +11,7 @@ You do this once. Each step after the first is a block to copy and paste, with w
 | Node | 26 | Everything written in TypeScript: the app, its scripts and its checks |
 | pnpm | 12 | The packages, and every command of the project |
 | Go | 1.26 | The two services: the storage and the activity log |
-| ShellCheck, cfn-lint and Ruby | 0.11.0, 1.46.0, any | Only a change to the scripts that run the machines. [The gate](partners/words.md#gate), the check that must pass before work is accepted, says which of its steps use them |
+| ShellCheck, cfn-lint and Ruby | 0.11.0, 1.46.0, any | Only a change to the scripts that run the machines. [The gate](partners/words.md#gate) is the check that must pass before work is accepted; [its steps](../CLAUDE.md#the-gate) say which of them use these |
 
 Each exact version is written in the project itself:
 

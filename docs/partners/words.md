@@ -1,6 +1,6 @@
 # Words we use
 
-This page is for anyone who meets a word on another page and does not know it. After it you can say what the word means in a sentence. Each word has its own heading, and other pages link to it. A meaning marked "unsure" is one we have not yet found written plainly anywhere, so we do not guess it.
+This page is for anyone who meets a word on another page and does not know it. After it you can say what the word means in a sentence. Each word has its own heading, and other pages link to it.
 
 ## bases
 
@@ -32,7 +32,7 @@ An invented company that a partner uses to try credo. Each partner has a copy of
 
 ## gate
 
-One package's check, or every package's: the one check that must pass before work is accepted. It covers types, style, tests at 100 percent and unused code. The [whole check](#whole-check) is the gate of every package together.
+One package's check, or every package's: the one check that must pass before work is accepted. It covers types, style, tests at 100 percent and unused code. The [whole check](#whole-check) is the gate of the six TypeScript packages together.
 
 ## Litestream
 
@@ -88,7 +88,7 @@ The page that shows every screen of every [walk](#walk), in two languages. We an
 
 ## whole check
 
-The [gate](#gate) of every package, run together on [pre-merge](#pre-merge). It runs there at most once every two hours, sooner only when it is really needed and nothing else holds the machine.
+The [gate](#gate) of the six TypeScript packages, run together on [pre-merge](#pre-merge). It runs there at most once every two hours, sooner only when it is really needed and nothing else holds the machine.
 
 ## worktree
 
