@@ -3,7 +3,7 @@ Stack: Docusaurus 3 with its mermaid theme · Gate: `pnpm check` from the root, 
 
 The docs site: the pages on the docs map (`docs/partners/map.md`), shown where each already sits, for
 partners and other readers who do not code. The map is the site's first page and the one list it
-publishes: a page not on the map is not published. Open to anyone with the link, kept out of search engines (`noIndex`).
+publishes: a page not on the map is not published. Open to anyone with the link and its password, kept out of search engines (`noIndex`); the password box is `visual/site/gate.ts`, started by `gate-client.ts`, and the build stops when the password hash file beside `ops/site-password.sh` is missing or is not one hash ([the site's password](../ops/README.md#the-sites-password)).
 
 ## What belongs here, and what does not
 
@@ -28,4 +28,4 @@ publishes: a page not on the map is not published. Open to anyone with the link,
 
 ## The directories of `site`
 
-None: flat is the answer, since its six files are the site's config, the map's reader and its test, its sidebar, its link plugin and its test configuration.
+None: flat is the answer, since its seven files are the site's config, the map's reader and its test, its sidebar, its link plugin, its password box's client module and its test configuration.

@@ -1,4 +1,4 @@
-import { mkdtempSync, readdirSync, readFileSync } from 'node:fs';
+import { mkdtempSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
@@ -16,6 +16,15 @@ import {
 import type { Drawn, Walk } from './walks';
 import { WALKS } from './walks';
 import type { PageData } from '../site/data';
+import { GATE_STYLE, WORDS } from '../site/gate';
+
+/** A stand-in hash, written to a file of the test's own: the real one is the human's. */
+const FIXTURE_HASH = 'ab'.repeat(32);
+const fixtureFile = () => {
+  const file = join(mkdtempSync(join(tmpdir(), 'walks-gate-')), 'hash');
+  writeFileSync(file, `${FIXTURE_HASH}\n`);
+  return file;
+};
 
 const CSS =
   '@font-face{font-family:F;src:url(x)}' +
@@ -221,16 +230,17 @@ describe('the walks page’s capture', () => {
   it('keeps the data and the script apart from the template’s own text', () => {
     const data = { title: '$& $1 $`' } as PageData;
     const html = pageHtml(
-      '<script>/*DATA*/</script><script>/*PAGE*/</script>',
+      '<style>/*GATE-STYLE*/</style><script>/*DATA*/</script><script>/*PAGE*/</script>',
       data,
       'a("$&</script>");',
+      '$&',
     );
 
     expect(html).toBe(
-      `<script>window.WALKS_DATA = {"title":"$& $1 $\`"};</script><script>a("$&<\\/script>");</script>`,
+      `<style>${GATE_STYLE}</style><script>window.WALKS_DATA = {"title":"$& $1 $\`"};window.SITE_GATE_HASH = "$&";</script><script>a("$&<\\/script>");</script>`,
     );
-    expect(pageHtml('/*DATA*/', { title: '</script>' } as PageData, '')).toBe(
-      'window.WALKS_DATA = {"title":"<\\/script>"};',
+    expect(pageHtml('/*DATA*/', { title: '</script>' } as PageData, '', 'h')).toBe(
+      'window.WALKS_DATA = {"title":"<\\/script>"};window.SITE_GATE_HASH = "h";',
     );
   });
 
@@ -253,7 +263,10 @@ describe('the walks page’s capture', () => {
     // a process with none leaves none behind
     delete process.env['NODE_ENV'];
     try {
-      await pageScript();
+      // the one script holds the page and its password box
+      const script = await pageScript();
+      expect(script).toContain(WORDS.title);
+      expect(script).toContain('SITE_GATE_HASH');
       expect(process.env['NODE_ENV']).toBeUndefined();
     } finally {
       process.env['NODE_ENV'] = 'test';
@@ -269,6 +282,7 @@ describe('the walks page’s capture', () => {
     const folder = await report(worktree, (line) => lines.push(line), {
       walks: small,
       builtAt: at,
+      gateFile: fixtureFile(),
     });
 
     expect(folder).toBe(join(root, 'walks', readdirSync(join(root, 'walks'))[0]));
@@ -287,6 +301,11 @@ describe('the walks page’s capture', () => {
     expect(html).toContain('window.WALKS_DATA = {');
     expect(html).not.toContain('/*DATA*/');
     expect(html).not.toContain('/*PAGE*/');
+    // the password box: its rule in the head and the fixture's hash beside the data, never the page open
+    expect(html).toContain('<meta name="robots" content="noindex">');
+    expect(html).not.toContain('/*GATE-STYLE*/');
+    expect(html).toContain(`<style>${GATE_STYLE}</style>`);
+    expect(html).toContain(`window.SITE_GATE_HASH = "${FIXTURE_HASH}";`);
     expect(first.walks[0].screens.every((screen) => screen.question.vi && screen.question.en)).toBe(
       true,
     );
@@ -295,6 +314,7 @@ describe('the walks page’s capture', () => {
     const again = await report(worktree, () => {}, {
       walks: small,
       builtAt: new Date('2026-11-03T01:00:05Z'),
+      gateFile: fixtureFile(),
     });
     const second = JSON.parse(readFileSync(join(again, 'walks.json'), 'utf8')) as PageData;
     expect(second.walks.flatMap((one) => one.screens.map((screen) => screen.version))).toEqual(
@@ -302,17 +322,35 @@ describe('the walks page’s capture', () => {
     );
 
     // one build a second: the folder is there, so the aside is removed and none is left half written
-    await expect(report(worktree, () => {}, { walks: small, builtAt: at })).rejects.toThrow(
-      'is already there: one build a second',
-    );
+    await expect(
+      report(worktree, () => {}, {
+        walks: small,
+        builtAt: at,
+        gateFile: fixtureFile(),
+      }),
+    ).rejects.toThrow('is already there: one build a second');
     expect(
       readdirSync(join(root, 'walks')).filter((name) => name.startsWith('.building-')),
     ).toEqual([]);
   });
 
+  it('stops before any work, naming the command, when the password hash is missing or is not one hash', async () => {
+    const { root, worktree } = makeRoot('walks-page');
+    const missing = join(root, 'no-such-file');
+    await expect(report(worktree, () => {}, { walks: [], gateFile: missing })).rejects.toThrow(
+      'bash ops/site-password.sh',
+    );
+    const stand = join(root, 'stand-in');
+    writeFileSync(stand, 'changeme\n');
+    await expect(report(worktree, () => {}, { walks: [], gateFile: stand })).rejects.toThrow(
+      'does not hold one SHA-256 hash',
+    );
+    expect(readdirSync(root)).not.toContain('walks');
+  });
+
   it('says so, and writes nothing, outside a git repository', async () => {
     const outside = mkdtempSync(join(tmpdir(), 'walks-outside-'));
-    await expect(report(outside, () => {}, { walks: [] })).rejects.toThrow(
+    await expect(report(outside, () => {}, { walks: [], gateFile: fixtureFile() })).rejects.toThrow(
       'not inside a git repository',
     );
   });

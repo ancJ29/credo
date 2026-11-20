@@ -2,6 +2,8 @@ import type { Config } from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
 import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { resolve, sep } from 'node:path';
+import { GATE_STYLE } from '../visual/site/gate';
+import { GATE_HASH_PATH, readGateHash } from '../visual/site/gate-file';
 import { githubLinks } from './links';
 import { MAP_PATH, checkLoaded, checkPairs, mapPages } from './map';
 
@@ -23,6 +25,10 @@ checkPairs(
     .map((f) => `docs/${f.split(sep).join('/')}`),
 );
 
+// The password box's hash, one committed file the build reads and refuses without (`ops/site-password.sh`
+// writes it): the box can never ship open or with a stand-in.
+const GATE_HASH = readGateHash(resolve(__dirname, '..', GATE_HASH_PATH));
+
 const config: Config = {
   title: 'credo',
   tagline: 'The docs, for partners and for the team',
@@ -37,7 +43,19 @@ const config: Config = {
   // 'detect' reads a .md file as plain Markdown, so a { or < in prose does not break the build.
   markdown: { format: 'detect', mermaid: true, hooks: { onBrokenMarkdownLinks: 'throw' } },
   themes: ['@docusaurus/theme-mermaid'],
+  // The password box (visual/site/gate.ts), started before the site's own scripts.
+  clientModules: ['./gate-client.ts'],
   plugins: [
+    // The box's hiding rule and the hash it checks against, in every page's head.
+    () => ({
+      name: 'site-gate',
+      injectHtmlTags: () => ({
+        headTags: [
+          { tagName: 'style', innerHTML: GATE_STYLE },
+          { tagName: 'script', innerHTML: `window.SITE_GATE_HASH=${JSON.stringify(GATE_HASH)};` },
+        ],
+      }),
+    }),
     // Once every page is loaded: the pages the site holds are exactly the map's, the map served at `/`.
     () => ({
       name: 'map-load-check',
