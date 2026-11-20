@@ -224,7 +224,7 @@ describe('Settings', () => {
     expect(screen.getByText(words.logoNone)).toBeTruthy();
   });
 
-  it('shows the six palettes as one radio group named Palette, in the legacy’s order, in both languages', () => {
+  it('shows the six palettes as one radio group named Palette, in the human’s order, in both languages', () => {
     const { unmount } = draw(<Settings {...props()} />);
 
     expect(screen.getByRole('radiogroup', { name: words.palette })).toBeTruthy();

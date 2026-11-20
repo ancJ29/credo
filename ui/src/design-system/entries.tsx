@@ -143,7 +143,7 @@ export const ENTRIES: Entry[] = [
     group: 'Foundations',
     name: 'On the brand',
     description:
-      "The text on a client's colour, today's white beside the rule's pick (white where it reaches 4.5:1, else dark), for each of the six stock colours, with the least ratio against the surface's shades.",
+      "The text on a client's colour, today's white beside the rule's pick (white where it reaches 4.5:1, else dark), for each of the six stock colours and two typed ones, with the least ratio against the surface's shades.",
     props: 'onBrand(shades, surface) · surface: filled | header | menu',
     states: [
       { name: 'Buttons', node: <OnTheBrand surface="filled" /> },

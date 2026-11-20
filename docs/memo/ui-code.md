@@ -29,10 +29,10 @@ Drawn from [`main.tsx`](../../ui/src/main.tsx), [`App.tsx`](../../ui/src/App.tsx
 | `ui/src/frame/` (5 files) | What a screen is drawn inside: the shell and menu, the providers, the boot, the loading state | `ui/src/frame/Shell.tsx`'s `Shell` |
 | `ui/src/parts/` (20 files) | A piece a screen is built from that no route mounts: a form, a table, a panel | `ui/src/parts/PageShell.tsx`'s `PageShell` |
 | `ui/src/components/` (three levels, 5, 3 and 3 files) | The design system's pieces: `atoms/`, `molecules/`, `organisms/`, each with a gallery entry | `ui/src/components/atoms/StatusBadge.tsx`'s `StatusBadge` |
-| `ui/src/design-system/` (7 files) | The app's theme, its palettes and the tokens, and the gallery page that shows the parts, served at `/48b74d079/gallery` | `ui/src/design-system/Gallery.tsx`'s `Gallery` |
+| `ui/src/design-system/` (8 files) | The app's theme, its palettes and the tokens, and the gallery page that shows the parts, served at `/48b74d079/gallery` | `ui/src/design-system/Gallery.tsx`'s `Gallery` |
 | `ui/src/i18n/` (3 files) | The words, English first and Vietnamese after | `ui/src/i18n/en.ts`'s `en` |
 | `ui/src/mock/` (6 files) | The standalone harness that draws one screen on fake data | `ui/src/mock/MockPage.tsx`'s `MockPage` |
-| `ui/src/` top level (26 files) | The entries and the route tables, the API client, the fake, and modules with no screen in them: a filter, a sheet, a device store | `ui/src/api.ts`'s `createApi` |
+| `ui/src/` top level (27 files) | The entries and the route tables, the API client, the fake, and modules with no screen in them: a filter, a sheet, a device store | `ui/src/api.ts`'s `createApi` |
 | `ui/tests/` | Helpers the tests share: one that opens the whole app on a signed-in person, one that draws it | `ui/tests/open.tsx`'s `openApp` |
 
 A test sits beside what it tests, so `ui/src/pages/client/` holds 14 test files beside its 21, and the top level holds the tests of the app, the API client and the modules. The file counts leave tests, styles and snapshots out. [The package's own page](../../ui/CLAUDE.md) holds the rule for a directory of one's own making: there is none.

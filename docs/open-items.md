@@ -653,7 +653,7 @@ The staff-cards full run (rerun, 2026-11-04, 16m00s) shows it again: lane 3 ende
 
 For six palettes the legacy's own shades 8 and 9 are lighter than mixed ones, so the menu's white text on its 9-to-8 gradient reads below 4.5:1 at shade 8: autumn 3.65, coin 3.78, terracotta 4.02. The legacy's own, as decided.
 
-`[DEFERRED]` 2026-11-20, piece 203 step 1b: autumn, coin and terracotta left the stock palettes (the human's pick of six, `docs/decisions.md`), and the six that remain white-text-safe at shade 8 by the memo's measure (4.90 at the least), so this item no longer names a palette that can be picked; a typed colour is served by `onBrand`'s span, which step 3 of `docs/plans/2026-11-20-design-fixes.md` closes it on.
+`[DEFERRED]` 2026-11-20, piece 203 step 1b: autumn, coin and terracotta left the stock palettes (the human's pick of six, `docs/decisions.md`), and the six that remain white-text-safe at shade 8 by the memo's measure (7.68 at the least, emerald's; steel 8.52, brick 9.62, bronze 9.24, plum 9.59, indigo 9.45, white's contrast against shade 8 by `onBrand.ts`'s own formula, read from `palettes.ts` on 2026-11-20), so this item no longer names a palette that can be picked; a typed colour is served by `onBrand`'s span, which step 3 of `docs/plans/2026-11-20-design-fixes.md` closes it on.
 
 ## 84. The demo company can wear steel — the machine; `[DEFERRED]` (palettes, plan step 4, review, Opus, 2026-11-04, Info)
 
@@ -2120,14 +2120,6 @@ The day's decision was a page listing that day's failures, then a read of it by 
 
 `ui/src/design-system/Gallery.tsx#L88` and `#L98` set `aria-label="All states side by side"` and `"One state at a time"` over the visible "Side by side" and "One at a time"; `Gallery.test.tsx` presses both by the hidden name, so the visible words can change and stay green, which kept the products card's step 3 stale unseen, and a screen reader's user hears other words than a sighted one reads. Fix: drop the labels and press by the visible words, or put the visible words back to the labels. *Trigger:* the next change to the Show switch's words, or the next read of the gallery's tests.
 
-## 630. The gallery's products row has its new state in the wrong column and ends with a phone look the layout no longer has — the machine; `[OPEN]` (the gallery review before main, 2026-11-19, Low)
-
-`docs/products.md`'s row "The design system's gallery" ends its State column with the 2026-11-17 look "on a computer and a phone, yes", over a layout the desktop-only change of 2026-11-19 removed, and the newest state ("for a computer only ... in `main` once landed") sits in the What column. *Fix:* move the sentence to the State column, ending with the computer look, and say in What only what the page is. *Trigger:* the next change to the row; it changes with the next landing that touches the gallery (the colours' part of piece 203 does), so file the move with it.
-
-## 631. The code memo's file counts for two directories are stale — the machine; `[OPEN]` (the gallery review before main, 2026-11-19, Low)
-
-`docs/memo/ui-code.md`'s table counts 26 files at the top of `ui/src/` (27 now, tests, styles and snapshots left out, as the memo's note says) and 7 in `ui/src/design-system/` (6 then by the same count; 8 once piece 203's step 1 added `onBrand.ts` and `OnTheBrand.tsx`). *Fix:* recount both by the memo's own rule and state the day. *Trigger:* the next change that adds or removes a file in either directory.
-
 ## 632. The partner pages still send a reader off the site, and the map leaves one question and one name open — the machine; `[OPEN]` (the docs map's review before main, 2026-11-20, Low)
 
 Four follow-ups of the docs map's review. (1) Three partner-page links now open GitHub, not the site: "the project's front page" (`docs/partners/README.md#L6`) and "The order to read them" (`docs/partners/developer.md#L8`, `docs/partners/tester.md#L3-L4`), the plan's `docs/plans/2026-11-20-docs-map.md#L97`. (2) A tester is given two reading orders that disagree: the map's branch top to bottom (`docs/partners/map.md#L38-L40`) and the tester page's own order (`docs/partners/tester.md#L3-L4`). (3) "ask the human" is not explained on the map (`docs/partners/map.md#L10`). (4) One reader has two names: the branch "The QA engineer" (`docs/partners/map.md#L37`) over "For a tester" (`#L38`). Fix: rewrite the partner pages in plain words, one reading order each, the three links pointing at pages on the map, "ask the human" given the page where a question goes, and one name for the tester. *Trigger:* the partner pages' rewrite in plain words.
@@ -2161,3 +2153,7 @@ Contrast is symmetric, so what fails with white on a client's colour fails with 
 ## 638. Four new palette names in Vietnamese are the machine's own, read by no Vietnamese reader — the machine; `[CLOSED BY DECISION, NOT FIXED]` (the human read the four names in the gallery and answered yes, 2026-11-20; piece 203 step 1b, Low)
 
 `ui/src/i18n/vi.ts`'s `settings.palettes` gained `brick: 'Đỏ gạch'`, `bronze: 'Đồng thanh'`, `plum: 'Tím mận'` and `indigo: 'Chàm'`; nothing in the repository gives a Vietnamese word for them, and it holds no mark for an unchecked word, so this item is the mark. `Đồng thanh` is the alloy's name, and the old `coin` entry's `Đồng kim loại` it replaces was the human's. *Fix:* the human or a partner reads the four and corrects any in `vi.ts` alone. *Trigger:* the first Vietnamese-speaking tester of Settings. *Closed 2026-11-20:* the human read the four names in the gallery's colour picker and answered yes to "read right"; `vi.ts` stays as it is, and a partner's later correction is a new item.
+
+## 641. The node release has three homes, and the walks' two pin one the repository no longer uses — the machine; `[DEFERRED]` (the review before main of the design fixes and the site gate, 2026-11-20, Low)
+
+`walk/run.sh#L75` and `ops/full-run.sh#L52` pin `v26.12.1` (the walks refuse any other release), while `.node-version` has said 26.13.1 since 2026-11-14. The walks' pictures come from the Chromium pinned the same way in both, so their verdict stands. *Fix:* the two runners read `.node-version`, beside item 424. *Trigger:* the next change to the walk machinery, or a Node bump.

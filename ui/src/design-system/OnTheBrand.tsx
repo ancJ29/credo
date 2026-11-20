@@ -1,5 +1,4 @@
 import { IconCheck } from '@tabler/icons-react';
-import { DEMO_CONFIG } from '@credo/shared/demo';
 import { shadesOf } from './appTheme';
 import { onBrand, todayOf, type Pick, type Surface } from './onBrand';
 import { PALETTES } from './palettes';
@@ -58,10 +57,10 @@ const ROWS = [
     label: `${name[0].toUpperCase()}${name.slice(1)}`,
     shades,
   })),
-  // The walks' company: no stock shade 6 reads under either ink, so its buttons move a shade under white.
+  // The walks' company's colour, typed here (the data set stays out of the app's bundle): no stock shade 6 reads under either ink, so its buttons move a shade under white.
   {
-    label: `Typed ${DEMO_CONFIG.colour}`,
-    shades: shadesOf(DEMO_CONFIG.colour) as readonly string[],
+    label: 'Typed #2f7d6d',
+    shades: shadesOf('#2f7d6d') as readonly string[],
   },
   // A light colour of the kind the stock six no longer hold: it gets dark text.
   { label: 'Typed #d97757', shades: shadesOf('#d97757') as readonly string[] },
