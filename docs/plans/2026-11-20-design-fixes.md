@@ -255,12 +255,23 @@ system's own earlier row of the same shape.
       look-1 text promised; amber `#ffbf00` is a typed colour whose menu takes dark text over 8 to 7. `docs/memo/ui.md` and `ui/CLAUDE.md` grew; item 638
       closed by the human's yes. Step 3's picture run: the walks' company's buttons, checks and chips
       move to shade 7 (hover 8); credo's own steel and brick draw as today.
-- [ ] **3. Landing A.** `pre-merge` taken in first (done, a merge in this branch); then your run of all twelve walks in this worktree with
+- [x] **3. Landing A.** `pre-merge` taken in first (done, a merge in this branch); then your run of all twelve walks in this worktree with
       `--moved all --write` (its counts show credo's own screens at 0), then one with no flags; the
       bases committed alone; only then the orchestrator lands the branch whole, bases with it, on
       `pre-merge`, which stays free for piece 206 meanwhile.
       _Done when:_ your second run reads `== verdict: green` with every count 0. **7 min** (piece 126's
       12-takein and 12-bases), **and your runs, about 16.**
+      _Evidence:_ `pre-merge` taken in by the merge `40f28f3f` (parents `e245d499` and `e32759f0`). The
+      human's write run, `20261120-1603-walk-piece-1-piece-2-admin-lists-office-orders-driver-deliveries-office-reconcile-operator-passkeys-services-root-password-team-delete-client.log`,
+      ends `== verdict: green: 35 comparisons, every raw count as asked` and `== done at 16:23:17`;
+      its "full-1 to the bases" lines: six walks moved (piece-1 42, piece-2 188, admin-lists 120,
+      office-orders 36, driver-deliveries 18, office-reconcile 6 pictures), the six operator walks
+      (operator, passkeys, services, root-password, team, delete-client) 0, none new, none without a
+      counterpart, none unreadable. The bases committed alone in `58710f78`, 410 pictures. The human's
+      check run, `20261120-1626-walk-piece-1-piece-2-admin-lists-office-orders-driver-deliveries-office-reconcile-operator-passkeys-services-root-password-team-delete-client.log`,
+      ends `== verdict: green: 35 comparisons, every raw count as asked` and `== done at 16:45:34`,
+      every "full-1 to the bases" line at 0 moved, 0 new, 0 without a counterpart, 0 unreadable. The
+      bases and the plan land on `pre-merge` with the branch, the orchestrator's next act.
 
 **Landing B: colours named by role** (after step 3's landing, its base).
 
