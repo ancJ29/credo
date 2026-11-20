@@ -1823,10 +1823,6 @@ The dialog's entry (`Modal.extend`) in `ui/src/design-system/appTheme.ts` carrie
 
 `compareCompany` (`bff/src/records/company-copy.ts`) walks the whole company on both boxes in one press, inside the function's 10 seconds (`bff/src/records/company-move.ts`'s `pressMove`). No copy rate was measured, so the size at which a compare passes the limit is unknown; past it every press ends in a failure after its copy is done and the move can only be stopped. Fix: a compare in presses, kept from a key on the line as the copy's is. *Trigger:* a move press near 10 seconds in the ridge sitting, or a company whose records pass the figure that sitting reads.
 
-## 513. The label atom's test asserts the weight alone, so its letter spacing can drift green (the reread of the skeleton's fix pass, 2026-11-16, Low) — the machine; `[DEFERRED]`
-
-`ui/src/components/atoms/FieldLabel.test.tsx#L17` checks that the style holds `600` and nothing on the spacing; with the spacing in `ui/src/design-system/tokens.ts#L15` put back at 0.5 the test stays green. Add the spacing's assertion with the next change to the atom.
-
 ## 514. The detail field's empty value follows the memo, not the legacy's own field (the same reread, Low) — the machine; `[DEFERRED]`
 
 `ui/src/components/molecules/DetailField.tsx#L9` draws an em dash for a missing value, as the legacy's design memo says; the legacy's own `DetailField` draws a hyphen, and the memo's empty value is dimmed and italic, which the sample is not. Settle the dash and the dimming with the first screen that shows an empty value.
@@ -2006,7 +2002,7 @@ Words found by hand on the branch after the fix pass: `ui/src/listSheet.test.ts#
 
 ## 595. Case 13 pins two of its five values, and its feature came after its test (design system landing 3's review, 2026-11-17, Low) — the machine; `[DEFERRED]`
 
-`ui/src/frame/Shell.test.tsx#L81-L82` pins the menu's 14 px and 600, but `#L102-L103` only checks that the bar's line, the bar's shadow and the header's shadow each have some value, so a shadow cast downward or ten times darker passes, and the snapshots show only the variable names; the two negatives at `#L100` and `#L101` pass with the feature or without it. The test was committed two hours before its feature (873e4165 and c3f1acbe, then ffb02689), which `docs/conventions/qa.md#L222` does not ask. Fix: assert the three values as `FRAME_VALUES` in `ui/src/design-system/tokens.ts` writes them. *Trigger:* the next change to the frame's values.
+`ui/src/frame/Shell.test.tsx#L176-L177` pins the menu's 14 px and 600, but `#L197-L198` only checks that the bar's line, the bar's shadow and the header's shadow each have some value, so a shadow cast downward or ten times darker passes, and the snapshots show only the variable names; the two negatives at `#L195` and `#L196` pass with the feature or without it. The test was committed two hours before its feature (873e4165 and c3f1acbe, then ffb02689), which `docs/conventions/qa.md#L222` does not ask. Fix: assert the three values as `FRAME_VALUES` in `ui/src/design-system/tokens.ts` writes them. *Trigger:* the next change to the frame's values.
 
 ## 603. The BFF's two largest closures still share inner values, and its routes read path parameters two ways — the machine; `[DEFERRED]` (the BFF made clearer, 2026-11-18, Low)
 
