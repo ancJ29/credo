@@ -1,30 +1,16 @@
 # Code
 
-> **Decided** 2026-11-09, from the whole-code-base structure review of 2026-11-08. **This is the
-> machine's own house style, and it needs no approval from the human:** how the code here is written
-> is the machine's decision, and this file binds every session that adds or changes code. It names
-> the one way only where the repo already holds two ways of doing one job, and the file to copy where
-> it already holds the shape. It also says, for a reader who has to find something fast, **where
-> each kind of file already lives and which one file decides each part's behaviour**
-> ([where a new thing goes](#where-a-new-thing-goes)).
->
-> **This file answers "where does this code live, and what do I open or copy".**
-> [`architecture.md`](../architecture.md) **answers "how is this system put together"** — the
-> request path, the data, how it reaches a machine, how it is checked — **and is not restated
-> here.** The decisions
-> that are the human's — what the system should be, rather than how it is written — are in
-> [a client's own difference, a screen's behaviour, and server
-> data](../memo/divergence-and-caching.md). This file holds the rules as they stand; their history is
-> in `git log`.
-> **Last amended** 2026-11-09, from the directory structure the human approved: the claim
-> that every TypeScript package is one undivided directory of files retired, and C17 minted for how a
-> package decides its own directories.
+This page is for a new developer, and for every session that adds or changes code here. After it you know where a new file goes and which file decides how each part behaves. You also know the one way to write each job the code already does in two ways.
+
+**These rules bind every session that adds or changes code.** How the code here is written is the machine's own decision, so the project's owner does not approve it. Where these rules say "the human", they mean that owner, whom the partner pages call "us". The page names one way only where the code holds two ways of doing one job. It names the file to copy where the code already holds the shape.
+
+The page answers "where does this code live, and what do I open or copy". [How credo is built](../architecture.md) answers how the system is put together, and is not repeated here. Two decisions are the owner's and not the machine's: where a client's own difference lands, and no cache for server data. [That memo](../memo/divergence-and-caching.md) holds them, with what a yes commits to. This page holds the rules as they stand. Its dated history is at the end.
 
 ## At a glance
 
-**A decision has one home, and the rule is held by the code that does the work, not by whoever
-reads the diff.** The review's cost sat in one habit: a decision written out by hand in several
-places, nothing failing when a copy is missed.
+**A decision has one home.** The rule is held by the code that does the work, not by whoever
+reads the diff. The review's cost sat in one habit: a decision written out by hand in several
+places, with nothing failing when a copy is missed.
 
 | The next change | The one way | Copy | [Marks](#how-to-read-a-rule) |
 | --- | --- | --- | --- |
@@ -58,28 +44,36 @@ places, nothing failing when a copy is missed.
 
 Seventeen rules stand in the sections below, and the glance table above is a view of them, marked the
 same way. **Each carries an id, `C1` to `C17`, in the order the sections hold them, minted once and
-never renumbered or reused**, the discipline [`open-items.md`](../open-items.md) keeps for its items:
-a table that reports on the rules is read against the ids, and a rule that is retired leaves its id
-unused. **How much of the code follows C1, C4, C5, C6 and C7 is read by running `pnpm counts`, never
-typed into this file:** it prints each count with its blind spot beside it, never reds, and ends with
-the table of the living documents' citations. **Two of the seventeen carry the mark `check`, and one mechanism holds them**: the registration function that appends a
+never renumbered or reused**, the discipline [`open-items.md`](../open-items.md) keeps for its items.
+A table that reports on the rules is read against the ids, and a rule that is retired leaves its id
+unused.
+
+**How much of the code follows C1, C4, C5, C6 and C7 is read by running `pnpm counts`, never
+typed into this file.** It prints each count with its blind spot beside it, never reds, and ends with
+the table of the living documents' citations.
+
+**Two of the seventeen carry the mark `check`, and one mechanism holds them**: the registration function that appends a
 route's pattern to the list a test reads (`Server.handle` in `services/c-storage/internal/server/server.go`, held by
-`TestEveryRegisteredRouteIsListed`), written before the review. C15 names it as a shape to copy and C2
-makes it a rule, `next copy`, so nothing fails anywhere but that one place. **The other fifteen carry the
+`TestEveryRegisteredRouteIsListed`), written before the review. C15 names it as a shape to copy. C2
+makes it a rule, `next copy`, so nothing fails anywhere but that one place.
+
+**The other fifteen carry the
 mark `reader`; five of them are also counted**. Making them checks is what the structure review's own open item exists to do, one check at a time
 ([open item 160](../open-items.md)).
 
 ## Where a new thing goes
 
 **Nothing in this section is a new rule.** It states where the code already puts each kind of file
-and which file decides each part, and every row links the rule that binds it. For how the system is
+and which file decides each part. Every row links the rule that binds it. For how the system is
 put together, read [`architecture.md`](../architecture.md); this section answers only where the
 code lives.
 
 **The shape of a package:** which directories a package has is that package's own decision, made by
-[the shape of a package](#the-shape-of-a-package) and written in that package's own `CLAUDE.md`, so a
-reader asking where a file goes opens the guideline of the package it goes in — this section does not
-hold a layout for all of them. Go is divided by internal package instead (`services/c-storage/internal`), one
+[the shape of a package](#the-shape-of-a-package) and written in that package's own `CLAUDE.md`. A
+reader asking where a file goes opens the guideline of the package it goes in. This section does not
+hold a layout for all of them.
+
+Go is divided by internal package instead (`services/c-storage/internal`), one
 package to a thing in the running system. A file is named for the thing it serves, never for its
 layer, and a screen's test sits beside it as `<Name>Page.test.tsx`.
 
@@ -99,10 +93,10 @@ layer, and a screen's test sits beside it as `<Name>Page.test.tsx`.
 | a person's sign-in | `bff/src/app.ts#L251` | the refusal and why it names nothing, `#L261-L264` |
 | which records exist, and under which key | `shared/src/records.ts#L7` (`recordKeys`), the layout's one home | — |
 | how the back end reaches storage, and how long it waits | `shared/src/c-storage.ts#L24` (5 s), the signal, `AbortSignal.timeout(timeoutMs)` | `bff/src/server.ts`'s `buildBff` builds the one client |
-| what c-storage will answer | `Server.handle` in `services/c-storage/internal/server/server.go`, which registers a route and appends its pattern to the list a test reads | `services/c-storage/internal/` by package |
+| what [c-storage](../partners/words.md#c-storage) will answer | `Server.handle` in `services/c-storage/internal/server/server.go`, which registers a route and appends its pattern to the list a test reads | `services/c-storage/internal/` by package |
 | what `pnpm stack`, `pnpm fake` and `pnpm demo` do | `scripts/src/cli.ts`, which drives `withStack`, `withFake` and `startDemo` (imported from `./fake`, `./demo/apply` and `./stack`) | `scripts/src/stack.ts`, `fake.ts` |
 | which commands must be green | [the gate](../../CLAUDE.md#the-gate) | [QA](qa.md)'s rule 6 for which of them a step runs |
-| what the human runs against ridge | [`ops/README.md`](../../ops/README.md) | each script's log in `logs/` in the credo root |
+| what the human runs against [ridge](../partners/words.md#ridge) | [`ops/README.md`](../../ops/README.md) | each script's log in `logs/` in the credo root |
 
 ### Where a new file goes
 
@@ -110,12 +104,12 @@ layer, and a screen's test sits beside it as `<Name>Page.test.tsx`.
 | --- | --- | --- | --- |
 | screen | `ui/src/pages/client/<Name>Page.tsx`, or `pages/operator/` for the operator's console, or `pages/` itself for one both apps mount, with `<Name>Page.test.tsx` beside it | `ui/src/pages/client/ListPage.tsx`'s `ListPage` for a list of a second kind | the seven places it touches, [before a new screen](#before-a-new-screen) |
 | word a screen shows | both dictionaries, `ui/src/i18n/en.ts` and `vi.ts` | — | [before a new screen](#before-a-new-screen) |
-| BFF route | its own module, `bff/src/routes/<area>.ts`, with `bff/src/routes/<area>.route.test.ts` beside it — 15 such test files stand there, and 6 more at the top, beside the `bff/src/app.ts` that declares their routes inline | `bff/src/routes/staff.ts`'s `parse(saveEmployeeRequestSchema, request.body)` for the order: resolve, authorise, parse, then storage | [the winner](#the-winner-named), and its rule for `staff.ts` and `orders.ts` |
+| [BFF](../partners/words.md#bff) route | its own module, `bff/src/routes/<area>.ts`, with `bff/src/routes/<area>.route.test.ts` beside it — 15 such test files stand there, and 6 more at the top, beside the `bff/src/app.ts` that declares their routes inline | `bff/src/routes/staff.ts`'s `parse(saveEmployeeRequestSchema, request.body)` for the order: resolve, authorise, parse, then storage | [the winner](#the-winner-named), and its rule for `staff.ts` and `orders.ts` |
 | read or write of a record kind | a module of its own, never the route closure | `bff/src/records/staff-records.ts`'s `readEmployee` | [the winner](#the-winner-named)'s second row |
 | name, bound, status meaning or wire shape | `shared/src/<area>.ts`, re-exported from `shared/src/index.ts` — 17 lines, one an area, and `demo` deliberately absent from it | `shared/src/records.ts`, `shared/src/permissions.ts` | [one home](#one-home-for-one-decision) |
 | c-storage route | `services/c-storage/internal/server/`, registered through the function that appends its pattern | `Server.handle` in `services/c-storage/internal/server/server.go` | [the patterns to copy](#the-patterns-to-copy) |
 | local command | `scripts/src/<name>.ts` holding the work, with a `<name>-main.ts` of wiring only — `fake-main.ts` is four lines | `scripts/src/fake-main.ts` with `fake.ts` | [the patterns to copy](#the-patterns-to-copy), entry points hold no logic |
-| walk | `walk/specs/<name>.spec.ts`, its name in the walk table at `walk/run.sh`'s `WALKS`, its base images in `<name>.spec.ts-snapshots/` beside it | an existing spec | [before a new screen](#before-a-new-screen) |
+| [walk](../partners/words.md#walk) | `walk/specs/<name>.spec.ts`, its name in the walk table at `walk/run.sh`'s `WALKS`, its base images in `<name>.spec.ts-snapshots/` beside it | an existing spec | [before a new screen](#before-a-new-screen) |
 | screen on the walks page | `visual/src/` | `visual/src/walks.ts` | [before a new screen](#before-a-new-screen) |
 | ops script or template | `ops/`, its steps added to the runbook in `ops/README.md` | its siblings in `ops/` | [the gate](../../CLAUDE.md#the-gate)'s rows 3 to 5 are what an `ops/` change needs |
 
@@ -128,7 +122,7 @@ asks for a fix.
 - **A 403 takes four hops to explain.** `bff/src/app.ts#L188-L192` asks one boolean; the caller is
   built by `signedIn` at `#L157`, whose view comes from `viewOf` at `#L121`, which resolves the
   booleans through `shared/src/permissions.ts#L48` over the layers `#L36` returns. And the data
-  that decided it — the tenant's setup and the person's own layer — is in two records, not in any
+  that decided it — the [tenant](../partners/words.md#tenant)'s setup and the person's own layer — is in two records, not in any
   file a reader can open.
 - **How a screen gets its data cannot be read off the screen.** The one way is handed down in
   `PageProps` (`ui/src/page.ts#L6`), and [the winner](#the-winner-named)'s third row records how
@@ -146,23 +140,14 @@ missed copy fails nothing — `walk/run.sh#L296` still hands out `CREDO_OPERATOR
 dropped when the operator console replaced it with `CREDO_OPERATOR_LINK`, and a wrong name reads as
 `undefined` and fails at some later assertion in another file.
 
-The review's worst instances, as the shape to recognise, each since given the one home named at the
-end of its clause: eleven environment names minted in `scripts/src/cli.ts` (ten of them in one block,
-`CREDO_COPIES` apart) and read as string literals in twelve `walk/specs/*.spec.ts` (now `STACK_ENV` in
-`shared/src/env.ts`); the retry bound as four constants all `3` (in `bff/src/records/staff-records.ts`,
-`bff/src/records/operators.ts`, `bff/src/routes/orders.ts` and `bff/src/calling/sessions.ts`), so whoever found one believed
-they had found the bound (now `ATTEMPTS` in `shared/src/c-storage.ts`); what a 403 means re-decided in
-five screens (the customer's add page, the customer's page, the product's page, `ui/src/pages/client/PersonPage.tsx`'s `PersonPage`, and
-`ui/src/pages/client/SettingsPage.tsx`'s `SettingsPage`, which re-implemented the helper rather than calling it; the first three are
-now `ui/src/pages/client/AddRecordPage.tsx`'s `AddRecordPage` and `ui/src/pages/client/RecordPage.tsx`'s `RecordPage`)
-(now `refusal` in `ui/src/page.ts`, which returns the kind of refusal); "list under a prefix, refuse a truncated answer, parse each
-one" written four times (in `bff/src/records/clients.ts`, `bff/src/routes/lists.ts`, `bff/src/routes/orders.ts` and
-`bff/src/routes/staff.ts`, the last three as a local function each) while `bff/src/routes/orders.ts` already held the
-general version (now `every` in `bff/src/records/records.ts`'s `recordTools`); and the three screen widths
-declared four times (in `visual/src/walks.ts`, `walk/support.ts`, `ui/src/mock/MockPage.tsx` and
-`ui/src/mock/Frame.tsx`), held level only by a regex in `visual/src/walks.test.ts` that read one of
-them as source text, so a reformat broke the check and a fifth copy would not have tripped it (now
-`WIDTHS` in `shared/src/widths.ts`).
+The review's worst instances are the shape to recognise. Each has since been given the one home named at the
+end of its line:
+
+- Eleven environment names were minted in `scripts/src/cli.ts`, ten of them in one block, `CREDO_COPIES` apart. Twelve `walk/specs/*.spec.ts` read them as string literals. They now come from `STACK_ENV` in `shared/src/env.ts`.
+- The retry bound was four constants all `3`, in `bff/src/records/staff-records.ts`, `bff/src/records/operators.ts`, `bff/src/routes/orders.ts` and `bff/src/calling/sessions.ts`, so whoever found one believed they had found the bound. It is now `ATTEMPTS` in `shared/src/c-storage.ts`.
+- What a 403 means was re-decided in five screens: the customer's add page, the customer's page, the product's page, `ui/src/pages/client/PersonPage.tsx`'s `PersonPage`, and `ui/src/pages/client/SettingsPage.tsx`'s `SettingsPage`, which re-implemented the helper rather than calling it. The first three are now `ui/src/pages/client/AddRecordPage.tsx`'s `AddRecordPage` and `ui/src/pages/client/RecordPage.tsx`'s `RecordPage`. The meaning is now `refusal` in `ui/src/page.ts`, which returns the kind of refusal.
+- "List under a prefix, refuse a truncated answer, parse each one" was written four times, in `bff/src/records/clients.ts`, `bff/src/routes/lists.ts`, `bff/src/routes/orders.ts` and `bff/src/routes/staff.ts`, the last three as a local function each, while `bff/src/routes/orders.ts` already held the general version. It is now `every` in `bff/src/records/records.ts`'s `recordTools`.
+- The three screen widths were declared four times, in `visual/src/walks.ts`, `walk/support.ts`, `ui/src/mock/MockPage.tsx` and `ui/src/mock/Frame.tsx`. They were held level only by a regex in `visual/src/walks.test.ts` that read one of them as source text, so a reformat broke the check and a fifth copy would not have tripped it. They are now `WIDTHS` in `shared/src/widths.ts`.
 
 **C2 · Where the one home can be a list the working code appends to, make it one**, so a missed edit is
 a red and not a green — the model is the registration in [the patterns to
@@ -193,9 +178,10 @@ body registered twice (`bff/src/routes/lists.ts`'s `registerListRoutes`) and
 
 **Where two patterns do one job, the one below is the one to write; the other is not copied
 again.** *Why:* the next piece copies whichever it meets first, so import order is currently making
-design decisions — and for the first row the human's principle decides it outright: "don't make
-user surprise or confuse", and two behaviours in one app is itself the surprise. Every row is
-`[next copy · reader]`: each is the minority shape today, and nothing goes red when the other is
+design decisions. For the first row the human's principle decides it outright: "don't make
+user surprise or confuse", and two behaviours in one app is itself the surprise.
+
+Every row is `[next copy · reader]`. Each is the minority shape today, and nothing goes red when the other is
 written again.
 
 | The job | The one way | Copy | How much of the code follows it, and what the 2026-11-08 review found |
@@ -207,15 +193,15 @@ written again.
 | C8 · a command dispatches and fails | one dispatch with one catch, the exit codes stated once | — | `scripts/src/ridge.ts`'s `runRidge` is a seven-arm chain under one catch that turns a new failure into exit 1; `scripts/src/walks.ts`'s `walksCommand` is three arms each with its own catch and prefix. `scripts/src/cli.ts` is outside this rule: its three commands are a lifecycle, not a verb table |
 
 **C9 · A handler's steps run in this order — resolve the caller, authorise, parse the body, then touch
-storage** (`bff/src/routes/staff.ts`'s `parse(saveEmployeeRequestSchema, request.body)`). `[holds · reader]` *Why:* every route registration keeps it
-(`pnpm counts` counts them under C7) and nothing holds them to it, so a route that parses before it authorises passes every check in the
+storage** (`bff/src/routes/staff.ts`'s `parse(saveEmployeeRequestSchema, request.body)`). `[holds · reader]` *Why:* every route registration keeps it (`pnpm counts` counts them under C7).
+Nothing holds them to it, so a route that parses before it authorises passes every check in the
 repo.
 
 **C10 · The next route added to `bff/src/routes/staff.ts` or `bff/src/routes/orders.ts` goes in its own module**, as the
 five smaller modules already do. `[next copy · reader]` *Why:* `bff/src/routes/staff.ts`'s
 `registerStaffRoutes` calls six named groups (the largest, `registerStaffChanges`, is 242 lines) and
 `bff/src/routes/orders.ts`'s `registerOrderRoutes` calls three (the largest, `registerOrderBook`, is
-221), split 2026-11-18; each file is still the length of one read or more, so a new kind of record
+221), split 2026-11-18. Each file is still the length of one read or more, so a new kind of record
 still gets its own module.
 
 ## The patterns to copy
@@ -252,8 +238,9 @@ writing code is the glance table's row: `useLoad` and `<Loaded>`, no cache and n
 **C16 · Work the list of places one screen touches, because at least seven exist and nothing lists
 them:** the page, the fake (`ui/src/fake.ts`), its route in the app shell, both dictionaries, its
 test, a walk scene and a base image before the visual report can show it. `[next copy · reader]`
+
 *Why:* a screen that reaches the walks page without its scene and base is a screen the human cannot
-judge, and the project is about to add screens faster than it has.
+judge. The project is about to add screens faster than it has.
 
 ## The shape of a package
 
@@ -271,20 +258,30 @@ finishes, the package stays flat, and flat is the answer rather than the absence
 serves. **A test sits beside its subject, and beside the app where the subject is the app.**
 
 **A further level inside a directory is added on a count of this code base, never by imitation of
-another layout.** A folder per feature or module under the screens was measured and refused: the
-modules it would need cannot be built, because one list screen and one import screen each serve both
-kinds of record (`ui/src/pages/client/ListPage.tsx`'s `ListPage` and `ui/src/pages/client/ListImportPage.tsx`'s
-`ListImportPage`, both taking `kind`), and some of the UI's test files have no same-named source
-at all, covering a flow or a whole app rather than one screen, so several would have no module
-to sit in. So meeting that shape in another repository is not a precedent here.
+another layout.** A folder per feature or module under the screens was measured and refused. The
+modules it would need cannot be built, for two reasons:
+
+- One list screen and one import screen each serve both kinds of record (`ui/src/pages/client/ListPage.tsx`'s `ListPage` and `ui/src/pages/client/ListImportPage.tsx`'s `ListImportPage`, both taking `kind`).
+- Some of the UI's test files have no same-named source at all, covering a flow or a whole app rather than one screen, so several would have no module to sit in.
+
+So meeting that shape in another repository is not a precedent here.
+
 **A package being reorganised writes its directory set into its own `CLAUDE.md` in the same change as
-the move, never before** — a guideline naming a folder that does not exist yet is wrong for as long
-as the move takes — as `ui/CLAUDE.md` and `bff/CLAUDE.md` do, each written in the change that moved its package.
+the move, never before.** A guideline naming a folder that does not exist yet is wrong for as long
+as the move takes. `ui/CLAUDE.md` and `bff/CLAUDE.md` do this, each written in the change that moved its package.
 
 *Why:* nothing in the gate reads a directory, so a layer folder, a copied folder set and a package
-whose `CLAUDE.md` names none of its folders all pass green; the mark is `reader` because the reader
+whose `CLAUDE.md` names none of its folders all pass green. The mark is `reader` because the reader
 of the diff is the only guard there is. **What would make it a `check` is a per-package tree
 generated beside `pnpm counts`** — one line a directory, the package's own sentence for it written by
 hand and its file and line counts generated, with the gate regenerating the tree and diffing it so a
 stale one goes red. **That is not built**, and until it is a generated tree is the worse answer: a
 reader trusts it and it lies with nothing red anywhere.
+
+## History of this file
+
+Decided 2026-11-09, from the whole-code-base structure review of 2026-11-08.
+
+Last amended 2026-11-09, from the directory structure the human approved: the claim
+that every TypeScript package is one undivided directory of files retired, and C17 minted for how a
+package decides its own directories.
