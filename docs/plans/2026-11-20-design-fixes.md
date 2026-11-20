@@ -190,7 +190,7 @@ system's own earlier row of the same shape.
 
 **Landing A: the text follows the colour.**
 
-- [ ] **1. The rule and the gallery, no screen changed.** `onBrand.ts`, cases 1 to 5 each red once
+- [x] **1. The rule and the gallery, no screen changed.** `onBrand.ts`, cases 1 to 5 each red once
       (case 4 by the rule mutated to always white); "On the brand" in the gallery's Foundations, case 9.
       The records: the `docs/decisions.md` row (the text follows the colour, the colour stays the
       client's; it beat white as the old app has it, item 94's yes of 2026-11-05; its home this plan's
@@ -200,6 +200,16 @@ system's own earlier row of the same shape.
       _Done when:_ the gates exit 0, and `git diff --name-only pre-merge...HEAD -- ui/src/frame
       ui/src/pages ui/src/parts ui/src/components` prints nothing. **12 min** (piece 147's step 4, 10;
       piece 126's step 3-rest, 2).
+      _Evidence:_ code `d9c81355`, records `d633ce7e`; `pnpm --filter @credo/ui check` (typecheck,
+      eslint, prettier, test at 100 %, knip) exit 0, the citations test exit 0, and the path diff
+      against `pre-merge` empty. Cases 1 to 5 each red once on a planted change (case 1 the ratio
+      floor at 3, case 2 the span's moves capped at one shade, case 3 white needing 7:1, case 4 the
+      rule always white, case 5 the ink `#000000`); case 3 was first tried with dark tried first,
+      which cannot bite (dark never passes where white does at the span's own shades) and was
+      replaced. Case 9 red once with "Today" drawn as the rule. The gallery's "On the brand" is
+      Foundations' second part, three states (Buttons, Header, Menu), nine rows each. `NEUTRAL`
+      moved from `appTheme.ts` to `palettes.ts` so the rule and the theme share it without a cycle
+      at step 2. Items 630, 631 and 636 filed; item 94 updated. Look 1 is the human's.
 - [ ] **2. The screens take it** (after your yes at point 1). The theme's resolver and the checks'
       `iconColor`; `credoVariables` writes A's variables; the shell, the sign-in, join and operator
       pages and `frame.module.css` read them; `docs/memo/ui.md` and `ui/CLAUDE.md`'s design-system line
