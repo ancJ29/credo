@@ -14,7 +14,7 @@ const ratiosOf = (colour: string, shades: readonly string[], span: readonly numb
 
 describe('onBrand', () => {
   it('1: gives every surface of every stock colour a text at 4.5:1 or more against every shade of its span', () => {
-    expect(stock).toHaveLength(9);
+    expect(stock).toHaveLength(6);
     for (const { name, shades } of stock) {
       for (const surface of SURFACES) {
         const pick = onBrand(shades, surface);
@@ -55,8 +55,8 @@ describe('onBrand', () => {
     expect(pick.span).toEqual([6, 7]);
   });
 
-  it('3: keeps white wherever it passes, so steel’s and forest’s spans are today’s', () => {
-    for (const name of ['steel', 'forest']) {
+  it('3: keeps white wherever it passes, so every stock colour but emerald’s buttons keeps today’s spans', () => {
+    for (const name of ['steel', 'brick', 'bronze', 'plum', 'indigo']) {
       const shades = stock.find((each) => each.name === name)!.shades;
       for (const surface of SURFACES) {
         const pick = onBrand(shades, surface);
@@ -71,19 +71,19 @@ describe('onBrand', () => {
     expect(onBrand(emerald, 'filled').ink).toBe('dark');
   });
 
-  it('4: refuses white on autumn’s shade 6, the planted failing pair', () => {
-    const autumn = stock.find((each) => each.name === 'autumn')!.shades;
-    expect(contrast(WHITE, autumn[6])).toBeLessThan(4.5);
-    const pick = onBrand(autumn, 'filled');
+  it('4: refuses white on a light typed colour’s shade 6, the planted failing pair', () => {
+    const light = shadesOf('#d97757');
+    expect(contrast(WHITE, light[6])).toBeLessThan(4.5);
+    const pick = onBrand(light, 'filled');
     expect(pick.ink).toBe('dark');
     expect(pick.span).toEqual([6, 5]);
-    expect(contrast(pick.colour, autumn[6])).toBeGreaterThanOrEqual(4.5);
+    expect(contrast(pick.colour, light[6])).toBeGreaterThanOrEqual(4.5);
   });
 
   it('5: draws dark as the theme’s darkest grey, read from the theme', () => {
     const neutral = themeOf('#d97757').colors!['neutral'];
-    const autumn = stock.find((each) => each.name === 'autumn')!.shades;
-    expect(onBrand(autumn, 'filled').colour).toBe(neutral![9]);
-    expect(onBrand(autumn, 'filled').colour).toBe('#111827');
+    const light = shadesOf('#d97757');
+    expect(onBrand(light, 'filled').colour).toBe(neutral![9]);
+    expect(onBrand(light, 'filled').colour).toBe('#111827');
   });
 });

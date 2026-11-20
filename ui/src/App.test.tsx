@@ -338,6 +338,23 @@ describe('the app', () => {
     expect(brandColour()).toBe('#b4532a');
   });
 
+  it('The walk’s settings step: the root picks the Brick palette by its name and the saved screens wear it', async () => {
+    const saved = { config: { ...config, colour: '#9e2d20' }, version: 'v2' };
+    const saveConfig = vi.fn<Api['saveConfig']>(() =>
+      Promise.resolve({ kind: 'saved', doc: saved }),
+    );
+    setup({ saveConfig }, { ...signedIn, 'credo.language': 'en' }, '/settings');
+
+    await userEvent.click(
+      await screen.findByRole('radio', { name: words.settings.palettes.brick }),
+    );
+    await userEvent.click(screen.getByRole('button', { name: words.settings.save }));
+
+    expect((await screen.findByRole('alert')).textContent).toBe(words.settings.saved);
+    expect(saveConfig).toHaveBeenCalledExactlyOnceWith({ ...config, colour: '#9e2d20' }, 'v1');
+    expect(brandColour()).toBe('#9e2d20');
+  });
+
   it('A failed save says so and keeps what was typed', async () => {
     const saveConfig = vi.fn<Api['saveConfig']>(() => Promise.reject(new ApiError(503)));
     setup({ saveConfig }, signedIn, '/settings');

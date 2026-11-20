@@ -50,7 +50,7 @@ function Sample({
 /** What the rule says of a pick, in words: the ink and the least ratio against the surface's shades. */
 const said = (pick: Pick) => `${pick.ink} ${pick.least.toFixed(2)}:1`;
 
-/** The nine stock colours on one surface, today's white beside the rule's pick, each with its least ratio. */
+/** The six stock colours on one surface, today's white beside the rule's pick, each with its least ratio. */
 export function OnTheBrand({ surface }: { surface: Surface }) {
   return (
     <table style={{ borderCollapse: 'collapse' }}>

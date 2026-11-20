@@ -203,7 +203,7 @@ describe('Gallery', () => {
     expect(part().getByText(/^Gaps: /)).toBeDefined();
   });
 
-  it('9: On the brand draws the nine colours’ header, buttons and menu, today’s and the rule’s, each with its ratio', () => {
+  it('9: On the brand draws the six colours’ header, buttons and menu, today’s and the rule’s, each with its ratio', () => {
     open(`${BASE}/foundations/on-the-brand`);
 
     expect(stateNames()).toEqual(['Buttons', 'Header', 'Menu']);
@@ -212,10 +212,10 @@ describe('Gallery', () => {
       ['Header', 'header'],
       ['Menu', 'menu'],
     ];
-    expect(PALETTES).toHaveLength(9);
+    expect(PALETTES).toHaveLength(6);
     for (const [state, surface] of surfaces) {
       const plate = within(part().getByRole('figure', { name: state }));
-      expect(plate.getAllByRole('row')).toHaveLength(10);
+      expect(plate.getAllByRole('row')).toHaveLength(7);
       for (const { name, shades } of PALETTES) {
         const row = within(
           plate
@@ -230,12 +230,12 @@ describe('Gallery', () => {
         ]);
       }
     }
-    // Autumn's buttons: white fails today at 2.84 or so, dark reads.
-    const autumn = within(part().getByRole('figure', { name: 'Buttons' }))
-      .getByRole('rowheader', { name: 'Autumn' })
+    // Emerald's buttons, the one stock change: white fails today at 3.77, dark reads at 4.71.
+    const emerald = within(part().getByRole('figure', { name: 'Buttons' }))
+      .getByRole('rowheader', { name: 'Emerald' })
       .closest('tr')!;
-    expect(within(autumn).getByText(/^white [0-3]\.\d\d:1$/)).toBeDefined();
-    expect(within(autumn).getByText(/^dark [4-9]\.\d\d:1$/)).toBeDefined();
+    expect(within(emerald).getByText(/^white [0-3]\.\d\d:1$/)).toBeDefined();
+    expect(within(emerald).getByText(/^dark [4-9]\.\d\d:1$/)).toBeDefined();
   });
 
   it('12: draws no picture of the old app beside any part', () => {
@@ -363,7 +363,7 @@ describe('Gallery', () => {
         .getAllByTitle(/^brand \d$/)
         .map((swatch) => swatch.getAttribute('style'));
 
-    it('the colour themes: the picker is Mantine’s own, labelled in sight, offers every stock palette by name, steel, emerald and terracotta among them, and opens on the app’s own', async () => {
+    it('the colour themes: the picker is Mantine’s own, labelled in sight, offers every stock palette by name, steel, emerald and brick among them, and opens on the app’s own', async () => {
       const user = userEvent.setup();
       open(BASE);
       expect(chooser().tagName).toBe('INPUT');
@@ -374,19 +374,16 @@ describe('Gallery', () => {
       await user.click(chooser());
       const options = within(await screen.findByRole('listbox')).getAllByRole('option');
       expect(options.map((option) => option.textContent)).toEqual([
-        'Terracotta',
-        'Sandstone',
-        'Forest',
-        'Autumn',
-        'Olive',
-        'Emerald',
         'Steel · the app’s',
-        'Ocean',
-        'Coin',
+        'Emerald',
+        'Brick',
+        'Bronze',
+        'Plum',
+        'Indigo',
       ]);
       expect(PALETTES.map(({ name }) => name)).toHaveLength(options.length);
       expect(options.filter((option) => option.getAttribute('aria-selected') === 'true')).toEqual([
-        options[6],
+        options[0],
       ]);
 
       // Picking the theme already chosen keeps it: the picker is never left empty.
@@ -423,7 +420,7 @@ describe('Gallery', () => {
 
     it('the colour themes: they are the gallery’s alone, the app outside it keeps its own colour, and with no browser storage the gallery still draws and switches', async () => {
       open(BASE);
-      await choose('Terracotta');
+      await choose('Brick');
       cleanup();
 
       // The app as `App.tsx` draws it, at the operator's door, which wears credo's own colour.

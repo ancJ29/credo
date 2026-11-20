@@ -17,14 +17,14 @@ describe('shadesOf', () => {
 });
 
 describe('the stock palettes', () => {
-  const [terracotta, steel] = [PALETTES[0], PALETTES[6]];
+  const [steel, brick] = [PALETTES[0], PALETTES[2]];
 
   it('draw their own ten shades for a colour that is their shade 7, in any case', () => {
     for (const palette of PALETTES) {
       expect(shadesOf(palette.shades[7])).toEqual(palette.shades);
       expect(shadesOf(palette.shades[7].toUpperCase())).toEqual(palette.shades);
     }
-    expect(shadesOf('#D97757')[0]).toBe(terracotta.shades[0]);
+    expect(shadesOf('#9E2D20')[0]).toBe(brick.shades[0]);
   });
 
   it('leave any other colour mixed as before, even one step from a stock shade', () => {
@@ -40,7 +40,7 @@ describe('the stock palettes', () => {
       '#266457',
       '#1d4e44',
     ]);
-    expect(shadesOf('#d97758')).not.toEqual(terracotta.shades);
+    expect(shadesOf('#9e2d21')).not.toEqual(brick.shades);
     expect(shadesOf('#d97758')[7]).toBe('#d97758');
   });
 
@@ -88,7 +88,7 @@ describe('the old app’s fixed look', () => {
 
 describe('11: the app’s theme is the design system’s, for every company’s colour', () => {
   // A mixed colour and a stock palette's shade 7: case 1 holds over both.
-  it.each(['#2f7d6d', '#D97757'])(
+  it.each(['#2f7d6d', '#9E2D20'])(
     'draws %s at shade 6, a 4-px badge, a pale row hover and a centred dialog',
     (colour) => {
       const { primaryShade, colors, components, defaultGradient } = themeOf(colour);
