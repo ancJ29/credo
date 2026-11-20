@@ -8,7 +8,10 @@ const hashOf = (entry: string) => digestOf(entry);
 const box = () => document.getElementById('site-gate');
 const field = () => document.querySelector<HTMLInputElement>('#site-gate input')!;
 const note = () => document.querySelector('#site-gate [role="alert"]')!.textContent;
-const open = () => document.documentElement.classList.contains('gate-open');
+// open = the hiding rule no longer matches the body, whatever way the page marks itself open
+const open = () => !document.body.matches(GATE_STYLE.split('{')[0]);
+// what the docs site's head library does to `<html>` at start-up and on each link followed
+const rewriteClass = (value: string) => document.documentElement.setAttribute('class', value);
 async function type(entry: string) {
   field().value = entry;
   document
@@ -20,7 +23,8 @@ async function type(entry: string) {
 
 beforeEach(() => {
   Object.defineProperty(window, 'crypto', { value: webcrypto, configurable: true });
-  document.documentElement.classList.remove('gate-open');
+  document.documentElement.removeAttribute('data-site-gate');
+  document.documentElement.removeAttribute('class');
   document.body.innerHTML = '<main>the page</main>';
   localStorage.clear();
 });
@@ -41,7 +45,7 @@ describe('the password box', () => {
   it('keeps the content hidden and shows the box until the right password is typed', async () => {
     const hash = await hashOf('right');
     startGate(hash);
-    expect(GATE_STYLE).toBe('html:not(.gate-open) body{visibility:hidden}');
+    expect(GATE_STYLE).toBe('html:not([data-site-gate=open]) body{visibility:hidden}');
     expect(open()).toBe(false);
     expect(box()?.textContent).toContain(WORDS.title);
     expect(field().type).toBe('password');
@@ -64,6 +68,22 @@ describe('the password box', () => {
     startGate(hash);
     expect(open()).toBe(true);
     expect(box()).toBeNull();
+  });
+
+  it('stays open when the docs site rewrites the class of html, for a returning and a first-time reader', async () => {
+    const hash = await hashOf('right');
+    localStorage.setItem(KEY, hash);
+    startGate(hash);
+    rewriteClass('docs-wrapper plugin-docs plugin-id-default docs-version-current');
+    expect(open()).toBe(true);
+
+    localStorage.clear();
+    document.documentElement.removeAttribute('data-site-gate');
+    startGate(hash);
+    await type('right');
+    expect(open()).toBe(true);
+    rewriteClass('docs-wrapper plugin-docs docs-doc-page docs-doc-id-docs/partners/map');
+    expect(open()).toBe(true);
   });
 
   it('asks again once the committed hash has changed, whatever an old password was remembered', async () => {

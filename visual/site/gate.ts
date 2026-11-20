@@ -9,9 +9,11 @@ export const GATE_PREFIX = 'credo-site-gate:';
 const REMEMBER = 'credo-site-gate';
 const BOX = 'site-gate';
 
-/** The one rule that hides the content until the box is answered (the page marks `html` open). The
- * box shows itself in spite of it. Both pages carry this text in their head. */
-export const GATE_STYLE = 'html:not(.gate-open) body{visibility:hidden}';
+/** The one rule that hides the content until the box is answered (the page marks `html` open with an
+ * attribute of its own, never `class`: the docs site's head library rewrites the whole `class` of `html`
+ * at start-up and on each link followed). The box shows itself in spite of it. Both pages carry this
+ * text in their head. */
+export const GATE_STYLE = 'html:not([data-site-gate=open]) body{visibility:hidden}';
 
 declare global {
   interface Window {
@@ -57,7 +59,7 @@ function remember(win: Window, hash: string) {
 export function startGate(hash: string, win: Window = window) {
   const doc = win.document;
   const open = () => {
-    doc.documentElement.classList.add('gate-open');
+    doc.documentElement.setAttribute('data-site-gate', 'open');
     doc.getElementById(BOX)?.remove();
   };
   if (remembered(win) === hash) {

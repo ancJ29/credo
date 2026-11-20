@@ -18,6 +18,7 @@ on:
       - "pnpm-workspace.yaml"
       - "pnpm-lock.yaml"
       - "ops/walks-*.sh"
+      - "ops/site-password.sha256"
       - ".github/workflows/walks.yml"
   workflow_dispatch:
 

@@ -14,6 +14,8 @@ on:
       - "services/*/README.md"
       - "services/*/docs/**"
       - "site/**"
+      - "visual/site/**"
+      - "ops/site-password.sha256"
       - "package.json"
       - ".node-version"
       - "pnpm-workspace.yaml"

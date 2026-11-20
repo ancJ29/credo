@@ -27,7 +27,7 @@ describe('ops/site-password.sh', () => {
     expect(readGateHash(file)).toHaveLength(64);
     expect(first.stdout + first.stderr).not.toContain('secret');
     expect(first.stdout.trim().split('\n').at(-1)).toBe(
-      '== done: the new password takes effect once this change is committed and pushed; this script does neither.',
+      "== done: run in pre-merge's worktree (cd <the credo root>/pre-merge); the machine then commits this file alone, checks both sites, moves main and hands you the push; the new password takes effect once both workflows publish. This script commits and pushes nothing.",
     );
     const before = readFileSync(file, 'utf8');
     expect(run(file, 'another one\n').status).toBe(0);
