@@ -247,6 +247,15 @@ shape, else piece 126's. One recap, step 11, before C lands, not one a landing.
 - [ ] **9. The styles.** The 19 weights, 3 stylesheet weights, 5 sizes and 24 captions moved; Type
       lists each style; case 14 red once. _Done when:_ the gates exit 0, the pinned file unchanged.
       **13 min** (piece 126's step 4).
+      _Evidence:_ commit 3b93f29e; recounted first: 20 `fw=` (not 19), 3 stylesheet weights, 5 sizes, 24
+      captions. `tokens.ts` names `WEIGHTS` (label 500, emphasis 600, title 700), `SIZES` and `TYPE` (`pageTitle`,
+      `sectionLabel`, `fieldLabel`, `body`, `bodyStrong`, `caption`); the 20 weights, 24 captions, 41 plain page
+      titles and the language chip's 12 read them, the frame's stylesheets read `--credo-weight-<role>` and four
+      size variables, and Values' Type draws each style. Case 14 (the spacing held, item 513) red with the
+      spacing planted at 0.5, green after; the ui, visual gates and the citation test exit 0 and the pinned
+      file's diff against step 8's is empty. The review's note 4 is done (the links drawn as Mantine's `Anchor`,
+      Roles by name with the washes and `on-*`, each swatch the variable the app writes) and note 5 (`BRAND_TEXT_FROM`
+      is the one home of the start shade).
 - [ ] **10. Weights and sizes refused.** Case 13, red once each. The shade block's message
       (`eslint.config.js#L90`), "A shade is named in the design system; a screen reads a role.", is
       reworded in the same lint block: "Name no shade here: read a role, `var(--credo-<role>)` of
