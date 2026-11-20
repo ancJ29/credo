@@ -46,7 +46,8 @@ it rests on here.
 - **The memo's `brand-text` rule, 6 where it passes:** it would move the back link and the frame's
   brand text from shade 7 to 6 on five colours.
 - **"Small capitals written three ways":** no `lts=` exists; `TOKENS.fieldLabel` and
-  `TOKENS.sectionTitle` (`ui/src/design-system/tokens.ts#L20`, `#L22`) are each spread once.
+  `TOKENS.sectionTitle` (then `ui/src/design-system/tokens.ts#L20`, `#L22`; step 9 renamed them
+  `TYPE.fieldLabel` and `TYPE.sectionLabel`) are each spread once.
 - **Missed by both:** a CSS module's class names are hashed from its stylesheet's text
   (`ui/src/frame/frameLook.module.css#L3-L4`), so an edit to `frame.module.css` changes every frame
   screen's markup without a pixel; two of A's washes are the sign-in's (`SignIn.tsx#L30`, `#L100`).
@@ -113,11 +114,11 @@ block (`eslint.config.js#L76-L94`), since a second block over the same files rep
 Named in `tokens.ts` from what screens draw today: `pageTitle` (22 at 700, `appTheme.ts#L151`);
 `sectionLabel` and `fieldLabel` (the two small-capital entries, renamed); `body` (Mantine's `md` at
 400, a `Text` with no prop, so no reader moves); `bodyStrong` (body at 600); `caption` (`sm`, dimmed,
-24 texts); and weights by role for the rest, `label` 500, `emphasis` 600, `title` 700, over the 19
-`fw=` and the frame stylesheets' 3 weights. A use that fits none keeps its number in a pinned list with
-its reason. The sizes join: one `fz={12}` (`SignIn.tsx#L97`) and four pixel sizes in the frame
+24 texts); and weights by role for the rest, `label` 500, `emphasis` 600, `title` 700, over the 20
+`fw=` (19 and one in a ternary) and the frame stylesheets' 3 weights. Every use fitted a role, so no pinned list was needed. The sizes join: one `fz={12}` (`SignIn.tsx#L98`, `SIZES.chip`) and four pixel sizes in the frame
 stylesheets. The check then refuses a numeric `fw=`, `fz=`, `fontWeight`, `font-weight` and
-`font-size` outside the design system, in the same lint block, closing item 309. No `number` style
+`font-size` outside the design system: the script forms by the test and the lint block, the stylesheet
+forms by the test alone, closing item 309. No `number` style
 (your answer; `grep -rnE 'tabular|font-variant-numeric' ui/src` counts 0). Item 308 waits for your look.
 
 ## The palette check: what moves, on every colour
@@ -257,7 +258,7 @@ shape, else piece 126's. One recap, step 11, before C lands, not one a landing.
       Roles by name with the washes and `on-*`, each swatch the variable the app writes) and note 5 (`BRAND_TEXT_FROM`
       is the one home of the start shade).
 - [x] **10. Weights and sizes refused.** Case 13, red once each. The shade block's message
-      (`eslint.config.js#L90`), "A shade is named in the design system; a screen reads a role.", is
+      (`eslint.config.js#L93-L94`), "A shade is named in the design system; a screen reads a role.", is
       reworded in the same lint block: "Name no shade here: read a role, `var(--credo-<role>)` of
       `ui/src/design-system/tokens.ts`'s `ROLES`, or Mantine's `dimmed`." _Done when:_ the gates exit 0.
       **20 min** (piece 126's step 7).
@@ -299,8 +300,8 @@ shape, else piece 126's. One recap, step 11, before C lands, not one a landing.
 4. **Links and colours named, in the gallery (step 8).** "On the brand" has a links row, emerald's at
    its shade 7 (5.48:1, from 3.77:1); "Values" lists each colour by what it is for. Does the page read
    true? A no names the colour or the role, and step 7 or 5 reopens.
-5. **Type named, nothing moved (step 12).** "Values", Type, shows each style by name with its size and
-   weight. Does each name say what the text is for? A yes closes the piece; a no names the style, and
+5. **Type named, nothing moved (step 12).** "Values", Type, shows each style by name, each name drawn
+   in its own style, then the three weights with their numbers. Does each name say what the text is for? A yes closes the piece; a no names the style, and
    step 9 reopens.
 
 ## The open items in reach
