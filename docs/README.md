@@ -91,7 +91,7 @@ reach us" faster than reading anything.
 | [`docs/activity-log.md`](activity-log.md) | the activity log, **built in the back end and shipped to the box**: what `services/audit-backbone/` is, the path an entry takes, the two prerequisites, what is guaranteed and what cannot be | the machine |
 | [`docs/operator-guide.md`](operator-guide.md) | every task of whoever runs credo, by when it is met: the command to paste, or the console's place, or that none exists yet | the operator, the system admin |
 | [`docs/products.md`](products.md) | what each part does for whom, and how far each has got | the human |
-| [`docs/partners/`](partners/README.md) | **credo for a reader who does not code**: what it is, a page for each role from the product owner to a tester, and the answers to partners' questions, newest first; each page links to the page that holds a fact | partners, and anyone new who does not code |
+| [`docs/partners/`](partners/README.md) | **credo for a reader who does not code**: [the docs map](partners/map.md), the one list of pages the docs site publishes, with a branch for each role from the product owner to a tester, and the answers to partners' questions, newest first; each page links to the page that holds a fact | partners, and anyone new who does not code |
 | [`docs/client-readiness.md`](client-readiness.md) | can we take a real client: what would happen to their data and access, and what the office cannot do yet | the human |
 | [`conventions/code.md`](conventions/code.md) | **where new code goes, what to copy, and the one file to open first for a part of the system** | the machine, then the human |
 | [`conventions/collaboration.md`](conventions/collaboration.md) | who decides what, and how a piece is handed over | both |
