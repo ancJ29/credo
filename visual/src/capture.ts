@@ -142,7 +142,7 @@ export function pooled(markup: string, pool: string[]) {
 /** Splits `text` at each `separator` outside brackets, parentheses and quotes, and a block's
  * braces: the top-level pieces of a stylesheet, or of a selector list. A piece that ends in a
  * block ends at its closing brace, with no separator after it. */
-function topLevel(text: string, separator: ';' | ',') {
+export function topLevel(text: string, separator: ';' | ',') {
   const pieces: string[] = [];
   let depth = 0;
   let quote = '';
