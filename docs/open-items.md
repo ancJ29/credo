@@ -653,6 +653,8 @@ The staff-cards full run (rerun, 2026-11-04, 16m00s) shows it again: lane 3 ende
 
 For six palettes the legacy's own shades 8 and 9 are lighter than mixed ones, so the menu's white text on its 9-to-8 gradient reads below 4.5:1 at shade 8: autumn 3.65, coin 3.78, terracotta 4.02. The legacy's own, as decided.
 
+`[DEFERRED]` 2026-11-20, piece 203 step 1b: autumn, coin and terracotta left the stock palettes (the human's pick of six, `docs/decisions.md`), and the six that remain white-text-safe at shade 8 by the memo's measure (4.90 at the least), so this item no longer names a palette that can be picked; a typed colour is served by `onBrand`'s span, which step 3 of `docs/plans/2026-11-20-design-fixes.md` closes it on.
+
 ## 84. The demo company can wear steel — the machine; `[DEFERRED]` (palettes, plan step 4, review, Opus, 2026-11-04, Info)
 
 The demo script draws a client's colour from seven (`scripts/src/demo/company.ts#L5`); one is steel's shade 7, so such a company shows Steel checked in Settings, as meant. The other six are no stock shade and check none.
@@ -683,6 +685,8 @@ At 992 px of screen width the content is 710 px and the last select wraps; the f
 One pairing fault, line 54's own (the old app's colours kept as they are), not the sign-in look's and not line 60's. It shows in two places. (1) On the white menu the open page's mark (brand shade 7) falls under 3:1 for terracotta, autumn, olive and coin (2.72 to 2.99); kept as decided, since the page's name carries the meaning. (2) The sign-in mock measured the same pairing wider: white text on the header and on the primary button, as the app draws them, is 2.84 to 3.40:1 across six palettes, the four above plus sandstone and ocean — terracotta 3.12, sandstone 3.32, autumn 2.84, olive 3.10, ocean 3.40, coin 3.05 (`one-off/20261105-1755-signin-look-round-1/check.log#L16-L17`, `#L19-L20`, `#L23-L24`, logged as notes "white on <palette>'s shade 7"). The other palettes sit at 4.91 to 6.38. The human was given the recommendation to leave the pairing as it is and answered with their yes on the look (18:12), so this is a record, not a pending fix. *Trigger:* a client on one of the six asks, or a contrast pass over the palettes (the fix would be a darker shade for the fill, or dark text on the light palettes).
 
 `[DEFERRED]` 2026-11-20, piece 203 step 1 (the human's reversal, 13:3x: "yes, switch to dark text, judged in the gallery first"): part (2) is no longer left as it is. The rule `onBrand` (`ui/src/design-system/onBrand.ts`) gives dark text where white does not reach 4.5:1, shown in the gallery's "On the brand" part, and the screens take it at steps 2 and 3 of `docs/plans/2026-11-20-design-fixes.md`, which closes (2). Part (1), the open page's mark and brand-coloured text on a light ground, moved to item 636.
+
+`[DEFERRED]` 2026-11-20, piece 203 step 1b: the six palettes named above, with sandstone and ocean, left the stock set (the human's pick of six); the figures stay as the record of why. Of today's six, steel and emerald remain, emerald's buttons the one stock change the rule makes, and the new four pass white on every shade of every span.
 
 ## 95. The icon strip's tip is tested by the CSS file's text, never drawn — the machine; `[DEFERRED]` (white-frame, review, Opus, 2026-11-04, Low)
 
@@ -2139,3 +2143,8 @@ All five are the reviewer's claim, not checked since. (1) The partner card chang
 ## 636. Brand-coloured text and the switch's thumb sit on a light ground, and fail on the same colours as white on brand — the machine; `[OPEN]` (piece 203's plan, 2026-11-20, Low)
 
 Contrast is symmetric, so what fails with white on a client's colour fails with that colour on white. Brand-coloured text on a light ground: the 12 `Anchor`s of `ui/src`, the back link, the white header's name and open item, the open page's mark on the white menu (`ui/src/frame/frameLook.module.css`, `brand-7`), and the light buttons; terracotta, autumn, olive and coin sit at 2.72 to 2.99:1 for the mark (item 94's former part (1)). The switch's thumb (Mantine's `Switch`, in `ui/src/parts/Settings.tsx`) is a white disc whose edge and track meet a light ground at the same low ratios; its ratio is not measured. *Fix:* a `brand-text` role that takes the darker shade where brand 7 fails 4.5:1 on the light ground, and a measured look at the thumb, after landing B names the roles (`docs/plans/2026-11-20-design-fixes.md`, "Landing B"). *Trigger:* landing B's role table.
+
+## 637. Four new palette names in Vietnamese are the machine's own, read by no Vietnamese reader — the machine; `[OPEN]` (piece 203 step 1b, 2026-11-20, Low)
+
+`ui/src/i18n/vi.ts`'s `settings.palettes` gained `brick: 'Đỏ gạch'`, `bronze: 'Đồng thanh'`, `plum: 'Tím mận'` and `indigo: 'Chàm'`; nothing in the repository gives a Vietnamese word for them, and it holds no mark for an unchecked word, so this item is the mark. `Đồng thanh` is the alloy's name, and the old `coin` entry's `Đồng kim loại` it replaces was the human's. *Fix:* the human or a partner reads the four and corrects any in `vi.ts` alone. *Trigger:* the first Vietnamese-speaking tester of Settings.
+
