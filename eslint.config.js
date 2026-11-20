@@ -14,6 +14,9 @@ const LEVELS = [
 // A hex colour, or a function that makes one, in a string.
 const COLOUR = String.raw`/#[0-9a-fA-F]{3,8}\b|\b(rgb|hsl)a?\(/`;
 
+// A numbered shade in a string: `brand.7`, or Mantine's `--mantine-color-brand-7`.
+const SHADE = String.raw`/^[a-z]+\.[0-9]+$|--mantine-color-[a-z]+-[0-9]/`;
+
 export default defineConfig(
   // services/c-storage/ is a Go project with its own face and gate (its CLAUDE.md line 2). ui/frame-mock/ is
   // a static look for the human to judge, its data written from the app's own files: no product code;
@@ -81,6 +84,10 @@ export default defineConfig(
         {
           selector: `Literal[value=${COLOUR}], TemplateElement[value.raw=${COLOUR}]`,
           message: 'A colour is written in the design system, and read by name or variable.',
+        },
+        {
+          selector: `Literal[value=${SHADE}], TemplateElement[value.raw=${SHADE}]`,
+          message: 'A shade is named in the design system; a screen reads a role.',
         },
       ],
     },
