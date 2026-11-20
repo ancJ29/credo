@@ -94,7 +94,7 @@ Measured by this plan's scratch run of the rule on the nine stock colours of 202
 
 | Colour | Buttons | Header | Menu |
 | --- | --- | --- | --- |
-| terracotta, sandstone, autumn, olive, ocean, coin (all six left the stock set; a light typed colour such as `#d97757` stands for them) | dark, 6.70 to 7.88 | dark over 5 to 7, 5.22 to 6.25 | white over 9 alone, 4.77 to 6.31 |
+| terracotta, sandstone, autumn, olive, ocean, coin (all six left the stock set; a light typed colour such as `#d97757` stands for them) | dark, 6.70 to 7.88 | dark over 5 to 7, 5.22 to 6.25 | white over 9 to 8, its fade kept (`#d97757`: 4.64; the nine's old read, 9 alone, 4.77 to 6.31, is replaced); amber `#ffbf00`, a typed colour, takes dark text over 8 to 7 |
 | emerald | dark, 4.71 | white as today, 5.48 | white as today, 7.68 |
 | steel (forest, the other, left; brick, bronze, plum and indigo, new, keep white on every surface) | white as today, 4.74 and 4.71 | white as today | white as today |
 
@@ -255,9 +255,10 @@ system's own earlier row of the same shape.
       look-1 text promised; amber `#ffbf00` is a typed colour whose menu takes dark text over 8 to 7. `docs/memo/ui.md` and `ui/CLAUDE.md` grew; item 638
       closed by the human's yes. Step 3's picture run: the walks' company's buttons, checks and chips
       move to shade 7 (hover 8); credo's own steel and brick draw as today.
-- [ ] **3. Landing A.** `pre-merge` taken in; the landing; your run of all twelve walks with
+- [ ] **3. Landing A.** `pre-merge` taken in first (done, a merge in this branch); then your run of all twelve walks in this worktree with
       `--moved all --write` (its counts show credo's own screens at 0), then one with no flags; the
-      bases committed alone.
+      bases committed alone; only then the orchestrator lands the branch whole, bases with it, on
+      `pre-merge`, which stays free for piece 206 meanwhile.
       _Done when:_ your second run reads `== verdict: green` with every count 0. **7 min** (piece 126's
       12-takein and 12-bases), **and your runs, about 16.**
 
@@ -300,8 +301,8 @@ system's own earlier row of the same shape.
    colour's header, buttons, badge, check and menu, today's beside the new, with each ratio. Of the six,
    only emerald's buttons turn dark; below them two typed colours show the rest of the rule: the
    walks' company's `#2f7d6d`, whose buttons move a shade under white, and a light `#d97757`, which gets
-   dark text on a lighter header ending at its own colour, dark button text and a menu that loses its
-   fade for one even dark shade. Does each read as that client's colour, now readable? A yes starts step 2; a no names the colour and surface, and step 1 reopens.
+   dark text on a lighter header ending at its own colour, dark button text and a menu that keeps white text
+   and its fade (9 to 8, 4.64:1); amber `#ffbf00`, typed, is the colour whose menu takes dark text. Does each read as that client's colour, now readable? A yes starts step 2; a no names the colour and surface, and step 1 reopens.
 2. **The screens, on the walks page (step 3).** Every client screen's buttons now wear the company's
    own green, a shade darker, with white text; the screens after the colour turns brick keep white
    text, as no stock colour but emerald's buttons takes dark text now; credo's own screens did not move. Does each read right? A
