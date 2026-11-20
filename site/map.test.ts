@@ -73,7 +73,7 @@ describe('the docs map', () => {
     expect(() => mapPages(swap('- **Start here**\n', ''), all)).toThrow(/line 9: not a branch/);
   });
 
-  it('5. stops the build on a map with no "## The map" section or no page in it', () => {
+  it('6. stops the build on a map with no "## The map" section or no page in it', () => {
     expect(() => mapPages(swap('## The map', '## The Map'), all)).toThrow(
       /map\.md: no page is listed under "## The map"/,
     );
@@ -83,7 +83,7 @@ describe('the docs map', () => {
     expect(() => mapPages(promisedOnly, all)).toThrow(/no page is listed/);
   });
 
-  it('6. stops the build on a link that is not a whole .md page, or a page named twice', () => {
+  it('7. stops the build on a link that is not a whole .md page, or a page named twice', () => {
     expect(() => mapPages(swap('README.md)', 'README.md#top)'), all)).toThrow(
       /line 10: README\.md#top is not a whole \.md page/,
     );
@@ -95,20 +95,20 @@ describe('the docs map', () => {
     );
   });
 
-  it('7. keeps a promised page on the map, publishing nothing and with no sidebar entry', () => {
+  it('8. keeps a promised page on the map, publishing nothing and with no sidebar entry', () => {
     expect(mapPages(MAP, all)).not.toContain(null);
     expect(mapPages(MAP, all)).toHaveLength(4);
     expect(JSON.stringify(mapSidebar(MAP, all))).not.toContain('Words we use');
   });
 
-  it('8. serves the map as the first page, at /', () => {
+  it('9. serves the map as the first page, at /', () => {
     expect(mapPages(MAP, all)[0]).toBe('docs/partners/map.md');
     expect(() =>
       checkLoaded([doc('@site/../docs/partners/map.md', '/map'), ...loaded.slice(1)], PAGES),
     ).toThrow(/the map is served at \/map, not at \//);
   });
 
-  it('9. draws the sidebar as the map, then its branches in order, each page by its map name', () => {
+  it('10. draws the sidebar as the map, then its branches in order, each page by its map name', () => {
     expect(mapSidebar(MAP, all)).toEqual({
       docs: [
         { type: 'doc', id: 'docs/partners/map', label: 'The credo docs map' },
