@@ -1,7 +1,7 @@
 # QA
 
 > **Decided** 2026-10-27, after reading the old app's QA process.
-> **Last amended** 2026-11-19, from the human's ask that the review come once, right before `main` moves, and not on each step or piece; on 2026-11-11, a line on logs in records, and from the human's proposal that the whole check stop gating each merge:
+> **Last amended** 2026-11-20, from the human's word that the whole check may run before its two hours are up when it is really needed and nothing else holds the machine; on 2026-11-19, from the human's ask that the review come once, right before `main` moves, and not on each step or piece; on 2026-11-11, a line on logs in records, and from the human's proposal that the whole check stop gating each merge:
 > a finished piece lands on `pre-merge`, the whole check runs there at most every two hours, and
 > `main` holds only checked trees. This file holds the rules as they stand; their history is in
 > `git log`.
@@ -21,7 +21,7 @@ flowchart LR
   red --> green["green · 100 %<br/>🤖"]
   green --> merge["land on pre-merge<br/>🤖 quick check"]
   merge --> on["work goes on<br/>🤖"]
-  merge -. every two hours .-> whole["whole check<br/>🤖 on pre-merge"]
+  merge -. every two hours, sooner if needed .-> whole["whole check<br/>🤖 on pre-merge"]
   whole --> review["one review<br/>🤖 another model"]
   review --> main["main<br/>🤖"]
   green --> walks["walks<br/>👤 yes or no"]
@@ -41,7 +41,7 @@ The eight rules, [below](#the-rules):
    check is green and before `main` moves; one fix pass; each finding fixed, rejected or
    deferred, with its reason.
 6. A flaky red is a bug, never rerun; only the gate that can change a conclusion is run, and a
-   package's gate is one command; the whole check runs on `pre-merge` at most every two hours.
+   package's gate is one command; the whole check runs on `pre-merge` at most every two hours, sooner only when it is really needed and the machine is free ([below](#the-whole-check-on-pre-merge)).
 7. The screens are the end-to-end check: each person's day on their device, yes or no a screen
    until its look changes; pixels counted raw.
 8. Every line is tested, or says why not.
@@ -130,7 +130,7 @@ The map of walks. A dash is a part of the day not built yet.
    answers the session's question (a typecheck, one test), which is not the gate and is never
    reported as one; the gate, one command, before a stop or a commit: the touched package's at a
    commit, plus the citation test ([below](#the-whole-check-on-pre-merge)); the whole check on
-   `pre-merge`, at most every two hours, never on each merge result. *Rejected:* the whole gate
+   `pre-merge`, at most every two hours (sooner when really needed and the machine is free), never on each merge result. *Rejected:* the whole gate
    at every step or every merge. Several worktrees run at once, and a full run's minutes buy no
    verdict a smaller gate does not already give.
 
@@ -228,7 +228,12 @@ has taken `pre-merge` in.
   first stop after two hours have passed, and once more before the day's push. It reads
   `git rev-parse HEAD` in `pre-merge`'s worktree as it starts, since the gate's log does not name
   the commit it checked, and nothing lands on `pre-merge` while the check runs: the tree would
-  change under it.
+  change under it. **It may run before the two hours are up when it is really needed and no other
+  process holds the machine.** *Really needed* means `main` waits on it, or the human asks; the
+  orchestrator judges that and writes its reason in one line in its record. *No other process
+  holds the machine* means the test lock is free, the gate lock is free, no other session's gate
+  or timed run is going, and the load is under 8 (the load rules below). *Why:* the clock only
+  guards a busy machine, and a free one gains nothing by waiting.
 - **A green moves `main` to the commit that run checked, not to `pre-merge`'s tip:** from
   `main`'s worktree, `git merge --ff-only <that commit>`. So `main` holds only checked trees;
   pushes and deploys stay as they were, the human's.
@@ -247,7 +252,7 @@ has taken `pre-merge` in.
   than rarely; the check gets a second, detached checkout if landings waiting on a run pass ten
   minutes a day.
 
-*Rejected:* the whole check at every merge result: a whole run per landing, for a collision the
+*Rejected:* the whole check held to the clock while `main` waits on it and the machine is free: minutes idle for no safety. *Rejected:* the whole check at every merge result: a whole run per landing, for a collision the
 one-second test shows first. *Rejected:* a scheduled job in the
 human's terminal, which runs with the human's full rights outside the sandbox and takes the shared
 lock unannounced.
