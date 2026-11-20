@@ -7,7 +7,7 @@
 3. [Known gaps](../products.md#known-gaps): what is not there yet.
 
 **What the human gives you:** a demo copy's link and its password. Who holds which copy, and how
-it reaches you, is in [Check a piece on ridge, without code](../products.md#check-a-piece-on-ridge-without-code).
+it reaches you, is in [Check a piece yourself, without code](what-credo-has.md#check-a-piece-yourself-without-code).
 
 **To raise a request:** send it to the human. The answer is written in
 [questions and answers](questions.md), and a change to the plan shows in

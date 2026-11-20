@@ -81,6 +81,31 @@ export function checkLoaded(docs: { source: string; permalink: string }[], pages
   if (home?.permalink !== '/') throw new Error(`the map is served at ${home?.permalink}, not at /`);
 }
 
+// A page and its machine's page name each other in front matter: `source` on the partner page,
+// `partner_page` on the machine's. `read` gives a repository path's text, or null when it is no file.
+export function checkPairs(pages: string[], read: (path: string) => string | null): void {
+  const key = (path: string, name: string) => {
+    const front = /^---\n([\s\S]*?)\n---/.exec(read(path) as string);
+    return front?.[1].match(new RegExp(`^${name}: *(\\S+) *$`, 'm'))?.[1];
+  };
+  for (const page of pages) {
+    const source = key(page, 'source');
+    if (source) {
+      if (read(source) === null)
+        throw new Error(`${page} names the source ${source}, which does not exist`);
+      if (key(source, 'partner_page') !== page)
+        throw new Error(`${source} does not name ${page} as its partner_page`);
+    }
+    const partner = key(page, 'partner_page');
+    if (partner) {
+      if (!pages.includes(partner))
+        throw new Error(`${page} names the partner_page ${partner}, which is not on the map`);
+      if (key(partner, 'source') !== page)
+        throw new Error(`${partner} does not name ${page} as its source`);
+    }
+  }
+}
+
 // A doc's id is its path from the repository root without `.md`.
 const docId = (path: string) => path.replace(/\.md$/, '');
 
