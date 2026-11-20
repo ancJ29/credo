@@ -1082,6 +1082,10 @@ build_of() {
 }
 
 # push_paths <ci.yml>: the paths ci.yml's push trigger deploys on, one a line, a trailing /** dropped.
+#   A negated plain path (`      - "!<plain path>"`, no glob) that follows an entry holding it, as
+#   GitHub reads a negative pattern in order, comes out as the git pathspec `:(exclude)<path>`, so a
+#   change to that one file is no change a push deploys on. A negation with no earlier entry
+#   holding it, or with a glob, stops the read.
 #   Fails closed: under `paths:`, any line that is not `      - "<plain path>"` or
 #   `      - "<plain path>/**"` (a blank line apart) dies naming the line, since a line read as
 #   nothing would leave a path out of the comparison and let a seed run on older code.
@@ -1094,7 +1098,13 @@ push_paths() {
     on && /^    paths/ { print "!" $0; bad = 1; exit }
     on && /^    [a-z_-]+:/ { listed = 0; next }
     on && listed && /^$/ { next }
-    on && listed && /^      - "[A-Za-z0-9._\/-]+(\/\*\*)?"$/ { gsub(/^      - "|"$/, ""); sub(/\/\*\*$/, ""); print; next }
+    on && listed && /^      - "![A-Za-z0-9._\/-]+"$/ {
+      orig = $0; gsub(/^      - "!|"$/, ""); ok = 0
+      for (i = 1; i <= n; i++) if ($0 == seen[i] || index($0, seen[i] "/") == 1) ok = 1
+      if (!ok) { print "!" orig; bad = 1; exit }
+      print ":(exclude)" $0; next
+    }
+    on && listed && /^      - "[A-Za-z0-9._\/-]+(\/\*\*)?"$/ { gsub(/^      - "|"$/, ""); sub(/\/\*\*$/, ""); seen[++n] = $0; print; next }
     on && listed { print "!" $0; bad = 1; exit }
     END { exit bad }
   ' "$1") || die "ci.yml's push trigger holds a line this script cannot read, so the paths a push deploys on are not known: nothing was written. The line: $(grep -m1 '^!' <<<"$out" | cut -c2-)"

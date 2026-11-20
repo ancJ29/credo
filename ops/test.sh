@@ -2343,8 +2343,8 @@ refuses "a seed that installs nothing before the role is refused" "the install, 
 
 echo "== the paths a push deploys on, read from ci.yml (seed.sh compares them; a line it cannot read stops it, nothing written)"
 CI_YML=$REPO_DIR/.github/workflows/ci.yml
-check "the real ci.yml's push trigger reads as its 18 paths, a trailing /** dropped" "18 services/c-storage walk .github/workflows/seed.yml" \
-  "$(push_paths "$CI_YML" | wc -l | tr -d ' ') $(push_paths "$CI_YML" | sed -n '1p;9p;18p' | tr '\n' ' ' | sed 's/ $//')"
+check "the real ci.yml's push trigger reads as its 19 lines, a trailing /** dropped, the password file's negation an exclusion" "19 services/c-storage :(exclude)ops/site-password.sha256 walk .github/workflows/seed.yml" \
+  "$(push_paths "$CI_YML" | wc -l | tr -d ' ') $(push_paths "$CI_YML" | sed -n '1p;10p;19p;4p' | tr '\n' ' ' | sed 's/ $//')"
 # The press: ci.yml holds one workflow_dispatch trigger, beside push and pull_request and outside
 # the push's paths.
 check "the real ci.yml holds a workflow_dispatch trigger, once, at the top level of on:" 1 \
@@ -2368,6 +2368,26 @@ push_variant trailing 'ui/**' '      - "ui/**" # the app'
 refuses "an entry with a trailing comment stops the read, naming the line" '# the app' push_paths "$WORK/ci-trailing.yml"
 push_variant negated 'ui/**' '      - "!ui/**"'
 refuses "a negated entry stops the read, naming the line" '      - "!ui/**"' push_paths "$WORK/ci-negated.yml"
+# The password file's negation: read as a pathspec exclusion, in order, as GitHub reads it.
+printf 'on:\n  push:\n    paths:\n      - "ops/**"\n      - "!ops/site-password.sha256"\n      - "ui/**"\n' >"$WORK/ci-excl.yml"
+check "a negated plain path after its holder reads as an exclusion pathspec" ":(exclude)ops/site-password.sha256" "$(push_paths "$WORK/ci-excl.yml" | sed -n 2p)"
+printf 'on:\n  push:\n    paths:\n      - "!ops/site-password.sha256"\n      - "ops/**"\n' >"$WORK/ci-excl-early.yml"
+refuses "a negation placed before the entry holding it stops the read, naming the line" '      - "!ops/site-password.sha256"' push_paths "$WORK/ci-excl-early.yml"
+printf 'on:\n  push:\n    paths:\n      - "ops/**"\n      - "!ui/x.ts"\n' >"$WORK/ci-excl-unheld.yml"
+refuses "a negation of a path no earlier entry holds stops the read, naming the line" '      - "!ui/x.ts"' push_paths "$WORK/ci-excl-unheld.yml"
+# What the exclusion means to the guard: a change to the one file is no change a push deploys on; any other under ops/ is.
+git init -q "$WORK/excl-repo"
+mkdir -p "$WORK/excl-repo/ops"
+echo a >"$WORK/excl-repo/ops/site-password.sha256"
+echo a >"$WORK/excl-repo/ops/x.sh"
+git -C "$WORK/excl-repo" add ops
+git -C "$WORK/excl-repo" -c user.name=t -c user.email=t@t commit -q -m base
+echo b >"$WORK/excl-repo/ops/site-password.sha256"
+excl_paths=()
+while IFS= read -r p; do excl_paths+=("$p"); done < <(push_paths "$WORK/ci-excl.yml")
+check "a change to the excluded file alone is no change under the paths a push deploys on" 0 "$(git -C "$WORK/excl-repo" diff --quiet HEAD -- "${excl_paths[@]}"; echo $?)"
+echo b >"$WORK/excl-repo/ops/x.sh"
+check "a change to another file under ops/ still is" 1 "$(git -C "$WORK/excl-repo" diff --quiet HEAD -- "${excl_paths[@]}"; echo $?)"
 push_variant indent 'ui/**' '        - "ui/**"'
 refuses "an entry indented deeper stops the read, naming the line" '        - "ui/**"' push_paths "$WORK/ci-indent.yml"
 sed 's/^    paths:$/    paths: [ "ui\/**" ]/' "$CI_YML" >"$WORK/ci-flow.yml"
