@@ -8,6 +8,7 @@
     "docusaurus.config.ts",
     "sidebars.ts",
     "links.ts",
+    "gate-client.ts",
     "map.ts",
     "map.test.ts",
     "vitest.config.mts"

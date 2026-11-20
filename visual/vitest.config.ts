@@ -16,10 +16,11 @@ export default defineConfig({
       // untested: `run.mjs` is outside `include`, a bare entry: it starts a Vite server and calls
       // `report` in `src/capture.ts`, whose test holds everything the command does.
       // elsewhere: `site/styles.ts` is a bundler entry that holds only imports; `capture.test.ts`
-      // builds it and reads the stylesheet it makes. `site/index.html` is the page's markup, which
-      // `site/page.test.ts` loads whole.
+      // builds it and reads the stylesheet it makes. `site/entry.ts` is the page script's bundler
+      // entry (the page, then `startGate`), which `capture.test.ts` builds and reads for the box.
+      // `site/index.html` is the page's markup, which `site/page.test.ts` loads whole.
       include: ['src/**/*.{ts,tsx}', 'site/**/*.ts'],
-      exclude: ['**/*.test.{ts,tsx}', 'src/setup.ts', 'site/styles.ts'],
+      exclude: ['**/*.test.{ts,tsx}', 'src/setup.ts', 'site/styles.ts', 'site/entry.ts'],
       reporter: [['text', { skipFull: true }]],
       thresholds: { statements: 100, branches: 100, functions: 100, lines: 100 },
     },

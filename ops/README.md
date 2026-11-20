@@ -32,6 +32,7 @@ If you only want to do a task and see what happens, [the operator guide](../docs
 | the six demo copies remade and filled with 21 days | `ops/demo-remake.sh ridge` ([the demo copies](#the-demo-copies)) | about 10 minutes, up to 15 |
 | the demo copies brought up to yesterday, when Actions is down or for a copy just made | `ops/seed.sh ridge` ([the seed](#the-seed)) | up to about 15 minutes (2 days a copy at most), longer for a first fill |
 | a demo copy's root, given a new password | `ops/root-password.sh ridge <code>…` ([the root password](#the-demo-copies-root-password)) | about a minute, plus the typing |
+| the password of the walks page and the docs site, set or changed (from any worktree; it writes only `ops/site-password.sha256`, which you then commit and push) | `bash ops/site-password.sh` ([the site's password](#the-sites-password)) | under a minute, plus the typing |
 | your own preview of a walks page built here | `ops/walks-preview.sh [<built folder>]` ([previews](#previews-on-cloudflare-pages)) | about 2 minutes |
 | your own preview of a committed folder (such as the app frame's mock) | `ops/pages-preview.sh --worktree … --sub … --branch …` ([previews](#previews-on-cloudflare-pages)) | about 2 minutes |
 | a piece's full run of the walks (two runs, the bases committed between) | `ops/full-run.sh --worktree … --branch … --walks …` ([the full run](#the-full-run)) | the walks' own, 6 to 35 minutes a run |
@@ -511,6 +512,18 @@ no password: the copies are made first, all six by `ops/demo-remake.sh ridge` ([
    the last run, so run the workflow before anyone checks anything against it.
    - **the credentials step fails:** the environment `ridge` or its secret is missing; `ops/stack.sh env ridge`.
    - **a key is in this log:** as in [the check](#the-check).
+
+## The site's password
+
+The walks page and the docs site each open on a password box drawn by the page itself (`visual/site/gate.ts`); it keeps
+a curious outsider out and nothing more, since the repository is public and so is the hash. `bash ops/site-password.sh`
+reads the password with no echo, twice from a terminal or one line from a pipe, and writes only its SHA-256 (with the
+fixed prefix `credo-site-gate:`) into `ops/site-password.sha256`, replacing what was there. Run it again to change the
+password, from any worktree; it touches nothing else and never commits or pushes, so the new password takes effect
+once that one file is committed and pushed. A browser that remembered the old password is asked again, because it
+remembers the hash, not a flag. Both builds (`pnpm report` and the docs site's build) stop, naming the command,
+when the file is missing or is not one 64-digit hash. A preview of the walks page (`ops/walks-preview.sh`) carries
+the box too, since its address is open to anyone with the link.
 
 ## Previews on Cloudflare Pages
 

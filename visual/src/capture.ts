@@ -10,6 +10,8 @@ import { SCREENS } from '@credo/ui/mock';
 import react from '@vitejs/plugin-react';
 import { build as viteBuild } from 'vite';
 import type { PageData, PageWalk } from '../site/data';
+import { GATE_STYLE } from '../site/gate';
+import { GATE_HASH_PATH, readGateHash } from '../site/gate-file';
 import { installDom } from './dom';
 import { folderName, sourceOf, vietnamTime } from './home';
 import {
@@ -78,7 +80,7 @@ export async function appStyles() {
   );
 }
 
-/** The page's script, `site/page.ts` and the words it imports, as one classic script. */
+/** The page's script, `site/entry.ts` (the page and its password box) and what it imports, as one classic script. */
 export async function pageScript() {
   const built = await asProduction(() =>
     viteBuild({
@@ -88,7 +90,7 @@ export async function pageScript() {
       mode: 'production',
       build: {
         write: false,
-        lib: { entry: join(PACKAGE, 'site/page.ts'), formats: ['iife'], name: 'WalksPage' },
+        lib: { entry: join(PACKAGE, 'site/entry.ts'), formats: ['iife'], name: 'WalksPage' },
       },
     }),
   );
@@ -317,11 +319,16 @@ export async function captureWalks(input: {
 
 const inline = (text: string) => text.replaceAll('</script', '<\\/script');
 
-/** The page's one file: its template with the data and the script put in. Replacements are
- * functions, so a `$` in either is never read as a pattern. */
-export function pageHtml(template: string, data: PageData, script: string) {
+/** The page's one file: its template with the data, the password's hash, the box's rule and the
+ * script put in. Replacements are functions, so a `$` in any is never read as a pattern. */
+export function pageHtml(template: string, data: PageData, script: string, gateHash: string) {
   return template
-    .replace('/*DATA*/', () => `window.WALKS_DATA = ${inline(JSON.stringify(data))};`)
+    .replace('/*GATE-STYLE*/', () => GATE_STYLE)
+    .replace(
+      '/*DATA*/',
+      () =>
+        `window.WALKS_DATA = ${inline(JSON.stringify(data))};window.SITE_GATE_HASH = ${JSON.stringify(gateHash)};`,
+    )
     .replace('/*PAGE*/', () => inline(script));
 }
 
@@ -333,8 +340,14 @@ export function pageHtml(template: string, data: PageData, script: string) {
 export async function report(
   cwd: string,
   log: (line: string) => void,
-  { walks = WALKS, builtAt = new Date() }: { walks?: readonly Walk[]; builtAt?: Date } = {},
+  {
+    walks = WALKS,
+    builtAt = new Date(),
+    gateFile = join(PACKAGE, '..', GATE_HASH_PATH),
+  }: { walks?: readonly Walk[]; builtAt?: Date; gateFile?: string } = {},
 ) {
+  // First, so a missing or malformed password hash stops the build before any work is done.
+  const gateHash = readGateHash(gateFile);
   const questions = JSON.parse(
     await readFile(join(PACKAGE, 'site/questions-vi.json'), 'utf8'),
   ) as Record<string, string>;
@@ -393,7 +406,7 @@ export async function report(
     const aside = await mkdtemp(join(source.home, '.building-'));
     try {
       await chmod(aside, 0o755);
-      await writeFile(join(aside, 'index.html'), pageHtml(template, data, script));
+      await writeFile(join(aside, 'index.html'), pageHtml(template, data, script, gateHash));
       await writeFile(join(aside, 'walks.json'), `${JSON.stringify(data, null, 2)}\n`);
       if (
         await stat(folder).then(
