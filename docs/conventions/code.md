@@ -4,7 +4,7 @@ This page is for a new developer, and for every session that adds or changes cod
 
 **These rules bind every session that adds or changes code.** How the code here is written is the machine's own decision, so the project's owner does not approve it. Where these rules say "the human", they mean that owner, whom the partner pages call "us". The page names one way only where the code holds two ways of doing one job. It names the file to copy where the code already holds the shape.
 
-The page answers "where does this code live, and what do I open or copy". [How credo is built](../architecture.md) answers how the system is put together, and is not repeated here. Two decisions are the owner's and not the machine's: where a client's own difference lands, and no cache for server data. [That memo](../memo/divergence-and-caching.md) holds them, with what a yes commits to. This page holds the rules as they stand. Its dated history is at the end.
+The page answers "where does this code live, and what do I open or copy". [How credo is built](../architecture.md) answers how the system is put together, and is not repeated here. Three decisions are the owner's and not the machine's: where a client's own difference lands, that a tier changes what a screen offers and never how it behaves, and no cache for server data. [That memo](../memo/divergence-and-caching.md) holds them, with what a yes commits to. This page holds the rules as they stand. Its dated history is at the end.
 
 ## At a glance
 

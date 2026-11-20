@@ -57,7 +57,7 @@ This cannot be undone. All the company's people, orders, deliveries and photos g
 2. Type the client code to confirm, then press "Delete client and all data" and give your passkey.
 3. Keep the page open while it counts the records left.
 
-You should see "Client and all data have been completely removed." If it stops half way, reload the page. Once the company is gone from the list, the page shows "Resume deletion"; press it to finish.
+You are taken back to the client list, and the company is no longer in it. If it stops half way, reload the page. If you closed the page, ask us. Once the company is gone from the list, the page shows "Resume deletion"; press it to finish.
 
 ## Operators are the people who run credo
 

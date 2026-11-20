@@ -18,7 +18,7 @@ flowchart LR
 
 ## What the machine decided
 
-- "Gate" and "whole check" are two glossary words.
+- "Gate" and "whole check" are two glossary words. Passkey, tenant and CloudFront, "Unsure" in the drafts you said yes to, are defined in the built glossary, and the console page has a new line on reloading a half-done delete.
 - A glossary link with no heading is dropped, not given a word.
 - The code and QA rules keep "the human", glossed in their opening as the project's owner.
 - The runbook's and code rules' prose moves wait in item 635: the operator works only in the console today, and those pages' readers code.
