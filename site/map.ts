@@ -49,6 +49,8 @@ function readMap(text: string, exists: (path: string) => boolean, mapPath: strin
     seen.set(path, index + 1);
     current.pages.push({ name: page![1], path });
   });
+  if (!branches.some((b) => b.pages.some((p) => p.path)))
+    throw new Error(`${mapPath}: no page is listed under "## The map"`);
   return branches;
 }
 

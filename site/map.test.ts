@@ -73,6 +73,16 @@ describe('the docs map', () => {
     expect(() => mapPages(swap('- **Start here**\n', ''), all)).toThrow(/line 9: not a branch/);
   });
 
+  it('5. stops the build on a map with no "## The map" section or no page in it', () => {
+    expect(() => mapPages(swap('## The map', '## The Map'), all)).toThrow(
+      /map\.md: no page is listed under "## The map"/,
+    );
+    const promisedOnly = MAP.split('\n')
+      .filter((l) => !l.startsWith('  - [') && !l.startsWith('- **The operator'))
+      .join('\n');
+    expect(() => mapPages(promisedOnly, all)).toThrow(/no page is listed/);
+  });
+
   it('6. stops the build on a link that is not a whole .md page, or a page named twice', () => {
     expect(() => mapPages(swap('README.md)', 'README.md#top)'), all)).toThrow(
       /line 10: README\.md#top is not a whole \.md page/,

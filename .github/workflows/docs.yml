@@ -74,7 +74,7 @@ jobs:
             pnpm-store-${{ runner.os }}-${{ runner.arch }}-12.10.1-
       - name: Install the workspace
         run: pnpm install --frozen-lockfile
-      # A render failure, a broken link or a broken anchor fails the build, as in the site's gate.
+      # A render failure, a broken link, a broken anchor or a refusal of the docs map fails the build, as in the site's gate.
       - name: Build the site
         id: site
         shell: bash
