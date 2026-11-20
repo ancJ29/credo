@@ -67,7 +67,7 @@ export function mapPages(
 }
 
 // What the site loaded, against the map: a page not on it, a map page with no doc, or a map not at `/`
-// stops the build, so a glob, a second plugin or any other way of adding a page is red by name.
+// stops the build, so a glob or a second docs plugin adding a page is red by name; it reads docs plugins only.
 export function checkLoaded(docs: { source: string; permalink: string }[], pages: string[]): void {
   const path = (source: string) =>
     posix.normalize(source.replace(/^@site\//, '')).replace(/^(\.\.\/)+/, '');

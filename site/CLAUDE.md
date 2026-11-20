@@ -14,7 +14,7 @@ publishes: a page not on the map is not published. Open to anyone with the link,
   commit) and the unit tests of `map.ts`.
 - **No page belongs here.** Every page lives once, where it already sits (`docs/`, `ops/README.md`);
   a new page is published once its line is on the map, and a new page for partners goes in
-  `docs/partners/`. A map line is one line a page, not wrapped: two spaces, the page's name linked,
+  `docs/partners/`. A map line is one line a page, not wrapped: two spaces, a dash and a space, the page's name linked,
   then its words after a colon, as `readMap` in `map.ts` reads it; a promised page ends in
   `**not yet written**`.
 
