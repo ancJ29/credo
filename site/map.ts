@@ -83,12 +83,18 @@ export function checkLoaded(docs: { source: string; permalink: string }[], pages
 
 // A page and its machine's page name each other in front matter: `source` on the partner page,
 // `partner_page` on the machine's. `read` gives a repository path's text, or null when it is no file.
-export function checkPairs(pages: string[], read: (path: string) => string | null): void {
+// `docs` are paths off the map too (a machine's page is one): each is checked as well, so a pair
+// named from one side only is refused from either side.
+export function checkPairs(
+  pages: string[],
+  read: (path: string) => string | null,
+  docs: string[] = [],
+): void {
   const key = (path: string, name: string) => {
     const front = /^---\n([\s\S]*?)\n---/.exec(read(path) as string);
     return front?.[1].match(new RegExp(`^${name}: *(\\S+) *$`, 'm'))?.[1];
   };
-  for (const page of pages) {
+  for (const page of new Set([...docs, ...pages])) {
     const source = key(page, 'source');
     if (source) {
       if (read(source) === null)

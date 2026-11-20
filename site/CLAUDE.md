@@ -17,7 +17,8 @@ publishes: a page not on the map is not published. Open to anyone with the link,
   The two name each other in their front matter: `source` on the partner page (the machine's page's
   path) and `partner_page` on the machine's page (the partner page's path). `checkPairs` in `map.ts`
   stops the build on a published page whose `source` is no file or does not name it back, and on a
-  `partner_page` that is not on the map or whose `source` does not name the page back; a fact lives
+  `partner_page`, in any doc under `docs/` and so off the map too, that is not on the map or whose
+  `source` does not name the page back; a fact lives
   once, so the steps a partner follows live on the partner page.
 - **No page belongs here.** Every page lives once, where it already sits (`docs/`, `ops/README.md`);
   a new page is published once its line is on the map, and a new page for partners goes in

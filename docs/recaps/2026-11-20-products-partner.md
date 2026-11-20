@@ -1,10 +1,10 @@
 # The products page for partners, recap, 2026-11-20
 
-This continues [the docs map's recap](2026-11-20-docs-map.md). You decided "one reader a page": a page that fails for partners is not rewritten in place. It stays whole as the machine's page, leaves the map, and a partner page written from it takes its place. You said yes to the drawn page with two changes: "call me 'us'" and "we can remove What comes next now".
+This continues [the docs map's recap](2026-11-20-docs-map.md). You decided "one reader a page": a page that fails for partners is not rewritten in place. It stays as the machine's page, with the steps a partner follows moved out, leaves the map, and a partner page written from it takes its place. You said yes to the drawn page with two changes: "call me 'us'" and "we can remove What comes next now".
 
 ```mermaid
 flowchart LR
-  src["docs/products.md, whole, off the site"] <-- "partner_page, source" --> partner["docs/partners/what-credo-has.md, on the map"]
+  src["docs/products.md, off the site"] <-- "partner_page, source" --> partner["docs/partners/what-credo-has.md, on the map"]
 ```
 
 ## What partners get now
@@ -14,12 +14,12 @@ flowchart LR
 
 ## What stays with the machine
 
-- `docs/products.md` is whole, plus one front-matter line naming its partner page. The steps a partner follows moved, so each fact has one home; a one-line pointer stays. Who holds which demo copy, the receipt and the gallery's card stay.
+- `docs/products.md` keeps what it held, plus one front-matter line naming its partner page, except the steps a partner follows, which moved so each fact has one home; a one-line pointer stays. Who holds which demo copy, the receipt and the gallery's card stay.
 - The site no longer publishes it; a link to it opens on GitHub.
 
 ## The pair, and its refusal
 
-The two pages name each other in front matter. The build stops when a published page names a source that is no file or does not name it back, or a machine's page names a partner page that is not on the map or does not name it back.
+The two pages name each other in front matter. The build stops when a published page names a source that is no file or does not name it back, or a machine's page, read though it is off the map, names a partner page that is not on the map or does not name it back.
 
 ## What was proved
 

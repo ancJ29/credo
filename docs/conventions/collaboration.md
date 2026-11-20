@@ -196,7 +196,7 @@ A piece too big to walk at the end of a day is cut again, never stretched.
 
 **A plan that leaves out a stage names the gap and says why.** Stage 4 is stood up only for a
 piece that changes what ships (hand-off 3); for every other piece stage 2 stands in its place, and
-the plan says so. **Where it is stood up, the piece's check is a card under the products page's "Check a piece on ridge, without code", and its receipt is the access log's lines for the card's calls, read in the human's terminal.** *Why:* the confidence to deliver comes from every piece being checked the same
+the plan says so. **Where it is stood up, the piece's check is a card on the partner page, under its "Check a piece yourself, without code", and its receipt is the access log's lines for the card's calls, read in the human's terminal.** *Why:* the confidence to deliver comes from every piece being checked the same
 way before anyone reads its code.
 
 ## Pacing: one piece at a time

@@ -1,7 +1,7 @@
 import type { Config } from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
-import { existsSync, readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { resolve, sep } from 'node:path';
 import { githubLinks } from './links';
 import { MAP_PATH, checkLoaded, checkPairs, mapPages } from './map';
 
@@ -10,11 +10,17 @@ import { MAP_PATH, checkLoaded, checkPairs, mapPages } from './map';
 const PAGES = mapPages(readFileSync(resolve(__dirname, '..', MAP_PATH), 'utf8'), (path) =>
   existsSync(resolve(__dirname, '..', path)),
 );
-// A page written from a machine's page, and that page, name each other, or the build stops.
-checkPairs(PAGES, (path) =>
-  existsSync(resolve(__dirname, '..', path))
-    ? readFileSync(resolve(__dirname, '..', path), 'utf8')
-    : null,
+// A page written from a machine's page, and that page, name each other, or the build stops; the
+// machine's page is off the map, so every doc under `docs/` is read too, named from one side or both.
+checkPairs(
+  PAGES,
+  (path) =>
+    existsSync(resolve(__dirname, '..', path))
+      ? readFileSync(resolve(__dirname, '..', path), 'utf8')
+      : null,
+  readdirSync(resolve(__dirname, '..', 'docs'), { recursive: true, encoding: 'utf8' })
+    .filter((f) => f.endsWith('.md'))
+    .map((f) => `docs/${f.split(sep).join('/')}`),
 );
 
 const config: Config = {

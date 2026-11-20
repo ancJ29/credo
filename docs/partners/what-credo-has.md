@@ -10,7 +10,7 @@ This page is for partners who show credo to others or check it, and who do not r
 
 Credo is a system a company uses to take orders and deliver them, on a phone, a tablet or a computer, in Vietnamese or English. Each person sees only the pages their permissions allow, so you can show one role at a time.
 
-These parts are built, and we have said yes to how they look:
+These parts are built:
 
 - **Sign-in.** Staff sign in by code, email or QR code.
 - **Staff and setup.** The company's main user keeps the people and imports them from an Excel file, which saves typing a long list.
