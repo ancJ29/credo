@@ -11,6 +11,7 @@
     "gate-client.ts",
     "map.ts",
     "map.test.ts",
+    "config.test.ts",
     "vitest.config.mts"
   ]
 }

@@ -6,7 +6,7 @@
 # ops/site-password.sha256 of the tree this script sits in, replacing what was there. The password reaches the
 # hash on a pipe from bash's builtin printf, never argv, a file, a here-string or the screen. It touches no
 # other file and never commits or pushes: a new password takes effect once the file is committed and pushed.
-# SITE_PASSWORD_FILE names another file (a test's). Run again to change the password, from any worktree.
+# SITE_PASSWORD_FILE names another file (a test's). Run again to change the password, always in pre-merge's worktree.
 set -euo pipefail
 
 PREFIX='credo-site-gate:'
@@ -45,4 +45,4 @@ hash=$(printf '%s' "$PREFIX$password" | sha256)
 unset password confirm
 printf '%s\n' "$hash" >"$FILE"
 echo "== wrote the password's hash to $FILE"
-echo "== done: the new password takes effect once this change is committed and pushed; this script does neither."
+echo "== done: run in pre-merge's worktree (cd <the credo root>/pre-merge); the machine then commits this file alone, checks both sites, moves main and hands you the push; the new password takes effect once both workflows publish. This script commits and pushes nothing."
