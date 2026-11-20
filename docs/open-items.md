@@ -2008,7 +2008,7 @@ Words found by hand on the branch after the fix pass: `ui/src/listSheet.test.ts#
 
 ## 595. Case 13 pins two of its five values, and its feature came after its test (design system landing 3's review, 2026-11-17, Low) — the machine; `[DEFERRED]`
 
-`ui/src/frame/Shell.test.tsx#L81-L82` pins the menu's 14 px and 600, but `#L102-L103` only checks that the bar's line, the bar's shadow and the header's shadow each have some value, so a shadow cast downward or ten times darker passes, and the snapshots show only the variable names; the two negatives at `#L100` and `#L101` pass with the feature or without it. The test was committed two hours before its feature (873e4165 and c3f1acbe, then ffb02689), which `docs/conventions/qa.md#L204` does not ask. Fix: assert the three values as `FRAME_VALUES` in `ui/src/design-system/tokens.ts` writes them. *Trigger:* the next change to the frame's values.
+`ui/src/frame/Shell.test.tsx#L81-L82` pins the menu's 14 px and 600, but `#L102-L103` only checks that the bar's line, the bar's shadow and the header's shadow each have some value, so a shadow cast downward or ten times darker passes, and the snapshots show only the variable names; the two negatives at `#L100` and `#L101` pass with the feature or without it. The test was committed two hours before its feature (873e4165 and c3f1acbe, then ffb02689), which `docs/conventions/qa.md#L222` does not ask. Fix: assert the three values as `FRAME_VALUES` in `ui/src/design-system/tokens.ts` writes them. *Trigger:* the next change to the frame's values.
 
 ## 596. `tokens.ts` still repeats `themeOf`'s corner and spacing, and item 507's citation named a deleted file (design system landing 3's review, 2026-11-17, Low) — the machine; `[DEFERRED]`
 
@@ -2060,11 +2060,11 @@ The signal case of the demo remake's tests sets `OPS_LOG_DIR` to `$E2E/logs-dr-s
 
 ## 615. Where the one review's findings are listed has no home on `main` — the machine; `[OPEN]` (the review before main, 2026-11-19, Low)
 
-`docs/conventions/qa.md#L110-L111` says "Each finding is listed and tagged `[FIXED]` ..." and, since the range cut "in the recap", names no place; the `pre-main-review` skill names its own folder on the orchestrator branch. Fix: name the place in the rule, or say it is the orchestrator branch's review page. *Trigger:* the next change to rule 5, or a reader asking where the list is.
+`docs/conventions/qa.md#L114-L115` says "Each finding is listed and tagged `[FIXED]` ..." and, since the range cut "in the recap", names no place; the `pre-main-review` skill names its own folder on the orchestrator branch. Fix: name the place in the rule, or say it is the orchestrator branch's review page. *Trigger:* the next change to rule 5, or a reader asking where the list is.
 
 ## 616. The review skill's questions miss three duties `main` gives the reviewer, and QA lists the questions again — the machine; `[OPEN]` (the review before main, 2026-11-19, Low)
 
-`docs/conventions/qa.md#L105` (each test against its case), `#L351` (each new coverage hint against its reason) and `docs/conventions/documentation.md#L72` (a rule's line in the human version read beside it) are duties of rule 5's reviewer that the skill's questions do not list; `qa.md#L103-L105` lists the questions the skill lists too, in different words. None applied to the docs-only range. Fix: the skill points to rule 5 for the questions and adds the three duties; QA keeps the list. *Trigger:* the next review before `main` that touches code or a rule.
+`docs/conventions/qa.md#L109` (each test against its case), `#L380` (each new coverage hint against its reason) and `docs/conventions/documentation.md#L72` (a rule's line in the human version read beside it) are duties of rule 5's reviewer that the skill's questions do not list; `qa.md#L107-L109` lists the questions the skill lists too, in different words. None applied to the docs-only range. Fix: the skill points to rule 5 for the questions and adds the three duties; QA keeps the list. *Trigger:* the next review before `main` that touches code or a rule.
 
 ## 617. The products page has two writers and names one — the machine; `[OPEN]` (the review before main, 2026-11-19, Low)
 
