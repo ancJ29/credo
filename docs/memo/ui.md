@@ -292,7 +292,7 @@ only in the mode and the output folder.
 `ui/src/design-system/onBrand.ts`'s `onBrand` picks the ink for each of three
 surfaces of a client's ten shades: the filled parts (shade 6, hover 7), the header (7 to 9) and the
 menu (9 to 8). White stays wherever it reaches 4.5:1 against every shade of the surface's span; else
-the theme's darkest grey does, over the lighter span `5 to 7` and `6, 5` and `8, 7`; else the span
+the theme's darkest grey does, over the lighter span `5 to 7` and `6, 5` and `9, 8`; else the span
 moves a shade at a time and the nearer pass wins. The theme's `variantColorResolver`
 (`ui/src/design-system/appTheme.ts`) and the checks' `iconColor` read it, and `credoVariables`
 (`ui/src/design-system/cssVariables.ts`) writes it as `--credo-on-filled`, `--credo-on-header`,
