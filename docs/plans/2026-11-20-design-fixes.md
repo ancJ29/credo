@@ -234,10 +234,13 @@ shape, else piece 126's. One recap, step 11, before C lands, not one a landing.
       pure red and amber (119 screens each, the frame's brand text moves too); none under steel,
       brick, bronze, plum or indigo. Item 636's thumb measured: terracotta (2.91) and amber (1.61)
       fail 3:1, the item stays open for the thumb alone.
-- [ ] **8. Landing B.** `pre-merge` taken in; your run with `--moved all --write`, every moved picture
+- [x] **8. Landing B.** `pre-merge` taken in; your run with `--moved all --write`, every moved picture
       a company screen with a link, the operator walks 0; the bases committed alone; your run with no
       flags. _Done when:_ it reads green, every count 0. **14 min** (step 3's rows), **and your two
-      runs, about 20 each.**
+      runs, about 20 each.** _Evidence:_ `pre-merge` was already in the branch; your write run green, 162
+      pictures of five client walks (piece 2, lists, orders, driver, reconcile) committed alone in
+      `c1d2153f`, the operator walk and the other six walks 0; your run with no flags green, all 35
+      compares 0 moved.
 
 **Landing C: type by name** (after B lands; your looks stay open meanwhile).
 
