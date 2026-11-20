@@ -3,7 +3,7 @@
 > **Decided** 2026-11-10: the promises the screens make to whoever uses them and whoever ships them,
 > gathered into one memo because they were written nowhere. Each section below is one claim a caller
 > can be surprised by, read from the code rather than from the design. The menu's half of
-> `architecture-detail.md`'s *Who may do what* was **moved** here, not copied.
+> `architecture-detail.md`'s _Who may do what_ was **moved** here, not copied.
 
 ## At a glance
 
@@ -38,21 +38,22 @@ Drawn from [`App.tsx`](../../ui/src/App.tsx), [`ClientApp.tsx`](../../ui/src/Cli
 [`OperatorApp.tsx`](../../ui/src/OperatorApp.tsx), [`page.ts`](../../ui/src/page.ts),
 [`api.ts`](../../ui/src/api.ts) and [`Loaded.tsx`](../../ui/src/frame/Loaded.tsx).
 
-| It promises | Protects against | Why |
-| --- | --- | --- |
-| A 401 signs a client's person out of the device | a lapsed session reading on | [401](#a-401-signs-a-clients-person-out-and-an-operators-only-asks-for-the-passkey-again) |
-| An operator's 401 keeps the handle and the form | a half-typed client lost to an idle hour | [the operator's 401](#a-401-signs-a-clients-person-out-and-an-operators-only-asks-for-the-passkey-again) |
-| A 403 makes the app read who the person is again | a right taken away still drawn in the menu | [403](#a-403-makes-the-app-read-who-the-person-is-again) |
-| One bundle, two apps, chosen by the address | a second deployment for the console | [one bundle](#one-bundle-serves-both-apps-and-the-operators-console-ships-to-every-clients-browser) |
-| A page a person may not open is never drawn, and makes no call | nothing structural. The server asks again on every call | [the guard](#a-screen-never-guards-so-a-page-the-person-may-not-open-is-never-drawn) |
-| A failed load says so and offers another try | a blank screen | [a failed load](#a-failed-load-offers-another-try-a-load-that-never-answers-does-not) |
-| A save is never re-sent by the app | a save applied twice | [a save](#a-save-is-never-re-sent-and-only-a-new-order-can-be-filed-twice) |
-| The fake and its demo company are not in the app's build | a client's browser holding invented data | [the fake](#the-fake-is-compiled-out-of-the-apps-build-and-fake-on-a-deployed-address-does-nothing) |
+| It promises                                                          | Protects against                                        | Why                                                                                                                 |
+| -------------------------------------------------------------------- | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| A 401 signs a client's person out of the device                      | a lapsed session reading on                             | [401](#a-401-signs-a-clients-person-out-and-an-operators-only-asks-for-the-passkey-again)                           |
+| An operator's 401 keeps the handle and the form                      | a half-typed client lost to an idle hour                | [the operator's 401](#a-401-signs-a-clients-person-out-and-an-operators-only-asks-for-the-passkey-again)            |
+| A 403 makes the app read who the person is again                     | a right taken away still drawn in the menu              | [403](#a-403-makes-the-app-read-who-the-person-is-again)                                                            |
+| One bundle, two apps, chosen by the address                          | a second deployment for the console                     | [one bundle](#one-bundle-serves-both-apps-and-the-operators-console-ships-to-every-clients-browser)                 |
+| A page a person may not open is never drawn, and makes no call       | nothing structural. The server asks again on every call | [the guard](#a-screen-never-guards-so-a-page-the-person-may-not-open-is-never-drawn)                                |
+| A failed load says so and offers another try                         | a blank screen                                          | [a failed load](#a-failed-load-offers-another-try-a-load-that-never-answers-does-not)                               |
+| A save is never re-sent by the app                                   | a save applied twice                                    | [a save](#a-save-is-never-re-sent-and-only-a-new-order-can-be-filed-twice)                                          |
+| The fake and its demo company are not in the app's build             | a client's browser holding invented data                | [the fake](#the-fake-is-compiled-out-of-the-apps-build-and-fake-on-a-deployed-address-does-nothing)                 |
+| The text on a client's colour is picked for that colour, by one rule | white text on a colour it cannot be read on             | [the text on the colour](#the-text-on-a-clients-colour-follows-the-colour-by-one-rule-and-markup-never-names-white) |
 
 **No deadline anywhere.** No call in this package has a timeout, a retry or a check that the device
 is online, so a request that never answers is a spinner for as long as the browser allows
 ([no deadline](#no-call-has-a-timeout-a-retry-or-a-check-that-the-device-is-online)). **And the
-menu is only as fresh as the last time the app read who the person is** — a right newly *granted*
+menu is only as fresh as the last time the app read who the person is** — a right newly _granted_
 is never discovered without a reload
 ([the menu](#the-menu-changes-only-when-the-app-reads-who-the-person-is-again)).
 
@@ -61,7 +62,7 @@ is never discovered without a reload
 `ui/src/page.ts`'s `refusal` is the whole rule, and it is three lines: a 401 calls the page's
 `onSignedOut`, a 403 calls its `onForbidden` where it has one, and **anything else — any other
 status, and a transport failure — does neither** and is the page's own failure. What `onSignedOut`
-*does* is then the app's, and the two apps do opposite things.
+_does_ is then the app's, and the two apps do opposite things.
 
 - **A client's person is signed out of the device.** `ui/src/ClientApp.tsx`'s `signedOut` clears the
   kept handle and sets the signed-in person to none, which makes the app draw the sign-in screen in
@@ -71,19 +72,19 @@ status, and a transport failure — does neither** and is the page's own failure
   with no close button, no escape and no click-outside, whose two ways out are a fresh passkey touch
   and signing out. The page keeps what was typed, and **the refused request is not sent again by
   itself.** The one 401 that does drop an operator's handle is the console's own boot.
-- *The surprise, and it is this package's largest:* **"a 401 signs you out" is true for a client's
+- _The surprise, and it is this package's largest:_ **"a 401 signs you out" is true for a client's
   staff and false for an operator.** A reader who learns the rule from one app will get the other
   wrong.
-- *Held by:* `ui/src/page.test.ts` for the rule, `ui/src/App.test.tsx` for the client's side and
+- _Held by:_ `ui/src/page.test.ts` for the rule, `ui/src/App.test.tsx` for the client's side and
   `ui/src/OperatorApp.test.tsx` for the operator's, which asserts in its own words that the page
   stays with what was typed and the make is not sent again.
-- *Hazard no gate catches:* `useLoad` calls `refusal` **before** it checks whether the page is still
+- _Hazard no gate catches:_ `useLoad` calls `refusal` **before** it checks whether the page is still
   mounted, so a read that ends after its page has left still fires the refusal. On a client's side
   that is harmless — signing out twice is signing out. On the console a late 401 can re-open the
   passkey modal over a console that has just signed in again, and only another touch or a sign-out
-  closes it. Every branch of this is covered; the interleaving is not. *Trigger:* the first report
+  closes it. Every branch of this is covered; the interleaving is not. _Trigger:_ the first report
   of a passkey prompt that will not go away.
-- *Hazard no test catches:* that the client's half-typed form is lost. The inverse is asserted — a
+- _Hazard no test catches:_ that the client's half-typed form is lost. The inverse is asserted — a
   400 keeps what was typed — and the 401 case is not.
 
 ## The handle lives in the browser's localStorage, with no clock of its own
@@ -95,18 +96,18 @@ expiry timer in this package at all.** The week a session lasts is the back end'
 ([the BFF's memo](bff.md#a-session-lasts-a-week-and-an-operators-an-hour-unused)), and a device
 learns its session has lapsed only from the 401 on its next call.
 
-- *The surprise for a caller:* one device can hold a client's sign-in and an operator's at once —
+- _The surprise for a caller:_ one device can hold a client's sign-in and an operator's at once —
   they are separate keys, and a call picks one by which app asked.
-- *And:* **signing out does not unlink the device.** Only the handle is removed; the client's code,
+- _And:_ **signing out does not unlink the device.** Only the handle is removed; the client's code,
   the chosen language and the operator's handle survive, so the next visit boots the same company.
   The device is signed out whether or not the service heard, deliberately: the call's failure is
   swallowed.
-- *Price of the choice:* a device that once followed a client's link boots that client forever from
+- _Price of the choice:_ a device that once followed a client's link boots that client forever from
   the bare address, and following a second client's link replaces the first — whereupon the first
-  company's handle is refused at the second and dropped. *Except at a company's own address:* each
+  company's handle is refused at the second and dropped. _Except at a company's own address:_ each
   company's address is its own origin, so its device storage is its own, and the address, not the
   stored code, names the company.
-- *Hazard no gate catches:* every read and write of browser storage is unguarded. A browser with
+- _Hazard no gate catches:_ every read and write of browser storage is unguarded. A browser with
   site data blocked, or a private window that throws on access, is untested territory.
 
 ## A 403 makes the app read who the person is again
@@ -116,15 +117,15 @@ route wrapper replaces the page with a "you cannot open this page" notice; if th
 there the page shows its own refusal and the person can try again. **On the operator console
 nothing supplies that callback at all**, so a 403 there falls through to the page's generic failure.
 
-- *What the person is shown is the page's wording, never the back end's.* The refusal's body is not
+- _What the person is shown is the page's wording, never the back end's._ The refusal's body is not
   read for anything but a 409, so every page shows its own string — five pages have a dedicated one
   for a 403, and the rest show "…was not saved. What you typed is still here: try again."
-- *The surprise:* **two call sites read a 403 as something else entirely** — changing one's own
+- _The surprise:_ **two call sites read a 403 as something else entirely** — changing one's own
   password reads it as "the current password is wrong", and an operator's new-passkey link as "that
   is yourself". `ui/src/page.ts`'s `refusal` is the one home of the permission reading (it names a 403 `forbidden`), and its
-  own comment admits what holds it: *a predicate is a value, so nothing but review stops another
-  copy of this check.* `pnpm counts` counts the copies.
-- *Hazard no test catches:* the re-read swallows every failure but a 401. A 503, a transport failure
+  own comment admits what holds it: _a predicate is a value, so nothing but review stops another
+  copy of this check._ `pnpm counts` counts the copies.
+- _Hazard no test catches:_ the re-read swallows every failure but a 401. A 503, a transport failure
   or a reply in the wrong shape does **nothing at all** — no message, no retry — and the person
   keeps the permissions they had. The only trace is the page's own 403 message.
 
@@ -142,15 +143,15 @@ rather than decided at boot, because the predicate reads the router's location.
   three spreadsheet readers, fetched the first time an import or export page is used.
   **The console's code, its routes and its words are all in the entry file a client's phone
   downloads on first load** — grep that file for `/operator/clients` and it is there sixteen times.
-- *What the code says about itself:* `ui/vite.config.ts`'s comment names the split ("One entry of
+- _What the code says about itself:_ `ui/vite.config.ts`'s comment names the split ("One entry of
   React and Mantine, past this limit already; the gallery and the spreadsheet readers are split off"),
   and "one bundle" is a fair description of the apps and not of the files: there are five. The entry
   is past 1,000 kB, the warning limit that same file raises.
-- *The rule:* split off a page that is heavy or that a client never opens: the gallery and the
+- _The rule:_ split off a page that is heavy or that a client never opens: the gallery and the
   spreadsheet readers, each by its own dynamic import. The console's pages stay in the entry, since
   the predicate reads the router and an operator's address is the same app.
-- *Hazard no gate catches:* nothing fails when the entry passes the warning limit, because the limit
-  was raised above it. *Trigger:* the entry reaching 1,000 kB, when the build starts warning again: it has (open item 555).
+- _Hazard no gate catches:_ nothing fails when the entry passes the warning limit, because the limit
+  was raised above it. _Trigger:_ the entry reaching 1,000 kB, when the build starts warning again: it has (open item 555).
 
 ## The operator's address is matched exactly, and a near miss is a client's app
 
@@ -161,8 +162,8 @@ rather than decided at boot, because the predicate reads the router's location.
 meant: on an unlinked device that is the "we do not know this address" screen, and on a linked and
 signed-in one the person is silently sent to the first page of their own menu.
 
-- *Hazard no test catches:* no test covers a near-miss address. The console's own test named "opens
-  at every address under `/operator`, and nowhere else" renders only addresses *under* `/operator`;
+- _Hazard no test catches:_ no test covers a near-miss address. The console's own test named "opens
+  at every address under `/operator`, and nowhere else" renders only addresses _under_ `/operator`;
   the second half of its name is not asserted.
 
 ## No call has a timeout, a retry or a check that the device is online
@@ -172,18 +173,18 @@ signed-in one the person is silently sent to the first page of their own menu.
 never answers hangs for as long as the browser's own connection timeout allows, with no deadline of
 the app's; nothing is ever re-sent automatically; and the app never knows the device is offline.
 
-- *The surprise for a caller:* a transport failure, a reply the schema cannot read and an answer
+- _The surprise for a caller:_ a transport failure, a reply the schema cannot read and an answer
   with no JSON in it are **one error** — `ApiError` with no status — and so indistinguishable from
   each other.
-- *And the hop is named for the operator only.* `ui/src/api.ts`'s `hopOf` calls a failure the
+- _And the hop is named for the operator only._ `ui/src/api.ts`'s `hopOf` calls a failure the
   store's when the answer came back in the back end's own error shape as a 503, and the back end's
   otherwise; the console's unavailable screen says which. A client's staff are never told: they get
   "The service is unavailable. Try again in a moment."
-- *Rejected, by the code's own arrangement:* a deadline in this package. The back end already bounds
+- _Rejected, by the code's own arrangement:_ a deadline in this package. The back end already bounds
   its own call to storage at five seconds
   ([the BFF's memo](bff.md#one-call-to-storage-waits-five-seconds-and-is-sent-once)), so the one
   case a UI deadline would catch is an edge or a network that accepts a connection and never
-  answers. *Trigger to revisit:* the first report of a screen that spun forever.
+  answers. _Trigger to revisit:_ the first report of a screen that spun forever.
 
 ## A failed load offers another try; a load that never answers does not
 
@@ -195,11 +196,11 @@ alert. There is no third "this is taking long" state, so a request that never an
 with the retry button out of reach. The menu, the language switch and sign-out are siblings of the
 page body, so the person can navigate away.
 
-- *Except at the boot.* `ui/src/frame/Boot.tsx`'s `Boot` draws a retry button only in its
+- _Except at the boot._ `ui/src/frame/Boot.tsx`'s `Boot` draws a retry button only in its
   unavailable state; while loading it is a bare spinner filling the window, with no frame, no menu
   and nothing to click. Since the settings read has no deadline, a back end that accepts the
   connection and never answers leaves a dead screen whose only escape is the browser's own reload.
-- *And a sign-in that fails on the network loses what was typed.* A 401 keeps the form and says
+- _And a sign-in that fails on the network loses what was typed._ A 401 keeps the form and says
   "Wrong username or password"; **any other failure replaces the whole app with the unavailable
   screen**, and its retry re-boots, so the typed name and password are gone. The same happens to a
   QR landing whose sign-in fails for any reason but a 401.
@@ -213,11 +214,11 @@ table replaces a page the person may not open with a "you cannot open this page"
 who types the address of a page their menu lacks **gets no screen and makes no call** — there is no
 403 round trip, because nothing is sent.
 
-- *What stops a breach:* nothing here, and nothing here needs to. The back end asks the same
+- _What stops a breach:_ nothing here, and nothing here needs to. The back end asks the same
   question on every call ([the BFF's memo](bff.md#the-permission-layers-are-read-on-every-call)), so
   a breach of this check is a wrong screen and never a wrong act. `ui/src/nav.ts` says so in its own
   comment: this is a view of the guard, never the guard.
-- *The surprise:* **not every route asks the menu's question.** A new order asks whether the person
+- _The surprise:_ **not every route asks the menu's question.** A new order asks whether the person
   may edit orders; a new person asks whether they may create staff; a new customer or product asks
   both the menu's question and the orders one; and the three **import** addresses ask only whether
   the person is the root — no permission grants an import. One's own password and the More page are
@@ -232,12 +233,12 @@ four events only: a reload or first open, a successful sign-in, a 403 from a pag
 re-read, and one's own password change. **There is no polling, no interval and nothing on
 navigation.**
 
-- *The asymmetry, and it is what a reader would not assume:* a right **taken away** is
+- _The asymmetry, and it is what a reader would not assume:_ a right **taken away** is
   self-correcting, because the page the person is on keeps drawing from the stale answer, its next
   call is refused 403, the re-read fires and the redraw replaces the page with the forbidden notice.
   A right **newly granted** produces no 403 at all, so **nothing in the app will ever discover it**:
   the new page stays out of the menu until the person reloads the tab.
-- *Hazard no test catches:* the granted case. Every branch of the re-read is covered; the event that
+- _Hazard no test catches:_ the granted case. Every branch of the re-read is covered; the event that
   never happens is not a branch.
 
 ## A save is never re-sent, and only a new order can be filed twice
@@ -249,15 +250,15 @@ retry of a save that silently landed is answered 409, which `ui/src/api.ts` turn
 so a retry is answered 409 and read as "that code is taken". Closing a day names the requests the
 screen showed.
 
-- *The one exception, and it is a real one:* `ui/src/api.ts`'s `createOrder` sends a plain post with
+- _The one exception, and it is a real one:_ `ui/src/api.ts`'s `createOrder` sends a plain post with
   **no version and no idempotency key**, and the order's number is minted by the back end. The order
-  screen shows "The order was not saved. What you typed is still here: try again." on *any* failure,
+  screen shows "The order was not saved. What you typed is still here: try again." on _any_ failure,
   including a request that never answered. **If the first post in fact landed, that message is
   false, and pressing Save again files a second order.** A double click on one attempt is guarded; a
   retry after a reported failure is not.
-- *Hazard no test catches:* exactly that. Whether the back end would accept two identical creates is
+- _Hazard no test catches:_ exactly that. Whether the back end would accept two identical creates is
   the back end's claim and is not checked here.
-- *The surprise for a caller of this package:* **a 409 is never an error.** `ui/src/api.ts` declares
+- _The surprise for a caller of this package:_ **a 409 is never an error.** `ui/src/api.ts` declares
   **twenty** result types whose names end in `Result`, each a union of an outcome and a refusal the
   screen reads — a conflict, a taken code, a day that moved — so a caller that treats "the call
   threw" as the only failure will miss every one of them.
@@ -271,26 +272,53 @@ package and a grep of every file it emits finds **no occurrence** of the demo co
 fake's own storage key or the fake client's name. There is one entry for both builds; they differ
 only in the mode and the output folder.
 
-- *Held by:* `scripts/src/fake.test.ts`, which runs both builds and asserts the markers are in the
+- _Held by:_ `scripts/src/fake.test.ts`, which runs both builds and asserts the markers are in the
   fake's bundle and absent from the one that is served. That is the assertion to point a shipper at.
 - **So `?fake` on a deployed address is silently ignored**: the parameter is never read in that
   build, and the app boots against the real back end as if nothing had been asked.
-- *The surprise:* **`?fake` is sticky for the tab, and the fake keeps its state somewhere else.* The
+- _The surprise:_ *_`?fake` is sticky for the tab, and the fake keeps its state somewhere else._ The
   first `?fake` writes a flag, so every later navigation in that tab stays on the fake even without
   the parameter. The fake is handed `sessionStorage` where the app is handed `localStorage`, so
   nothing the fake keeps survives the tab, and the two never see each other's store. The fake also
   pins the pages to the data set's own day, whatever day it is opened on.
-- *And the strip holds for this package's own build only.* `ui/src/scene.ts` imports the fake
+- _And the strip holds for this package's own build only._ `ui/src/scene.ts` imports the fake
   **statically**, and it is a published entry point of this package, which the walks page builds
   from. Any bundle built from that export carries the whole fake and the demo company's data, with
   no condition and no elimination. The claim is "the fake is absent from the app's build", never
   "the fake is absent from everything we ship".
 
+## The text on a client's colour follows the colour, by one rule, and markup never names white
+
+`ui/src/design-system/onBrand.ts`'s `onBrand` picks the ink for each of three
+surfaces of a client's ten shades: the filled parts (shade 6, hover 7), the header (7 to 9) and the
+menu (9 to 8). White stays wherever it reaches 4.5:1 against every shade of the surface's span; else
+the theme's darkest grey does, over the lighter span `5 to 7` and `6, 5` and `9, 8`; else the span
+moves a shade at a time and the nearer pass wins. The theme's `variantColorResolver`
+(`ui/src/design-system/appTheme.ts`) and the checks' `iconColor` read it, and `credoVariables`
+(`ui/src/design-system/cssVariables.ts`) writes it as `--credo-on-filled`, `--credo-on-header`,
+`--credo-on-menu`, `--credo-header-gradient`, `--credo-menu-gradient` and each wash at its share of the
+ink (`--credo-on-header-12`, `-18`, `-22`, `-55`, `-90`, `--credo-on-menu-05`, `-10`), so a screen
+reads a variable and the same markup serves every colour.
+
+- _The surprise:_ **a client's buttons may sit one shade darker than the colour's primary.** A colour
+  that reads neither ink at shade 6 (the walks' company's `#2f7d6d`: white 4.37, dark 4.06) has its
+  filled parts at shade 7, hover 8, in white. Where the filled parts move, `credoVariables` also
+  rewrites Mantine's `--mantine-color-brand-filled` and `-filled-hover` (a button or check with no
+  colour of its own reads those by name) and pins `--mantine-color-brand-text` to shade 6, so
+  brand-coloured text on a light ground is not moved by it.
+- _Where the rule keeps white at today's shades_, steel and brick among the stock six, the theme
+  returns Mantine's own parts and the markup is as it was; only emerald's buttons take dark text.
+- _Held by:_ `ui/src/design-system/onBrand.test.ts` (the rule), `appTheme.test.tsx` (the parts),
+  `ui/src/frame/Shell.test.tsx` and `ui/src/pages/SignIn.test.tsx` (the header, the menu and the
+  buttons on the gradient).
+- _Not covered:_ the text and the switch's thumb on a light ground, in the client's colour (item
+  636).
+
 ## Where the rest is
 
 - What belongs in this package and the file to copy: [`ui/CLAUDE.md`](../../ui/CLAUDE.md).
 - - What the package is **for**, in one paragraph:
-  [`architecture.md`](../architecture.md#what-each-part-is-for).
+    [`architecture.md`](../architecture.md#what-each-part-is-for).
 - The other half of the same wire: [the BFF's memo](bff.md).
 
 ## What this memo did not read

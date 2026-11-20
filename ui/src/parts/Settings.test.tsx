@@ -224,7 +224,7 @@ describe('Settings', () => {
     expect(screen.getByText(words.logoNone)).toBeTruthy();
   });
 
-  it('shows the nine palettes as one radio group named Palette, in the legacy’s order, in both languages', () => {
+  it('shows the six palettes as one radio group named Palette, in the human’s order, in both languages', () => {
     const { unmount } = draw(<Settings {...props()} />);
 
     expect(screen.getByRole('radiogroup', { name: words.palette })).toBeTruthy();
@@ -247,15 +247,15 @@ describe('Settings', () => {
     const onSave = vi.fn();
     draw(<Settings {...props({ onSave })} />);
 
-    await userEvent.click(screen.getByRole('radio', { name: words.palettes.terracotta }));
+    await userEvent.click(screen.getByRole('radio', { name: words.palettes.brick }));
 
-    expect(screen.getByLabelText<HTMLInputElement>(words.colour).value).toBe('#d97757');
+    expect(screen.getByLabelText<HTMLInputElement>(words.colour).value).toBe('#9e2d20');
     expect(
-      screen.getByRole<HTMLInputElement>('radio', { name: words.palettes.terracotta }).checked,
+      screen.getByRole<HTMLInputElement>('radio', { name: words.palettes.brick }).checked,
     ).toBe(true);
     expect(checked()).toHaveLength(1);
     await userEvent.click(save());
-    expect(onSave).toHaveBeenCalledExactlyOnceWith({ ...config, colour: '#d97757' });
+    expect(onSave).toHaveBeenCalledExactlyOnceWith({ ...config, colour: '#9e2d20' });
   });
 
   it('checks the swatch whose shade 7 is typed, in any case, and none for any other colour', async () => {
@@ -264,8 +264,8 @@ describe('Settings', () => {
     expect(checked()).toHaveLength(0);
 
     await userEvent.clear(colour);
-    await userEvent.type(colour, '#456955');
-    expect(checked().map((radio) => radio.value)).toEqual(['forest']);
+    await userEvent.type(colour, '#854a00');
+    expect(checked().map((radio) => radio.value)).toEqual(['bronze']);
 
     await userEvent.clear(colour);
     await userEvent.type(colour, '#047857'.toUpperCase());

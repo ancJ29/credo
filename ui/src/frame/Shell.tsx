@@ -140,7 +140,7 @@ export function Shell({
         className={head(classes.header, 'header')}
         data-white={whiteHeader}
         style={
-          whiteHeader ? undefined : { background: BRAND_GRADIENT, color: 'var(--credo-white)' }
+          whiteHeader ? undefined : { background: BRAND_GRADIENT, color: 'var(--credo-on-header)' }
         }
       >
         <Group h="100%" px="md" justify="space-between" wrap="nowrap">
@@ -241,7 +241,9 @@ export function Shell({
           className={side(classes.menu, 'menu')}
           data-white={whiteMenu}
           data-strip={strip}
-          style={whiteMenu ? undefined : { background: MENU_GRADIENT, color: 'var(--credo-white)' }}
+          style={
+            whiteMenu ? undefined : { background: MENU_GRADIENT, color: 'var(--credo-on-menu)' }
+          }
           visibleFrom="sm"
           aria-label={t('nav.menu')}
         >

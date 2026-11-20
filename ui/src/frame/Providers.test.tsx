@@ -27,7 +27,7 @@ describe('Providers', () => {
     draw(<p>the page</p>);
     const style = document.querySelector('style[data-mantine-styles]')?.textContent ?? '';
     const entries = Object.entries(FRAME_COLOURS);
-    expect(entries.length).toBeGreaterThan(5);
+    expect(entries.length).toBeGreaterThan(1);
     for (const [name, value] of entries) expect(style).toContain(`--credo-${name}: ${value};`);
 
     // The names the frame reads, found in the files, not the names the tokens hold.

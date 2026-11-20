@@ -135,7 +135,7 @@ export function JoinPage({ api, device, passkeys, languages, onLanguage }: Props
             size="md"
             loading={status === 'busy'}
             leftSection={<IconFingerprint size={20} />}
-            style={{ background: BRAND_GRADIENT }}
+            style={{ background: BRAND_GRADIENT, color: 'var(--credo-on-header)' }}
             onClick={() => void make(seen.link)}
           >
             {t('passkey.makeButton')}

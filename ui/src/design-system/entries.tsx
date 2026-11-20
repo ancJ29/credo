@@ -24,6 +24,7 @@ import { SectionTitle } from '../components/molecules/SectionTitle';
 import { DoorCard } from '../components/organisms/DoorCard';
 import { PageHeader } from '../components/organisms/PageHeader';
 import { SectionCard } from '../components/organisms/SectionCard';
+import { OnTheBrand } from './OnTheBrand';
 
 /** A sample company logo for the tile: a plain shape, no real company's. */
 const SAMPLE_LOGO =
@@ -136,6 +137,18 @@ export const ENTRIES: Entry[] = [
       { name: 'Palette', node: <Palette /> },
       { name: 'Type', node: <Type /> },
       { name: 'Gaps', node: <Gaps /> },
+    ],
+  },
+  {
+    group: 'Foundations',
+    name: 'On the brand',
+    description:
+      "The text on a client's colour, today's white beside the rule's pick (white where it reaches 4.5:1, else dark), for each of the six stock colours and two typed ones, with the least ratio against the surface's shades.",
+    props: 'onBrand(shades, surface) · surface: filled | header | menu',
+    states: [
+      { name: 'Buttons', node: <OnTheBrand surface="filled" /> },
+      { name: 'Header', node: <OnTheBrand surface="header" /> },
+      { name: 'Menu', node: <OnTheBrand surface="menu" /> },
     ],
   },
   {

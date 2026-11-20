@@ -27,7 +27,7 @@ const GROUND = 'light-dark(var(--mantine-color-neutral-1), var(--mantine-color-b
 
 /** The language switch's outline, white on the coloured header. */
 const SWITCH = {
-  border: '1px solid var(--credo-white-55)',
+  border: '1px solid var(--credo-on-header-55)',
   borderRadius: 6,
   overflow: 'hidden',
 };
@@ -97,7 +97,7 @@ export function SignInFrame({ brand, title, languages = [], onLanguage, children
                 fz={12}
                 fw={700}
                 style={{
-                  background: i18n.language === language ? 'var(--credo-white-22)' : undefined,
+                  background: i18n.language === language ? 'var(--credo-on-header-22)' : undefined,
                 }}
                 onClick={() => onLanguage(language)}
               >
@@ -199,7 +199,7 @@ export function SignIn({
             fullWidth
             size="md"
             loading={status === 'busy'}
-            style={{ background: BRAND_GRADIENT }}
+            style={{ background: BRAND_GRADIENT, color: 'var(--credo-on-header)' }}
           >
             {t('auth.submit')}
           </Button>

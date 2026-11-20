@@ -1,11 +1,15 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { cleanup, screen, within } from '@testing-library/react';
+import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { draw } from '../../tests/render';
 import { DICTIONARIES, LANGUAGE_NAMES } from '../i18n';
 import { PAGES } from '../nav';
+import { Providers } from './Providers';
+import { MemoryRouter } from 'react-router';
+import { shadesOf } from '../design-system/appTheme';
+import { onBrand } from '../design-system/onBrand';
 import { type Look, Shell } from './Shell';
 
 const frameCss = readFileSync(join(import.meta.dirname, 'frameLook.module.css'), 'utf8');
@@ -24,6 +28,87 @@ const shell = (
 
 const sideMenu = () => screen.getAllByRole('navigation', { name: words.nav.menu })[0];
 const bar = () => screen.getAllByRole('navigation', { name: words.nav.menu })[1];
+
+/** The shell drawn in a company's colour, with the variables the page's styles hold. */
+const inColour = (colour: string) => {
+  const drawn = render(
+    <Providers colour={colour} language="en" test>
+      <MemoryRouter initialEntries={['/settings']}>
+        <Shell
+          brand={brand}
+          user="root"
+          languages={['en']}
+          onLanguage={vi.fn()}
+          onSignOut={vi.fn()}
+        >
+          <p>the page</p>
+        </Shell>
+      </MemoryRouter>
+    </Providers>,
+  );
+  const css = [...document.querySelectorAll('style')].map((style) => style.textContent).join('');
+  const value = (name: string) => new RegExp(`--credo-${name}: ([^;]+);`).exec(css)?.[1];
+  const result = { css, value, header: document.querySelector('header')!, menu: sideMenu() };
+  return { ...result, drawn };
+};
+
+const frameStyles = readFileSync(join(import.meta.dirname, 'frame.module.css'), 'utf8');
+
+describe('the header and the menu follow the colour', () => {
+  it('7: the header draws the header’s pick, the washes following', () => {
+    for (const colour of ['#2f7d6d', '#d97757', '#ff0000', '#ffff00', '#ffbf00', '#9e2d20']) {
+      const pick = onBrand(shadesOf(colour), 'header');
+      const { value, header, drawn } = inColour(colour);
+      const [r, g, b] = [1, 3, 5].map((at) => parseInt(pick.colour.slice(at, at + 2), 16));
+
+      expect(value('on-header'), colour).toBe(pick.colour);
+      expect(value('header-gradient'), colour).toBe(
+        `linear-gradient(135deg, var(--mantine-color-brand-${pick.span[0]}) 0%, var(--mantine-color-brand-${pick.span.at(-1)}) 100%)`,
+      );
+      for (const share of [12, 18, 22, 55, 90])
+        expect(value(`on-header-${share}`), colour).toBe(`rgba(${r}, ${g}, ${b}, ${share / 100})`);
+      expect(header.style.color, colour).toBe('var(--credo-on-header)');
+      drawn.unmount();
+    }
+    // the light colour: dark text over the lighter shades, ending at its own colour
+    const light = inColour('#d97757');
+    expect(light.value('on-header')).toBe('#111827');
+    expect(light.value('header-gradient')).toContain('brand-5) 0%, var(--mantine-color-brand-7)');
+    expect(light.value('on-header-12')).toBe('rgba(17, 24, 39, 0.12)');
+    light.drawn.unmount();
+  });
+
+  it('7: the stylesheet’s header, buttons, chip, avatar and badge read the header’s variables, none white', () => {
+    expect(frameStyles).not.toContain('--credo-white');
+    for (const name of ['on-header', 'on-header-12', 'on-header-18', 'on-header-90'])
+      expect(frameStyles).toContain(`var(--credo-${name})`);
+  });
+
+  it('8: the menu draws the menu’s pick, its open page and hover washes following', () => {
+    for (const colour of ['#2f7d6d', '#d97757', '#ff0000', '#ffff00', '#ffbf00', '#9e2d20']) {
+      const pick = onBrand(shadesOf(colour), 'menu');
+      const { value, menu, drawn } = inColour(colour);
+      const [r, g, b] = [1, 3, 5].map((at) => parseInt(pick.colour.slice(at, at + 2), 16));
+
+      expect(value('on-menu'), colour).toBe(pick.colour);
+      expect(value('menu-gradient'), colour).toBe(
+        `linear-gradient(180deg, var(--mantine-color-brand-${pick.span[0]}) 0%, var(--mantine-color-brand-${pick.span.at(-1)}) 100%)`,
+      );
+      expect(value('on-menu-05'), colour).toBe(`rgba(${r}, ${g}, ${b}, 0.05)`);
+      expect(value('on-menu-10'), colour).toBe(`rgba(${r}, ${g}, ${b}, 0.1)`);
+      expect(menu.style.color, colour).toBe('var(--credo-on-menu)');
+      drawn.unmount();
+    }
+    // amber is the one that leaves white: dark text on shades 8 to 7
+    const amber = inColour('#ffbf00');
+    expect(amber.value('on-menu')).toBe('#111827');
+    expect(amber.value('menu-gradient')).toContain('brand-8) 0%, var(--mantine-color-brand-7)');
+    amber.drawn.unmount();
+    expect(frameStyles).toContain('color: var(--credo-on-menu)');
+    expect(frameStyles).toContain('var(--credo-on-menu-05)');
+    expect(frameStyles).toContain('var(--credo-on-menu-10)');
+  });
+});
 
 describe('Shell', () => {
   it('shows the company’s name as the first heading, and a page in the middle', () => {
@@ -54,18 +139,20 @@ describe('Shell', () => {
     shell(['en']);
 
     const header = document.querySelector('header')!;
-    expect(header.getAttribute('style')).toContain(
-      'linear-gradient(135deg, var(--mantine-color-brand-7) 0%, var(--mantine-color-brand-9) 100%)',
+    expect(header.getAttribute('style')).toContain('var(--credo-header-gradient)');
+    expect(sideMenu().getAttribute('style')).toContain('var(--credo-menu-gradient)');
+    expect(header.style.color).toBe('var(--credo-on-header)');
+    expect(sideMenu().style.color).toBe('var(--credo-on-menu)');
+    // for this colour the variables are today's: shade 7 to 9 and 9 to 8, in white
+    const css = [...document.querySelectorAll('style')].map((style) => style.textContent).join('');
+    expect(css).toContain(
+      '--credo-header-gradient: linear-gradient(135deg, var(--mantine-color-brand-7) 0%, var(--mantine-color-brand-9) 100%)',
     );
-    expect(sideMenu().getAttribute('style')).toContain(
-      'linear-gradient(180deg, var(--mantine-color-brand-9) 0%, var(--mantine-color-brand-8) 100%)',
+    expect(css).toContain(
+      '--credo-menu-gradient: linear-gradient(180deg, var(--mantine-color-brand-9) 0%, var(--mantine-color-brand-8) 100%)',
     );
-    expect(header.style.color).toBe('var(--credo-white)');
-    expect(sideMenu().style.color).toBe('var(--credo-white)');
-    // the variable is white: the value the inline colour carried before it
-    expect(
-      [...document.querySelectorAll('style')].map((style) => style.textContent).join(''),
-    ).toContain('--credo-white: #fff;');
+    expect(css).toContain('--credo-on-header: #ffffff;');
+    expect(css).toContain('--credo-on-menu: #ffffff;');
     // 250 pixels wide, 64 high for the phone's bar, as Mantine writes them: in rem.
     const rules = [...document.querySelectorAll('style')]
       .map((style) => style.textContent)

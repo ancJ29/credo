@@ -180,6 +180,26 @@ describe('the frame every door wears', () => {
     expect(screen.getByRole('banner').querySelector('img')?.getAttribute('src')).toBe('logo.png');
   });
 
+  it('7: every button on the header’s gradient wears the header’s text, and the language switch its washes', () => {
+    let seen = 0;
+    for (const [name, door] of doors(['vi', 'en'])) {
+      const { container } = draw(door);
+      for (const button of container.querySelectorAll('button[type]')) {
+        if (!button.getAttribute('style')?.includes(BRAND_GRADIENT)) continue;
+        seen += 1;
+        expect((button as HTMLElement).style.color, name).toBe('var(--credo-on-header)');
+      }
+      const group = screen.getByRole('group', { name: words.user.language });
+      expect(group.getAttribute('style'), name).toContain('var(--credo-on-header-55)');
+      expect(
+        within(group).getByRole('button', { name: LANGUAGE_NAMES.en }).getAttribute('style'),
+        name,
+      ).toContain('var(--credo-on-header-22)');
+      cleanup();
+    }
+    expect(seen).toBeGreaterThan(1);
+  });
+
   it('2: no door draws a side menu or the phone’s bar', () => {
     for (const [name, door] of doors()) {
       draw(door);
@@ -198,7 +218,7 @@ describe('the frame every door wears', () => {
       );
       const gradients = styles.filter((style) => style?.includes('gradient'));
       expect(
-        gradients.every((style) => style?.includes('brand-7')),
+        gradients.every((style) => style?.includes('--credo-header-gradient')),
         name,
       ).toBe(true);
       expect(styles.join(' '), name).not.toContain('neutral-0');
@@ -221,7 +241,10 @@ describe('the frame every door wears', () => {
     const client = style('#aa3300', <SignIn brand={brand} status="idle" onSubmit={vi.fn()} />);
     const credo = style(CREDO_COLOUR, <OperatorSignIn status="idle" onSubmit={vi.fn()} />);
 
-    expect(client.header).toContain('--mantine-color-brand-7');
+    expect(client.header).toContain('var(--credo-header-gradient)');
+    expect(client.css).toContain(
+      '--credo-header-gradient: linear-gradient(135deg, var(--mantine-color-brand-7)',
+    );
     expect(client.css).toContain(shadesOf('#aa3300')[7]);
     expect(client.css).not.toContain(shadesOf(CREDO_COLOUR)[7]);
     expect(credo.css).toContain(shadesOf(CREDO_COLOUR)[7]);
