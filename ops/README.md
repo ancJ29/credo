@@ -32,7 +32,7 @@ If you only want to do a task and see what happens, [the operator guide](../docs
 | the six demo copies remade and filled with 21 days | `ops/demo-remake.sh ridge` ([the demo copies](#the-demo-copies)) | about 10 minutes, up to 15 |
 | the demo copies brought up to yesterday, when Actions is down or for a copy just made | `ops/seed.sh ridge` ([the seed](#the-seed)) | up to about 15 minutes (2 days a copy at most), longer for a first fill |
 | a demo copy's root, given a new password | `ops/root-password.sh ridge <code>…` ([the root password](#the-demo-copies-root-password)) | about a minute, plus the typing |
-| the password of the walks page and the docs site, set or changed (run in `pre-merge`'s worktree; it writes only `ops/site-password.sha256`, which the machine then commits there, checks, moves `main` over and hands you the push for) | `cd <the credo root>/pre-merge && bash ops/site-password.sh` ([the site's password](#the-sites-password)) | under a minute, plus the typing |
+| the password of the walks page and the docs site, set or changed (run in `pre-merge`'s worktree; it writes only `ops/site-password.sha256`, which the machine then commits there, checks, moves `main` over and hands you the push for; the push publishes the two pages and runs no app checks) | `cd <the credo root>/pre-merge && bash ops/site-password.sh` ([the site's password](#the-sites-password)) | under a minute, plus the typing |
 | your own preview of a walks page built here | `ops/walks-preview.sh [<built folder>]` ([previews](#previews-on-cloudflare-pages)) | about 2 minutes |
 | your own preview of a committed folder (such as the app frame's mock) | `ops/pages-preview.sh --worktree … --sub … --branch …` ([previews](#previews-on-cloudflare-pages)) | about 2 minutes |
 | a piece's full run of the walks (two runs, the bases committed between) | `ops/full-run.sh --worktree … --branch … --walks …` ([the full run](#the-full-run)) | the walks' own, 6 to 35 minutes a run |
@@ -499,7 +499,8 @@ no password: the copies are made first, all six by `ops/demo-remake.sh ridge` ([
    - **ci.yml's push trigger holds a line this script cannot read:** the seed reads the paths a push
      deploys on from `ci.yml`, and only as `      - "<path>"` or `      - "<path>/**"`; the line
      named is quoted another way, commented or a deeper glob. Nothing was written; write the entry in
-     that form, or teach `push_paths` in `ops/lib.sh` the new one.
+     that form, or teach `push_paths` in `ops/lib.sh` the new one. It reads one more form: `      - "!<plain path>"` after an entry holding that path, as `ci.yml`
+     leaves the password file out; the seed compares everything else under `ops/`.
    - **the BFF's function names <sha>, /health <sha>:** a deploy shipped c-storage and stopped before
      the BFF. Nothing was written; read the deploy's log, and run it again once the deploy is green.
    - **below the floor:** the box has too little free disk, memory or swap; free it first.
@@ -521,7 +522,8 @@ reads the password with no echo, twice from a terminal or one line from a pipe, 
 fixed prefix `credo-site-gate:`) into `ops/site-password.sha256`, replacing what was there. Run it again to change the
 password, always in `pre-merge`'s worktree (`cd <the credo root>/pre-merge && bash ops/site-password.sh`); it touches nothing else and never commits or pushes. After it
 the machine commits that one file alone there, runs the site's gate and the walks page's build, moves `main` and hands you the
-push; the push starts both workflows, and the new password takes effect once they have published. A browser that remembered the old password is asked again, because it
+push; the push starts the docs and walks workflows alone (`ci.yml` leaves `ops/site-password.sha256` out of its trigger by a
+negative pattern after `ops/**`, so no app checks or deploy run for it), and the new password takes effect once they have published. A browser that remembered the old password is asked again, because it
 remembers the hash, not a flag. Both builds (`pnpm report` and the docs site's build) stop, naming the command,
 when the file is missing or is not one 64-digit hash. A preview of the walks page (`ops/walks-preview.sh`) carries
 the box too, since its address is open to anyone with the link.
