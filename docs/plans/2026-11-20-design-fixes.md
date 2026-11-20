@@ -95,9 +95,10 @@ A sets; nothing here names it), `on-brand`, `brand-surface` (A's `on-*`, Mantine
 screens' 120-odd `color=` names move to `danger`, `success`, `warning` with the skeleton piece's message
 atom and status map, which rewrite those lines.
 
-**One home for each value:** `TOKENS.badgeRadius` and `TOKENS.cardPadding` (`tokens.ts#L12`, `#L24`)
-read the theme's `sm` and `lg` (`ui/src/design-system/appTheme.ts#L154-L155`), closing items 508 and
-596; `doorPadding`, `doorBody` and `logoTile` stay component settings, said in the doc comment. The
+**One home for each value:** `tokens.ts` writes the radii and the spacing as tables, `RADII` and
+`SPACING` (`tokens.ts#L7-L8`), and the theme reads them (`ui/src/design-system/appTheme.ts#L154-L155`),
+since the theme imports the tokens; `TOKENS.badgeRadius` and `TOKENS.cardPadding` (`tokens.ts#L21`,
+`#L33`) read the tables' `sm` and `lg`, closing items 508 and 596; `doorPadding`, `doorBody` and `logoTile` stay component settings, said in the doc comment. The
 gradients' angles, 135 and 180 (`cssVariables.ts#L34-L35`), come from `tokens.ts`, and the washes
 become one table of numbers. `todayOf` (`onBrand.ts#L74`) becomes `beforeOf`, the gallery's "Today"
 column "Before", since in `main` that state is no longer today.
@@ -200,6 +201,15 @@ shape, else piece 126's. One recap, step 11, before C lands, not one a landing.
       tokens; and `cardPadding` is that table's `24px`, not a `lg` variable, because the check read
       the variable as Mantine's default 1.25rem, not the theme's 1.5rem (item 643). Items 508 and
       596 are deleted.
+- [x] **5b. The check reads the theme's variable.** Item 643: `linesOf` let the app stylesheet's
+      `:root` variables beat the theme's style element on `<html>`; the theme's now win, as in the
+      page. Case 11's resolver case, a variable both write, red on the old code, green after; the
+      pinned file rewritten once. _Done when:_ the new case red once then green, the visual gate and
+      the citation test exit 0, the pinned file's diff explained by colour and property. **12 min.**
+      _Evidence:_ red then green (22:26), the write run (22:28), the visual gate exit 0 (23:01 to 23:0x, `logs/2026-11-20-230154-gate-visual.log`), the citation test exit 0. All
+      1,310 pinned hashes moved, each moved line one of the theme's own values read where the old
+      resolver read Mantine's default (the brand blue to the colour, grey and red shades, radii and
+      spacing, the font, the line height); the pages' pictures are unchanged. Item 643 is deleted.
 - [ ] **6. The shades refused.** Case 10, each half red once on a planted `brand.7`. _Done when:_ the
       gates exit 0 and `grep -rnE --exclude='*.test.*' '"[a-z]+\.[0-9]"|--mantine-color-[a-z]+-[0-9]'
       ui/src/pages ui/src/parts ui/src/frame ui/src/components` prints nothing. **20 min** (piece 126's
