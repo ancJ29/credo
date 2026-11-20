@@ -1,4 +1,10 @@
+---
+partner_page: docs/partners/ready-for-a-client.md
+---
+
 # Client readiness
+
+For the product owner, the plain version is [can we take a client](partners/ready-for-a-client.md).
 
 > **Written** 2026-11-07, from a read of `main` at `760d434f`, re-checked against `ca8d1d0d`: no
 > file cited below moved between the two. It answers one question — **can we say we are ready for a
