@@ -262,13 +262,13 @@ system's own earlier row of the same shape.
       _Done when:_ your second run reads `== verdict: green` with every count 0. **7 min** (piece 126's
       12-takein and 12-bases), **and your runs, about 16.**
       _Evidence:_ `pre-merge` taken in by the merge `40f28f3f` (parents `e245d499` and `e32759f0`). The
-      human's write run, `20261120-1603-walk-piece-1-piece-2-admin-lists-office-orders-driver-deliveries-office-reconcile-operator-passkeys-services-root-password-team-delete-client.log`,
+      human's write run of 2026-11-20 at 16:03 (all twelve walks, `--moved all --write`),
       ends `== verdict: green: 35 comparisons, every raw count as asked` and `== done at 16:23:17`;
       its "full-1 to the bases" lines: six walks moved (piece-1 42, piece-2 188, admin-lists 120,
       office-orders 36, driver-deliveries 18, office-reconcile 6 pictures), the six operator walks
       (operator, passkeys, services, root-password, team, delete-client) 0, none new, none without a
       counterpart, none unreadable. The bases committed alone in `58710f78`, 410 pictures. The human's
-      check run, `20261120-1626-walk-piece-1-piece-2-admin-lists-office-orders-driver-deliveries-office-reconcile-operator-passkeys-services-root-password-team-delete-client.log`,
+      check run of the same day at 16:26 (no flags),
       ends `== verdict: green: 35 comparisons, every raw count as asked` and `== done at 16:45:34`,
       every "full-1 to the bases" line at 0 moved, 0 new, 0 without a counterpart, 0 unreadable. The
       bases and the plan land on `pre-merge` with the branch, the orchestrator's next act.
