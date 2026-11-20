@@ -1,4 +1,6 @@
 import { IconCheck } from '@tabler/icons-react';
+import { DEMO_CONFIG } from '@credo/shared/demo';
+import { shadesOf } from './appTheme';
 import { onBrand, todayOf, type Pick, type Surface } from './onBrand';
 import { PALETTES } from './palettes';
 
@@ -50,7 +52,22 @@ function Sample({
 /** What the rule says of a pick, in words: the ink and the least ratio against the surface's shades. */
 const said = (pick: Pick) => `${pick.ink} ${pick.least.toFixed(2)}:1`;
 
-/** The six stock colours on one surface, today's white beside the rule's pick, each with its least ratio. */
+/** The colours drawn: the six stock ones, then two typed ones, as a company types its own. */
+const ROWS = [
+  ...PALETTES.map(({ name, shades }) => ({
+    label: `${name[0].toUpperCase()}${name.slice(1)}`,
+    shades,
+  })),
+  // The walks' company: no stock shade 6 reads under either ink, so its buttons move a shade under white.
+  {
+    label: `Typed ${DEMO_CONFIG.colour}`,
+    shades: shadesOf(DEMO_CONFIG.colour) as readonly string[],
+  },
+  // A light colour of the kind the stock six no longer hold: it gets dark text.
+  { label: 'Typed #d97757', shades: shadesOf('#d97757') as readonly string[] },
+];
+
+/** The six stock colours and two typed ones on one surface, today's white beside the rule's pick, each with its least ratio. */
 export function OnTheBrand({ surface }: { surface: Surface }) {
   return (
     <table style={{ borderCollapse: 'collapse' }}>
@@ -62,15 +79,14 @@ export function OnTheBrand({ surface }: { surface: Surface }) {
         </tr>
       </thead>
       <tbody>
-        {PALETTES.map(({ name, shades }) => {
+        {ROWS.map(({ label, shades }) => {
           const tuple = shades as unknown as Parameters<typeof onBrand>[0];
           const today = todayOf(tuple, surface);
           const rule = onBrand(tuple, surface);
           return (
-            <tr key={name}>
+            <tr key={label}>
               <th scope="row" style={{ textAlign: 'left', paddingRight: 12 }}>
-                {name[0].toUpperCase()}
-                {name.slice(1)}
+                {label}
               </th>
               {[today, rule].map((pick, at) => (
                 <td key={at} style={{ padding: '4px 16px 4px 0' }}>

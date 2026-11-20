@@ -2,6 +2,7 @@ import { cleanup, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { CREDO_COLOUR } from '@credo/shared';
+import { DEMO_CONFIG } from '@credo/shared/demo';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { openApp } from '../../tests/open';
 import { Gallery } from './Gallery';
@@ -215,7 +216,7 @@ describe('Gallery', () => {
     expect(PALETTES).toHaveLength(6);
     for (const [state, surface] of surfaces) {
       const plate = within(part().getByRole('figure', { name: state }));
-      expect(plate.getAllByRole('row')).toHaveLength(7);
+      expect(plate.getAllByRole('row')).toHaveLength(9);
       for (const { name, shades } of PALETTES) {
         const row = within(
           plate
@@ -230,6 +231,30 @@ describe('Gallery', () => {
         ]);
       }
     }
+    // Two typed colours follow the six on each surface: the walks' company's moves a shade under
+    // white, and a light one gets dark text.
+    for (const [state, surface] of surfaces) {
+      const plate = within(part().getByRole('figure', { name: state }));
+      for (const colour of [DEMO_CONFIG.colour, '#d97757']) {
+        const row = within(
+          plate.getByRole('rowheader', { name: `Typed ${colour}` }).closest('tr')!,
+        );
+        const tuple = shadesOf(colour);
+        const said = (pick: ReturnType<typeof onBrand>) => `${pick.ink} ${pick.least.toFixed(2)}:1`;
+        expect(row.getAllByText(/:1$/).map((node) => node.textContent)).toEqual([
+          said(todayOf(tuple, surface)),
+          said(onBrand(tuple, surface)),
+        ]);
+      }
+    }
+    const light = within(part().getByRole('figure', { name: 'Buttons' }))
+      .getByRole('rowheader', { name: 'Typed #d97757' })
+      .closest('tr')!;
+    expect(within(light).getByText(/^dark [4-9]\.\d\d:1$/)).toBeDefined();
+    const company = within(part().getByRole('figure', { name: 'Buttons' }))
+      .getByRole('rowheader', { name: 'Typed #2f7d6d' })
+      .closest('tr')!;
+    expect(within(company).getByText('white 4.91:1')).toBeDefined();
     // Emerald's buttons, the one stock change: white fails today at 3.77, dark reads at 4.71.
     const emerald = within(part().getByRole('figure', { name: 'Buttons' }))
       .getByRole('rowheader', { name: 'Emerald' })
