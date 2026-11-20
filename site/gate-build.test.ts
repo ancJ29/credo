@@ -2,7 +2,7 @@ import { createHash, webcrypto } from 'node:crypto';
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
-import { join, resolve } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { pathToFileURL } from 'node:url';
 import { describe, expect, it } from 'vitest';
 import { GATE_PREFIX } from '../visual/site/gate';
@@ -15,9 +15,9 @@ type Babel = {
   transformSync: (code: string, options: Record<string, unknown>) => { code: string } | null;
 };
 const fromCore = createRequire(require.resolve('@docusaurus/core/package.json'));
-const fromBabelPackage = createRequire(fromCore.resolve('@docusaurus/babel/package.json'));
-const babel = fromBabelPackage('@babel/core') as Babel;
-const preset = fromCore.resolve('@docusaurus/babel');
+const babelPackage = fromCore.resolve('@docusaurus/babel');
+const babel = createRequire(babelPackage)('@babel/core') as Babel;
+const preset = join(dirname(babelPackage), 'preset.js');
 
 describe('the password box as the docs site builds it', () => {
   it('hashes a password to the same digest the committed hash is made of', async () => {
