@@ -210,6 +210,23 @@ system's own earlier row of the same shape.
       Foundations' second part, three states (Buttons, Header, Menu), nine rows each. `NEUTRAL`
       moved from `appTheme.ts` to `palettes.ts` so the rule and the theme share it without a cycle
       at step 2. Items 630, 631 and 636 filed; item 94 updated. Look 1 is the human's.
+- [x] **1b. The stock colours replaced by the human's pick** (his answer of 2026-11-20 14:4x:
+      "yes, as you suggestion"). `PALETTES` becomes steel, emerald, brick, bronze, plum, indigo (the
+      memo's appendix hex, exactly); the names in both languages, every test, fixture and the walk's
+      settings step moved to kept palettes, a light palette's dark-text case to the typed `#d97757`;
+      the gallery's "On the brand" shows six; the `docs/decisions.md` row, items 83 and 94 true.
+      _Done when:_ `bash ops/gate.sh ui`, the citation test and the walk package's typecheck and
+      lint exit 0, and the removed names and shade 7s stand only in dated records. **15 min**
+      (step 1's shape). Step 2 onward reads the six: no stock colour but emerald's buttons takes
+      dark text now, so the walk's terracotta step and point 2's "dark text" wording are the typed
+      colour's or the picked brick's, to be reread at step 3.
+      _Evidence:_ code `b59c21ae`; `bash ops/gate.sh ui` and `bash ops/gate.sh walk` (its test step
+      skipped by the gate) exit 0, the citations test exit 0; `git grep -n -i` for each removed
+      name and shade 7 stands only in the decisions, the open items and these plans, and in
+      `onBrand.test.ts`'s typed `#d97757`, the light colour that keeps the dark-text cases; case 4's
+      mutation (the rule always white) still reddens cases 1 to 5; the walk's settings step, picking
+      Brick, replayed in `ui/src/App.test.tsx` with the real router. Names in Vietnamese are the
+      machine's (item 637). Look 1 reads six rows, where only emerald's buttons turn dark.
 - [ ] **2. The screens take it** (after your yes at point 1). The theme's resolver and the checks'
       `iconColor`; `credoVariables` writes A's variables; the shell, the sign-in, join and operator
       pages and `frame.module.css` read them; `docs/memo/ui.md` and `ui/CLAUDE.md`'s design-system line
