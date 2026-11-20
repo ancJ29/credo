@@ -1,19 +1,14 @@
 # How credo is built
 
+This page is for a new developer. After it you can follow one click on a screen to the record it saves, say which part makes each decision, and know where a change to a rule belongs.
+
 ## At a glance
 
-**credo works by turning everything a person does on screen into one call to a single back end,
-which decides who is calling and what they may do, and then saves the result as one record under one
-key in a store that knows none of those rules.**
+Everything a person does on screen becomes one call to a single back end, the [BFF](partners/words.md#bff). The back end decides who is calling and what they may do. It then saves the result as one record, under one key, in a store, [c-storage](partners/words.md#c-storage), that knows none of those rules.
 
-That back end is the only part that decides anything: **the React app only draws what it is given,
-and the store only keeps what it is handed** — which is why the picture below has so few arrows,
-and why the walk under it is short.
+So only the back end decides anything. The React app only draws what it is given, and the store only keeps what it is handed. That is why the picture below has so few arrows, and why the path under it is short.
 
-**Every tenant of an environment shares that back end and, today, that environment's one box.**
-The shape for production, built in the back end (what runs on ridge is in [`products.md`](products.md)), keeps the one back end and
-pools the tenants on several boxes, all in the environment's one stack;
-[where a tenant's records live](#where-a-tenants-records-live) says which part is which.
+Each [tenant](partners/words.md#tenant), one client's company inside the app, shares that back end. Today every tenant of an environment also shares one [box](partners/words.md#box), one machine. The shape built for production keeps the one back end and spreads the tenants over several boxes, all in one [stack](partners/words.md#stack): everything one environment is made of, made and removed together. [Where a tenant's records live](#where-a-tenants-records-live) says which part is which. What runs on [ridge](partners/words.md#ridge), our shared test copy, is on [the products page](products.md).
 
 **The system, and what passes between its parts.**
 
@@ -49,24 +44,39 @@ flowchart LR
   class ab,more,r2 intended
 ```
 
+What the names in the picture mean:
+
+- **CloudFront** is the front door. It serves the screens' files and passes every call on to the back end.
+- **API Gateway** is the one route that hands each call to the back end.
+- **VPC** is a private network with no way out to the internet.
+- **Lambda** is the kind of program the back end is: it starts when a call arrives.
+- **The box** is a machine; the storage runs on it.
+- **S3 and R2 buckets** hold files: the screens' files, and the delivery photos.
+
 **Key.** Each box names a thing that runs and, in square brackets, what it runs on. A rounded box is
-a store. **A frame is a group of boxes that belong together, and where that group is also a place,
-what it holds runs inside it:** the edge is the three things `ops/` declares in front of the system,
-the VPC is a network with no way out of it, and the box is one small server carrying the services.
+a store. **A frame is a group of boxes that belong together.** Where that group is also a place, what it holds
+runs inside it. The edge is the three things `ops/` declares in front of the system, the VPC is a network
+with no way out of it, and the box is one small server carrying the services.
 **Every arrow is one way, from the caller to the thing it calls, and says what passes.** A **dashed**
-box and arrow are built and mark what an ordinary read does not touch (an entry written for a change, a
-further box, a picture); what runs on ridge is in [`products.md`](products.md). The first dashed box: the back end writes an entry to
-`services/audit-backbone/` for every change a person makes, in the local copy, and the release carries it to the
-box beside c-storage — the whole of that is [`docs/activity-log.md`](activity-log.md). The
-second is **built in the back end** (whether it runs on ridge is [`products.md`](products.md)): the further boxes of the pooled
-shape, each holding the tenants the operator puts on it, which [where a tenant's records
-live](#where-a-tenants-records-live) describes. The back end and the local stack reach a second box
-today, and the operator can move a company from one to another, and a box is added to an environment by command
-(`ops/README.md`, "Adding a box"); whether either has run on ridge is in [`products.md`](products.md). The third is **built**, its run on ridge in [`products.md`](products.md): the
-photo store, where a delivery's picture lives so that records hold only its object's name. The back end
-holds the bucket's key and signs, but the VPC has no way out to R2, so the phone and the office's page
-carry the picture themselves; the back end writes the photo's record and refuses to mark a request
-delivered without it (`bff/src/routes/delivery-photo.ts`, `bff/src/photo-store.ts`'s `photoAddress`).
+box and arrow are built and mark what an ordinary read does not touch: an entry written for a change, a
+further box, a picture. What runs on ridge is in [`products.md`](products.md).
+
+The first dashed box is the activity log. The back end writes an entry to `services/audit-backbone/` for
+every change a person makes, in the local copy, and the release carries it to the box beside c-storage.
+The whole of that is [`docs/activity-log.md`](activity-log.md).
+
+The second is **built in the back end**, and whether it runs on ridge is in [`products.md`](products.md). It is
+the further boxes of the pooled shape, each holding the tenants the operator puts on it, which [where a
+tenant's records live](#where-a-tenants-records-live) describes. The back end and the local stack reach a
+second box today. The operator can move a company from one box to another, and a box is added to an
+environment by command (`ops/README.md`, "Adding a box"). Whether either has run on ridge is in
+[`products.md`](products.md).
+
+The third is **built**, and its run on ridge is in [`products.md`](products.md). It is the photo store, where a
+delivery's picture lives so that records hold only its object's name. The back end holds the bucket's key
+and signs, but the VPC has no way out to R2, so the phone and the office's page carry the picture
+themselves. The back end writes the photo's record and refuses to mark a request delivered without it
+(`bff/src/routes/delivery-photo.ts`, `bff/src/photo-store.ts`'s `photoAddress`).
 Where no photo store is set, asking an address is a 503, so no driver can deliver, and the environment
 check is red.
 
@@ -75,62 +85,34 @@ HTTP API stand, so the app the walks picture is the app that deploys.
 
 ## One request, end to end
 
-**A person changes a customer's phone number.** Every other action a person takes travels the same
-path; what differs between them is the permission asked at step 6, the key built at step 8 and the
-record written at step 9 — never the shape.
+A person changes a customer's phone number. Every other action travels the same path. What differs is the permission asked at step 6, the key built at step 8 and the record written at step 9, never the shape.
 
-1. **The screen.** The page is `ui/src/pages/client/RecordPage.tsx`, drawing the form in
-   `ui/src/parts/CustomerForm.tsx`. The page was handed one object to reach the back
-   end with, and holds no rule of its own. The version it read the customer at goes back with the
-   change.
-2. **The call.** That object is `ui/src/api.ts`. It sends one `PUT` to the customer's own address,
-   carrying three headers that identify the call: the device, the client's code, and the session
-   handle the device keeps. No cookie, and nothing in the body says who is calling.
-3. **The door.** CloudFront matches the call's path, passes it on uncached to the HTTP API, and the
-   HTTP API invokes the BFF's one Lambda function.
-4. **The company.** The BFF's first hook reads the client's code from its header, finds the one index
-   record that maps that code to the client's minted id, and puts the id on the request. **It scopes
-   and never authenticates.** That record also names the tenant's box, none meaning the first
-   box, and the call goes there ([below](#where-a-tenants-records-live)); a record naming a box the
-   back end was not handed is a 503.
-5. **Who is calling.** The route asks for the signed-in person: the session handle is hashed, its
-   record read, checked against the device it was issued to and against the sign-in's generation,
-   then slid forward.
-6. **What they may do.** One boolean — may this person edit orders? The three permission layers are
-   read on **every** call, department then position then the person's own, from two records, the
-   person's and the staff setup: five reads in all for a staff call, with the company, the session
-   and the sign-in. A no is a 403 here, before
-   the body is read. **This is the only place the question is asked.** The menu asks the same
-   question, but only to decide what to draw.
-7. **The body.** Only now is the request's JSON parsed, against the schema `shared/` declares and
-   both halves use. A refusal is a 400 naming the field that failed, which is what the form shows.
-8. **The key.** The customer's key is built in one place, `shared/src/records.ts`: `tenant.`, the
-   client's minted id, `customer.`, then the customer's id. **Nothing else in the repository builds a
-   key** — which is why the store can be told apart from the rules at all.
-9. **The write.** `bff/src/routes/lists.ts` reads the record, lays the new values over it, and writes it with
-   the version it read as a precondition. `shared/src/c-storage.ts` turns that into one `PUT` over the
-   private network, carrying the internal key and the BFF's own service key, under a five-second
-   bound.
-10. **The store.** c-storage hashes the stored text to a tag, compares that tag with the precondition
-    inside the write's own transaction, and either writes or answers 412. **It knows nothing about
-    customers, clients or permissions:** a key, some JSON, and which service asked.
-11. **And back.** A 412 is not an error to the BFF. It reads the record once more; a record that
-    already holds exactly what was asked is its own write having landed, and counts as saved.
-    Anything else is a 409 carrying the record as it is now, and the screen offers the conflict. **The
-    version is never skipped.**
+| Step | What happens | Where in the code |
+| --- | --- | --- |
+| 1. The screen | The page draws the form and holds no rule of its own. It was handed one object to reach the back end with. The version it read goes back with the change. | `ui/src/pages/client/RecordPage.tsx`, `ui/src/parts/CustomerForm.tsx` |
+| 2. The call | That object sends one `PUT` to the customer's own address, with three headers: the device, the client's code and the session handle the device keeps. No cookie, and nothing in the body says who is calling. | `ui/src/api.ts` |
+| 3. The door | The front door passes the call on uncached, and the back end's one function starts. CloudFront matches the call's path and hands it to the HTTP API, which invokes the BFF's one Lambda function. | none |
+| 4. The company | The BFF's first hook reads the client's code from its header. It finds the one index record that maps that code to the client's minted id, and puts the id on the request. **It scopes and never authenticates.** That record also names the tenant's box, none meaning the first box, and the call goes there ([below](#where-a-tenants-records-live)). A record naming a box the back end was not handed is a 503. | none |
+| 5. Who is calling | The route asks for the signed-in person. The session handle is hashed and its record read. The record is checked against the device it was issued to and against the sign-in's generation, then slid forward. | none |
+| 6. What they may do | One boolean: may this person edit orders? The three permission layers are read on **every** call, department then position then the person's own, from two records, the person's and the staff setup. That is five reads in all for a staff call, with the company, the session and the sign-in. A no is a 403 here, before the body is read. **This is the only place the question is asked.** The menu asks the same question, but only to decide what to draw. | none |
+| 7. The body | Only now is the request's JSON parsed, against the schema `shared/` declares and both halves use. A refusal is a 400 naming the field that failed, which is what the form shows. | none |
+| 8. The key | The customer's key is built in one place: `tenant.`, the client's minted id, `customer.`, then the customer's id. **Nothing else in the repository builds a key**, which is why the store can be told apart from the rules at all. | `shared/src/records.ts` |
+| 9. The write | The route reads the record, lays the new values over it, and writes it with the version it read as a precondition. The client turns that into one `PUT` over the private network. The `PUT` carries the internal key and the BFF's own service key, under a five-second bound. | `bff/src/routes/lists.ts`, `shared/src/c-storage.ts` |
+| 10. The store | c-storage hashes the stored text to a tag and compares that tag with the precondition inside the write's own transaction. It either writes or answers 412. **It knows nothing about customers, clients or permissions:** a key, some JSON, and which service asked. | none |
+| 11. And back | A 412 is not an error to the BFF. It reads the record once more. A record that already holds exactly what was asked is its own write having landed, and counts as saved. Anything else is a 409 carrying the record as it is now, and the screen offers the conflict. **The version is never skipped.** | none |
 
 ## What each part is for
 
 Nine parts make the system, four of them on the path that request took. **Each has one role, and
-the role is what this page says; what belongs inside a part and the file to copy are that part's own
-`CLAUDE.md`.**
+the role is what this page says.** What belongs inside a part, and the file to copy, are that part's own
+`CLAUDE.md`.
 
 **The screens are `ui/`.** Everything a browser draws: the client app and the operator console, one
 bundle chosen by the address it is opened at, so the console is not a second deployment
 (`ui/src/App.tsx`'s `isOperatorPath`). Its only door to the back end is the one object
 `ui/src/api.ts`'s `createApi` makes, and **a screen never guards**: a rule the server must hold
-belongs in `bff/`. What that costs a person at a screen — what a 401 ends, what a slow network
-looks like, what a page they may not open does — is [its memo](memo/ui.md), one section per promise.
+belongs in `bff/`. What that costs a person at a screen is [its memo](memo/ui.md), one section per promise. It says what a 401 ends,
+what a slow network looks like and what a page they may not open does.
 
 **The rules are `bff/`.** One back end for the UI: it resolves the company, then who is calling,
 then what they may do, and only then reads or writes a record. It holds no state of its own, and it
@@ -138,8 +120,8 @@ is **one app with two entries rather than two back ends** (`bff/src/server.ts`'s
 only the listener differing) — a local listener and Lambda are two ways of running the same rules,
 and a rule has one home
 ([one home for one decision](conventions/code.md#one-home-for-one-decision)). What a caller can be
-surprised by — the order it decides in, what a 401 means against a 403, the bound it retries under,
-and what an unreachable store answers — is [its memo](memo/bff.md), one section per promise.
+surprised by is [its memo](memo/bff.md), one section per promise. It says the order the back end decides in, what a 401
+means against a 403, the bound it retries under, and what an unreachable store answers.
 
 **What the two halves agree on is `shared/`.** The wire contract, the record layout, the permission
 catalogue, the bounds both sides check. A thing enters it when a second package reads it and not
@@ -148,9 +130,8 @@ before (`shared/CLAUDE.md`'s rule SH1), and nothing in it needs a runtime beyond
 alike.
 
 **The store is `services/c-storage/`.** One Go binary, one SQLite file, one listener, six routes, and a
-record whose meaning is the BFF's and not its own. A list is a prefix read in pages, each
-ending at 1,000 records or about 4 MiB with the next starting after its last key, and the back end
-reads every page, so a list is never short; orders and deliveries are still filed by day, which
+record whose meaning is the BFF's and not its own. A list is a prefix read in pages. Each page ends at 1,000 records or about 4 MiB, and the next starts after its last key.
+The back end reads every page, so a list is never short. Orders and deliveries are still filed by day, which
 keeps a day's list to a page. Its promises are a store's: a save over a record
 changed since it was read is refused, one save happens at a time, and every path but the health
 check needs a key ([its memo](../services/c-storage/docs/memo/c-storage.md), one section per decision). **Its one isolation
@@ -185,13 +166,13 @@ here is a ___" finishes in a word the product itself uses
 **Today an environment is one stack with one box, and every tenant of it lives in that box.**
 `ops/env.yml` makes everything an environment has in one stack: its box, the back end's function,
 the HTTP API, the bucket of screens, the distribution in front of them and the role its deploys
-take. The back end is given that one box's address and keys (`bff/src/env.ts`'s `storageShape`) and,
-when the environment has more, the others in `STORAGE_BOXES`; on ridge there is the one. The network under every environment
+take. The back end is given that one box's address and keys (`bff/src/env.ts`'s `storageShape`).
+When the environment has more boxes, it is given the others in `STORAGE_BOXES`. On ridge there is the one. The network under every environment
 and the account's GitHub provider are stacks of their own, for reasons that are not about tenants.
 
 **Built: the tenants pooled on boxes, in the same one stack.** For companies of the size the human
-gave, under ten thousand calls and five hundred records a day each, one small box holds several, and
-its disk runs out before its requests, writes or memory do. So production is to stay one stack per
+gave, under ten thousand calls and five hundred records a day each, one small box holds several. Its disk
+runs out before its requests, writes or memory do. So production is to stay one stack per
 environment, holding several boxes. This is the human's own shape, from 2026-11-10 and 2026-11-11.
 What is built is the back end's reach to a second box, the operator's choice of box, the local
 stack with two boxes, the move of a company between boxes and a box added to an environment by command.
@@ -249,7 +230,7 @@ breach.** Most are held by a reader of the diff, which is worth knowing before r
 | **No screen decides what a person may do.** The menu asks the permission question only to decide what to draw | nothing. The server asks the question again on every call, so a breach is a wrong screen, never a wrong act |
 | **No clock, no randomness and no runtime beyond the web's in `shared/`.** A day arrives as text and `fetch` as a parameter | nothing. A reviewer reading the diff |
 | **No second file builds a record key.** The layout has one home | the company's client (`bff/src/records/records.ts`'s `tenantStorage`), which refuses any key outside the company's prefix before it is sent; no lint rule forces a key through `recordKeys`, and `buildApp` still holds the whole client for the code's index, the deletions' marks, the operator's records and `/health` |
-| **No concept of a tenant in c-storage.** Its one isolation unit is the *service*, and the BFF is a single service holding every client | nothing structural, and it is the design rather than a slip. Isolation itself is tested, at the route level, for the sign-in and settings routes (`bff/src/tenants.route.test.ts`), the two operator routes that reach one client only (`bff/src/routes/clients-delete.route.test.ts`, `bff/src/routes/operator-root-password.route.test.ts`), and, with two companies in one service, for the customer and product lists, orders, deliveries and their photo, people (read, save, archive, password set), the drivers list and closed days (`bff/src/routes/cross-tenant.route.test.ts`); `bff/src/routes/lists.route.test.ts` proves only that each company sees its own list, across services. The cross-company file covers some of the orders and deliveries routes; the rest are listed in open item 227 |
+| **No concept of a tenant in c-storage.** Its one isolation unit is the *service*, and the BFF is a single service holding every client | nothing structural, and it is the design rather than a slip. Isolation itself is tested at the route level; the list below says where. The cross-company file covers some of the orders and deliveries routes; the rest are listed in open item 227 |
 | **No record itself carries who changed it, or what it held before** | nothing on the record. The history is in the activity log's own entries, written by the back end for every change in the local copy; whether they are written on ridge is in [`products.md`](products.md) ([the activity log](activity-log.md)) |
 | **No untested statement, branch, function or line** in the five TypeScript packages that have tests, nor outside the entry point of either Go service. `walk/` is typechecked and linted and runs no test of its own | **the gate.** Each of the five declares all four thresholds at 100 %, a step of `pnpm check`; each Go service's own `make check` holds its own |
 | **No citation in a living document naming a file that is not there** | **the gate.** The citation check greps the named file for the named symbol |
@@ -257,12 +238,19 @@ breach.** Most are held by a reader of the diff, which is worth knowing before r
 | **No change set that removes or replaces a resource** | **a script.** `ops/stack.sh` refuses one by default; the human must name the logical id, because a replaced box deletes its disk |
 | **No route out of the VPC to the internet** | **the template.** `ops/network.yml` declares no NAT gateway and no internet gateway at all; its one route table has no route out |
 
+**Where isolation between companies is tested.**
+
+- The sign-in and settings routes: `bff/src/tenants.route.test.ts`.
+- The two operator routes that reach one client only: `bff/src/routes/clients-delete.route.test.ts` and `bff/src/routes/operator-root-password.route.test.ts`.
+- With two companies in one service: the customer and product lists, orders, deliveries and their photo, people (read, save, archive, password set), the drivers list and closed days, in `bff/src/routes/cross-tenant.route.test.ts`.
+- `bff/src/routes/lists.route.test.ts` proves only that each company sees its own list, across services.
+
 ## Where the rest is
 
-**The detail a session reads while changing something** — where to look for the thing that does X,
-what the data is, who may do what, how it reaches a machine and how it is checked — is
-[`architecture-detail.md`](architecture-detail.md), opened by whoever is about to change the code
-rather than by whoever is reading what it does.
+**The detail a session reads while changing something** is [`architecture-detail.md`](architecture-detail.md).
+It says where to look for the thing that does X, what the data is, who may do what, how it reaches a
+machine and how it is checked. It is opened by whoever is about to change the code, rather than by
+whoever is reading what it does.
 
 It is the pair of [`products.md`](products.md): **products says what each part does for whom, this
 page says how it is put together.**

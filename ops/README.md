@@ -2,7 +2,7 @@
 
 This page is for the operator who needs the reason behind a step, and for whoever works on the ops scripts. It assumes you type commands in a terminal. After it you can pick the right script for a job, run it in the right order, and read its log to know it worked.
 
-Every script here acts on [ridge](../docs/partners/words.md#ridge), our shared test copy of credo on AWS. Ridge is one [box](../docs/partners/words.md#box), a machine that holds companies, inside one [stack](../docs/partners/words.md#stack), everything one environment is made of, made and removed together. A push to [main](../docs/partners/words.md#main), the version of the code we have checked and rely on, ships the middle server ([BFF](../docs/partners/words.md#bff)) and the screens, and releases the storage service ([c-storage](../docs/partners/words.md#c-storage)), all by itself; see [the deploy job](#the-deploy-job). Run every script from a [worktree](../docs/partners/words.md#worktree), a folder that holds one version of the code, at main. Work still waiting for review sits on [pre-merge](../docs/partners/words.md#pre-merge); the [gate](../docs/partners/words.md#gate) is one package's check, or every package's, that work must pass, and a [walk](../docs/partners/words.md#walk) is one person's day through the screens, which we judge yes or no on each screen.
+Most scripts here act on [ridge](../docs/partners/words.md#ridge), our shared test copy of credo on AWS. Ridge is one [box](../docs/partners/words.md#box), a machine that holds companies, inside one [stack](../docs/partners/words.md#stack), everything one environment is made of, made and removed together. A push to [main](../docs/partners/words.md#main), the version of the code we have checked and rely on, ships the middle server ([BFF](../docs/partners/words.md#bff)) and the screens, and releases the storage service ([c-storage](../docs/partners/words.md#c-storage)), all by itself; see [the deploy job](#the-deploy-job). Run every script from a [worktree](../docs/partners/words.md#worktree), a folder that holds one version of the code, at main. Work still waiting for review sits on [pre-merge](../docs/partners/words.md#pre-merge); the [gate](../docs/partners/words.md#gate) is one package's check, or every package's, that work must pass, and a [walk](../docs/partners/words.md#walk) is one person's day through the screens, which we judge yes or no on each screen.
 
 Each script writes a log to the logs folder in the credo root, the folder that holds the bare clone, and the log's last line tells you whether it worked. The machine reads the log, so paste nothing. You will see:
 
@@ -894,7 +894,7 @@ state, so release first.
    ops/drill.sh ridge
    ```
 
-   You will see three checks read green: the store killed and back, the box rebooted and back, and a restore that holds the code registered seconds before and not a later one. Then `next: ops/check.sh ridge`.
+   You will see three checks read green: the store killed and back, the box rebooted and back, and a restore of the newest copy holds the code registered seconds before, and a restore to a moment before it does not. Then `next: ops/check.sh ridge`.
    - **the box did not come back:** wait, then run `ops/check.sh ridge`; the reboot may be slow.
 2. `ops/check.sh ridge` reads green again.
 

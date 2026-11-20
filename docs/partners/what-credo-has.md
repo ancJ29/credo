@@ -25,7 +25,7 @@ A second area is for the people who run credo. An operator adds a client and cop
 
 - Nothing runs in production, which means no client has a live system of their own yet. Ask us before you promise a client a start date.
 - Stock beyond a simple in-stock switch is not built.
-- The menu entries "Usage and costs" and "Activity" open an empty "coming soon" page.
+- The menu entries "Usage & costs" and "Activity log" open an empty "coming soon" page.
 - Changes are recorded behind the scenes, but no screen shows the record yet.
 
 ## Check a piece yourself, without code

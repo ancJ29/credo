@@ -7,7 +7,7 @@ slug: /
 This site explains credo to the people who work with it but do not all write its code. Open this
 page first. Find the branch with your role on it, then read the pages under it from top to bottom.
 Each page has one line saying who it is for and what it answers. If a page you need is not here,
-ask the human, and your question will be answered in the questions page.
+ask us, and your question will be answered in the questions page.
 
 A page marked "not yet written" is promised and still empty. A page's name opens it.
 
