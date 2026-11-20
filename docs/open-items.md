@@ -1329,10 +1329,6 @@ The human answered on 2026-11-11 that the app stays light only for now, as the l
 
 The legacy's list page title is a level-3 heading on a computer and a level-4 one on a phone (the old repository's `workspace/uis/c-mngt/src/components/ListPageHeader.tsx`, its two `Title` branches), 22 against 18 pixels; the new app draws 22 at every width. The skeleton the human judged did not show it, so the plan leaves it out. *Fix:* the phone's size as a token and the heading rule at the phone width, then a picture run over every walk. *Trigger:* a look the human asks for, or the next change to the page title.
 
-## 309. Font weights written as numbers in screens are outside the literal check — the machine; *parked* (the design system's plan, 2026-11-12, Info)
-
-The design system's literal check refuses a colour written outside `ui/src/design-system/`, not a weight: `fw=` with a number stands 18 times in `ui/src`'s screens and parts (500, 600 and 700). Each is a type value written where it is used. *Fix:* named weights in the tokens and the screens reading them by name, with the check extended. *Trigger:* the next change to a weight in the tokens.
-
 ## 251. The activity log's key, once it runs on ridge, has no way to be replaced — the machine, the activity log's lane; *parked* until that key reaches a deployed environment (the front door and keys plan, 2026-11-11)
 
 The front door and keys plan (`docs/plans/2026-11-11-front-door-keys.md`) makes `ops/keys.sh` replace the four keys a deployed environment holds once it is built: the store's internal and super-admin keys, the back end's service key and the front door's key. The back end's fifth, `AUDIT_KEY` (`bff/src/env.ts`'s `auditShape`), is set only by the local stack, since `ops/app.sh` sets no `AUDIT` variable; the activity log's own lane carries it to ridge. *Fix:* when that lane writes the key to the box and the function, it adds the key to `ops/keys.sh` as one more kind, in its own order (the service first, then the function), and to the function's variable list in `ops/lib.sh`. *Trigger:* the activity log running on any deployed environment.

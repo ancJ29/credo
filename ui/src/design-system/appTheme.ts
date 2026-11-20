@@ -99,7 +99,7 @@ const textOf = (pick: Pick) => (pick.ink === 'white' ? 'var(--mantine-color-whit
 /**
  * Mantine's filled and gradient parts of the brand, with the text the rule picks for the colour: the
  * filled parts' ground and hover at the shades it names, the gradient button over the header's.
- * Where the rule keeps white at today's shades the result is Mantine's own.
+ * Where the rule keeps white at the shades before the rule the result is Mantine's own.
  */
 const variantColorResolver: VariantColorsResolver = (input) => {
   const base = defaultVariantColorsResolver(input);

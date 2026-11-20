@@ -4,6 +4,7 @@ import { useContext } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import classes from '../frame/frame.module.css';
+import { TYPE } from '../design-system/tokens';
 import { BAR_PAGES, FrameContext } from '../frame/Shell';
 
 /** The phone's More: the pages its bar leaves out, then the person's own links and sign-out. Drawn
@@ -17,7 +18,7 @@ export function MorePage() {
 
   return (
     <>
-      <Title order={2} mb="md">
+      <Title {...TYPE.pageTitle} mb="md">
         {t('nav.more')}
       </Title>
       {others.length > 0 && (

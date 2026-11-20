@@ -220,7 +220,7 @@ describe('Gallery', () => {
     );
   });
 
-  it('9: On the brand draws the six colours’ header, buttons and menu, today’s and the rule’s, each with its ratio', () => {
+  it('9: On the brand draws the six colours’ header, buttons and menu, before the rule and after, each with its ratio', () => {
     open(`${BASE}/foundations/on-the-brand`);
 
     expect(stateNames()).toEqual(['Buttons', 'Header', 'Menu', 'Links']);
@@ -271,7 +271,7 @@ describe('Gallery', () => {
       .getByRole('rowheader', { name: 'Typed #2f7d6d' })
       .closest('tr')!;
     expect(within(company).getByText('white 4.91:1')).toBeDefined();
-    // Emerald's buttons, the one stock change: white fails today at 3.77, dark reads at 4.71.
+    // Emerald's buttons, the one stock change: white fails at 3.77, dark reads at 4.71.
     const emerald = within(part().getByRole('figure', { name: 'Buttons' }))
       .getByRole('rowheader', { name: 'Emerald' })
       .closest('tr')!;

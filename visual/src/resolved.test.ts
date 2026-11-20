@@ -4,7 +4,8 @@
 // left out since a stylesheet's are hashed from its text; and the theme's variables, which are all
 // a colour changes, are read for each of ten colours (the theme's own style element, as Mantine
 // writes it). One hash a screen and colour is held against `resolved.pinned.txt`. Equal resolved
-// styles draw equal pixels. `RESOLVED_WRITE=1` rewrites the file, its diff to be read.
+// styles draw equal pixels only for what is hashed: text and attributes (an SVG's `fill`, an image's
+// `src`) are not, so the walks run stays the verdict. `RESOLVED_WRITE=1` rewrites the file, its diff to be read.
 import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join, relative } from 'node:path';
@@ -117,7 +118,7 @@ function keyOf(selector: string) {
 
 /** The style rules of a stylesheet, flattened in source order: each selector of a list its own
  * rule, a conditional block's prelude its `context`, a named layer its place in the layer order. */
-export function rulesOf(css: string, layers: string[] = [], start = 0): Rule[] {
+function rulesOf(css: string, layers: string[] = [], start = 0): Rule[] {
   const rules: Rule[] = [];
   const layerAt = (name: string) => {
     if (!layers.includes(name)) layers.push(name);
@@ -186,7 +187,7 @@ const rootDocument = (language: Language, body = '') =>
   );
 
 /** The custom properties a theme's style element gives the root: its rules that match `<html>`. */
-export function themeVariables(themeCss: string): Custom {
+function themeVariables(themeCss: string): Custom {
   const html = rootDocument('en').documentElement;
   const winners: Winners = new Map();
   for (const rule of rulesOf(themeCss)) {
@@ -205,7 +206,7 @@ export function themeVariables(themeCss: string): Custom {
 
 /** Each element of `markup` with the declarations that win its cascade, variables not yet read.
  * The theme's own style element is left out: it is what a colour changes. */
-export function styledOf(app: Rule[], layers: string[], markup: string, language: Language) {
+function styledOf(app: Rule[], layers: string[], markup: string, language: Language) {
   const doc = rootDocument(language, steadied(markup));
   const rules = [...app];
   for (const style of doc.body.querySelectorAll('style:not([data-mantine-styles="true"])')) {
@@ -287,7 +288,7 @@ function substitute(value: string, custom: Custom, depth = 0): string {
 
 /** The resolved style of each element, as lines: its depth, its tag and the declarations that win,
  * the variables read from the theme's `root` and what the elements above set. */
-export function linesOf(styled: Styled, root: Custom) {
+function linesOf(styled: Styled, root: Custom) {
   const customs: Custom[] = [];
   return styled.map((element, at) => {
     // On `<html>` the theme's style element comes after the app's stylesheet in the page, so its
@@ -304,7 +305,7 @@ export function linesOf(styled: Styled, root: Custom) {
 }
 
 /** One markup's lines under the theme its own style element carries (or the one given). */
-export function resolvedLines(css: string, markup: string, language: Language, theme?: string) {
+function resolvedLines(css: string, markup: string, language: Language, theme?: string) {
   const layers: string[] = [];
   const app = rulesOf(css, layers);
   const own = THEME_STYLE.exec(markup)?.[1] ?? '';

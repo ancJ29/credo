@@ -46,7 +46,7 @@ describe('onBrand', () => {
     expect(failed).toEqual([]);
   });
 
-  it('2: a colour no text can serve says so, with today’s white', () => {
+  it('2: a colour no text can serve says so, with the white from before the rule', () => {
     const grey = Array.from({ length: 10 }, () => '#777777') as unknown as ReturnType<
       typeof shadesOf
     >;
@@ -56,7 +56,7 @@ describe('onBrand', () => {
     expect(pick.span).toEqual([6, 7]);
   });
 
-  it('3: keeps white wherever it passes, so every stock colour but emerald’s buttons keeps today’s spans', () => {
+  it('3: keeps white wherever it passes, so every stock colour but emerald’s buttons keeps its spans from before the rule', () => {
     for (const name of ['steel', 'brick', 'bronze', 'plum', 'indigo']) {
       const shades = stock.find((each) => each.name === name)!.shades;
       for (const surface of SURFACES) {
@@ -65,7 +65,7 @@ describe('onBrand', () => {
         expect(pick.span).toEqual(beforeOf(shades, surface).span);
       }
     }
-    // Emerald's header and menu stay white as today; only its buttons turn dark.
+    // Emerald's header and menu stay white as before the rule; only its buttons turn dark.
     const emerald = stock.find((each) => each.name === 'emerald')!.shades;
     expect(onBrand(emerald, 'header').ink).toBe('white');
     expect(onBrand(emerald, 'menu').ink).toBe('white');

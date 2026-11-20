@@ -155,7 +155,7 @@ describe('the filled parts take the rule’s pick', () => {
     expect(css).toContain('--mantine-color-anchor: var(--mantine-color-brand-7)');
   });
 
-  it('6: a colour where white passes at today’s shades draws Mantine’s own parts', () => {
+  it('6: a colour where white passes at the shades before the rule draws Mantine’s own parts', () => {
     const { css, button, badge } = drawn('#9E2D20');
 
     expect(button).toContain('--button-color: var(--mantine-color-white)');

@@ -78,7 +78,7 @@ export const beforeOf = (shades: MantineColorsTuple, surface: Surface) =>
  * The ink for a surface of a client's colour: white where it reaches 4.5:1 against every shade of the
  * surface's span, else dark where it does; else the span moves a shade at a time, darker under white,
  * lighter under dark, the nearer pass winning and white on a tie. A colour no ink can serve comes back
- * with `passes` false and today's white.
+ * with `passes` false and the white it had before the rule.
  */
 export function onBrand(shades: MantineColorsTuple, surface: Surface): Pick {
   for (let by = 0; by <= DARKEST; by++) {
