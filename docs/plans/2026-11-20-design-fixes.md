@@ -206,7 +206,7 @@ shape, else piece 126's. One recap, step 11, before C lands, not one a landing.
       page. Case 11's resolver case, a variable both write, red on the old code, green after; the
       pinned file rewritten once. _Done when:_ the new case red once then green, the visual gate and
       the citation test exit 0, the pinned file's diff explained by colour and property. **12 min.**
-      _Evidence:_ red then green (22:26), the write run (22:28), the visual gate exit 0 (23:01 to 23:0x, `logs/2026-11-20-230154-gate-visual.log`), the citation test exit 0. All
+      _Evidence:_ red then green (22:26), the write run (22:28), the visual gate exit 0 (the run begun 23:01:54, green), the citation test exit 0. All
       1,310 pinned hashes moved, each moved line one of the theme's own values read where the old
       resolver read Mantine's default (the brand blue to the colour, grey and red shades, radii and
       spacing, the font, the line height); the pages' pictures are unchanged. Item 643 is deleted.
