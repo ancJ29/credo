@@ -1,19 +1,13 @@
 import type { Config } from '@docusaurus/types';
 import type * as Preset from '@docusaurus/preset-classic';
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { githubLinks } from './links';
+import { MAP_PATH, mapPages } from './map';
 
 // One docs plugin rooted at the repository, so every page is shown from its one path and a link
-// between two pages resolves inside the one instance. The dated plans and recaps are left out.
-const PAGES = [
-  'README.md',
-  'docs/*.md',
-  'docs/conventions/*.md',
-  'docs/memo/*.md',
-  'docs/partners/**/*.md',
-  'ops/README.md',
-  'services/*/README.md',
-  'services/*/docs/**/*.md',
-];
+// between two pages resolves inside the one instance. The pages are the docs map's, read from its text.
+const PAGES = mapPages(readFileSync(resolve(__dirname, '..', MAP_PATH), 'utf8'));
 
 const config: Config = {
   title: 'credo',

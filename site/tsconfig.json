@@ -4,5 +4,5 @@
     "lib": ["ES2024", "DOM"],
     "jsx": "react-jsx"
   },
-  "include": ["docusaurus.config.ts", "sidebars.ts", "links.ts"]
+  "include": ["docusaurus.config.ts", "sidebars.ts", "links.ts", "map.ts"]
 }
