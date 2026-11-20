@@ -1,9 +1,18 @@
 # ops: the runbook
 
-The why of every step lives in [the ridge plan](../docs/plans/2026-10-28-ridge.md); this file is
-the order and the commands. Each script writes its log to `logs/` in the credo root (the folder
-that holds `.bare`) and ends it on `== exit <n>`; the machine reads the log, so paste nothing.
-A push to `main` releases c-storage and the activity log, ships the BFF and the UI, and checks ridge by itself, and so does a press of `ci` on `main` ([the deploy job](#the-deploy-job)).
+This page is for the operator who needs the reason behind a step, and for whoever works on the ops scripts. It assumes you type commands in a terminal. After it you can pick the right script for a job, run it in the right order, and read its log to know it worked.
+
+Every script here acts on [ridge](../docs/partners/words.md#ridge), our shared test copy of credo on AWS. Ridge is one [box](../docs/partners/words.md#box), a machine that holds companies, inside one [stack](../docs/partners/words.md#stack), everything one environment is made of, made and removed together. A push to [main](../docs/partners/words.md#main), the version of the code we have checked and rely on, ships the middle server ([BFF](../docs/partners/words.md#bff)) and the screens, and releases the storage service ([c-storage](../docs/partners/words.md#c-storage)), all by itself; see [the deploy job](#the-deploy-job). Run every script from a [worktree](../docs/partners/words.md#worktree), a folder that holds one version of the code, at main. Work still waiting for review sits on [pre-merge](../docs/partners/words.md#pre-merge); the [gate](../docs/partners/words.md#gate) is one package's check, or every package's, that work must pass, and a [walk](../docs/partners/words.md#walk) is one person's day through the screens, which we judge yes or no on each screen.
+
+Each script writes a log to the logs folder in the credo root, the folder that holds the bare clone, and the log's last line tells you whether it worked. The machine reads the log, so paste nothing. You will see:
+
+```
+== exit 0
+```
+
+A number other than 0 means it stopped. Read the lines above it, and start with any line that says RED.
+
+If you only want to do a task and see what happens, [the operator guide](../docs/operator-guide.md) has the commands and the "you will see" line for each; this page is for why.
 
 ## At a glance
 
@@ -39,6 +48,8 @@ A push to `main` releases c-storage and the activity log, ships the BFF and the 
 
 ## Before any step
 
+Use this when you are about to run any script here: it lists what to hold first, so the script does not stop.
+
 1. Work in a worktree at `main`. Each script fetches `origin/main` itself and stops when `ops/`
    here differs from it, so only reviewed scripts act under your AWS session.
 2. Hold an AWS session for the account, in the terminal you run the script from.
@@ -48,6 +59,8 @@ A push to `main` releases c-storage and the activity log, ships the BFF and the 
    - `check.sh` also needs Bruno CLI 4.2.0: `npm install -g --ignore-scripts @usebruno/cli@4.2.0`.
 
 ## On production
+
+Use this when an environment might hold a real company's records: it says which scripts may touch it and what each refuses.
 
 Production is every environment not listed in `INVENTED_ENVS` in `ops/lib.sh`, today `ridge` alone:
 a script knows an environment only by its name, so any other name (a taiga, a crest, the production
@@ -87,6 +100,8 @@ by ridge's full check, on the same commit, before a production check reads.
 
 ## Bootstrap, once, in this order
 
+Use this when you set credo up on a new AWS account: it gives the order of the first stacks, each made once.
+
 Plan steps 9 to 11. Each stack is made from the template in `origin/main`, never from your
 working copy.
 
@@ -108,6 +123,8 @@ working copy.
      so EC2's attribute governs (high confidence, never tried).
 
 ## A change to a template
+
+Use this when a stack's template has changed: it reads each change before it is applied, then applies it.
 
 1. Merge the change into `main` after its review.
 2. `ops/stack.sh <network | github | env name> --plan`: read each change. On a stack not yet made
@@ -139,6 +156,8 @@ working copy.
 
 ## The first deploy was refused at the role
 
+Use this when the first deploy stops at the role with "Not authorized": it fixes the trust and lists the steps in order.
+
 GitHub issues this repository the immutable subject (the owner and the repository each followed by
 `@<id>`), so a trust built from the name alone refuses every deploy ("Not authorized to perform
 sts:AssumeRoleWithWebIdentity"). The template now takes the prefix from GitHub. In this order:
@@ -155,6 +174,8 @@ sts:AssumeRoleWithWebIdentity"). The template now takes the prefix from GitHub. 
    `ops/` with its own commit, so the re-run is valid.
 
 ## A release by hand
+
+Use this when GitHub Actions is down and a release must still go out: it ships one commit of main from your terminal.
 
 Only while GitHub Actions is down: its concurrency group cannot see a run made here.
 
@@ -183,6 +204,8 @@ old loopback listener does not answer: the log then finds no running commit, and
 3. `ops/check.sh ridge`.
 
 ## The deploy job
+
+Use this when you want to know what a push to main does by itself, or why a deploy stopped.
 
 The human's push to `main` that touches `services/c-storage/`, `services/audit-backbone/`, `ops/`, the app (`bff/`, `ui/`, `shared/`,
 `scripts/`, `visual/`, `walk/`, the workspace's files) or the workflow starts it, and a press of `ci` on `main` ("Run workflow" on GitHub) starts it as well, whatever main's last push touched, once `check`, `audit`, `e2e`,
@@ -231,8 +254,10 @@ put that back (the BFF then answers 503 until the next deploy).
 
 ## The app
 
+Use this when the middle server and the screens must be shipped without a stack change: it sends the code and nothing else.
+
 `ops/app.sh ridge` ships the BFF's bundle to the one function and the UI's files to the one bucket,
-code only: the deploy role holds no stack, IAM or CloudFront right. The job passes it what it built
+code only: the deploy role holds no stack, IAM or [CloudFront](../docs/partners/words.md#cloudfront) right. The job passes it what it built
 (`APP_BUNDLE`, `APP_UI_DIR`); by hand it builds the commit in a throwaway worktree (needs pnpm).
 
 1. Read the log's last line: `shipped <sha>`. Before it: `service registered` (the first time) or
@@ -252,6 +277,8 @@ code only: the deploy role holds no stack, IAM or CloudFront right. The job pass
      old code; then `ops/stack.sh env <env>`; then a rerun of the deploy job; then `ops/check.sh <env>`.
 
 ## The keys
+
+Use this when a key must be replaced: it makes the new one on this Mac, swaps it and reads the old one back refused.
 
 `ops/keys.sh <env> <key>` replaces one of the four keys by a new one made on this Mac from the kernel, in the
 order that keeps calls answered as long as the key allows, then reads the old value back refused and the new one
@@ -301,6 +328,8 @@ or `service`:
 
 ## The operator
 
+Use this when an environment has no operator yet: it makes the first one and shows their one-time join link.
+
 `ops/operator.sh ridge` makes the operator (the name `operator`, or the one given) and shows their
 one-time join link, `<the app's address>/operator/join#<token>`, on your terminal once. It is never
 written in the log: the script writes it past the log, then searches the log for it. It refuses in
@@ -308,7 +337,7 @@ GitHub's job and without a terminal.
 
 1. Run it from a worktree at `main` with `pnpm install` done, after the first app deploy (which makes
    the BFF's service and sets `APP_ORIGIN` in its environment). Read the link from the terminal, not
-   the log, and give it to the operator: they open it and make their first passkey. It works once,
+   the log, and give it to the operator: they open it and make their first [passkey](../docs/partners/words.md#passkey). It works once,
    within 24 hours.
    - **the operator ... exists:** it will not make one over another; add `--replace` for a
      new-passkey link, the way back from lost passkeys. Using it replaces every passkey the operator
@@ -322,6 +351,8 @@ GitHub's job and without a terminal.
    public log).
 
 ## A company's own address
+
+Use this when each company should open at its own web address: it sets the domain and the certificate together.
 
 With a domain set, each company opens at `https://<its code>.<domain>/login` and the operator at
 `https://operator.<domain>/operator`; with none set, the stack is as it was (CloudFront's own name).
@@ -344,6 +375,8 @@ written in a committed file.
    until the record in step 3 exists.
 
 ## Ridge down and back
+
+Use this when ridge is to be taken down for a while or brought back: two commands, the one taking it down asking you to type its name first.
 
 Two commands, each from the worktree at `main` (its `ops/` must match `origin/main`), in a terminal signed
 in to AWS with `gh` logged in. Both refuse every environment but ridge, and a stack that is not ridge's
@@ -387,6 +420,8 @@ and the certificate, outside the stack, survives.
 
 ## The demo copies' root password
 
+Use this when a demo copy's main user needs a new password: it asks twice, never shows it and ends every session of that user.
+
 `ops/root-password.sh ridge <code>…` gives the root of each named demo copy a new password: typed
 here twice, never shown, never in the log and never kept. Every session of that root ends at its next
 click; nothing else of the copy changes. The six demo copies of `scripts/src/demo/mapping.ts` only: a
@@ -409,6 +444,8 @@ client's own stack is the console's. The why is
    - **the new password is in this log:** redact the log; nothing to replace.
 
 ## The demo copies
+
+Use this when the six demo copies must be made again from nothing: it deletes them and fills them anew.
 
 The six demo copies on ridge (two invented companies, three copies each, the codes in
 `scripts/src/demo/mapping.ts`) are made by one command, never made by hand in the console. It makes the six
@@ -434,6 +471,8 @@ Once, from a terminal; it takes about 10 minutes (up to 15) plus your typing, an
    to see the copies, not where they are made.
 
 ## The seed
+
+Use this when the demo copies must be brought up to yesterday: it adds at most two days a copy a run.
 
 The demo copies on ridge are brought up to yesterday by `.github/workflows/seed.yml`, which runs only when
 somebody asks ("Run workflow" on `main`, or `gh workflow run seed`; it has no schedule since 2026-11-08) and
@@ -475,6 +514,8 @@ no password: the copies are made first, all six by `ops/demo-remake.sh ridge` ([
 
 ## Previews on Cloudflare Pages
 
+Use this when a preview of the walks page or the app frame's mock must be sent to Cloudflare Pages for others to open.
+
 `ops/pages-preview.sh` is the one body of every preview deploy: it sends a static folder to the Pages project as a
 preview at a branch, never production; a preview is open by its link, with no sign-in, as the page is. Two cases call it.
 For both, set `CLOUDFLARE_PAGES_PROJECT` (the Pages project's name) and either `CLOUDFLARE_API_TOKEN` with
@@ -507,6 +548,8 @@ root). A good ending is `project found`, `== verdict: good` and `== done`.
 
 ## The full run
 
+Use this when a piece has passed its checks and needs its one full run before it moves on: it runs the walks twice.
+
 `ops/full-run.sh` is the one body of a piece's full run, in your terminal on the Mac: it runs `walk/run.sh` twice in the
 piece's worktree, run 1 with `--write` (the new and moved bases), run 2 plain, every count 0. Between them it makes one
 local commit of the base pictures alone (`walk/specs/*-snapshots/*.png`; anything else in the tree is a stop), since
@@ -530,6 +573,8 @@ cleared by the script: the refusal names the owner and prints the `rm -rf` that 
   with a count not 0); bring the log and the walk logs back. A good ending is `== verdict: green` and `== done`. The green verdict names, from run 1's compare lines, the screens that moved, the screens that are new and the named screens that moved nothing, beside the list that was asked.
 
 ## A partner's returned words
+
+Use this when a partner is to review the app's words: you send one spreadsheet, read their changes back in, and they land on pre-merge.
 
 For when a partner (`p1`, `p2`: a label, never a name) is to review the app's words: you send one spreadsheet file, they
 change words in it, you read it back in and it lands on `pre-merge`, one paste, no session needed. Every block below runs in
@@ -628,6 +673,8 @@ a terminal opened in any folder of the project (any worktree); each finds the pr
 
 ## The gate
 
+Use this when you want one package's check, or every package's, run the way the machine runs it, with its log.
+
 `ops/gate.sh [<pkg>]` is the five steps of one package's check, or of all six: typecheck and test of each
 package (its own scripts, so the coverage and the 100 % thresholds are the package's), then eslint, prettier
 and knip once over the whole tree, because their configs are repo-wide. It runs all five whatever any one
@@ -652,6 +699,8 @@ the other four still show. It does not cover c-storage: that gate is `make check
 
 ## The check
 
+Use this when you want to know whether ridge is healthy: it ends green, or names each red.
+
 1. `ops/check.sh ridge` (or `ops/check.sh <env> --reads-only`, [on production](#on-production)); it ends `== green`, or names each red. Once the stack holds layer four it also
    reads the BFF's group, the function (its subnet, group and the names of its variables, never the
    values), the UI's bucket and the one commit in `/health`, the function and `index.html`, then makes a
@@ -666,6 +715,8 @@ the other four still show. It does not cover c-storage: that gate is `make check
      redact it in this log (nothing is replaced), and find which step printed the address.
 
 ## The tunnel
+
+Use this when you must reach ridge's storage service from this Mac with test data only: it holds a local door open until you stop it.
 
 Holds `http://127.0.0.1:3192` open to ridge's c-storage, in your own AWS session, until Ctrl-C or the
 endpoint's hour. Only test data goes to ridge through it, never a client's, and the command accepts no environment but
@@ -699,6 +750,8 @@ endpoint's hour. Only test data goes to ridge through it, never a client's, and 
    - `channel N: open failed: connect failed` while c-storage restarts is harmless.
 
 ## Adding a box
+
+Use this when a stack needs another box, or one must be taken out: a box is added by naming it, and taken out with its records disk snapshotted first.
 
 A box is added to the environment's one stack by naming it, never by a stack of its own: `ops/env.yml` holds the home
 box (`Box`) and one block for each name in the list `MoreBoxes` (`Fn::ForEach`), and `ops/test.sh` holds that block equal
@@ -745,6 +798,8 @@ The deploy role needs no change for a box added: it pushes a key to any instance
 tunnel to its subnet's range. No alarm watches a box added (open item 447).
 
 ## Reading what the fence kept
+
+Use this when a box or a disk survived a delete or a replacement: it says what was kept and how each path would go.
 
 `Box` carries `RetainExceptOnCreate` on a stack delete (it retains on every act but the rollback of its own creation, which deletes a box that never served) and `Retain` on a replacement, and its root disk carries
 `DeleteOnTermination: false` (`ops/env.yml`, the comment above `Box`). That keeps a disk. It does not
@@ -828,18 +883,27 @@ status `available`.
 
 ## The drill
 
+Use this when a new box is in, or its unit or templates changed: it breaks the known state on purpose and checks it comes back.
+
 Once on a new box, and again when the unit, the templates or the box change. It breaks the known
 state, so release first.
 
-1. `ops/drill.sh ridge`; rows 13, 14 and 17 of the plan's checks read green (row 17: the copy holds a code registered seconds before, and a restore to a moment before it does not).
+1. Break the known state on purpose:
+
+   ```
+   ops/drill.sh ridge
+   ```
+
+   You will see three checks read green: the store killed and back, the box rebooted and back, and a restore that holds the code registered seconds before and not a later one. Then `next: ops/check.sh ridge`.
    - **the box did not come back:** wait, then run `ops/check.sh ridge`; the reboot may be slow.
 2. `ops/check.sh ridge` reads green again.
 
 ## Restoring the records
 
+Use this when records are lost or wrong, or before you trust a copy: it brings the newest copy back to a new file, or onto the live one.
+
 The records are copied to the bucket a second at a time ([the plan](../docs/plans/2026-11-11-continuous-copy.md)).
-`ops/check.sh` reads the copy: red when the newest copy lags the last write by over five minutes, when the
-newest full copy is over six days old, or when the records disk is under 1 GiB free. c-storage keeps the time
+The check (`ops/check.sh`) reads the copy. It goes red when the newest copy lags the last write by over five minutes, or when the records disk has under 1 GiB free. It also goes red when the newest full copy is over six days old. c-storage keeps the time
 of its last write in memory only, so right after a restart (every release is one) there is none to compare
 with: the check then says plainly that **the lag was not read** and does not say the copy holds the last write.
 The drill reads the copy for real.
@@ -858,7 +922,7 @@ The drill reads the copy for real.
      never started in between; it runs on any environment, since nothing live exists there, and refuses a
      c-storage that is running, a filesystem other than XFS and a disk that already holds a `c-storage.db`.
      Then release again. **Never release before the restore, and never format the disk by hand first:** a
-     c-storage started over an empty disk makes an empty database, and Litestream then saves it over the newest
+     c-storage started over an empty disk makes an empty database, and [Litestream](../docs/partners/words.md#litestream) then saves it over the newest
      copy. Not yet walked on a real blank disk.
    - **no file written:** the role may list and read the bucket; read the log's last lines for Litestream's words.
 3. To put **one demo copy** back and leave its neighbours as they are now, `ops/company-restore.sh ridge <code>`
@@ -867,6 +931,8 @@ The drill reads the copy for real.
    record into the named copy and a neighbour, copies the named copy back (`copy-company`), and reads the named
    copy's record gone, the neighbour's kept and the compare at 0. The restored file is removed at the end; if the connection is gone by then, a `WARN` line in the log names the file, the time the second c-storage ends by itself and the copies that may still hold a drill record.
 ## The watch
+
+Use this when an alarm has gone to the topic, or you set up where alarms go: it names the four alarms and what each means.
 
 Four alarms on an environment, all to one topic, `Alerts`: the app's calls failing (the API's `5xx`),
 the back end's own errors, the back end refusing work under load (its function's `Errors` and
@@ -910,6 +976,8 @@ Neither ID is a credential, and neither is written into any committed file.
    not the metric under it.
 
 ## The ops job
+
+Use this when the ops job in CI is red, or you change a script: it says what the job lints and tests, and what it needs installed.
 
 CI lints the scripts (ShellCheck 0.11.0, installed in the job from its release) and templates
 (cfn-lint), and runs `ops/test.sh`: the guards on hand-written input (the change-set filter among

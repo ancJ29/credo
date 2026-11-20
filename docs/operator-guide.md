@@ -1,4 +1,10 @@
+---
+partner_page: docs/partners/operator-console.md
+---
+
 # Operator guide: every task, its command, what you see
+
+For the operator who works only in the console, the plain version is [what the operator does in the console](partners/operator-console.md).
 
 ## At a glance
 
@@ -261,12 +267,12 @@ GitHub starts the run's failed jobs again; read the run on GitHub.
 
 ### Delete a client
 
-**in the console**: the client's row in Clients, "Delete". A deletion left unfinished: **no command yet**
-([open item 133](open-items.md)).
+**in the console**: the client's row in Clients, "Delete". A deletion left unfinished: reload the delete page and press
+"Resume deletion" ([open item 133](open-items.md)).
 
 ### Move a client to another box
 
-**in the console**: the client's row in Clients, "Move to another box".
+**in the console**: the client's row in Clients, "Migrate to another server".
 
 ### Remake the six demo copies
 
@@ -327,7 +333,7 @@ terminal and the app deployed once. If the operator already exists it refuses to
 
 ### A lost passkey
 
-**in the console**: the operator's row on the Operators page, "New link". For the first operator, from a
+**in the console**: the operator's row on the Operators page, "Generate new link". For the first operator, from a
 terminal:
 
 ```sh
@@ -338,7 +344,7 @@ It prints a new one-time join link, replaces every passkey they held and ends th
 
 ### Delete an operator
 
-**in the console**: the operator's row on the Operators page, "Delete".
+**in the console**: the operator's row on the Operators page, "Remove".
 
 ## Ridge down and back
 

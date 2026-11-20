@@ -26,7 +26,7 @@ A page marked "not yet written" is promised and still empty. A page's name opens
   - A demo, step by step: for the sales partner; answers "what do I open, say and point at in a first meeting?" **not yet written**
 - **The operator**
   - [For the operator](operator.md): for the person who keeps credo running; answers "where do I start, and whom do I ask?"
-  - [The operator guide](../operator-guide.md): for the operator; answers "how do I do each task, and what should I see after it?"
+  - [What the operator does in the console](operator-console.md): for the operator; answers "how do I add a client, give a new password, move or delete one, manage operators and see whether credo answers?"
   - [The runbook](../../ops/README.md): for the operator who needs the reason behind a step; answers "why is it done this way?"
 - **The new developer**
   - [For a new developer](developer.md): for someone joining the code; answers "what is the path to my first change?"
