@@ -237,7 +237,8 @@ writing code is the glance table's row: `useLoad` and `<Loaded>`, no cache and n
 
 **C16 · Work the list of places one screen touches, because at least seven exist and nothing lists
 them:** the page, the fake (`ui/src/fake.ts`), its route in the app shell, both dictionaries, its
-test, a walk scene and a base image before the visual report can show it. `[next copy · reader]`
+test, its look from the guideline (`ui/src/design-system/guideline.ts`), a walk scene and a base image
+before the visual report can show it. `[next copy · reader]`
 
 *Why:* a screen that reaches the walks page without its scene and base is a screen the human cannot
 judge. The project is about to add screens faster than it has.

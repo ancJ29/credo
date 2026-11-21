@@ -7,6 +7,16 @@ const BRAND_SHADES = { from: 7, to: 9, deg: 135 } as const;
 export const RADII = { xs: '2px', sm: '4px', md: '8px', lg: '12px', xl: '16px' } as const;
 export const SPACING = { xs: '8px', sm: '12px', md: '16px', lg: '24px', xl: '32px' } as const;
 
+/**
+ * The widths a screen gives a block or a field, by what it holds: a screen names the use, never
+ * the number. The screens write the numbers today (the guideline's values page).
+ */
+export const WIDTHS = { card: 440, column: 560, field: 420, amount: 320, date: 240 } as const;
+
+/** The icon sizes in px, by where the icon sits: a screen names the place, never the number. The
+ * screens write the numbers today (the guideline's values page). */
+export const ICON_SIZES = { inline: 14, field: 16, button: 18, bar: 22, mark: 36 } as const;
+
 /** Where the frame's brand text starts looking for a shade that reads on white: shade 7 (`onWhite`). */
 export const BRAND_TEXT_FROM = 7;
 
@@ -28,10 +38,10 @@ export const SIZES = { chip: 12 } as const;
  * fits none takes a weight from `WEIGHTS` (`fw={WEIGHTS.label}`).
  */
 export const TYPE = {
-  /** A page's title: a level-2 heading, which the theme draws at 22 px, 700. */
+  /** A page's title: a level-2 heading, which the theme draws at 22 px, at `WEIGHTS.title`. */
   pageTitle: { order: 2 },
   /** A section's title: small capitals, bold and wide. */
-  sectionLabel: { fz: 'xs', fw: WEIGHTS.title, lts: 0.5, tt: 'uppercase' },
+  sectionLabel: { size: 'xs', fw: WEIGHTS.title, lts: 0.5, tt: 'uppercase' },
   /** A field's label: small capitals, bolder than body, spaced, in grey. */
   fieldLabel: { size: 'xs', fw: WEIGHTS.emphasis, lts: 0.3, tt: 'uppercase', c: 'dimmed' },
   /** Body text: Mantine's `md` at 400, which a `Text` with no prop already draws. */
@@ -41,6 +51,16 @@ export const TYPE = {
   /** A note under or beside content: small, dimmed. */
   caption: { size: 'sm', c: 'dimmed' },
 } as const;
+
+/**
+ * The four meanings a screen's colour carries, each written once as the Mantine colour that draws it.
+ * This is the one place a Mantine colour name is written for a meaning: a screen names the meaning
+ * (`danger`), never `red`. The screens still write the names today (the guideline's values page).
+ */
+export const TONES = { danger: 'red', success: 'green', warning: 'orange', info: 'gray' } as const;
+
+/** The text on the client's colour, one value for each surface that wears it, by role. */
+export const ON_BRAND = ['on-filled', 'on-header', 'on-menu'] as const;
 
 /**
  * The legacy app's values that the new app's theme lacks, and the gallery reads. The greys, green,
@@ -127,9 +147,8 @@ export const MENU_WASHES = { 'menu-hover': 5, 'menu-current': 10 } as const;
 /** The frame's sizes, weights, lines and shadows that Mantine has no slot for, written as
  * `--credo-<name>` variables by the theme's resolver beside the colours. */
 export const FRAME_VALUES = {
-  /** The menu's labels: 14 px at 600. */
+  /** The text of the menu's labels and the bar's links: 14 px (weight: `weight-emphasis`). */
   'menu-size': '14px',
-  'menu-weight': String(WEIGHTS.emphasis),
   /** The weights by role, for a stylesheet: `var(--credo-weight-label)`. */
   'weight-label': String(WEIGHTS.label),
   'weight-emphasis': String(WEIGHTS.emphasis),
@@ -138,7 +157,6 @@ export const FRAME_VALUES = {
   'tip-size': '13px',
   'chip-size': `${SIZES.chip}px`,
   'avatar-size': '11px',
-  'link-size': '14px',
   /** The phone bar's line above and its soft shadow cast upward: the legacy's `base/src/components/app/MobileAppLayout.tsx#L268-L269`. */
   'bar-line': '1px solid var(--mantine-color-default-border)',
   'bar-shadow': '0 -2px 8px rgba(0, 0, 0, 0.06)',

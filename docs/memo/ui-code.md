@@ -57,6 +57,7 @@ Copy `ui/src/pages/client/ListPage.tsx`'s `ListPage`, for a screen the client ap
 4. Its words go in `ui/src/i18n/en.ts` first, then `vi.ts`.
 5. A piece that no route mounts goes in `ui/src/parts/`; a piece drawn a third time goes into `ui/src/components/` with its gallery entry.
 6. Its test sits beside it and opens the whole app with `ui/tests/open.tsx`'s `openApp`; copy `ui/src/pages/client/ListPage.test.tsx`.
+7. Its look comes from the guideline, `ui/src/design-system/guideline.ts`'s `GUIDELINE`: a colour by its role, text by its style, a choice the guideline does not make asked.
 
 ## What looks wrong but is not
 

@@ -1,5 +1,5 @@
 import { MantineProvider } from '@mantine/core';
-import type { ReactNode } from 'react';
+import { useMemo, type ReactNode } from 'react';
 import { themeOf } from './appTheme';
 import { credoVariables } from './cssVariables';
 
@@ -18,9 +18,10 @@ type Props = {
 /** Mantine as the app sets it up: the theme, the `--credo-*` variables, the light scheme. The app's
  * providers and the gallery both draw inside it, so the gallery shows what the app uses. */
 export function CredoMantine({ colour, scheme, root, test, children }: Props) {
+  const theme = useMemo(() => themeOf(colour), [colour]);
   return (
     <MantineProvider
-      theme={themeOf(colour)}
+      theme={theme}
       cssVariablesResolver={credoVariables}
       forceColorScheme={scheme ?? 'light'}
       getRootElement={root}

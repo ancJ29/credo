@@ -6,9 +6,23 @@ import { DEMO_CONFIG } from '@credo/shared/demo';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { openApp } from '../../tests/open';
 import { Gallery } from './Gallery';
-import { ENTRIES } from './entries';
+import { ENTRIES, slugOf } from './entries';
+import { followedWords, heldWords } from './Charter';
+import { GUIDELINE } from './guideline';
 import { contrast, onBrand, onWhite, beforeOf, type Surface } from './onBrand';
-import { HEADER_WASHES, MENU_WASHES, ROLES, TYPE } from './tokens';
+import {
+  HEADER_WASHES,
+  ICON_SIZES,
+  MENU_WASHES,
+  ON_BRAND,
+  RADII,
+  ROLES,
+  SPACING,
+  TONES,
+  TYPE,
+  WIDTHS,
+} from './tokens';
+import { credoVariables } from './cssVariables';
 import { PALETTES } from './palettes';
 import { shadesOf } from './appTheme';
 
@@ -64,14 +78,23 @@ describe('Gallery', () => {
     for (const name of names) expect(style).toContain(`--credo-${name}: `);
   });
 
-  it('4: lists Foundations, Atoms, Molecules and Organisms in order, each with its count and every component file of its level', () => {
+  it('4: lists Start here, Foundations, Rules, Pages, Atoms, Molecules and Organisms in order, each with its count and every component file of its level', () => {
     open(`${BASE}/atoms/field-label`);
 
     const heads = list()
       .getAllByRole('heading')
       .map((heading) => heading.textContent);
-    expect(heads).toEqual(['Foundations', 'Atoms', 'Molecules', 'Organisms']);
+    expect(heads).toEqual([
+      'Start here',
+      'Foundations',
+      'Rules',
+      'Pages',
+      'Atoms',
+      'Molecules',
+      'Organisms',
+    ]);
     expect(found.length).toBeGreaterThan(0);
+    expect(list().getByRole('region', { name: 'Start here' }).textContent).toContain('1');
     expect(list().getByRole('region', { name: 'Foundations' }).textContent).toContain('3');
     for (const [level, heading] of Object.entries(HEADINGS)) {
       const files = found.filter((file) => file.level === level);
@@ -95,14 +118,39 @@ describe('Gallery', () => {
     expect(screen.getAllByRole('article')).toHaveLength(1);
   });
 
-  it('6: the bare address opens the first part and the list marks it current', () => {
+  it('6: the bare address opens the charter and the list marks it current', () => {
     open(BASE);
 
-    expect(part().getByRole('heading', { level: 2, name: 'Values' })).toBeDefined();
-    expect(list().getByRole('link', { name: 'Values' }).getAttribute('aria-current')).toBe('page');
+    expect(part().getByRole('heading', { level: 2, name: 'The charter' })).toBeDefined();
+    expect(list().getByRole('link', { name: 'The charter' }).getAttribute('aria-current')).toBe(
+      'page',
+    );
+    expect(list().getByRole('link', { name: 'Values' }).getAttribute('aria-current')).toBeNull();
     expect(
       list().getByRole('link', { name: 'FieldLabel' }).getAttribute('aria-current'),
     ).toBeNull();
+  });
+
+  it('guideline 7: the charter draws its words from guideline.ts, the same text', () => {
+    open(BASE);
+
+    const { goal, credo, lookHere, rules } = GUIDELINE.charter;
+    expect(lookHere.length).toBeGreaterThan(1);
+    expect(rules.length).toBeGreaterThan(1);
+    const plate = within(part().getByRole('figure', { name: 'The charter' }));
+    expect(plate.getByText(goal)).toBeDefined();
+    expect(plate.getByText(credo)).toBeDefined();
+    for (const { need, where } of lookHere) {
+      expect(plate.getByText(`${need}.`)).toBeDefined();
+      expect(plate.getByText(where, { exact: false })).toBeDefined();
+    }
+    for (const rule of rules) {
+      expect(plate.getByText(rule.says)).toBeDefined();
+      expect(plate.getByText(rule.why)).toBeDefined();
+    }
+    // Each rule's caption says what holds it and whether the app follows it.
+    expect(plate.getAllByText(/^Held by /)).toHaveLength(rules.length);
+    expect(plate.getAllByText(/The app follows it\.$/)).toHaveLength(rules.length);
   });
 
   it('7: an address that names no part says so beside the list and draws no part', () => {
@@ -139,25 +187,25 @@ describe('Gallery', () => {
     }
   });
 
-  it('9: on a part of two states or more “One state at a time” shows one state and a row to pick another; a part of one state has no switch; another part opens on all states', async () => {
+  it('9: on a part of two states or more “One at a time” shows one state and a row to pick another; a part of one state has no switch; another part opens on all states', async () => {
     const user = userEvent.setup();
     open(`${BASE}/organisms/door-card`);
 
     expect(stateNames()).toEqual(['Sign-in', 'Login link']);
-    await user.click(screen.getByRole('button', { name: 'One state at a time' }));
+    await user.click(screen.getByRole('button', { name: 'One at a time' }));
     expect(stateNames()).toEqual(['Sign-in']);
     await user.click(screen.getByRole('button', { name: 'Login link' }));
     expect(stateNames()).toEqual(['Login link']);
-    await user.click(screen.getByRole('button', { name: 'All states side by side' }));
+    await user.click(screen.getByRole('button', { name: 'Side by side' }));
     expect(stateNames()).toEqual(['Sign-in', 'Login link']);
 
-    await user.click(screen.getByRole('button', { name: 'One state at a time' }));
+    await user.click(screen.getByRole('button', { name: 'One at a time' }));
     await user.click(list().getByRole('link', { name: 'PageHeader' }));
     expect(stateNames()).toEqual(['With actions', 'Title only']);
 
     await user.click(list().getByRole('link', { name: 'FieldLabel' }));
-    expect(screen.queryByRole('button', { name: 'One state at a time' })).toBeNull();
-    expect(screen.queryByRole('button', { name: 'All states side by side' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'One at a time' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Side by side' })).toBeNull();
   });
 
   it('10: the door heading, the logo tile and the page header each draw the state the mock adds', () => {
@@ -205,19 +253,33 @@ describe('Gallery', () => {
     expect(part().getByRole('link', { name: 'Quay lại đăng nhập' })).toBeDefined();
   });
 
-  it('11: draws the values', () => {
-    open(BASE);
+  it('guideline 7: a rule says in words what holds it and whether the app follows it, or the item that moves it', () => {
+    expect(heldWords('review')).toBe('Held by review.');
+    expect(heldWords({ check: 'a/b.test.ts' })).toBe('Held by a/b.test.ts.');
+    expect(followedWords('yes')).toBe('The app follows it.');
+    expect(followedWords({ item: 12 })).toBe('Not yet: open item 12 moves it.');
+  });
 
-    expect(stateNames()).toEqual(['Palette', 'Type', 'Gaps', 'Roles']);
+  it('11: draws the values', () => {
+    open(`${BASE}/foundations/values`);
+
+    expect(stateNames()).toEqual([
+      'Palette',
+      'Type',
+      'Spacing',
+      'Widths',
+      'Icons',
+      'Corners and shadows',
+      'Formats',
+      'Roles',
+      'Meanings',
+    ]);
     expect(part().getAllByTitle(/^brand \d$/)).toHaveLength(10);
     expect(part().getByText(/^Type: /)).toBeDefined();
-    expect(part().getByText(/^Gaps: /)).toBeDefined();
     for (const style of Object.keys(TYPE)) expect(part().getByText(style)).toBeDefined();
     for (const role of [
       ...Object.keys(ROLES),
-      'on-filled',
-      'on-header',
-      'on-menu',
+      ...ON_BRAND,
       ...Object.keys(HEADER_WASHES),
       ...Object.keys(MENU_WASHES),
     ])
@@ -227,6 +289,121 @@ describe('Gallery', () => {
       'style.background',
       'var(--credo-brand-text)',
     );
+  });
+
+  it('8: Values gives each role, on-brand value, wash, style and meaning its use line, from the guideline', () => {
+    open(`${BASE}/foundations/values`);
+    const { roles, styles, tones } = GUIDELINE.values;
+    // A table that found nothing would quiet the loops below.
+    expect(Object.keys(roles).length).toBe(
+      Object.keys(ROLES).length +
+        ON_BRAND.length +
+        Object.keys(HEADER_WASHES).length +
+        Object.keys(MENU_WASHES).length,
+    );
+    for (const line of [...Object.values(roles), ...Object.values(styles), ...Object.values(tones)])
+      expect(part().getAllByText(line, { exact: true }).length).toBeGreaterThan(0);
+    // A line is a sentence, not a name left to be filled.
+    for (const line of Object.values(roles)) expect(line.length).toBeGreaterThan(10);
+  });
+
+  it('8: Values gives each spacing step, width, icon size, corner, shadow and format its use line, from the guideline, next to its value', () => {
+    open(`${BASE}/foundations/values`);
+    const { spacing, widths, icons, corners, shadows, formats } = GUIDELINE.values;
+    const tables = [
+      [spacing, Object.keys(SPACING), 5],
+      [widths, Object.keys(WIDTHS), 5],
+      [icons, Object.keys(ICON_SIZES), 5],
+      [corners, Object.keys(RADII), 5],
+      [shadows, ['lg', 'xl', 'bar-shadow', 'header-shadow'], 4],
+      [formats, ['money', 'date', 'time'], 3],
+    ] as const;
+    for (const [table, keys, count] of tables) {
+      // A table of another size would quiet the check on its keys.
+      expect(Object.keys(table)).toEqual(keys);
+      expect(keys).toHaveLength(count);
+      for (const [name, line] of Object.entries(table)) {
+        expect(line.length).toBeGreaterThan(20);
+        const row = part().getAllByText(line)[0]?.parentElement;
+        expect(row?.textContent).toContain(name);
+      }
+    }
+    // The value drawn is the table's, not a copy: its own text, beside its name.
+    const valueOf = (name: string, value: string) =>
+      part()
+        .getAllByText(name, { exact: true })
+        .some((el) => el.nextElementSibling?.textContent === value);
+    expect(valueOf('md', SPACING.md)).toBe(true);
+    expect(valueOf('card', `${WIDTHS.card} px`)).toBe(true);
+    expect(valueOf('mark', `${ICON_SIZES.mark} px`)).toBe(true);
+    expect(valueOf('xl', RADII.xl)).toBe(true);
+  });
+
+  it('9: Values draws each role’s value as credoVariables writes it for the chosen colour, and it follows the colour', async () => {
+    const written = (colour: string) =>
+      credoVariables({ colors: { brand: shadesOf(colour) } } as never).variables;
+    const names = Object.keys(GUIDELINE.values.roles);
+    const read = () =>
+      Object.fromEntries(
+        names.map((role) => [
+          role,
+          part().getByText(role, { exact: true }).nextElementSibling?.textContent,
+        ]),
+      );
+    open(`${BASE}/foundations/values`);
+    const steel = written(CREDO_COLOUR);
+    expect(read()).toEqual(
+      Object.fromEntries(names.map((role) => [role, steel[`--credo-${role}`]])),
+    );
+    expect(steel['--credo-header-chip']).toMatch(/^rgba\(/);
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('combobox', { name: 'Colour theme' }));
+    await user.click(
+      within(await screen.findByRole('listbox')).getByRole('option', { name: 'Emerald' }),
+    );
+    const emerald = written(PALETTES.find(({ name }) => name === 'emerald')!.shades[7]);
+    expect(read()).toEqual(
+      Object.fromEntries(names.map((role) => [role, emerald[`--credo-${role}`]])),
+    );
+    // A value that follows the colour moves with it: some stock colour writes a role differently.
+    expect(
+      PALETTES.some(({ shades }) =>
+        names.some((role) => written(shades[7])[`--credo-${role}`] !== steel[`--credo-${role}`]),
+      ),
+    ).toBe(true);
+    window.localStorage.clear();
+  });
+
+  it('10: Values draws each text style’s size, line height, weight and spacing, its name in plain letters', () => {
+    open(`${BASE}/foundations/values`);
+    const FACTS: Record<keyof typeof TYPE, string> = {
+      pageTitle: 'size 22 px · line height 1.4 · weight 700 · spacing 0 px',
+      sectionLabel: 'size 12 px · line height 1.4 · weight 700 · spacing 0.5 px',
+      fieldLabel: 'size 12 px · line height 1.4 · weight 600 · spacing 0.3 px',
+      body: 'size 16 px · line height 1.55 · weight 400 · spacing 0 px',
+      bodyStrong: 'size 16 px · line height 1.55 · weight 600 · spacing 0 px',
+      caption: 'size 14 px · line height 1.45 · weight 400 · spacing 0 px',
+    };
+    for (const [name, facts] of Object.entries(FACTS)) {
+      const plain = part().getByText(name, { exact: true });
+      // The name is written as typed, outside any style that would change its letters.
+      expect(plain.style.textTransform).toBe('');
+      expect(plain.nextElementSibling?.textContent).toBe(facts);
+    }
+    expect(Object.keys(FACTS)).toEqual(Object.keys(TYPE));
+  });
+
+  it('8: Values draws the four meanings, each with the Mantine colour that draws it and its line', () => {
+    open(`${BASE}/foundations/values`);
+    for (const [tone, colour] of Object.entries(TONES)) {
+      const name = part().getByText(tone, { exact: true });
+      expect(name.nextElementSibling?.textContent).toBe(colour);
+      expect(name.nextElementSibling?.nextElementSibling?.textContent).toBe(
+        GUIDELINE.values.tones[tone as keyof typeof TONES],
+      );
+    }
+    expect(Object.values(TONES)).toEqual(['red', 'green', 'orange', 'gray']);
   });
 
   it('9: On the brand draws the six colours’ header, buttons and menu, before the rule and after, each with its ratio', () => {
@@ -480,7 +657,7 @@ describe('Gallery', () => {
     });
 
     it('the colour themes: choosing one redraws every part in it, the Foundations’ palette included, and the browser remembers it', async () => {
-      open(BASE);
+      open(`${BASE}/foundations/values`);
       const before = swatches();
       const emerald = PALETTES.find(({ name }) => name === 'emerald')!;
 
@@ -491,7 +668,7 @@ describe('Gallery', () => {
       after.forEach((style, at) => expect(style).not.toBe(before[at]));
 
       cleanup();
-      open(BASE);
+      open(`${BASE}/foundations/values`);
       expect(chooser().value).toBe('Emerald');
       expect(brand7()).toBe(emerald.shades[7]);
       expect(swatches()).toEqual(after);
@@ -532,7 +709,7 @@ describe('Gallery', () => {
   });
 
   it('the workbench: a part with no kind has its group and name for a path, and an address naming no part has none', () => {
-    open(BASE);
+    open(`${BASE}/foundations/values`);
     expect(bar().getByText('Foundations /')).toBeDefined();
     expect(bar().getByText('Values')).toBeDefined();
     cleanup();
@@ -553,7 +730,7 @@ describe('Gallery', () => {
     expect(about().getByRole('combobox', { name: 'Colour theme' })).toBeDefined();
     expect(about().queryAllByRole('figure')).toHaveLength(0);
 
-    await user.click(about().getByRole('button', { name: 'One state at a time' }));
+    await user.click(about().getByRole('button', { name: 'One at a time' }));
     expect(about().getByRole('button', { name: 'Login link' })).toBeDefined();
   });
 
@@ -570,6 +747,60 @@ describe('Gallery', () => {
 
     expect(screen.getByRole('combobox', { name: 'Colour theme' })).toBeDefined();
     expect(screen.queryByRole('complementary', { name: 'About this part' })).toBeNull();
+  });
+
+  it('1: every entry carries one to three use lines and one to three don’t-use lines', () => {
+    expect(ENTRIES).toHaveLength(15);
+    for (const entry of ENTRIES) {
+      for (const lines of [entry.useWhen, entry.dontUseWhen]) {
+        expect(lines.length, entry.name).toBeGreaterThanOrEqual(1);
+        expect(lines.length, entry.name).toBeLessThanOrEqual(3);
+        for (const line of lines) expect(line.trim(), entry.name).not.toBe('');
+      }
+    }
+  });
+
+  it('2: an entry’s “instead” names an entry that exists, and the panel links to its address', () => {
+    const withInstead = ENTRIES.filter((entry) => entry.instead !== undefined);
+    expect(withInstead.length).toBeGreaterThan(0);
+    for (const entry of withInstead) {
+      const target = ENTRIES.find(({ name }) => name === entry.instead);
+      expect(target, `${entry.name} instead ${entry.instead}`).toBeDefined();
+      expect(target?.name).not.toBe(entry.name);
+
+      open(`${BASE}/${slugOf(entry.group)}/${slugOf(entry.name)}`);
+      const link = about().getByRole('link', { name: entry.instead });
+      expect(link.getAttribute('href')).toBe(
+        `${BASE}/${slugOf(target!.group)}/${slugOf(target!.name)}`,
+      );
+      cleanup();
+    }
+
+    open(`${BASE}/atoms/field-label`);
+    expect(about().queryByText(/^Instead:/)).not.toBeNull();
+    cleanup();
+    open(`${BASE}/atoms/back-link`);
+    expect(about().queryByText(/^Instead:/)).toBeNull();
+  });
+
+  it('3: the side panel shows the part’s use lines under its description, before its props', () => {
+    for (const entry of ENTRIES) {
+      open(`${BASE}/${slugOf(entry.group)}/${slugOf(entry.name)}`);
+      const side = about();
+      const use = side.getByRole('heading', { level: 3, name: 'Use when' });
+      const dont = side.getByRole('heading', { level: 3, name: 'Don’t use when' });
+      for (const line of [...entry.useWhen, ...entry.dontUseWhen]) {
+        expect(side.getByText(line), entry.name).toBeDefined();
+      }
+      const before = (a: Node, b: Node) =>
+        Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+      expect(before(side.getByText(entry.description), use), entry.name).toBe(true);
+      expect(before(use, dont), entry.name).toBe(true);
+      expect(before(dont, side.getByRole('heading', { level: 3, name: 'Props' })), entry.name).toBe(
+        true,
+      );
+      cleanup();
+    }
   });
 
   it('3: asks search engines not to list it and carries its title', () => {

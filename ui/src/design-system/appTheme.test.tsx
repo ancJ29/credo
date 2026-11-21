@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest';
 import { credoVariables } from './cssVariables';
 import { PALETTES } from './palettes';
 import { BRAND_GRADIENT, shadesOf, themeOf } from './appTheme';
-import { RADII, SPACING, TOKENS } from './tokens';
+import { RADII, SPACING, TOKENS, WEIGHTS } from './tokens';
 
 describe('shadesOf', () => {
   it('gives ten shades, the lightest first, shade 7 the brand colour itself', () => {
@@ -111,6 +111,17 @@ describe('11: the app’s theme is the design system’s, for every company’s 
       expect(components?.Input).toBeDefined();
     },
   );
+});
+
+describe('11: the theme’s heading, page-title and field-label weights read WEIGHTS', () => {
+  it('draws every heading at emphasis, the page title at title, a field’s label at label', () => {
+    const { headings, components } = themeOf('#2f7d6d');
+    const label = components?.InputWrapper?.styles as { label: { fontWeight: number } };
+
+    expect(headings?.fontWeight).toBe(String(WEIGHTS.emphasis));
+    expect(headings?.sizes?.h2?.fontWeight).toBe(String(WEIGHTS.title));
+    expect(label.label.fontWeight).toBe(WEIGHTS.label);
+  });
 });
 
 describe('the filled parts take the rule’s pick', () => {

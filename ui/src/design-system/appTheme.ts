@@ -18,7 +18,7 @@ import {
 import { gradientOf, onBrand, type Pick, beforeOf } from './onBrand';
 import { NEUTRAL, paletteOfColour } from './palettes';
 import classes from './theme.module.css';
-import { RADII, SPACING, TOKENS } from './tokens';
+import { RADII, SPACING, TOKENS, WEIGHTS } from './tokens';
 
 const FONT = '"Noto Sans Variable", sans-serif';
 
@@ -147,8 +147,8 @@ export const themeOf = (colour: string) => {
     // A page's title is its level-2 heading, drawn at the old app's h3, in bold (700).
     headings: {
       fontFamily: FONT,
-      fontWeight: '600',
-      sizes: { h2: { fontSize: rem(22), lineHeight: '1.4', fontWeight: '700' } },
+      fontWeight: String(WEIGHTS.emphasis),
+      sizes: { h2: { fontSize: rem(22), lineHeight: '1.4', fontWeight: String(WEIGHTS.title) } },
     },
     defaultRadius: 'md',
     radius: RADII,
@@ -174,7 +174,7 @@ export const themeOf = (colour: string) => {
       PasswordInput: PasswordInput.extend({
         classNames: { root: classes.passwordRoot, input: classes.password },
       }),
-      InputWrapper: Input.Wrapper.extend({ styles: { label: { fontWeight: 500 } } }),
+      InputWrapper: Input.Wrapper.extend({ styles: { label: { fontWeight: WEIGHTS.label } } }),
       // A plain badge reads its text from Mantine's stylesheet, white; named filled, it reads the rule.
       Badge: Badge.extend({
         defaultProps: { radius: TOKENS.badgeRadius, variant: changes ? 'filled' : undefined },

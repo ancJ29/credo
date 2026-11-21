@@ -3,8 +3,9 @@ import { IconCheck } from '@tabler/icons-react';
 import { shadesOf } from './appTheme';
 import { onBrand, onWhite, beforeOf, contrast, type Pick, type Surface } from './onBrand';
 import { PALETTES } from './palettes';
+import { TOKENS } from './tokens';
 
-const SIZES = { fontSize: 13, fontWeight: 600, borderRadius: 4, padding: '6px 12px' } as const;
+const INK_SIZES = { fontSize: 13, fontWeight: 600, borderRadius: 4, padding: '6px 12px' } as const;
 
 /** One drawn surface: the pick's span as the ground, its ink on it. */
 function Sample({
@@ -17,7 +18,7 @@ function Sample({
   pick: Pick;
 }) {
   const ground = pick.span.map((shade) => shades[shade]);
-  const ink = { color: pick.colour, ...SIZES };
+  const ink = { color: pick.colour, ...INK_SIZES };
   if (surface === 'filled') {
     return (
       <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
@@ -128,7 +129,7 @@ export function OnTheLinks() {
       <tbody>
         {ROWS.map(({ label, shades }) => {
           const tuple = shades as unknown as Parameters<typeof onWhite>[0];
-          const rule = onWhite(tuple, 6);
+          const rule = onWhite(tuple, TOKENS.primaryShade);
           return (
             <tr key={label}>
               <th scope="row" style={{ textAlign: 'left', paddingRight: 12 }}>
