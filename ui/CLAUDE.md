@@ -48,7 +48,9 @@ a directory of your own making is not on this list and is not a directory (vites
   role of `ui/src/design-system/tokens.ts`'s `ROLES`, `HEADER_WASHES` or `MENU_WASHES`, a
   `--credo-<role>` variable, or Mantine's own slot (`--mantine-color-body`, `-text`, `-default-border`,
   `-default-hover`) and an avatar's `color="initials"`, while Mantine's colour names (`dimmed`, `red`, `orange`, `green`, `gray`,
-  `yellow`; about 195 uses in `ui/src` today) stay until the skeleton piece), and the
+  `yellow`; about 195 uses in `ui/src` today) stay until the skeleton piece; a screen reads its text by name
+  too: a style of `ui/src/design-system/tokens.ts`'s `TYPE` spread as props (`<Text {...TYPE.caption}>`) or a weight
+  of `WEIGHTS` (`fw={WEIGHTS.emphasis}`) or a size of `SIZES`, the frame's stylesheets reading the weight and size variables `FRAME_VALUES` writes (`ui/src/design-system/tokens.ts`)), and the
   gallery page that shows the parts (`ui/src/design-system/Gallery.tsx`'s `Gallery`, served at `/48b74d079/gallery`; each part's entry is a row of `ui/src/design-system/entries.tsx`'s `ENTRIES`).
 - **`components/`**: a piece of the design system, in a level directory, with its gallery entry. Mantine
   stays the base: a piece joins when it is drawn a third time, never to wrap a Mantine part alone.

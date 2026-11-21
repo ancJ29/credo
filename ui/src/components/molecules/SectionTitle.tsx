@@ -1,6 +1,6 @@
 import { Group, ThemeIcon, Title } from '@mantine/core';
 import type { ReactNode } from 'react';
-import { TOKENS } from '../../design-system/tokens';
+import { TOKENS, TYPE } from '../../design-system/tokens';
 
 /** A section's title: a grey icon tile beside a small, bold label in capitals. */
 export function SectionTitle({ icon, label }: { icon: ReactNode; label: string }) {
@@ -16,7 +16,7 @@ export function SectionTitle({ icon, label }: { icon: ReactNode; label: string }
       >
         {icon}
       </ThemeIcon>
-      <Title order={3} fz="xs" tt="uppercase" {...TOKENS.sectionTitle}>
+      <Title order={3} {...TYPE.sectionLabel}>
         {label}
       </Title>
     </Group>

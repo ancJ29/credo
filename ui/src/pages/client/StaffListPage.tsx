@@ -37,6 +37,7 @@ import {
   paramsOf,
   type Status,
 } from '../../staffFilter';
+import { TYPE } from '../../design-system/tokens';
 
 /** A filter's name: shown above it on a phone, and from `sm` up only the accessible name, as the old
  * app's one-line filters show the value alone. */
@@ -261,7 +262,7 @@ export function StaffListPage(page: PageProps) {
                 )
                   .filter(([, line]) => line)
                   .map(([field, line]) => (
-                    <Text key={field} size="sm" c="dimmed">
+                    <Text {...TYPE.caption} key={field}>
                       {line}
                     </Text>
                   ))}

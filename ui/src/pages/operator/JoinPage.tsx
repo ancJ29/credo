@@ -10,6 +10,7 @@ import type { DeviceStore } from '../../device';
 import { PasskeyNotGiven, type Passkeys } from '../../passkeys';
 import { SignInFrame } from '../SignIn';
 import { BRAND_GRADIENT } from '../../design-system/appTheme';
+import { TYPE } from '../../design-system/tokens';
 
 type Props = {
   api: Api;
@@ -110,7 +111,7 @@ export function JoinPage({ api, device, passkeys, languages, onLanguage }: Props
       {seen.phase === 'ready' && (
         <Stack gap="lg">
           <Stack gap={4}>
-            <Text fw={600}>{t('passkey.joinFor', { name: seen.opened.name })}</Text>
+            <Text {...TYPE.bodyStrong}>{t('passkey.joinFor', { name: seen.opened.name })}</Text>
             <Text c="dimmed">
               {seen.opened.madeBy !== null
                 ? t('passkey.joinMadeBy', { name: seen.opened.madeBy })

@@ -11,6 +11,7 @@ import {
 import { useState } from 'react';
 import { Frame, type Scheme, type Width } from './Frame';
 import { SCREENS } from './screens';
+import { TYPE, WEIGHTS } from '../design-system/tokens';
 
 const SCHEMES: Scheme[] = ['light'];
 /** Narrowest first, as the filter lists them; the widths themselves are `shared`'s. */
@@ -30,7 +31,7 @@ function Filter<T extends string | number>({
 }) {
   return (
     <Group gap="xs">
-      <Text size="sm" fw={500}>
+      <Text size="sm" fw={WEIGHTS.label}>
         {label}
       </Text>
       <SegmentedControl
@@ -70,7 +71,7 @@ export function MockPage() {
           </Group>
           {SCREENS.map((screen) => (
             <Stack key={screen.number} gap="md" component="section">
-              <Title order={2}>
+              <Title {...TYPE.pageTitle}>
                 {screen.number}. {screen.label}
               </Title>
               {screen.states.map((state) => (

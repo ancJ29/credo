@@ -7,6 +7,7 @@ import { shownDay } from '../../day';
 import { Loaded } from '../../frame/Loaded';
 import { LinesTable, ProofPhoto, StateBadge, useMoney } from '../../parts/OrderParts';
 import { type PageProps, refusal, useLoad } from '../../page';
+import { TYPE, WEIGHTS } from '../../design-system/tokens';
 
 /** The customer as the driver needs them: their name, their phone (a tap calls it) and their address. */
 function WhereTo({ customer }: { customer: DeliveryDoc['request']['customer'] }) {
@@ -15,7 +16,7 @@ function WhereTo({ customer }: { customer: DeliveryDoc['request']['customer'] })
   const address = customer.extra['address'];
   return (
     <Stack gap={4}>
-      <Text fw={600}>{customer.name}</Text>
+      <Text {...TYPE.bodyStrong}>{customer.name}</Text>
       {typeof phone === 'string' && phone !== '' && (
         <Text>
           <Anchor href={`tel:${phone.replace(/\s/g, '')}`}>
@@ -90,7 +91,9 @@ export function MyDeliveryPage(page: PageProps) {
         {doc && (
           <>
             <Group justify="space-between">
-              <Title order={2}>{t('orders.requestTitle', { number: doc.request.number })}</Title>
+              <Title {...TYPE.pageTitle}>
+                {t('orders.requestTitle', { number: doc.request.number })}
+              </Title>
               <StateBadge state={doc.request.state} />
             </Group>
             {doc.request.state === 'cancelled' && (
@@ -114,7 +117,7 @@ export function MyDeliveryPage(page: PageProps) {
               </Stack>
             </Paper>
             <LinesTable lines={doc.request.lines} total={doc.request.total} />
-            <Text fw={700} size="lg">
+            <Text fw={WEIGHTS.title} size="lg">
               {t('orders.collect', { total: money(doc.request.total) })}
             </Text>
             {doc.request.state === 'delivered' && (

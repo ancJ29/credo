@@ -17,6 +17,7 @@ import {
 import { Loaded } from '../../frame/Loaded';
 import { type PageProps, refusal, useLoad } from '../../page';
 import { saveAs } from '../../saveAs';
+import { TYPE } from '../../design-system/tokens';
 
 /** Why a file was not read, or read to nothing. */
 type FileProblem = 'too-big' | 'unreadable' | 'too-many' | 'no-code' | 'no-name' | 'no-rows';
@@ -75,7 +76,7 @@ export function ListImportPage({ kind, ...page }: PageProps & { kind: ListKind }
   if (loaded.data) return <ImportForm page={page} kind={kind} taken={loaded.data} />;
   return (
     <Stack gap="lg">
-      <Title order={2}>{t(`lists.${kind}.importTitle`)}</Title>
+      <Title {...TYPE.pageTitle}>{t(`lists.${kind}.importTitle`)}</Title>
       <Loaded status={loaded.status} onRetry={loaded.reload}>
         {null}
       </Loaded>
@@ -178,7 +179,7 @@ function ImportForm({
     const rest = held.filter((row) => !answered.some((one) => one.row === row)).length;
     return (
       <Stack gap="lg">
-        <Title order={2}>{t(`lists.${kind}.doneTitle`)}</Title>
+        <Title {...TYPE.pageTitle}>{t(`lists.${kind}.doneTitle`)}</Title>
         <Alert color="green" role="alert">
           {t(`lists.${kind}.doneAdded`, { count: added })}
         </Alert>
@@ -236,7 +237,9 @@ function ImportForm({
   return (
     <Stack gap="lg">
       <div>
-        <Title order={2}>{t(rows ? 'import.previewTitle' : `lists.${kind}.importTitle`)}</Title>
+        <Title {...TYPE.pageTitle}>
+          {t(rows ? 'import.previewTitle' : `lists.${kind}.importTitle`)}
+        </Title>
         {!rows && <Text c="dimmed">{t('lists.intro')}</Text>}
       </div>
       {status === 'failed' && (
@@ -315,9 +318,7 @@ function ImportForm({
               <Button variant="default" onClick={() => void template()}>
                 {t('import.template')}
               </Button>
-              <Text c="dimmed" size="sm">
-                {t('lists.templateHint')}
-              </Text>
+              <Text {...TYPE.caption}>{t('lists.templateHint')}</Text>
             </Stack>
             <TextInput
               type="file"

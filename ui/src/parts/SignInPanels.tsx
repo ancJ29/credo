@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next';
 import { DetailCard } from './DetailCards';
 import { type PageProps, refusal } from '../page';
 import { QrCode } from './QrCode';
+import { TYPE } from '../design-system/tokens';
 
 const READ_ONLY = { input: { fontFamily: 'ui-monospace, monospace' } };
 
@@ -132,9 +133,7 @@ export function QrPanel({ page, id }: { page: PageProps; id: string }) {
           <Stack gap="xs" w="100%">
             <QrCode value={link} label={t('person.qrImage')} />
             <TextInput label={t('person.qrLink')} value={link} readOnly styles={READ_ONLY} />
-            <Text c="dimmed" size="sm">
-              {t('person.qrOnce')}
-            </Text>
+            <Text {...TYPE.caption}>{t('person.qrOnce')}</Text>
           </Stack>
         )}
         <Button variant="default" onClick={() => void show()}>

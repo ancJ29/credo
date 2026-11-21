@@ -39,6 +39,7 @@ import {
   useMoney,
 } from '../../parts/OrderParts';
 import { type PageProps, refusal, useLoad } from '../../page';
+import { TYPE } from '../../design-system/tokens';
 
 /** What the page tells after a step that went through. */
 type Done = 'saved' | 'confirmed' | 'sent' | 'cancelled';
@@ -431,7 +432,7 @@ export function NewOrderPage(page: PageProps) {
   const { t } = useTranslation();
   return (
     <Stack gap="lg">
-      <Title order={2}>{t('orders.newTitle')}</Title>
+      <Title {...TYPE.pageTitle}>{t('orders.newTitle')}</Title>
       <Editor page={page} existing={null} />
     </Stack>
   );
@@ -468,7 +469,9 @@ export function OrderPage(page: PageProps) {
         {doc && (
           <>
             <Group justify="space-between">
-              <Title order={2}>{t('orders.orderTitle', { number: doc.order.number })}</Title>
+              <Title {...TYPE.pageTitle}>
+                {t('orders.orderTitle', { number: doc.order.number })}
+              </Title>
               <StateBadge state={doc.order.state} />
             </Group>
             {done && (

@@ -8,6 +8,7 @@ import { CopyText } from '../../parts/CopyText';
 import { dayOf } from '../../day';
 import { Loaded } from '../../frame/Loaded';
 import { useLoad } from '../../page';
+import { TYPE } from '../../design-system/tokens';
 
 type Props = { api: Api; onSignedOut: () => void };
 
@@ -34,7 +35,7 @@ export function ClientsPage({ api, onSignedOut }: Props) {
   return (
     <Stack gap="lg">
       <Group justify="space-between">
-        <Title order={2}>{t('nav.clients')}</Title>
+        <Title {...TYPE.pageTitle}>{t('nav.clients')}</Title>
         <Button component={Link} to="/operator/clients/new">
           {t('operator.add')}
         </Button>

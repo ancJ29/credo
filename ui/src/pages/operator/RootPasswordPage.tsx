@@ -19,6 +19,7 @@ import { Loaded } from '../../frame/Loaded';
 import { refusal, useLoad } from '../../page';
 import { PasskeyNotGiven, type Passkeys } from '../../passkeys';
 import { touch } from '../../touch';
+import { TYPE } from '../../design-system/tokens';
 
 type Props = { api: Api; passkeys: Passkeys; onSignedOut: () => void };
 
@@ -92,7 +93,7 @@ export function RootPasswordPage({ api, passkeys, onSignedOut }: Props) {
         </Stack>
       ) : done ? (
         <Stack gap="lg">
-          <Title order={2}>
+          <Title {...TYPE.pageTitle}>
             {t(done.made === null ? 'operator.rootDoneTitle' : 'operator.rootMadeTitle')}
           </Title>
           <Alert color="green" role="alert">
@@ -121,7 +122,7 @@ export function RootPasswordPage({ api, passkeys, onSignedOut }: Props) {
       ) : (
         <Stack gap="lg">
           <div>
-            <Title order={2}>{t('operator.rootTitle', { name: client.name })}</Title>
+            <Title {...TYPE.pageTitle}>{t('operator.rootTitle', { name: client.name })}</Title>
             <Text c="dimmed">{t('operator.rootIntro', { name: client.name })}</Text>
           </div>
           {problem !== null && (
@@ -154,7 +155,7 @@ export function RootPasswordPage({ api, passkeys, onSignedOut }: Props) {
                   value={typed.again}
                   onChange={(event) => setTyped({ ...typed, again: event.currentTarget.value })}
                 />
-                <Text size="sm" c="dimmed">
+                <Text {...TYPE.caption}>
                   {t('operator.rootEmptyHint')} {t('operator.rootTouch')}
                 </Text>
                 <Group>

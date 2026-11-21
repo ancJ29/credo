@@ -79,8 +79,7 @@ describe('the header and the menu follow the colour', () => {
     light.drawn.unmount();
   });
 
-  it('7: the stylesheet’s header, buttons, chip, avatar and badge read the header’s variables, none white', () => {
-    expect(frameStyles).not.toContain('--credo-white');
+  it('7: the stylesheet’s header, buttons, chip, avatar and badge read the header’s variables', () => {
     for (const name of [
       'on-header',
       'header-hover',
@@ -150,7 +149,7 @@ describe('Shell', () => {
     expect(sideMenu().getAttribute('style')).toContain('var(--credo-menu-gradient)');
     expect(header.style.color).toBe('var(--credo-on-header)');
     expect(sideMenu().style.color).toBe('var(--credo-on-menu)');
-    // for this colour the variables are today's: shade 7 to 9 and 9 to 8, in white
+    // for this colour the variables are the ones from before the rule: shade 7 to 9 and 9 to 8, in white
     const css = [...document.querySelectorAll('style')].map((style) => style.textContent).join('');
     expect(css).toContain(
       '--credo-header-gradient: linear-gradient(135deg, var(--mantine-color-brand-7) 0%, var(--mantine-color-brand-9) 100%)',

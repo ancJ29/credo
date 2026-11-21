@@ -9,6 +9,7 @@ import { Loaded } from '../../frame/Loaded';
 import { type PageProps, refusal, useLoad } from '../../page';
 import { CustomerForm } from '../../parts/CustomerForm';
 import { ProductForm } from '../../parts/ProductForm';
+import { TYPE } from '../../design-system/tokens';
 
 type Outcome = 'saved' | 'failed' | 'forbidden' | 'refused' | 'conflict' | null;
 
@@ -128,7 +129,7 @@ function Record<D extends { version: string }, V>({
       <Loaded status={loaded.status} onRetry={loaded.reload}>
         {doc ? (
           <Stack gap="xs">
-            <Title order={2}>{spec.head(doc).name}</Title>
+            <Title {...TYPE.pageTitle}>{spec.head(doc).name}</Title>
             <Text c="dimmed">{spec.head(doc).code}</Text>
           </Stack>
         ) : (

@@ -46,7 +46,8 @@ it rests on here.
 - **The memo's `brand-text` rule, 6 where it passes:** it would move the back link and the frame's
   brand text from shade 7 to 6 on five colours.
 - **"Small capitals written three ways":** no `lts=` exists; `TOKENS.fieldLabel` and
-  `TOKENS.sectionTitle` (`ui/src/design-system/tokens.ts#L20`, `#L22`) are each spread once.
+  `TOKENS.sectionTitle` (then `ui/src/design-system/tokens.ts#L20`, `#L22`; step 9 renamed them
+  `TYPE.fieldLabel` and `TYPE.sectionLabel`) are each spread once.
 - **Missed by both:** a CSS module's class names are hashed from its stylesheet's text
   (`ui/src/frame/frameLook.module.css#L3-L4`), so an edit to `frame.module.css` changes every frame
   screen's markup without a pixel; two of A's washes are the sign-in's (`SignIn.tsx#L30`, `#L100`).
@@ -113,11 +114,11 @@ block (`eslint.config.js#L76-L94`), since a second block over the same files rep
 Named in `tokens.ts` from what screens draw today: `pageTitle` (22 at 700, `appTheme.ts#L151`);
 `sectionLabel` and `fieldLabel` (the two small-capital entries, renamed); `body` (Mantine's `md` at
 400, a `Text` with no prop, so no reader moves); `bodyStrong` (body at 600); `caption` (`sm`, dimmed,
-24 texts); and weights by role for the rest, `label` 500, `emphasis` 600, `title` 700, over the 19
-`fw=` and the frame stylesheets' 3 weights. A use that fits none keeps its number in a pinned list with
-its reason. The sizes join: one `fz={12}` (`SignIn.tsx#L97`) and four pixel sizes in the frame
+24 texts); and weights by role for the rest, `label` 500, `emphasis` 600, `title` 700, over the 20
+`fw=` (19 and one in a ternary) and the frame stylesheets' 3 weights. Every use fitted a role, so no pinned list was needed. The sizes join: one `fz={12}` (`SignIn.tsx#L98`, `SIZES.chip`) and four pixel sizes in the frame
 stylesheets. The check then refuses a numeric `fw=`, `fz=`, `fontWeight`, `font-weight` and
-`font-size` outside the design system, in the same lint block, closing item 309. No `number` style
+`font-size` outside the design system: the script forms by the test and the lint block, the stylesheet
+forms by the test alone, closing item 309. No `number` style
 (your answer; `grep -rnE 'tabular|font-variant-numeric' ui/src` counts 0). Item 308 waits for your look.
 
 ## The palette check: what moves, on every colour
@@ -244,17 +245,43 @@ shape, else piece 126's. One recap, step 11, before C lands, not one a landing.
 
 **Landing C: type by name** (after B lands; your looks stay open meanwhile).
 
-- [ ] **9. The styles.** The 19 weights, 3 stylesheet weights, 5 sizes and 24 captions moved; Type
+- [x] **9. The styles.** The 19 weights, 3 stylesheet weights, 5 sizes and 24 captions moved; Type
       lists each style; case 14 red once. _Done when:_ the gates exit 0, the pinned file unchanged.
       **13 min** (piece 126's step 4).
-- [ ] **10. Weights and sizes refused.** Case 13, red once each. The shade block's message
-      (`eslint.config.js#L90`), "A shade is named in the design system; a screen reads a role.", is
+      _Evidence:_ commit 3b93f29e; recounted first: 20 `fw=` (not 19), 3 stylesheet weights, 5 sizes, 24
+      captions. `tokens.ts` names `WEIGHTS` (label 500, emphasis 600, title 700), `SIZES` and `TYPE` (`pageTitle`,
+      `sectionLabel`, `fieldLabel`, `body`, `bodyStrong`, `caption`); the 20 weights, 24 captions, 41 plain page
+      titles and the language chip's 12 read them, the frame's stylesheets read `--credo-weight-<role>` and four
+      size variables, and Values' Type draws each style. Case 14 (the spacing held, item 513) red with the
+      spacing planted at 0.5, green after; the ui, visual gates and the citation test exit 0 and the pinned
+      file's diff against step 8's is empty. The review's note 4 is done (the links drawn as Mantine's `Anchor`,
+      Roles by name with the washes and `on-*`, each swatch the variable the app writes) and note 5 (`BRAND_TEXT_FROM`
+      is the one home of the start shade).
+- [x] **10. Weights and sizes refused.** Case 13, red once each. The shade block's message
+      (`eslint.config.js#L93-L94`), "A shade is named in the design system; a screen reads a role.", is
       reworded in the same lint block: "Name no shade here: read a role, `var(--credo-<role>)` of
       `ui/src/design-system/tokens.ts`'s `ROLES`, or Mantine's `dimmed`." _Done when:_ the gates exit 0.
       **20 min** (piece 126's step 7).
-- [ ] **11. The recap.** `docs/recaps/2026-11-20-design-fixes.md`: the commits, the two rules, each
+      _Evidence:_ commit 4a189bf5; case 13 (`literals.test.ts`, with the lint block's two new
+      selectors, the message reworded as written here) red once for each of `fw=`, `fz=`,
+      `fontWeight`, `fontSize`, `font-weight` and `font-size`, planted in a scratch file (the test
+      red on every one, the lint on the script forms), green with none planted; the ui and visual
+      gates exit 0 and the pinned file's diff against step 9's is empty. Item 309 closed. The
+      review's notes 6 (the "today" words in nine comments and test titles), 7 (the dead
+      `--credo-white` line, the stale `tokens.ts` comment about the gaps, the five unused exports of
+      `resolved.test.ts`) and 8 (its header's overstatement) are done, and `MorePage` and `SignIn`
+      read `TYPE.pageTitle`. `importFile.ts`'s `fontWeight: 'bold'` (a spreadsheet cell, not a
+      screen) is a word, not a number, and the check leaves it.
+- [x] **11. The recap.** `docs/recaps/2026-11-20-design-fixes.md`: the commits, the two rules, each
       colour's ratios, the check's patterns and red receipts, the picture counts, what was rejected
       (the memo's ask), C's run a marker. _Done when:_ the citation test exits 0. **9 min** (piece 126's).
+      _Evidence:_ commit 04a53cfb; the recap is 388 words against the 400 of this kind's cap, every
+      figure read on disk (410 and 162 pictures from the two base commits' file counts, the ratios and
+      counts from steps 3, 7, 8 and 9), C's run a marker, the gallery's row in `docs/products.md` updated in
+      the same commit, item 513 deleted (case 14 holds the spacing), the citation test exit 0 before
+      each commit. The review before `main`'s four blocks are fixed in 312a2220: step 9 ticked here,
+      point 5 reworded to what the page draws, item 513 gone, the open items' moved line numbers
+      followed and each read against its target; items 647 to 649 filed.
 - [ ] **12. Landing C.** As step 8, one run with no flags. _Done when:_ green, every count 0. **13 min,
       and your run.**
 
@@ -280,8 +307,8 @@ shape, else piece 126's. One recap, step 11, before C lands, not one a landing.
 4. **Links and colours named, in the gallery (step 8).** "On the brand" has a links row, emerald's at
    its shade 7 (5.48:1, from 3.77:1); "Values" lists each colour by what it is for. Does the page read
    true? A no names the colour or the role, and step 7 or 5 reopens.
-5. **Type named, nothing moved (step 12).** "Values", Type, shows each style by name with its size and
-   weight. Does each name say what the text is for? A yes closes the piece; a no names the style, and
+5. **Type named, nothing moved (step 12).** "Values", Type, shows each style by name, each name drawn
+   in its own style, then the three weights with their numbers. Does each name say what the text is for? A yes closes the piece; a no names the style, and
    step 9 reopens.
 
 ## The open items in reach

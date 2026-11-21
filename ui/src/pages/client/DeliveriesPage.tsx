@@ -6,6 +6,7 @@ import { Loaded } from '../../frame/Loaded';
 import { StateBadge, useMoney } from '../../parts/OrderParts';
 import { type PageProps, useLoad } from '../../page';
 import { useGapText } from '../../parts/ReconcileParts';
+import { TYPE } from '../../design-system/tokens';
 
 const addressOf = (request: DeliveryRequest) => {
   const address = request.customer.extra['address'];
@@ -32,7 +33,7 @@ export function DeliveriesPage(page: PageProps) {
 
   return (
     <Stack gap="lg">
-      <Title order={2}>{t('nav.deliveries')}</Title>
+      <Title {...TYPE.pageTitle}>{t('nav.deliveries')}</Title>
       <TextInput
         label={t('orders.sendDay')}
         type="date"

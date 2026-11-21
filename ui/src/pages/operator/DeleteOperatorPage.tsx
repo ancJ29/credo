@@ -7,6 +7,7 @@ import { Loaded } from '../../frame/Loaded';
 import { refusal, useLoad } from '../../page';
 import { PasskeyNotGiven, type Passkeys } from '../../passkeys';
 import { touch } from '../../touch';
+import { TYPE } from '../../design-system/tokens';
 
 type Props = { api: Api; passkeys: Passkeys; onSignedOut: () => void };
 
@@ -66,7 +67,7 @@ export function DeleteOperatorPage({ api, passkeys, onSignedOut }: Props) {
       ) : (
         <Stack gap="lg">
           <div>
-            <Title order={2}>{t('team.deleteTitle', { name: colleague.name })}</Title>
+            <Title {...TYPE.pageTitle}>{t('team.deleteTitle', { name: colleague.name })}</Title>
             <Text c="dimmed">{t('team.deleteIntro', { name: colleague.name })}</Text>
           </div>
           {problem !== null && (
@@ -76,9 +77,7 @@ export function DeleteOperatorPage({ api, passkeys, onSignedOut }: Props) {
           )}
           <Paper withBorder p="md">
             <Stack gap="lg">
-              <Text size="sm" c="dimmed">
-                {t('team.deleteTouch')}
-              </Text>
+              <Text {...TYPE.caption}>{t('team.deleteTouch')}</Text>
               <Group>
                 <Button color="red" loading={busy} onClick={() => void give()}>
                   {t('team.deleteMake')}

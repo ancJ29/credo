@@ -2,6 +2,7 @@ import { Alert, Button, Group, Paper, Stack, TextInput, Title } from '@mantine/c
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { CopyText } from './CopyText';
+import { TYPE } from '../design-system/tokens';
 
 type Props = {
   /** The client's sign-in address: its own (`https://<code>.<domain>/login`) from the operator's address, else `…/login?client-code=<code>`. */
@@ -34,7 +35,7 @@ export function ClientMade({ link, rootName, password, onAnother }: Props) {
   const { t } = useTranslation();
   return (
     <Stack gap="lg">
-      <Title order={2}>{t('operator.madeTitle')}</Title>
+      <Title {...TYPE.pageTitle}>{t('operator.madeTitle')}</Title>
       <Alert color="green" role="alert">
         {t('operator.madeIntro')}
       </Alert>

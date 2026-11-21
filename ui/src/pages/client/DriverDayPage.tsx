@@ -27,6 +27,7 @@ import { Loaded } from '../../frame/Loaded';
 import { useMoney } from '../../parts/OrderParts';
 import { type PageProps, refusal, useLoad } from '../../page';
 import { useGapText } from '../../parts/ReconcileParts';
+import { TYPE } from '../../design-system/tokens';
 
 /** What the page says of its last try to close: nothing, a day closed, a failure that kept the
  * cash, or a day that moved under the page (another set of requests, or closed already). */
@@ -120,7 +121,7 @@ export function DriverDayPage(page: PageProps) {
           <Text c="dimmed">{t('reconcile.noRequests')}</Text>
         ) : (
           <>
-            <Title order={2}>{t('reconcile.title', { name: driver.name })}</Title>
+            <Title {...TYPE.pageTitle}>{t('reconcile.title', { name: driver.name })}</Title>
             <Text>{t('orders.forDay', { day: shownDay(day, language) })}</Text>
             <Anchor component={Link} to={`/deliveries?day=${day}`}>
               {t('reconcile.back')}
@@ -231,7 +232,9 @@ export function DriverDayPage(page: PageProps) {
                       )}
                       {asking && handedIn !== null ? (
                         <Stack gap="xs" align="flex-start">
-                          <Text fw={600}>{t('reconcile.closeAsk', { name: driver.name })}</Text>
+                          <Text {...TYPE.bodyStrong}>
+                            {t('reconcile.closeAsk', { name: driver.name })}
+                          </Text>
                           <Text>{t('reconcile.closeCash', { amount: money(handedIn) })}</Text>
                           <Text>
                             {t('reconcile.closeGap', {

@@ -26,6 +26,7 @@ import looks from './frameLook.module.css';
 import { LANGUAGE_NAMES } from '../i18n';
 import { type MenuPage, PAGES } from '../nav';
 import { BRAND_GRADIENT, MENU_GRADIENT } from '../design-system/appTheme';
+import { WEIGHTS } from '../design-system/tokens';
 
 /** How many pages the phone's bar holds before More. */
 export const BAR_PAGES = 4;
@@ -150,7 +151,7 @@ export function Shell({
               <Title
                 order={1}
                 size="h4"
-                fw={600}
+                fw={WEIGHTS.emphasis}
                 c={whiteHeader ? undefined : 'inherit'}
                 className={whiteHeader ? looks.brandName : undefined}
               >
@@ -197,7 +198,7 @@ export function Shell({
                     <Menu.Item
                       key={language}
                       aria-current={i18n.language === language}
-                      fw={i18n.language === language ? 600 : undefined}
+                      fw={i18n.language === language ? WEIGHTS.emphasis : undefined}
                       onClick={() => onLanguage(language)}
                     >
                       {LANGUAGE_NAMES[language]}
@@ -218,7 +219,7 @@ export function Shell({
                   <span className={head(classes.avatar, 'avatar')} aria-hidden>
                     {initialsOf(user)}
                   </span>
-                  <Text span inherit fw={600} visibleFrom="sm">
+                  <Text span inherit fw={WEIGHTS.emphasis} visibleFrom="sm">
                     {user}
                   </Text>
                   <IconChevronDown size={14} />

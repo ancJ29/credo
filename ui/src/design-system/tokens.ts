@@ -7,12 +7,45 @@ const BRAND_SHADES = { from: 7, to: 9, deg: 135 } as const;
 export const RADII = { xs: '2px', sm: '4px', md: '8px', lg: '12px', xl: '16px' } as const;
 export const SPACING = { xs: '8px', sm: '12px', md: '16px', lg: '24px', xl: '32px' } as const;
 
+/** Where the frame's brand text starts looking for a shade that reads on white: shade 7 (`onWhite`). */
+export const BRAND_TEXT_FROM = 7;
+
 /** The gradients' angles: the header's and the buttons' (the brand's), the side menu's. */
 export const ANGLES = { header: BRAND_SHADES.deg, menu: 180 } as const;
 
 /**
+ * The weights by role: a screen picks a role, never a number. `label` is a field's name, `emphasis`
+ * a name or an amount to stand out, `title` a heading. The frame's stylesheets read them as
+ * `--credo-weight-<role>`.
+ */
+export const WEIGHTS = { label: 500, emphasis: 600, title: 700 } as const;
+
+/** The sizes in px that a screen's own prop and a frame stylesheet both draw: the language chip's. */
+export const SIZES = { chip: 12 } as const;
+
+/**
+ * The text styles the screens draw, read by name as props: `<Text {...TYPE.caption}>`. A use that
+ * fits none takes a weight from `WEIGHTS` (`fw={WEIGHTS.label}`).
+ */
+export const TYPE = {
+  /** A page's title: a level-2 heading, which the theme draws at 22 px, 700. */
+  pageTitle: { order: 2 },
+  /** A section's title: small capitals, bold and wide. */
+  sectionLabel: { fz: 'xs', fw: WEIGHTS.title, lts: 0.5, tt: 'uppercase' },
+  /** A field's label: small capitals, bolder than body, spaced, in grey. */
+  fieldLabel: { size: 'xs', fw: WEIGHTS.emphasis, lts: 0.3, tt: 'uppercase', c: 'dimmed' },
+  /** Body text: Mantine's `md` at 400, which a `Text` with no prop already draws. */
+  body: {},
+  /** Body text, bolder: a name or an amount. */
+  bodyStrong: { fw: WEIGHTS.emphasis },
+  /** A note under or beside content: small, dimmed. */
+  caption: { size: 'sm', c: 'dimmed' },
+} as const;
+
+/**
  * The legacy app's values that the new app's theme lacks, and the gallery reads. The greys, green,
- * red, font, gaps and shadows are `appTheme.ts`'s `themeOf` already and are not copied here.
+ * red, font and shadows are `appTheme.ts`'s `themeOf` already and are not copied here; the corner
+ * steps and gaps are the two tables at the top of this file.
  */
 export const TOKENS = {
   /** The main colour's depth: Mantine's default light shade, which the legacy draws. */
@@ -25,10 +58,6 @@ export const TOKENS = {
   dialogTitle: { fontSize: 'var(--mantine-font-size-lg)', fontWeight: 550 },
   /** A dialog's header: the legacy's padding, 12 above and below, 16 at the sides. */
   dialogHeader: { padding: 'var(--mantine-spacing-sm) var(--mantine-spacing-md)' },
-  /** A field's label: small capitals, the legacy's default weight and spacing, in grey. */
-  fieldLabel: { fw: 600, lts: 0.3 },
-  /** A section's title: the same small capitals, bolder and wider. */
-  sectionTitle: { fw: 700, lts: 0.5 },
   /** A section card's padding: the theme's `lg` (24 px). */
   cardPadding: SPACING.lg,
   /** The company logo's tile, in px: 44 square, corners of 10 (the legacy's card head). Like the
@@ -71,7 +100,7 @@ export const ROLES = {
   'border-strong': 'var(--mantine-color-neutral-3)',
   'hover-ink': 'rgba(0, 0, 0, 0.04)',
   /** The start; `credoVariables` moves it a shade darker where 7 does not read on white (`onWhite`). */
-  'brand-text': 'var(--mantine-color-brand-7)',
+  'brand-text': `var(--mantine-color-brand-${BRAND_TEXT_FROM})`,
   'brand-tint': 'var(--mantine-color-brand-0)',
   'brand-tint-strong': 'var(--mantine-color-brand-1)',
   'brand-line': 'var(--mantine-color-brand-2)',
@@ -100,7 +129,16 @@ export const MENU_WASHES = { 'menu-hover': 5, 'menu-current': 10 } as const;
 export const FRAME_VALUES = {
   /** The menu's labels: 14 px at 600. */
   'menu-size': '14px',
-  'menu-weight': '600',
+  'menu-weight': String(WEIGHTS.emphasis),
+  /** The weights by role, for a stylesheet: `var(--credo-weight-label)`. */
+  'weight-label': String(WEIGHTS.label),
+  'weight-emphasis': String(WEIGHTS.emphasis),
+  'weight-title': String(WEIGHTS.title),
+  /** The frame's small sizes: the side tip, the language chip, the avatar, a bar link. */
+  'tip-size': '13px',
+  'chip-size': `${SIZES.chip}px`,
+  'avatar-size': '11px',
+  'link-size': '14px',
   /** The phone bar's line above and its soft shadow cast upward: the legacy's `base/src/components/app/MobileAppLayout.tsx#L268-L269`. */
   'bar-line': '1px solid var(--mantine-color-default-border)',
   'bar-shadow': '0 -2px 8px rgba(0, 0, 0, 0.06)',

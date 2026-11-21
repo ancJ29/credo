@@ -21,6 +21,7 @@ import {
   Title,
 } from '@mantine/core';
 import { useTranslation } from 'react-i18next';
+import { TYPE, WEIGHTS } from '../design-system/tokens';
 
 type OptionDraft = { key: number; value: string; vi: string; en: string };
 
@@ -126,9 +127,7 @@ export function FieldsEditor({ draft, onChange, nextKey }: Props) {
       <Stack gap="sm">
         <div>
           <Title order={3}>{t('setup.fieldsTitle')}</Title>
-          <Text c="dimmed" size="sm">
-            {t('setup.fieldsIntro')}
-          </Text>
+          <Text {...TYPE.caption}>{t('setup.fieldsIntro')}</Text>
         </div>
         <Checkbox
           label={t('setup.fieldPersonalPhone')}
@@ -170,9 +169,7 @@ export function FieldsEditor({ draft, onChange, nextKey }: Props) {
       <Stack gap="sm">
         <div>
           <Title order={3}>{t('setup.signInsTitle')}</Title>
-          <Text c="dimmed" size="sm">
-            {t('setup.signInsIntro')}
-          </Text>
+          <Text {...TYPE.caption}>{t('setup.signInsIntro')}</Text>
         </div>
         <Checkbox
           label={t('setup.fieldEmail')}
@@ -193,9 +190,7 @@ export function FieldsEditor({ draft, onChange, nextKey }: Props) {
       <Stack gap="md">
         <div>
           <Title order={3}>{t('setup.ownTitle')}</Title>
-          <Text c="dimmed" size="sm">
-            {t('setup.ownIntro')}
-          </Text>
+          <Text {...TYPE.caption}>{t('setup.ownIntro')}</Text>
         </div>
         {draft.own.length === 0 && <Text c="dimmed">{t('setup.none')}</Text>}
         {draft.own.map((field) => (
@@ -243,7 +238,7 @@ export function FieldsEditor({ draft, onChange, nextKey }: Props) {
               />
               {field.kind === 'choice' && (
                 <Stack gap="xs" role="group" aria-label={`${t('setup.ownOptions')}: ${field.id}`}>
-                  <Text size="sm" fw={500}>
+                  <Text size="sm" fw={WEIGHTS.label}>
                     {t('setup.ownOptions')}
                   </Text>
                   {field.options.map((option) => {
@@ -338,9 +333,7 @@ export function FieldsEditor({ draft, onChange, nextKey }: Props) {
       <Stack gap="sm">
         <div>
           <Title order={3}>{t('setup.numberingTitle')}</Title>
-          <Text c="dimmed" size="sm">
-            {t('setup.numberingIntro')}
-          </Text>
+          <Text {...TYPE.caption}>{t('setup.numberingIntro')}</Text>
         </div>
         <Group align="flex-start">
           <TextInput
@@ -356,7 +349,7 @@ export function FieldsEditor({ draft, onChange, nextKey }: Props) {
           />
         </Group>
         {numbering.success && (
-          <Text c="dimmed" size="sm">
+          <Text {...TYPE.caption}>
             {t('setup.numberingExample', { code: example(numbering.data) })}
           </Text>
         )}

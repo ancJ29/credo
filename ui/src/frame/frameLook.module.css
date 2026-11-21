@@ -93,8 +93,8 @@
   border-radius: 6px;
   background: var(--credo-tip);
   color: var(--credo-on-tip);
-  font-size: 13px;
-  font-weight: 500;
+  font-size: var(--credo-tip-size);
+  font-weight: var(--credo-weight-label);
   white-space: nowrap;
   pointer-events: none;
 }

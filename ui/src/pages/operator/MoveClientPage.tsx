@@ -9,6 +9,7 @@ import { refusal, useLoad } from '../../page';
 import { PasskeyNotGiven, type Passkeys } from '../../passkeys';
 import { BoxChoice } from '../../parts/BoxChoice';
 import { touch } from '../../touch';
+import { TYPE } from '../../design-system/tokens';
 
 type Props = {
   api: Api;
@@ -152,7 +153,7 @@ export function MoveClientPage({ api, passkeys, onSignedOut, wait = sleep }: Pro
       ) : (
         <Stack gap="lg">
           <div>
-            <Title order={2}>{t('operator.moveTitle', { name: client.name })}</Title>
+            <Title {...TYPE.pageTitle}>{t('operator.moveTitle', { name: client.name })}</Title>
             <Text c="dimmed">{t('operator.moveHere', { name: client.name, box: here })}</Text>
           </div>
           <Alert color="orange" role="note" title={client.code}>
@@ -226,9 +227,7 @@ export function MoveClientPage({ api, passkeys, onSignedOut, wait = sleep }: Pro
                     value={picked}
                     onChange={setPicked}
                   />
-                  <Text size="sm" c="dimmed">
-                    {t('operator.moveTouch')}
-                  </Text>
+                  <Text {...TYPE.caption}>{t('operator.moveTouch')}</Text>
                   <Group>
                     <Button type="submit" loading={busy} disabled={picked === ''}>
                       {t('operator.moveMake')}

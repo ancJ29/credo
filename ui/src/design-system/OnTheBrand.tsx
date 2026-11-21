@@ -1,3 +1,4 @@
+import { Anchor } from '@mantine/core';
 import { IconCheck } from '@tabler/icons-react';
 import { shadesOf } from './appTheme';
 import { onBrand, onWhite, beforeOf, contrast, type Pick, type Surface } from './onBrand';
@@ -105,9 +106,9 @@ export function OnTheBrand({ surface }: { surface: Surface }) {
 function LinkSample({ colour, said }: { colour: string; said: string }) {
   return (
     <>
-      <span style={{ ...SIZES, padding: 0, color: colour, textDecoration: 'underline' }}>
+      <Anchor component="span" underline="always" style={{ color: colour }}>
         Open the order
-      </span>
+      </Anchor>
       <div style={{ fontSize: 12 }}>{said}</div>
     </>
   );

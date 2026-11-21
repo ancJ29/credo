@@ -30,6 +30,7 @@ import {
   refusedPersonal,
 } from '../../parts/personalFields';
 import { type PageProps, refusal, useLoad } from '../../page';
+import { TYPE } from '../../design-system/tokens';
 
 const READ_ONLY = { input: { fontFamily: 'ui-monospace, monospace' } };
 const EMPTY = {
@@ -119,7 +120,7 @@ export function AddPersonPage(page: PageProps) {
   if (made) {
     return (
       <Stack gap="lg">
-        <Title order={2}>{t('addPerson.madeTitle')}</Title>
+        <Title {...TYPE.pageTitle}>{t('addPerson.madeTitle')}</Title>
         <Alert color="green" role="alert">
           {t('addPerson.madeIntro')}
         </Alert>
@@ -163,7 +164,7 @@ export function AddPersonPage(page: PageProps) {
   return (
     <Stack gap="lg">
       <div>
-        <Title order={2}>{t('addPerson.title')}</Title>
+        <Title {...TYPE.pageTitle}>{t('addPerson.title')}</Title>
         <Text c="dimmed">{t('addPerson.intro')}</Text>
       </div>
       {status === 'failed' && (
