@@ -1,169 +1,73 @@
-# The design system's skeleton: which part to use, and messages and page states one way
+# The design guideline's skeleton: one home, written from the ground up before any screen moves
 
 ## At a glance
 
-What it is for: the week's milestone, the design system for its real user, the staff of a small
-business in Vietnam, made usable with `p1`. Whoever builds a screen finds in the gallery which part to
-use and how, and the app draws its messages and page states one way each. It builds the design agent's
-skeleton memo, usage notes first (your answers of 2026-11-20 19:31: after landings B and C, now in
-`main`; no toasts), with the design agent's review of 11-21 folded in and the dialog's title at 600
-(your answer of 11-21). Three landings today: usage notes and Values explained, no app picture moved;
-one message part, three screens moved; one page-state part, three screens moved. The memo's last four
-pieces are the next milestone. The cheapest path builds on the gallery's entries, `Loaded`, `Notice`
-and Mantine's `Alert`; the price, about 180 machine minutes, three reviews and four picture runs of
-yours.
+What it is for: your goal, "decide the design once, so whoever codes a screen makes as few
+look-and-feel choices as possible, and the app stays consistent anyway", and your word that the
+guideline reaches its shape before the app's code moves. It writes the five layers you said yes to:
+a charter, every value with its use, the rules for what a screen tells and offers, the base every
+kind of page is built from, and the parts, added on the way. One home,
+`ui/src/design-system/guideline.ts`, which a coder or an agent reads as text and the gallery draws
+for you. Three landings, each judged by you in the gallery as the guideline; no screen of the app
+moves and no picture run of yours is asked. Moving the screens is the next milestone. The cheapest
+path builds on the gallery's workbench and step 1's use lines; the price, about 170 machine minutes
+and three reviews.
 
 ## The slice
 
-One slice: a screen builder's three first questions (which part, how to tell the person, what to show
-before the content), answered in the gallery and held by the code, in three landings on `pre-merge`,
-each walkable. **1:** every gallery entry says when to use it, when not and what instead, and Values
-explains each colour and text style. **2:** one message part, `FormMessage`, for the 96 hand-written
-messages. **3:** one page-state part, `PageState`, for loading, empty, failed, forbidden and not found.
-Stages: each step in the gallery, its gates, the gallery and the walks page; no stage 4, since no
-resource changes.
+One slice: a screen's coder opens the guideline and finds each look-and-feel choice made, or knows
+to ask. Three landings on `pre-merge`, each walkable in the gallery at its address, locally and on
+ridge: **1**, the floor (the charter, every value with its use); **2**, the rules (messages, page
+states, conflict, actions, statuses, confirms); **3**, the page base and what each part serves.
+Step 2 is the cheap end to end: the file, its first page in the gallery, the line agents read.
+Stages: each step's gates; the gallery locally; the gallery is the report you judge; ridge's
+gallery, where the design agent rereads each landing from its recap.
 
-**Before step 1:** piece 215 (one provider for the app and the gallery, and the stage's `safe center`)
-lands on `pre-merge`, since it shares `ui/src/design-system/Gallery.tsx` and `Gallery.module.css` with
-landing 1 and every look below reads the gallery's swatches.
+**Not in it:** a kind of page, a phone rule and the words' voice, which you set aside ("plz ignore
+this kind of use-case focus questions now ... When a usecase came, we'll discuss on the detail
+level then"); toasts and the `number` style (your answers of 11-20); dark mode (item 307); any
+screen moved, `FormMessage` and `PageState` included.
 
-**Not in it:** toasts and the `number` style (your answers of 11-20); an icon on messages or page
-states (none of today's draws one, and one on all is a look of its own, asked when you want it); dark
-mode (item 307).
+## The guideline's home
+
+**`ui/src/design-system/guideline.ts`, plain words in typed data, no markup.** A coder or an agent
+reads it top to bottom as text, no samples between the rules; the typecheck holds its shape (a
+value, a status or a part with no line, or a rule not saying what holds it, is a type error); the
+gallery draws it, so you read the same words beside the samples, the gallery your yes of 11-20
+asked for. A part's use lines stay on its gallery entry (step 1): a part arrives on the way with
+its entry, and names the rule or slot it serves. *Rejected:* a Markdown page, which the gallery
+cannot draw without a renderer in the app's bundle or one of our own, its shape held by nothing;
+the rules as entries in `ui/src/design-system/entries.tsx` (the memo's "a gallery entry is the
+guideline"), among 526 lines of the samples' markup.
+
+The read's nine homes: `ui/CLAUDE.md`'s rules move in and it points there; values and checks stay
+where they are, each named by its rule; the memo's argument for the text on a colour stays; items
+306 and 307 become rules; the legacy app and other screens are out by the gap rule.
 
 ## The brief, checked
 
-- **Messages:** 96 `<Alert` in 32 files outside tests (the memo says about 85): red 46, orange 24,
-  green 20, gray 2, yellow 1, three by a condition; roles `alert` 87, `status` 5, `note` 4, 19 of them
-  green; no icon; `w="100%"` on 10, `mb="md"` on 2 (`ui/src/pages/SignIn.tsx#L165`, `#L170`). 58
-  lines in `walk/specs` and 30 in 16 ui test files find a message by its role, so a role changed moves
-  its finder.
-- **Page states exist:** `Loaded` (`ui/src/frame/Loaded.tsx#L12`) draws loading and failed for 26 uses
-  in 24 files, and `Notice` (`ui/src/pages/client/Notice.tsx#L6`) draws forbidden and nothing for 8;
-  `PageState` is what both draw, not a new path. Five `Loader`s (`frame/Boot.tsx#L24`, `Loaded.tsx#L17`,
-  `pages/client/QrLanding.tsx#L38`, `pages/operator/JoinPage.tsx#L88`, `ServicesPage.tsx#L118`), six
-  empty texts, one not-found message (`ui/src/pages/client/RecordPage.tsx#L136`). No walk checks an
-  empty list's words.
-- **The review's ask 5a, one key in `TYPE`:** `size`, not `fz`. A `Text`'s `size` also sets its line
-  height (Mantine 9.6.3's `Text` writes `--text-lh` from it), so `caption` and `fieldLabel` on `fz`
-  would lose it; on a `Title`, `size: 'xs'` keeps the level's line height, as `fz` does today
-  (`ui/src/design-system/tokens.ts#L34`, read by `SectionTitle`).
-- **The dialog:** one `Modal` in the app, `SessionEnded` (`ui/src/OperatorApp.tsx#L273`), drawn by the
-  operator passkeys walk's sixth screen, six pictures.
-- **Landing B's promise:** the screens' colour names move to meanings with the message part and the
-  status map (`docs/plans/2026-11-20-design-fixes.md#L95-L97`); landing 2 writes them.
-- **The skeleton read's row 25** found no record statuses; `ORDER_STATES` and `REQUEST_STATES`
-  (`shared/src/orders.ts#L62`, `#L92`) already have a map, `STATE_COLOUR` (`ui/src/parts/OrderParts.tsx#L29`),
-  on six pages. **Its row 24** could not check the mock harness: it draws piece 1's walk screens alone
-  (`ui/src/mock/screens.tsx#L79`), none of the four patterns' pages. Both are the next milestone's.
-
-## Landing 1: the gallery says which part to use
-
-`Entry` (`ui/src/design-system/entries.tsx#L92-L100`) gains `useWhen` and `dontUseWhen`, one to three
-short English lines each, and an optional `instead`, another entry's name, drawn as a link to its
-address. All 14 entries carry them, the three foundations included; the side panel draws them under
-the description (`ui/src/design-system/Gallery.tsx#L73-L75`). An entry added later carries its own
-(case 1), so `FormMessage` and `PageState` arrive with theirs.
-
-**Values explains** (the review's ask 3): `tokens.ts` gains one purpose line for each role, `on-*`
-value and wash, typed over their keys so a role without one is a type error, the one home the gallery
-reads; each swatch shows its value as `credoVariables` writes it for the chosen colour (a shade's name
-and its hex), since the browser's computed style is not there in a test. Each `TYPE` style draws its
-size, line height, weight and spacing, and "use for", the specimen in its style and its name beside it
-in plain letters (not "SECTIONLABEL").
-
-**One key, one value, and the lines agents read:** `TYPE` on `size`; `FRAME_VALUES`' `menu-size` and
-`link-size` (`tokens.ts#L131`, `#L141`) one value (the review's 5b); item 649's four leftovers.
-`ui/CLAUDE.md`'s `components/` note gains: a part is chosen by its entry's use lines; a pattern or rule
-is written at its first use, the rule of three being for shared code; text takes a `TYPE` style, a
-`size` or `fw` on `Text` only where none fits, with a comment saying why (the review's ask 6).
-
-## Landing 2: messages one way
-
-`FormMessage` (`ui/src/components/atoms/`), props `kind` (`error`, `success`, `warning`, `info`),
-an optional `title` (two messages have one), and its words as children. `tokens.ts` gains `TONES`,
-each meaning's colour written once (`danger` red, `success` green, `warning` orange, `info` gray),
-which the next milestone's status map reads too. The kind sets the tone and the role: `error` and
-`warning` speak as `alert` (18 of 24 warnings do today, and a warning that appears after an act must
-be heard), `success` and `info` as `status`. Full width, no margin of its own: spacing comes from the
-parent's gap, so the sign-in's two take a `Stack` at `md`. Yellow goes: the two yellow notes are
-warnings.
-
-The entry's rules: under the buttons that caused it, a load error being `PageState`'s; one at a time
-in a form; the words from the dictionary; no toasts. The rules no check can hold say so in the entry,
-and screens that break one are filed in one open item, not moved.
-
-**The raw part refused:** a `no-restricted-imports` block refusing `Alert` from `@mantine/core` over
-`pages/`, `parts/`, `frame/` and the top level of `ui/src`, outside tests. Not over `components/`: the
-levels' blocks (`eslint.config.js#L54-L78`) hold the same rule there, and a second block over the
-same files would replace their options.
-
-**The dialog at 600** (your answer): `TOKENS.dialogTitle` reads `WEIGHTS.emphasis`, and the theme's
-heading, page-title and field-label weights (`ui/src/design-system/appTheme.ts#L150`, `#L151`, `#L177`)
-read `WEIGHTS`; item 647 closes.
-
-## Landing 3: page states one way
-
-`PageState` (`ui/src/components/organisms/`), props `state` (`loading`, `empty`, `failed`,
-`forbidden`, `notFound`), an optional `title`, `message` and `action`, its words as props. Centred in
-the page body, one text style a part. A state that is the whole page keeps its title as the page's
-level-2 heading, which `walk/specs/piece-2.spec.ts#L224` finds. `Loaded` and `Notice` draw it; the
-five `Loader`s, the six empty texts and the not-found message move to it; the lint block refuses
-`Loader` too. The entry's rules: an empty list says what the list is for and offers its add action
-where the person may add; a failure offers "Try again"; never a blank page. Conflict keeps its place
-in each form and gets an entry of its own: the layout most of its screens draw, the others filed.
-
-## The cut: the next milestone
-
-Seven pieces do not fit a day: at the sizes below, landings 1 to 3 take the afternoon and your four
-runs. The next milestone, its own plan, in this order:
-
-- **4. Buttons.** Of the 109 `Button`s outside the design system: `default` 50, no variant 45,
-  `subtle` 6, `outline` 4 (the operator's red delete and move), four filled by a condition
-  (`ImportPage.tsx#L234` among them); `light` and `transparent` are no `Button`'s. The confirm stays a
-  page (item 306).
-- **5. Status colours,** from `STATE_COLOUR`, whose teal and blue sit outside the memo's four, and the
-  staff chips' filled badges (`ui/src/pages/client/StaffListPage.tsx#L143-L145`); `StatusBadge` has no
-  caller outside the gallery. Every order, delivery and staff list screen moves: your look.
-- **6. Formats:** 8 `new Intl.` in 5 files (`ui/src/day.ts` 3, `listSheet.ts`, `OrderPage.tsx`,
-  `OrderParts.tsx` 2, `ProductForm.tsx`), `useMoney` already the money's; 0 moved expected.
-- **7. Page patterns,** last, since they read 2 to 6; drawing them is a build of its own (the harness
-  holds none).
-
-By the same rows, 4 to 6 are about 140 machine minutes and two picture runs; 7 is a first run, sized
-in its plan.
-
-## The cases
-
-| # | The case | Held by |
-| --- | --- | --- |
-| 1 | Every entry carries one to three use lines and one to three don't-use lines | `ui/src/design-system/Gallery.test.tsx` |
-| 2 | An entry's `instead` names an entry that exists, and the panel links to its address | same |
-| 3 | The side panel shows the part's use lines under its description | same |
-| 4 | Every role, `on-*` value and wash has one purpose line | `tokens.ts`'s type, the typecheck |
-| 5 | Values draws each role's value for the chosen colour, as `credoVariables` writes it | `Gallery.test.tsx` |
-| 6 | Values draws each style's size, line height, weight and spacing, its name in plain letters | same |
-| 7 | Landing 1 moves no screen's resolved style on any of the ten colours | `visual/src/resolved.test.ts` |
-| 8 | Each kind draws its tone and role: error and warning `alert`, success and info `status` | `FormMessage.test.tsx` |
-| 9 | A message is full width, with no margin of its own, its title only when given | same |
-| 10 | No screen imports Mantine's `Alert`, nor in landing 3 its `Loader` | the lint block, red on a planted import |
-| 11 | The dialog's title draws at `WEIGHTS.emphasis`; the theme's three weights read `WEIGHTS` | `ui/src/design-system/appTheme.test.tsx` |
-| 12 | Landing 2 moves only the screens steps 6 and 8 name | `resolved.test.ts`, your picture run |
-| 13 | Each of the five states draws centred, its words as props, a whole page's title at level 2 | `PageState.test.tsx` |
-| 14 | A failure offers Try again; an empty list offers its add action when given | same |
-| 15 | The gallery draws the five states and the conflict entry | `Gallery.test.tsx` |
-| 16 | Landing 3 moves only the screens step 11 names | `resolved.test.ts`, your picture run |
+- **Counts:** 96 `<Alert` in 32 files and 109 `<Button` in 43 hold, screens only; colour names
+  and gaps about 190 and 150. By colour and role: red 45 `alert`; orange 18 `alert`, 3 `status`,
+  3 `note`; green 19 `alert`, 1 `status`; gray 2, yellow 1, three by a condition.
+- **The parts:** of the gallery's 11, two are reached by a screen's file, `PageHeader` through
+  `ui/src/parts/PageShell.tsx#L10` and `SectionCard` through `ui/src/parts/DetailCards.tsx`;
+  `BackLink`, `StatusBadge`, `DetailField` and `DoorCard` have no caller at all.
+- **The gallery's cases 4 and 6** pin today's four groups and Values as the first page
+  (`ui/src/design-system/Gallery.test.tsx#L67`, `#L98`): step 2 changes both on purpose.
+- **The dialog's row** in `docs/decisions.md` linked the first version's landing 2; it now links
+  the next milestone, where the 600 lands.
 
 ## The steps
 
 Each step's gate is `bash ops/gate.sh ui`, `bash ops/gate.sh visual` and the citation test,
-`pnpm --filter @credo/scripts exec vitest run src/citations.test.ts`; each case red once. Sizes are
-piece 203's rows of the same shape. The review before `main` is the orchestrator's at each landing,
-about 20 minutes (203's three), not a step. One recap, `docs/recaps/2026-11-21-design-skeleton.md`,
-begun at step 4 and added to at each landing, which the design agent rereads.
+`pnpm --filter @credo/scripts exec vitest run src/citations.test.ts`; each case red once. Every
+step after 1 also ends with `visual/src/resolved.pinned.txt` unchanged and `git diff --name-only
+pre-merge...HEAD -- ui/src/frame ui/src/pages ui/src/parts ui/src/components` printing nothing.
+Sizes are rows of the same shape in `worktrees/runs.tsv`. The review before `main` is the
+orchestrator's at each landing, about 20 minutes, not a step. One recap,
+`docs/recaps/2026-11-21-design-skeleton.md`, begun at step 6 and added to at each landing.
 
-**Landing 1** (from `pre-merge` with piece 215 in it: `git log --oneline pre-merge | grep -c
-gallery-provider` at least 1, then `git merge-base --is-ancestor pre-merge HEAD` exit 0).
+**Landing 1: the floor** (layers 0, 1 and the parts' use lines).
 
 - [x] **1. The use lines.** The fields, the 14 entries' lines, the panel; cases 1 to 3; item 629 (the
       Show buttons pressed by their visible words). _Done when:_ the gates exit 0 and `git diff
@@ -176,85 +80,174 @@ gallery-provider` at least 1, then `git merge-base --is-ancestor pre-merge HEAD`
       `instead` naming no entry and on a link to the wrong address, case 3 on a changed heading;
       green 34 of 34. The gates exit 0 at 13:58 (`ui`) and 13:59 (`visual`), the diff of the done
       check printing nothing.
-- [ ] **2. Values explains.** The purpose lines, the values, the type specs; cases 4 to 6. _Done
-      when:_ the gates exit 0, `visual/src/resolved.pinned.txt` unchanged. **19 min** (203's step 5, a
-      table in `tokens.ts` that Values draws).
-- [ ] **3. One key, one value, the lines.** `TYPE` on `size`, the 14 px once, item 649, the
-      `ui/CLAUDE.md` lines. _Done when:_ the gates exit 0, `grep -c "fz:" ui/src/design-system/tokens.ts`
-      prints 0, the pinned file unchanged (case 7); a moved hash stops the step. **10 min** (203's step
-      10, small leftovers beside its own change).
-- [ ] **4. Landing 1.** The recap begun; the gallery's row in `docs/products.md`. No picture run of
-      yours: the pinned file holds its 0, as it held landing C's steps 9 and 10, and landing 2's write
-      run would name any move as unlisted. _Done when:_ the citation test exits 0. **15 min** (203's
-      step 11).
+- [ ] **2. The home and the charter.** `guideline.ts` and its rule type: what the rule says, why,
+      what holds it (a check's file, or review), and whether the app follows it yet or which item
+      moves it. The charter: your goal; what credo is (one platform many small and medium
+      companies in Vietnam share, its modules added over time, not one trade's app); where a coder
+      looks (the page base, a rule, a part, a value; never another screen or the legacy app); a gap
+      is asked and its answer written here as a rule the first time; a part joins `components/` at
+      its third use, the rule of three being for code; light only (item 307). The gallery's first
+      group, Start here, the charter at the bare address, its words a plate drawn from the file, on
+      the workbench as it is. `ui/CLAUDE.md`'s two long bullets (`#L42-L65`) keep each directory's
+      sentence; their rules (a role, never a shade; text by name; the levels; the rule of three)
+      move into the guideline, one line pointing there; `docs/conventions/code.md`'s C16 and
+      `docs/memo/ui-code.md`'s new-screen list gain "its look from the guideline". Cases 4 to 7 and
+      18. _Done when:_ the gates exit 0, `grep -c "numbered shade" ui/CLAUDE.md` prints 0. **17 min**
+      (203's step 1, a rule and its gallery entry, no screen changed).
+- [ ] **3. Values explains, and the meanings.** Each role, `on-*` value and wash its purpose line,
+      typed over its table's keys; each swatch its value as `credoVariables` writes it for the
+      chosen colour (jsdom has no computed style); each `TYPE` style its size, line height, weight,
+      spacing and use, its name in plain letters; text takes a style, a `size` or `fw` on `Text`
+      only where none fits, with a comment why. `TONES` in `tokens.ts`: danger red, success green,
+      warning orange, info gray; a screen names a meaning or a role, never a Mantine colour (not
+      yet). Cases 8 to 10. _Done when:_ the gates exit 0. **19 min** (203's step 5, a table in
+      `tokens.ts` that Values draws).
+- [ ] **4. Every value by its use.** Spacing steps by what they separate; the widths the screens
+      draw (440, 420, 240, 560, 320), one a use; icon sizes (14 px on 29 of 44, five others);
+      corners and shadows; formats, each in its one place: money `useMoney`
+      (`ui/src/parts/OrderParts.tsx#L23`), dates and times `ui/src/day.ts` (8 `new Intl.` in 5
+      files: not yet). Case 8. _Done when:_ the gates exit 0. **17 min** (203's step 1).
+- [ ] **5. One key, one value, the leftovers.** `TYPE` on `size` (a `Text`'s `size` also sets its
+      line height, which `fz` drops; on a `Title`, `size: 'xs'` keeps the level's); `FRAME_VALUES`'
+      `menu-size` and `link-size` one value; item 649; item 647's three theme weights read `WEIGHTS`
+      (the 550 waits). Case 11. _Done when:_ the gates exit 0, `grep -c "fz:"
+      ui/src/design-system/tokens.ts` prints 0. **10 min** (203's step 10, small leftovers).
+- [ ] **6. Landing 1.** The recap begun; the gallery's row and card in `docs/products.md`. No picture
+      run: the pinned file holds its 0, and the gallery is looked at, not pictured (item 515).
+      _Done when:_ the citation test exits 0. **15 min** (203's step 11). Your point 1.
 
-**Landing 2** (from `pre-merge` at landing 1).
+**Landing 2: the rules** (layer 3), from `pre-merge` at landing 1.
 
-- [ ] **5. The part.** `FormMessage`, `TONES`, its entry; cases 8 and 9. _Done when:_ the gates exit
-      0. **17 min** (203's step 1).
-- [ ] **6. The 96 moved.** Each finder whose message changes role follows it in the same commit, named
-      in the tick; if `piece-1.spec.ts` or `piece-2.spec.ts` changes, item 650 rides along (its trigger)
-      after its own grep. `ui/CLAUDE.md`'s count of colour names is rewritten from the step's grep.
-      _Done when:_ the gates exit 0, `git grep -cP '<Alert\b' -- ui/src ':!*.test.*'` prints one
-      line, the part's own file, and the pinned file's diff names only
-      `office-orders/orders-15-photo-missing`, `operator-services/sv-2-two-builds` and any width move
-      the tick lists (case 12). **15 min** (203's step 9, 85 sites under the pinned file).
-- [ ] **7. The raw part refused.** Case 10, red once on a planted `Alert` import in a page. _Done
-      when:_ the gates exit 0. **10 min** (203's step 10).
-- [ ] **8. The dialog at 600.** Case 11 red once; the pinned file rewritten, its diff naming
-      `operator-passkeys/pk-6-sign-in-ended` alone; item 644's second fix, the check's header saying
-      which half it holds (its trigger, the first look change; this one is a weight, the same on every
-      colour). _Done when:_ the gates exit 0. **12 min** (203's step 5b, a pinned rewrite read).
-- [ ] **9. Landing 2.** `pre-merge` taken in; your run with `--moved all --write`, every moved picture
-      one steps 6 and 8 name, every other 0; the bases committed alone; your run with no
-      flags; the recap's lines. _Done when:_ it reads green, every count 0. **17 min** (203's step 8,
-      and 3 for the recap), **and your two runs, about 22 each** (203's step 12).
+- [ ] **7. What a screen tells the person.** A Rules group. Messages: four kinds, each its meaning
+      and spoken role, error and warning `alert` (18 of 24 warnings do today; one that follows an
+      act must be heard), success and info `status` (19 of 20 green ones speak `alert`: not yet);
+      full width, no margin of its own, under the buttons that caused it, one at a time, words from
+      the dictionary; no toasts, no yellow. Page states: loading and failed by `Loaded`
+      (`ui/src/frame/Loaded.tsx#L12`, 26 uses), forbidden and nothing by `Notice`
+      (`ui/src/pages/client/Notice.tsx#L6`), empty (what the list is for, its add action where the
+      person may add), not found; never a blank page. Conflict: the layout most of its ten screens
+      draw. Samples from Mantine's `Alert`, `Loaded` and `Notice`. Case 13. _Done when:_ the gates
+      exit 0. **17 min** (203's step 1).
+- [ ] **8. What a screen offers, and how a status reads.** Actions, your yes: one main button a page,
+      filled; plain (`default`) for the rest; quiet (`subtle`) inside content; red only at a
+      delete's last step; each of today's variants mapped; their place; the `docs/decisions.md` row
+      with your "YES". A confirm is a page (item 306). Statuses: one map from every status the
+      records carry (`shared/src/orders.ts`'s `ORDER_STATES` and `REQUEST_STATES`, a person
+      archived or not) to a meaning and a word, typed over the unions; `STATE_COLOUR`'s teal and
+      blue (`ui/src/parts/OrderParts.tsx#L29`) and the staff chips
+      (`ui/src/pages/client/StaffListPage.tsx#L143-L145`) not yet; the winner among them and
+      `StatusBadge` named. Cases 14, 15. _Done when:_ the gates exit 0. **17 min** (203's step 1).
+- [ ] **9. Landing 2.** The recap's lines, the gallery's card. _Done when:_ the citation test exits
+      0. **15 min** (203's step 11). Your point 2.
 
-**Landing 3** (from `pre-merge` at landing 2).
+**Landing 3: the page base and what each part serves** (layers 2 and 4), from `pre-merge` at
+landing 2.
 
-- [ ] **10. The part.** `PageState`, its entry and the conflict entry; `Loaded` and `Notice` draw it;
-      cases 13 to 15. _Done when:_ the gates exit 0. **17 min** (203's step 1).
-- [ ] **11. The states moved.** The five `Loader`s, six empty texts, the not-found message; `Loader`
-      refused, case 10 red once more. _Done when:_ the gates exit 0, `git grep -cP '<Loader\b' --
-      ui/src ':!*.test.*'` prints one line, the part's own file, and the pinned file's diff names only
-      the screens the tick lists, expected `operator-setup/op-7-list-failed`,
-      `office-staff/office-3-forbidden` and `-4-nothing` (case 16). **15 min** (203's step 9).
-- [ ] **12. Landing 3.** As step 9. **17 min, and your two runs.**
+- [ ] **10. The page base.** A Pages group, one entry: the frame (`ui/src/frame/Shell.tsx#L130`: its
+      header, menu, phone bar below `sm`, padding `md`) and a page's slots in order: the header row
+      (back link, title, status, actions, as `PageShell`'s), the state in the body's place, the
+      body's blocks (`ui/src/parts/DetailCards.tsx#L11-L40`), the message's place and the main
+      button's, each slot's gap and width. One back link: the winner of `BackLink` and the three
+      forms drawn by hand. Drawn as a page labelled slot by slot, from those real pieces on sample
+      words. Case 16. _Done when:_ the gates exit 0. **17 min** (203's step 1).
+- [ ] **11. A new kind of page, and what each part serves.** A kind of page is written in the
+      guideline at its first page, when its use case comes, from the base's slots, and judged by you
+      in the gallery before its second; none named now. Each part's entry names the rule or slot it
+      serves, typed over the guideline's names; each duplicate's winner named on the other's entry
+      (`DoorCard` or `ui/src/pages/SignIn.tsx`'s `SignInFrame`, `DetailField` or `FieldPair`, step
+      8's badge). Case 17. _Done when:_ the gates exit 0. **11 min** (213's step 1, a field on every
+      entry and its case).
+- [ ] **12. Landing 3.** The recap's lines, the gallery's card; one open item listing, rule by rule,
+      the screens not yet following the guideline, with counts: the next milestone's list. _Done
+      when:_ the citation test exits 0. **15 min** (203's step 11). Your point 3.
+
+## The cases
+
+| # | The case | Held by |
+| --- | --- | --- |
+| 1 | Every entry carries one to three use lines and one to three don't-use lines | `ui/src/design-system/Gallery.test.tsx` |
+| 2 | An entry's `instead` names an entry that exists, and the panel links to its address | same |
+| 3 | The side panel shows the part's use lines under its description | same |
+| 4 | The list shows Start here, Foundations, Rules, Pages, then the three levels, in that order | same, today's case 4 changed |
+| 5 | The bare address opens the charter, and the list marks it current | same, today's case 6 changed |
+| 6 | Every rule says what holds it, a check whose file exists or review, and whether the app follows it or which item moves it | `guideline.test.ts`, reading the files as `literals.test.ts` does |
+| 7 | Each guideline page draws its words from `guideline.ts`, the same text | `Gallery.test.tsx` |
+| 8 | Every role, `on-*` value, wash, style, meaning, spacing step, width, icon size and corner has one use line | the types over each table's keys, the typecheck |
+| 9 | Values draws each role's value for the chosen colour, as `credoVariables` writes it | `Gallery.test.tsx` |
+| 10 | Values draws each style's size, line height, weight and spacing, its name in plain letters | same |
+| 11 | The theme's heading, page-title and field-label weights read `WEIGHTS` | `ui/src/design-system/appTheme.test.tsx` |
+| 12 | No step moves a screen's resolved style on any of the ten colours | `visual/src/resolved.test.ts`, the pinned file |
+| 13 | The gallery draws each message kind in its colour and role, and each page state | `Gallery.test.tsx` |
+| 14 | Every status the records carry has one meaning and one word | the type over the shared unions |
+| 15 | Every button variant a screen draws today maps to one of the four kinds | `guideline.test.ts`, reading the screens |
+| 16 | The page base names each slot, and each slot's part is a gallery entry or a named piece that exists | `Gallery.test.tsx` |
+| 17 | Every part's entry names the rule or slot it serves | the type over the guideline's names |
+| 18 | `ui/CLAUDE.md` points to the guideline by a name the file declares | the citation test |
 
 ## What moves, and what must not
 
-Three counts at each landing: the pinned file (131 screens on ten colours), your picture run (786
-pictures), and the walks page's questions, asked again wherever a screen's markup changes. Landing 1
-moves none for the app; landing 2 moves 18 pictures of three screens and re-asks the screens whose
-message changed its role; landing 3 moves the screens its tick names. No case is edited to fit a
-move; a red outside the named screens is the move being wrong.
+No screen of the app: the pinned file (131 screens on ten colours) unchanged at every step, no walk
+picture moved, no walks-page question asked again. The gallery moves, which is the point, judged by
+you. A red in `resolved.test.ts` is a step that touched a screen; no case is edited to fit a move.
+
+## The next milestone: the screens moved to the guideline
+
+Its own plan, one rule at a time (no kind of page is named until its use case comes), each after
+your look at that rule, each a landing with your two picture runs:
+
+1. **The dialog at 600** (your answer): `TOKENS.dialogTitle` reads `WEIGHTS.emphasis`, the pinned
+   diff naming `operator-passkeys/pk-6-sign-in-ended` alone; item 647 closes, item 644's header fix
+   rides along. The smallest move, which proves the runs.
+2. **Messages:** `FormMessage` arrives with its 96; the 88 test and walk lines that find a message
+   by its role follow it; the two yellow ones turn orange; `Alert` refused; item 650 if `piece-1`'s
+   or `piece-2`'s spec changes.
+3. **Page states:** `PageState`, drawn by `Loaded` and `Notice`; five `Loader`s, the empty texts,
+   the not-found message; `Loader` refused.
+4. **Actions:** the 109 buttons; other variants refused.
+5. **Statuses:** `StateBadge` and the chips read the map.
+6. **The page base:** 41 page titles drawn by hand, 18 action rows, 14 back links.
+7. **Formats:** 8 sites, no picture expected.
+
+Rough size by the first version's rows (a part 17, its move 15, a landing 17, your two runs about
+22 each): about 50 machine minutes and two runs a rule, the dialog and the formats about 20.
+
+## The first version: kept and dropped
+
+**Kept:** step 1 as built; its corrections (96 messages, not the memo's about 85; `TYPE` on `size`
+for the line height; one dialog in the app; `STATE_COLOUR` already a map on six pages; the mock
+harness drawing piece 1's screens alone); its finders; the dialog's 600; its item numbers; its
+Values and leftovers steps, now 3 and 5.
+
+**Dropped:** its landings 2 and 3 as written (the 96 messages and the page states moved, `Alert`
+and `Loader` refused), which moved the app's code before the page base and the action rules
+existed: the rules are this milestone's, the moves the next's. `FormMessage` and `PageState` built
+now: a part arrives with its first screens, since four of the gallery's eleven have no caller,
+each beside a form the app draws its own way. Its four picture runs. The page patterns placed last, after
+the moves. Its `ui/CLAUDE.md` additions, which now move into the guideline.
 
 ## The human's points
 
-1. **The gallery says which part to use (step 4).** In the gallery each part says, under its
-   description, when to use it, when not and what instead; Values gives each colour its purpose and
-   value, each text style its size, line height and weight. Could someone build a screen from it
-   without asking? A no names the part or line, and step 1 or 2 reopens.
-2. **Messages one way (step 9).** On the walks page every message draws as before, through one part.
-   Two yellow notes turn orange: the order's missing photo and the services' two builds. Screens whose
-   message changed its spoken role are asked again, no pixel moved. Does each read right? A no names
-   the screen, and step 6 reopens.
-3. **The dialog's title at 600 (step 9).** The one dialog, the operator's "sign-in ended", draws its
-   title a touch bolder, 600 where it was 550, as you answered; its six pictures move, nothing else.
-   Does the title still read as the dialog's own? A no names what reads wrong, and step 8 reopens.
-4. **Page states one way (step 12).** A page that failed to load, or that the person may not open,
-   draws one way: centred, its words under its title, "Try again" where it failed. On the walks page:
-   the operator's failed list, the office's forbidden and nothing pages; the gallery shows all five.
-   Does each read right? A no names the screen, and step 10 or 11 reopens.
+1. **The floor (step 6).** The gallery opens on Start here: your goal, what credo is, where a coder
+   looks first, and that a gap is asked, then written as a rule. Values gives every colour, text
+   style, gap, width, icon size and corner its use. Could a coder pick each without asking? A no
+   names the line, and step 2, 3 or 4 reopens.
+2. **The rules (step 9).** The Rules group says what a screen tells the person (four kinds of
+   message; loading, empty, failed, forbidden, not found; someone saved first) and what it offers
+   (your four kinds of button, a status's colour, a confirm on its own page), with samples. Does
+   each read as the one way you want? A no names the rule, and step 7 or 8 reopens.
+3. **The page base (step 12).** The Pages group draws one page, its parts named: the header row
+   (back link, title, status, actions), the body's blocks, where a state, a message and the main
+   button sit. Each kind of page is added from it when its use case comes, judged here first. Is
+   this the base to build on? A no names the slot, and step 10 or 11 reopens.
 
 ## The open items in reach
 
 | Item | What this plan does |
 | --- | --- |
-| 629, the Show buttons' hidden names | closes, step 1 |
-| 649, landing C's four leftovers | closes, step 3 |
-| 647, the theme's weights and the 550 | closes, step 8 |
-| 644, the ten-colour check's half | its header fix, step 8; drawing each colour stays open |
-| 650, two walk titles | only if step 6 changes either spec |
-| 306, 307, 498, 515 | leave: the confirm stays a page, light only, `parts/` untouched, the gallery is looked at, not pictured |
-| 641, 642, 645, 646, 648 | leave: no step touches the node pin, the site, either pattern or the check's stylesheet |
+| 629 | fixed, step 1 |
+| 649 | closes, step 5 |
+| 647 | its theme half, step 5; the 550 in the next milestone |
+| 644, 650 | the next milestone |
+| 306, 307 | written as rules, steps 8 and 2; both stay parked for their triggers |
+| 498, 515, 641, 642, 645, 646, 648 | leave: no step touches them |
+| new | step 12's list of the screens not yet following the guideline |
