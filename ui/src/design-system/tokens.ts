@@ -38,10 +38,10 @@ export const SIZES = { chip: 12 } as const;
  * fits none takes a weight from `WEIGHTS` (`fw={WEIGHTS.label}`).
  */
 export const TYPE = {
-  /** A page's title: a level-2 heading, which the theme draws at 22 px, 700. */
+  /** A page's title: a level-2 heading, which the theme draws at 22 px, at `WEIGHTS.title`. */
   pageTitle: { order: 2 },
   /** A section's title: small capitals, bold and wide. */
-  sectionLabel: { fz: 'xs', fw: WEIGHTS.title, lts: 0.5, tt: 'uppercase' },
+  sectionLabel: { size: 'xs', fw: WEIGHTS.title, lts: 0.5, tt: 'uppercase' },
   /** A field's label: small capitals, bolder than body, spaced, in grey. */
   fieldLabel: { size: 'xs', fw: WEIGHTS.emphasis, lts: 0.3, tt: 'uppercase', c: 'dimmed' },
   /** Body text: Mantine's `md` at 400, which a `Text` with no prop already draws. */
@@ -147,9 +147,8 @@ export const MENU_WASHES = { 'menu-hover': 5, 'menu-current': 10 } as const;
 /** The frame's sizes, weights, lines and shadows that Mantine has no slot for, written as
  * `--credo-<name>` variables by the theme's resolver beside the colours. */
 export const FRAME_VALUES = {
-  /** The menu's labels: 14 px at 600. */
+  /** The text of the menu's labels and the bar's links: 14 px (weight: `weight-emphasis`). */
   'menu-size': '14px',
-  'menu-weight': String(WEIGHTS.emphasis),
   /** The weights by role, for a stylesheet: `var(--credo-weight-label)`. */
   'weight-label': String(WEIGHTS.label),
   'weight-emphasis': String(WEIGHTS.emphasis),
@@ -158,7 +157,6 @@ export const FRAME_VALUES = {
   'tip-size': '13px',
   'chip-size': `${SIZES.chip}px`,
   'avatar-size': '11px',
-  'link-size': '14px',
   /** The phone bar's line above and its soft shadow cast upward: the legacy's `base/src/components/app/MobileAppLayout.tsx#L268-L269`. */
   'bar-line': '1px solid var(--mantine-color-default-border)',
   'bar-shadow': '0 -2px 8px rgba(0, 0, 0, 0.06)',

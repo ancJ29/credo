@@ -174,12 +174,12 @@ describe('Shell', () => {
       .map((style) => style.textContent)
       .join('');
     expect(rules).toContain('--credo-menu-size: 14px;');
-    expect(rules).toContain('--credo-menu-weight: 600;');
+    expect(rules).toContain('--credo-weight-emphasis: 600;');
     const item = readFileSync(join(import.meta.dirname, 'frame.module.css'), 'utf8')
       .replace(/\/\*[\s\S]*?\*\//g, '')
       .match(/\n\.item \{[^}]*\}/)![0];
     expect(item).toContain('font-size: var(--credo-menu-size);');
-    expect(item).toContain('font-weight: var(--credo-menu-weight);');
+    expect(item).toContain('font-weight: var(--credo-weight-emphasis);');
 
     const footer = bar().parentElement!;
     expect(footer.style.borderTop).toBe('var(--credo-bar-line)');

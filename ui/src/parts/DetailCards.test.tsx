@@ -55,7 +55,7 @@ describe('a section card', () => {
     expect(tile.contains(screen.getByTestId('glyph'))).toBe(true);
     const title = screen.getByRole('heading', { name: 'Basics', level: 3 });
     expect(title.getAttribute('style')).toContain('text-transform: uppercase');
-    expect(title.getAttribute('style')).toContain('font-size: var(--mantine-font-size-xs)');
+    expect(title.getAttribute('style')).toContain('--title-fz: var(--mantine-font-size-xs)');
     expect(title.getAttribute('style')).toContain('font-weight: 700');
     expect(screen.getByText('Inside')).toBeTruthy();
   });

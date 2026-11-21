@@ -76,8 +76,9 @@ export default defineConfig(
       ],
     },
   })),
-  // No colour of its own outside the design system: a screen reads the theme's variables. The design
-  // system, the tests and the mock harness (a page of fixtures) are outside it.
+  // No colour, weight or size of its own outside the design system: a screen reads the theme's
+  // variables and `tokens.ts`. The design system, the tests and the mock harness (a page of
+  // fixtures) are outside it.
   {
     files: ['ui/src/**/*.{ts,tsx}'],
     ignores: ['ui/src/design-system/**', 'ui/src/mock/**', '**/*.test.{ts,tsx}'],
@@ -96,12 +97,12 @@ export default defineConfig(
         {
           selector: `JSXAttribute[name.name=/^(fw|fz)$/] Literal[raw=${NUMBER}]`,
           message:
-            'A weight or size is named in the design system: read `WEIGHTS`, `SIZES` or `TYPE` of `ui/src/design-system/tokens.ts`.',
+            'Name no weight or size here: read `WEIGHTS`, `SIZES` or `TYPE` of `ui/src/design-system/tokens.ts`.',
         },
         {
           selector: `Property[key.name=/^(fontWeight|fontSize)$/] > Literal[raw=${NUMBER}], Property[key.value=/^font-(weight|size)$/] > Literal[raw=${NUMBER}]`,
           message:
-            'A weight or size is named in the design system: read `WEIGHTS`, `SIZES` or `TYPE` of `ui/src/design-system/tokens.ts`.',
+            'Name no weight or size here: read `WEIGHTS`, `SIZES` or `TYPE` of `ui/src/design-system/tokens.ts`.',
         },
       ],
     },

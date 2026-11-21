@@ -156,7 +156,8 @@ export const ENTRIES: Entry[] = [
     name: 'Values',
     description:
       "The brand's ten shades, each text style with its size, line height, weight and spacing, each spacing step, width, icon size, corner and shadow with its use, the formats' places, each colour role with its value for the chosen colour and what it is for, and the four meanings a colour carries.",
-    props: 'theme.colors.brand · TYPE · SPACING · WIDTHS · ICON_SIZES · RADII · ROLES · TONES',
+    props:
+      'theme.colors.brand · TYPE · WEIGHTS · SPACING · WIDTHS · ICON_SIZES · RADII · ROLES · TONES',
     useWhen: [
       'You need a colour, a text style or a gap for a screen.',
       "You are choosing between the brand's shades or the colour roles.",

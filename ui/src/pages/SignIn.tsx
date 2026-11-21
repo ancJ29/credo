@@ -125,7 +125,7 @@ export function SignInFrame({ brand, title, languages = [], onLanguage, children
           p={{ base: '24px 20px', sm: 32 }}
           style={{ border: '1px solid var(--mantine-color-default-border)' }}
         >
-          <Title {...TYPE.pageTitle} fw={WEIGHTS.title} ta="center" mb="md">
+          <Title {...TYPE.pageTitle} ta="center" mb="md">
             {title}
           </Title>
           {children}

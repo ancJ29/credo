@@ -138,11 +138,20 @@ orchestrator's at each landing, about 20 minutes, not a step. One recap,
       sizes as numbers; the 5 `new Intl.` sites). Reds on the Gallery test file, 15:10: case 8 on a
       width drawn one more than its table, and on an icon drawn with a corner's line; the
       typecheck on a corner with no line; green 41 of 41.
-- [ ] **5. One key, one value, the leftovers.** `TYPE` on `size` (a `Text`'s `size` also sets its
+- [x] **5. One key, one value, the leftovers.** `TYPE` on `size` (a `Text`'s `size` also sets its
       line height, which `fz` drops; on a `Title`, `size: 'xs'` keeps the level's); `FRAME_VALUES`'
       `menu-size` and `link-size` one value; item 649; item 647's three theme weights read `WEIGHTS`
       (the 550 waits). Case 11. _Done when:_ the gates exit 0, `grep -c "fz:"
       ui/src/design-system/tokens.ts` prints 0. **10 min** (203's step 10, small leftovers).
+      _Evidence:_ the step's commit. `TYPE.sectionLabel` reads `size`, the one `fz` left, so
+      `grep -c "fz:"` prints 0; the frame's `link-size` and `menu-weight` are gone, its stylesheets
+      reading `menu-size` and `weight-emphasis`; the theme's headings, page title and field label read
+      `WEIGHTS`. Item 649 is fixed (the lint message and its comment, `WEIGHTS` on the Values entry,
+      the gallery's `SIZES` renamed and its rule column on `TOKENS.primaryShade`, the repeated `fw`
+      of the sign-in title dropped; `TYPE.body` stays, typed in the guideline); item 647's theme half
+      is fixed, its 550 waits. Case 11 red on the Gallery's neighbour, `appTheme.test.tsx`, 15:21,
+      with the three weights moved one off. The one `frameKept` snapshot moved by the heading's
+      `size` (the same font size, written by its own variable); the pinned file unchanged.
 - [ ] **6. Landing 1.** The recap begun; the gallery's row and card in `docs/products.md`. No picture
       run: the pinned file holds its 0, and the gallery is looked at, not pictured (item 515).
       _Done when:_ the citation test exits 0. **15 min** (203's step 11). Your point 1.
