@@ -4,7 +4,7 @@ import {
   type CustomerDoc,
   type ProductDoc,
 } from '@credo/shared';
-import { Alert, Button, Stack, Text, Title } from '@mantine/core';
+import { Button, Stack, Text, Title } from '@mantine/core';
 import { type ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router';
@@ -14,6 +14,7 @@ import { type PageProps, refusal } from '../../page';
 import { CustomerForm } from '../../parts/CustomerForm';
 import { ProductForm } from '../../parts/ProductForm';
 import { TYPE } from '../../design-system/tokens';
+import { FormMessage } from '../../components/molecules/FormMessage';
 
 type Outcome = 'taken' | 'failed' | 'forbidden' | null;
 
@@ -121,14 +122,12 @@ function Add<V>({ kind, spec, page }: { kind: ListKind; spec: Spec<V>; page: Pag
         {t(`lists.${kind}.back`)}
       </Button>
       {outcome === 'taken' && (
-        <Alert color="orange" role="alert">
-          {t(`lists.${kind}.codeTaken`)}
-        </Alert>
+        <FormMessage kind="warning">{t(`lists.${kind}.codeTaken`)}</FormMessage>
       )}
       {(outcome === 'failed' || outcome === 'forbidden') && (
-        <Alert color="red" role="alert">
+        <FormMessage kind="error">
           {t(outcome === 'failed' ? `lists.${kind}.createFailed` : `lists.${kind}.createForbidden`)}
-        </Alert>
+        </FormMessage>
       )}
       {spec.form({
         saving,

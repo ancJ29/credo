@@ -1,5 +1,5 @@
 import { IMPORT_CALL_ROWS, IMPORT_MAX_BYTES, type Language } from '@credo/shared';
-import { Alert, Button, Group, Paper, Stack, Table, Text, TextInput, Title } from '@mantine/core';
+import { Button, Group, Paper, Stack, Table, Text, TextInput, Title } from '@mantine/core';
 import { type TFunction } from 'i18next';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -18,6 +18,7 @@ import { Loaded } from '../../frame/Loaded';
 import { type PageProps, refusal, useLoad } from '../../page';
 import { saveAs } from '../../saveAs';
 import { TYPE } from '../../design-system/tokens';
+import { FormMessage } from '../../components/molecules/FormMessage';
 
 /** Why a file was not read, or read to nothing. */
 type FileProblem = 'too-big' | 'unreadable' | 'too-many' | 'no-code' | 'no-name' | 'no-rows';
@@ -180,18 +181,12 @@ function ImportForm({
     return (
       <Stack gap="lg">
         <Title {...TYPE.pageTitle}>{t(`lists.${kind}.doneTitle`)}</Title>
-        <Alert color="green" role="alert">
-          {t(`lists.${kind}.doneAdded`, { count: added })}
-        </Alert>
+        <FormMessage kind="success">{t(`lists.${kind}.doneAdded`, { count: added })}</FormMessage>
         {refusedTaken > 0 && (
-          <Alert color="orange" role="alert">
-            {t('lists.doneTaken', { count: refusedTaken })}
-          </Alert>
+          <FormMessage kind="warning">{t('lists.doneTaken', { count: refusedTaken })}</FormMessage>
         )}
         {invalid > 0 && (
-          <Alert color="orange" role="alert">
-            {t('lists.doneInvalid', { count: invalid })}
-          </Alert>
+          <FormMessage kind="warning">{t('lists.doneInvalid', { count: invalid })}</FormMessage>
         )}
         {busy.length > 0 && (
           <Table>
@@ -216,9 +211,7 @@ function ImportForm({
           </Table>
         )}
         {rest > 0 && status === 'failed' && (
-          <Alert color="red" role="alert">
-            {t('lists.failedPart')}
-          </Alert>
+          <FormMessage kind="error">{t('lists.failedPart')}</FormMessage>
         )}
         <Group>
           {rest > 0 && (
@@ -242,11 +235,7 @@ function ImportForm({
         </Title>
         {!rows && <Text c="dimmed">{t('lists.intro')}</Text>}
       </div>
-      {status === 'failed' && (
-        <Alert color="red" role="alert">
-          {t('lists.failed')}
-        </Alert>
-      )}
+      {status === 'failed' && <FormMessage kind="error">{t('lists.failed')}</FormMessage>}
       {rows ? (
         <Stack gap="md">
           <Text>
@@ -332,11 +321,11 @@ function ImportForm({
             />
             {file && <Text>{t('import.chosen', { name: file.name })}</Text>}
             {problem && (
-              <Alert color="red" role="alert">
+              <FormMessage kind="error">
                 {t(FILE_WORDS[problem], {
                   name: headingOf(problem === 'no-code' ? 'code' : 'name', language),
                 })}
-              </Alert>
+              </FormMessage>
             )}
             <Button disabled={!file} loading={status === 'busy'} onClick={() => void read(file!)}>
               {t('import.read')}

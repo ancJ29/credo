@@ -384,7 +384,7 @@ async function walk(page: Page, language: Language, width: number) {
   await personNamed(page, 'Phạm Quốc Bảo');
   await typed(words.person.codeNew, 'nv-12');
   await press(words.person.codeSet);
-  await expect(page.getByRole('alert')).toHaveText(
+  await expect(page.getByRole('status')).toHaveText(
     words.person.codeChanged.replace('{{code}}', 'NV-12'),
   );
   await at('staff-15-code-changed');
@@ -402,7 +402,7 @@ async function walk(page: Page, language: Language, width: number) {
   await personNamed(page, 'Trần Văn Hùng');
   await typed(words.person.emailNew, 'hung@minh-phat.example');
   await press(words.person.emailSet);
-  await expect(page.getByRole('alert')).toHaveText(
+  await expect(page.getByRole('status')).toHaveText(
     words.person.emailChanged.replace('{{email}}', 'hung@minh-phat.example'),
   );
   await at('staff-17-email');
@@ -504,7 +504,7 @@ async function walk(page: Page, language: Language, width: number) {
   await page.getByLabel(exactly(words.ownPassword.new)).fill('New-password-2@');
   await page.getByLabel(exactly(words.ownPassword.again)).fill('New-password-2@');
   await press(words.ownPassword.submit);
-  await expect(page.getByRole('alert')).toHaveText(words.ownPassword.changed);
+  await expect(page.getByRole('status')).toHaveText(words.ownPassword.changed);
   await unfocus();
   await at('office-6-password');
 

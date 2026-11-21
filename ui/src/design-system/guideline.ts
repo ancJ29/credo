@@ -415,7 +415,11 @@ export const GUIDELINE: {
           is: 'meaning',
           line: 'That it is a note the page read when it loaded, not the outcome of an act: spoken as a note.',
         },
-        { prop: 'children', is: 'content', line: 'Its words.' },
+        {
+          prop: 'children',
+          is: 'content',
+          line: 'Its words, and an act beside them where the message offers one.',
+        },
       ],
       decides: [
         {

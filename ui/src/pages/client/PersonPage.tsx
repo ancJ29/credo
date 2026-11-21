@@ -12,7 +12,6 @@ import {
   staffConfig,
 } from '@credo/shared';
 import {
-  Alert,
   Badge,
   Button,
   Group,
@@ -59,6 +58,7 @@ import {
 } from '../../parts/personalFields';
 import { noteOf, personalPhoneOf, phoneOf, unitName } from '../../staffNames';
 import { TYPE } from '../../design-system/tokens';
+import { FormMessage } from '../../components/molecules/FormMessage';
 
 const READ_ONLY = { input: { fontFamily: 'ui-monospace, monospace' } };
 type SaveOutcome = 'saved' | 'failed' | 'forbidden' | 'conflict' | null;
@@ -102,7 +102,7 @@ function PasswordPanel({
   return (
     <DetailCard icon={<IconLock size={14} />} title={t('person.password')}>
       {shown !== null && (
-        <Alert color="green" role="alert">
+        <FormMessage kind="success">
           <Stack gap="xs">
             {t('person.passwordOnce')}
             <TextInput
@@ -112,10 +112,10 @@ function PasswordPanel({
               styles={READ_ONLY}
             />
           </Stack>
-        </Alert>
+        </FormMessage>
       )}
       {problem !== null && (
-        <Alert color="red" role="alert">
+        <FormMessage kind="error">
           {t(
             problem === 'invalid'
               ? 'person.passwordInvalid'
@@ -123,7 +123,7 @@ function PasswordPanel({
                 ? 'person.passwordMismatch'
                 : 'person.passwordFailed',
           )}
-        </Alert>
+        </FormMessage>
       )}
       <form onSubmit={submit}>
         <Stack gap="sm">
@@ -196,12 +196,10 @@ function CodePanel({
     <DetailCard icon={<IconKey size={14} />} title={t('person.codeTitle')}>
       <Text c="dimmed">{t('person.codeText')}</Text>
       {changedTo !== null && (
-        <Alert color="green" role="alert">
-          {t('person.codeChanged', { code: changedTo })}
-        </Alert>
+        <FormMessage kind="saved">{t('person.codeChanged', { code: changedTo })}</FormMessage>
       )}
       {problem !== null && (
-        <Alert color="red" role="alert">
+        <FormMessage kind="error">
           {t(
             problem === 'invalid'
               ? 'person.codeInvalid'
@@ -209,7 +207,7 @@ function CodePanel({
                 ? 'person.codeTaken'
                 : 'person.codeFailed',
           )}
-        </Alert>
+        </FormMessage>
       )}
       <form onSubmit={(event) => void change(event)}>
         <Stack gap="sm" align="flex-start">
@@ -263,11 +261,7 @@ function ArchivePanel({
     <DetailCard icon={<IconArchive size={14} />} title={words.title}>
       <Stack gap="sm" align="flex-start">
         <Text c="dimmed">{words.text}</Text>
-        {failed && (
-          <Alert color="red" role="alert">
-            {words.failed}
-          </Alert>
-        )}
+        {failed && <FormMessage kind="error">{words.failed}</FormMessage>}
         {asking ? (
           <Group>
             <Button color={back ? undefined : 'red'} onClick={onSwitch}>
@@ -414,30 +408,22 @@ function PersonForm({
       >
         {t('staff.back')}
       </Button>
-      {employee.archived && (
-        <Alert color="gray" role="alert">
-          {t('person.archived')}
-        </Alert>
-      )}
-      {outcome === 'saved' && (
-        <Alert color="green" role="alert">
-          {t('person.saved')}
-        </Alert>
-      )}
+      {employee.archived && <FormMessage kind="info">{t('person.archived')}</FormMessage>}
+      {outcome === 'saved' && <FormMessage kind="saved">{t('person.saved')}</FormMessage>}
       {(outcome === 'failed' || outcome === 'forbidden') && (
-        <Alert color="red" role="alert">
+        <FormMessage kind="error">
           {t(outcome === 'failed' ? 'person.saveFailed' : 'person.saveForbidden')}
-        </Alert>
+        </FormMessage>
       )}
       {outcome === 'conflict' && (
-        <Alert color="orange" role="alert">
+        <FormMessage kind="warning">
           <Stack gap="xs" align="flex-start">
             {t('person.conflict')}
             <Button variant="default" size="xs" onClick={actions.onReload}>
               {t('person.conflictReload')}
             </Button>
           </Stack>
-        </Alert>
+        </FormMessage>
       )}
       <DetailColumns
         main={

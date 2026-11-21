@@ -6,7 +6,7 @@ import {
   normaliseEmployeeCode,
   type StaffSetup,
 } from '@credo/shared';
-import { Alert, Button, Group, Paper, Stack, Table, Text, TextInput, Title } from '@mantine/core';
+import { Button, Group, Paper, Stack, Table, Text, TextInput, Title } from '@mantine/core';
 import { type TFunction } from 'i18next';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -25,6 +25,7 @@ import { INVALID } from '../../parts/ownFields';
 import { type PageProps, refusal, useLoad } from '../../page';
 import { saveAs } from '../../saveAs';
 import { TYPE } from '../../design-system/tokens';
+import { FormMessage } from '../../components/molecules/FormMessage';
 
 /** Why a file was not read, or read to nothing. */
 type FileProblem = 'too-big' | 'unreadable' | 'too-many' | 'no-name' | 'no-rows';
@@ -184,18 +185,12 @@ function ImportForm({
     return (
       <Stack gap="lg">
         <Title {...TYPE.pageTitle}>{t('import.doneTitle')}</Title>
-        <Alert color="green" role="alert">
-          {t('import.doneAdded', { count: added })}
-        </Alert>
+        <FormMessage kind="success">{t('import.doneAdded', { count: added })}</FormMessage>
         {taken > 0 && (
-          <Alert color="orange" role="alert">
-            {t('import.doneRefused', { count: taken })}
-          </Alert>
+          <FormMessage kind="warning">{t('import.doneRefused', { count: taken })}</FormMessage>
         )}
         {invalid > 0 && (
-          <Alert color="orange" role="alert">
-            {t('import.doneInvalid', { count: invalid })}
-          </Alert>
+          <FormMessage kind="warning">{t('import.doneInvalid', { count: invalid })}</FormMessage>
         )}
         {busy.length > 0 && (
           <Table>
@@ -220,9 +215,7 @@ function ImportForm({
           </Table>
         )}
         {rest > 0 && status === 'failed' && (
-          <Alert color="red" role="alert">
-            {t('import.failedPart')}
-          </Alert>
+          <FormMessage kind="error">{t('import.failedPart')}</FormMessage>
         )}
         <Text>{t('import.doneSignIn')}</Text>
         <Group>
@@ -245,11 +238,7 @@ function ImportForm({
         <Title {...TYPE.pageTitle}>{t(rows ? 'import.previewTitle' : 'import.title')}</Title>
         {!rows && <Text c="dimmed">{t('import.intro')}</Text>}
       </div>
-      {status === 'failed' && (
-        <Alert color="red" role="alert">
-          {t('import.failed')}
-        </Alert>
-      )}
+      {status === 'failed' && <FormMessage kind="error">{t('import.failed')}</FormMessage>}
       {rows ? (
         <Stack gap="md">
           <Text>
@@ -329,11 +318,11 @@ function ImportForm({
             />
             {file && <Text>{t('import.chosen', { name: file.name })}</Text>}
             {problem && (
-              <Alert color="red" role="alert">
+              <FormMessage kind="error">
                 {t(FILE_WORDS[problem], {
                   name: headingOf(columnsOf(setup)[0], language),
                 })}
-              </Alert>
+              </FormMessage>
             )}
             <Button disabled={!file} loading={status === 'busy'} onClick={() => void read(file!)}>
               {t('import.read')}

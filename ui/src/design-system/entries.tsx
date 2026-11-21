@@ -553,7 +553,7 @@ export const ENTRIES: Entry[] = [
     description:
       'A message to the person, by its kind: its colour and spoken role follow the kind, and a standing note from the page load is spoken as a note.',
     props:
-      "kind: 'error' | 'warning' | 'success' | 'info' | 'saved' · title?: string · standing?: boolean · children: string",
+      "kind: 'error' | 'warning' | 'success' | 'info' | 'saved' · title?: string · standing?: boolean · children: ReactNode",
     useWhen: [
       'A form or an act tells the person what happened: it failed, it needs care, it worked.',
       'The message of a save, once, under the buttons that saved.',

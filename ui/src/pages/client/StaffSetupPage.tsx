@@ -1,5 +1,5 @@
 import type { PermissionLayer, SaveStaffSetupRequest, StaffSetup } from '@credo/shared';
-import { Alert, Button, Group, Paper, Stack, Text, TextInput, Title } from '@mantine/core';
+import { Button, Group, Paper, Stack, Text, TextInput, Title } from '@mantine/core';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ApiError } from '../../api';
@@ -13,6 +13,7 @@ import {
   savedFrom,
 } from '../../parts/StaffFieldsEditor';
 import { TYPE } from '../../design-system/tokens';
+import { FormMessage } from '../../components/molecules/FormMessage';
 
 /** A unit being edited: `id` is absent until the BFF mints it, `key` tells the rows apart. */
 type Draft = {
@@ -131,35 +132,23 @@ function SetupForm({ setup, saving, outcome, onSave, onRefused, onReload }: Form
         <Title {...TYPE.pageTitle}>{t('setup.title')}</Title>
         <Text c="dimmed">{t('setup.intro')}</Text>
       </div>
-      {outcome === 'saved' && (
-        <Alert color="green" role="alert">
-          {t('setup.saved')}
-        </Alert>
-      )}
-      {outcome === 'failed' && (
-        <Alert color="red" role="alert">
-          {t('setup.saveFailed')}
-        </Alert>
-      )}
-      {outcome === 'refused' && (
-        <Alert color="red" role="alert">
-          {t('setup.saveRefused')}
-        </Alert>
-      )}
+      {outcome === 'saved' && <FormMessage kind="saved">{t('setup.saved')}</FormMessage>}
+      {outcome === 'failed' && <FormMessage kind="error">{t('setup.saveFailed')}</FormMessage>}
+      {outcome === 'refused' && <FormMessage kind="error">{t('setup.saveRefused')}</FormMessage>}
       {(outcome === 'invalidFields' || outcome === 'invalidNumbering') && (
-        <Alert color="red" role="alert">
+        <FormMessage kind="error">
           {t(outcome === 'invalidFields' ? 'setup.ownInvalid' : 'setup.numberingInvalid')}
-        </Alert>
+        </FormMessage>
       )}
       {outcome === 'conflict' && (
-        <Alert color="orange" role="alert">
+        <FormMessage kind="warning">
           <Stack gap="xs" align="flex-start">
             {t('setup.conflict')}
             <Button variant="default" size="xs" onClick={onReload}>
               {t('setup.conflictReload')}
             </Button>
           </Stack>
-        </Alert>
+        </FormMessage>
       )}
       <UnitList
         kind="departments"

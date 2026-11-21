@@ -327,7 +327,7 @@ describe('one’s own password', () => {
     await typeAll(OLD, NEW);
     await submit();
 
-    expect((await screen.findByRole('alert')).textContent).toBe(words.ownPassword.changed);
+    expect((await screen.findByRole('status')).textContent).toBe(words.ownPassword.changed);
     expect(api.changePassword).toHaveBeenCalledWith(OLD, NEW);
     expect(device.authId()).toBe(`fake.session.${person('EMP-0001').id}`);
     expect(screen.getByLabelText<HTMLInputElement>(words.ownPassword.current).value).toBe('');

@@ -1,5 +1,5 @@
 import { can, type DeliveryDoc, type Language } from '@credo/shared';
-import { Alert, Anchor, Button, Group, Paper, Stack, Text, Title } from '@mantine/core';
+import { Anchor, Button, Group, Paper, Stack, Text, Title } from '@mantine/core';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router';
@@ -17,6 +17,7 @@ import {
 } from '../../parts/OrderParts';
 import { type PageProps, refusal, useLoad } from '../../page';
 import { TYPE } from '../../design-system/tokens';
+import { FormMessage } from '../../components/molecules/FormMessage';
 
 /** A delivery request opened to be read: its number, day and driver, the order it came from, the
  * customer with their phone and address, the lines and the total to collect, and for a delivered one
@@ -69,7 +70,7 @@ export function DeliveryPage(page: PageProps) {
               <StateBadge state={doc.request.state} />
             </Group>
             {cancelled && (
-              <Alert color="green" role="alert">
+              <FormMessage kind="success">
                 <Stack gap="xs" align="flex-start">
                   {t('orders.requestCancelled')}
                   <Button
@@ -80,7 +81,7 @@ export function DeliveryPage(page: PageProps) {
                     {t('orders.openOrder')}
                   </Button>
                 </Stack>
-              </Alert>
+              </FormMessage>
             )}
             <OutcomeAlert
               outcome={outcome}

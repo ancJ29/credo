@@ -199,7 +199,7 @@ async function walk(page: Page, language: Language, width: number) {
   // 5. Closed: to collect, handed in, the gap, who closed it.
   await asked({ path: DAY_PATH });
   await press(words.reconcile.closeConfirm);
-  await expect(page.getByRole('alert')).toContainText(words.reconcile.closedNow);
+  await expect(page.getByRole('status')).toContainText(words.reconcile.closedNow);
   await expect(page.getByRole('table', { name: words.reconcile.closedTitle })).toBeVisible();
   await at('reconcile-5-closed');
 

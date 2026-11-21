@@ -8,7 +8,6 @@ import {
   type SaveOrderRequest,
 } from '@credo/shared';
 import {
-  Alert,
   Anchor,
   Button,
   Group,
@@ -40,6 +39,7 @@ import {
 } from '../../parts/OrderParts';
 import { type PageProps, refusal, useLoad } from '../../page';
 import { TYPE } from '../../design-system/tokens';
+import { FormMessage } from '../../components/molecules/FormMessage';
 
 /** What the page tells after a step that went through. */
 type Done = 'saved' | 'confirmed' | 'sent' | 'cancelled';
@@ -475,9 +475,9 @@ export function OrderPage(page: PageProps) {
               <StateBadge state={doc.order.state} />
             </Group>
             {done && (
-              <Alert color="green" role="alert">
+              <FormMessage kind="success">
                 {t(`orders.done.${done}`, { number: doc.order.request?.number })}
-              </Alert>
+              </FormMessage>
             )}
             {doc.order.state === 'draft' && editor ? (
               <Editor

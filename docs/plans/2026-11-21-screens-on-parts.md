@@ -93,8 +93,8 @@ piece 203's step 8. Your runs: about 20 each for a few walks, longer for twelve.
       note there from the page's load, spoken `note`, four sites). The part in
       `components/molecules/`, its entry drawn from it; the settings page's saved line moved. Cases 2,
       3, 19. _Done when:_ the gates exit 0, the pinned file unchanged. **14 min**. _Done 2026-11-21: `FormMessage` built in `components/molecules/` with `title` and `standing`, its entry drawn from it, the settings page's saved line moved (now spoken `status`; its finders in `Settings.test.tsx`, `App.test.tsx` and `walk/specs/piece-1.spec.ts` follow); cases 2, 3 and 19 each seen red once; the gates and the citation test exit 0, the pinned file unchanged._
-- [ ] **4. The client's.** The 47 in `pages/client/` and `SignIn.tsx`, each kind read from its colour
-      and words, the finders with them. Case 4. _Done when:_ the gates exit 0. **20 min**.
+- [x] **4. The client's.** The 47 in `pages/client/` and `SignIn.tsx`, each kind read from its colour
+      and words, the finders with them. Case 4. _Done when:_ the gates exit 0. **20 min**. _Done 2026-11-21: the 47 moved onto `FormMessage` (red to error, orange to warning, green to success or saved, gray to info; the recount holds, 48 `<Alert` with `RecordPage.tsx#L136`'s not-found line, landing 4's, left), the part's `children` widened to a node for the five messages that hold an act beside their words; 18 ui finders, 7 of `visual`'s words test and 10 walk-spec finders of green messages follow from `alert` to `status`; case 4 seen red once on the unmoved finders (16 tests), then green; the pinned diff is 40 lines, all `admin-setup` `2-sign-in-refused` and `12-sign-in-wait` (the walks page's two screens of `piece-1`, which lose the margin), no other screen; the gates, the walk check and the citation test exit 0._
 - [ ] **5. The rest.** The 45 in `parts/` and `pages/operator/`; the nine whose colour or role
       disagrees with a kind (four notes, three orange status lines, two yellows) set by their words,
       named in the tick; item 650 after its grep; item 644's line,

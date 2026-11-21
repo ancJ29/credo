@@ -204,7 +204,7 @@ async function walk(page: Page, language: Language, width: number) {
   await opened({ path: '/my-deliveries' });
   await takePhoto();
   await press(words.myDeliveries.send);
-  await expect(page.getByRole('alert')).toContainText(words.myDeliveries.done);
+  await expect(page.getByRole('status')).toContainText(words.myDeliveries.done);
   const proof = page.getByRole('img', { name: words.orders.proofAlt });
   await expect(proof).toBeVisible();
   await expect(proof).toHaveJSProperty('complete', true);
