@@ -161,7 +161,7 @@ review before `main` is the orchestrator's at each landing, about 20 minutes. On
 **Landing 2: the parts a screen tells and offers with** (layer 3, each rule a part's contract),
 from `pre-merge` at landing 1.
 
-- [ ] **7. The contract, and the parts that tell.** The contract's type in `guideline.ts`: the part,
+- [x] **7. The contract, and the parts that tell.** The contract's type in `guideline.ts`: the part,
       what it takes (each prop a content or a meaning, its line), what it decides (keys of the
       theme's tables), the rule or slot it serves, what holds it, whether the app follows it. Each
       entry draws it, Takes and Decides; a part to come has its entry, drawn from Mantine at the
@@ -173,6 +173,20 @@ from `pre-merge` at landing 1.
       `DetailField`, `SectionTitle`, `SectionCard`, `PageHeader`: `c1bb597b`, `199eea92`). Parts:
       `FormMessage`, `PageState`. Cases 13, 19 to 21. _Done when:_ the gates exit 0. **18 min**
       (213's step 3, a typed table the gallery draws).
+      _Evidence:_ the step's commit. `guideline.ts` holds the contract's type (`Contract`: the part, its
+      `takes`, its `decides` as keys typed over the theme's tables, what it `fixes` in its own code,
+      its states, the rule it `serves`, what holds it, `followed`) and `GUIDELINE.contracts`, one row a
+      part, the one table a redraw edits; the gallery's panel draws Takes and Decides under a part's
+      Props, and the entries of `FormMessage` (Molecules) and `PageState` (Organisms) are drawn from
+      Mantine at the tone and role of each kind and state their row names, `followed` item 651. The
+      Values page gains its Weights and Sizes states, each with its use line (item 654 fixed). The text
+      rule speaks to a part and a screen's running text, `tokens.ts#L27` to a part; the rule of three
+      names its first six and says "never a part that decides nothing of Mantine's look". Reds on the
+      Gallery and guideline test files, 17:02 to 17:03: case 13 on every kind drawn red and on every
+      kind spoken as an alert; case 19 on a contract for an entry that does not exist and on a rule
+      it does not serve; case 20 on a take named `variant`; case 21 on a key not in its table and on
+      a weight with no use line (and the typecheck on it). `docs/products.md`'s gallery row no longer
+      says landing 1 is not landed. Gates run on the committed tree, their verdicts in the report.
 - [ ] **8. The parts that offer, and a status.** `ActionButton`, its four meanings your yes, with the
       `docs/decisions.md` row; today's 109 buttons mapped (about 50 `default`, 6 `subtle`, 4
       `outline`, 9 red, the rest filled); one main action a page; a confirm is a page (item 306).

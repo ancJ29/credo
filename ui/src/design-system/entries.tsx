@@ -26,7 +26,19 @@ import { PageHeader } from '../components/organisms/PageHeader';
 import { SectionCard } from '../components/organisms/SectionCard';
 import { Charter } from './Charter';
 import { OnTheBrand, OnTheLinks } from './OnTheBrand';
-import { Formats, Icons, Roles, Shapes, Spacing, Tones, Type, Widths } from './Values';
+import { FormMessageStates, PageStateStates } from './Contract';
+import {
+  Formats,
+  Icons,
+  Roles,
+  Shapes,
+  Sizes,
+  Spacing,
+  Tones,
+  Type,
+  Weights,
+  Widths,
+} from './Values';
 
 /** A sample company logo for the tile: a plain shape, no real company's. */
 const SAMPLE_LOGO =
@@ -110,6 +122,8 @@ export type Entry = {
   dontUseWhen: string[];
   /** The name of the entry to use instead, drawn as a link to it. */
   instead?: string;
+  /** A part with a contract and no code yet: its entry is drawn from Mantine at the values it decides. */
+  toCome?: true;
   states: { name: string; node: ReactNode }[];
 };
 
@@ -157,7 +171,7 @@ export const ENTRIES: Entry[] = [
     description:
       "The brand's ten shades, each text style with its size, line height, weight and spacing, each spacing step, width, icon size, corner and shadow with its use, the formats' places, each colour role with its value for the chosen colour and what it is for, and the four meanings a colour carries.",
     props:
-      'theme.colors.brand · TYPE · WEIGHTS · SPACING · WIDTHS · ICON_SIZES · RADII · ROLES · TONES',
+      'theme.colors.brand · TYPE · WEIGHTS · SIZES · SPACING · WIDTHS · ICON_SIZES · RADII · ROLES · TONES',
     useWhen: [
       'You need a colour, a text style or a gap for a screen.',
       "You are choosing between the brand's shades or the colour roles.",
@@ -170,6 +184,8 @@ export const ENTRIES: Entry[] = [
     states: [
       { name: 'Palette', node: <Palette /> },
       { name: 'Type', node: <Type /> },
+      { name: 'Weights', node: <Weights /> },
+      { name: 'Sizes', node: <Sizes /> },
       { name: 'Spacing', node: <Spacing /> },
       { name: 'Widths', node: <Widths /> },
       { name: 'Icons', node: <Icons /> },
@@ -413,6 +429,25 @@ export const ENTRIES: Entry[] = [
     ],
   },
   {
+    group: 'Molecules',
+    name: 'FormMessage',
+    kind: 'Messages',
+    toCome: true,
+    description:
+      'A message under a form’s buttons: its kind (error, warning, success, info or saved) and its words, drawn at the kind’s colour and spoken role. Mantine’s Alert, at the values it decides.',
+    props: 'kind: error | warning | success | info | saved · children: string',
+    useWhen: [
+      'A form or an act tells the person what happened: it failed, it needs care, it worked.',
+      'The message of a save, once, under the buttons that saved.',
+    ],
+    dontUseWhen: [
+      'A page that cannot load, or has nothing: that is PageState’s.',
+      'A mark on a record, as active or not: that is StatusBadge’s.',
+    ],
+    instead: 'PageState',
+    states: FormMessageStates,
+  },
+  {
     group: 'Organisms',
     name: 'DoorCard',
     kind: 'Cards',
@@ -494,5 +529,24 @@ export const ENTRIES: Entry[] = [
         ),
       },
     ],
+  },
+  {
+    group: 'Organisms',
+    name: 'PageState',
+    kind: 'States',
+    toCome: true,
+    description:
+      'What a whole page shows when its data is not a list or a record: loading, failed with a retry, forbidden, nothing, empty with an add, or not found. Mantine’s Loader, Alert and Title, at the values it decides.',
+    props:
+      'state: loading | failed | forbidden | nothing | empty | not found · onRetry · add · children',
+    useWhen: [
+      'A page’s data is loading, failed, forbidden, empty or missing, and the page says so in the place of its body.',
+    ],
+    dontUseWhen: [
+      'A message under a form’s buttons: that is FormMessage’s.',
+      'A page with its data: draw the page.',
+    ],
+    instead: 'FormMessage',
+    states: PageStateStates,
   },
 ];

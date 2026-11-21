@@ -26,9 +26,11 @@ import {
   ON_BRAND,
   RADII,
   ROLES,
+  SIZES,
   SPACING,
   TONES,
   TYPE,
+  WEIGHTS,
   WIDTHS,
 } from './tokens';
 
@@ -289,6 +291,43 @@ export function Formats() {
       <Notes about="formats" />
       {(Object.keys(GUIDELINE.values.formats) as FormatName[]).map((format) => (
         <ValueRow key={format} name={format} value="" use={GUIDELINE.values.formats[format]} />
+      ))}
+    </Stack>
+  );
+}
+
+/** The weights, each drawn at its weight, with what it is for. */
+export function Weights() {
+  return (
+    <Stack gap={4}>
+      {names(WEIGHTS).map((role) => (
+        <ValueRow
+          key={role}
+          name={role}
+          value={String(WEIGHTS[role])}
+          sample={
+            <Text size="sm" fw={WEIGHTS[role]} style={{ flex: 'none' }}>
+              Sample
+            </Text>
+          }
+          use={GUIDELINE.values.weights[role]}
+        />
+      ))}
+    </Stack>
+  );
+}
+
+/** The sizes a prop and a stylesheet both draw, each with what it is for. */
+export function Sizes() {
+  return (
+    <Stack gap={4}>
+      {names(SIZES).map((place) => (
+        <ValueRow
+          key={place}
+          name={place}
+          value={`${SIZES[place]} px`}
+          use={GUIDELINE.values.sizes[place]}
+        />
       ))}
     </Stack>
   );

@@ -7,6 +7,7 @@ import { ENTRIES, GROUPS, slugOf, type Entry } from './entries';
 import classes from './Gallery.module.css';
 import { CredoMantine } from './CredoMantine';
 import { PALETTES } from './palettes';
+import { ContractPanel, contractOf } from './Contract';
 
 /** The gallery's own address: the page and what is below it. */
 const BASE = '/48b74d079/gallery';
@@ -57,6 +58,7 @@ function Part({ entry, picker }: { entry: Entry; picker: ReactNode }) {
   const [at, setAt] = useState(0);
   const shown = alone ? [entry.states[at]] : entry.states;
   const instead = ENTRIES.find(({ name }) => name === entry.instead);
+  const contract = contractOf(entry.name);
   return (
     <article className={classes.part}>
       <div className={classes.stage}>
@@ -99,6 +101,7 @@ function Part({ entry, picker }: { entry: Entry; picker: ReactNode }) {
           <h3 className={classes.sideHead}>Props</h3>
           <code className={classes.props}>{entry.props}</code>
         </section>
+        {contract && <ContractPanel contract={contract} />}
         {entry.states.length > 1 && (
           <section className={classes.sideSection}>
             <h3 className={classes.sideHead}>Show</h3>

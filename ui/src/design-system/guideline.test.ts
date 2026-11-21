@@ -1,6 +1,8 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
-import { GUIDELINE, type Rule } from './guideline';
+import { ENTRIES } from './entries';
+import { GUIDELINE, type Contract, type Rule } from './guideline';
+import { ICON_SIZES, RADII, ROLES, SIZES, SPACING, TONES, TYPE, WEIGHTS, WIDTHS } from './tokens';
 
 /** The repository's root, from this file's folder. */
 const ROOT = `${import.meta.dirname}/../../..`;
@@ -23,6 +25,47 @@ function problems(rules: Rule[], exists: (path: string) => boolean, items: numbe
 }
 
 const rulesOf = () => GUIDELINE.charter.rules;
+const contractsOf = () => GUIDELINE.contracts;
+
+/** The theme's tables by the name a contract gives them. */
+const TABLES: Record<string, object> = {
+  TONES,
+  TYPE,
+  WEIGHTS,
+  SIZES,
+  SPACING,
+  WIDTHS,
+  ICON_SIZES,
+  RADII,
+  ROLES,
+};
+
+/** A prop that is a style a screen would choose: a colour, size, gap, weight, width, variant or corner. */
+const STYLE =
+  /^(c|color|colour|bg|size|fz|gap|fw|weight|w|h|mih|width|height|variant|radius|corner)$/i;
+
+/** The takes of contracts that take a style, by part and prop. */
+const styled = (contracts: Pick<Contract, 'part' | 'takes'>[]) =>
+  contracts.flatMap(({ part, takes }) =>
+    takes.filter(({ prop }) => STYLE.test(prop)).map(({ prop }) => `${part} takes ${prop}`),
+  );
+
+/** The decisions that read nothing, or a key its table does not have. */
+const unkeyed = (contracts: Pick<Contract, 'part' | 'decides'>[]) =>
+  contracts.flatMap(({ part, decides }) =>
+    decides
+      .filter(
+        ({ from }) =>
+          from.length === 0 || from.some(({ table, key }) => !(key in (TABLES[table] ?? {}))),
+      )
+      .map(({ what }) => `${part}: ${what}`),
+  );
+
+/** The contracts that serve no rule of the charter, by the words they open with. */
+const serving = (contracts: Pick<Contract, 'part' | 'serves'>[], rules: Pick<Rule, 'says'>[]) =>
+  contracts
+    .filter(({ serves }) => !rules.some(({ says }) => says.startsWith(`${serves}`)))
+    .map(({ part }) => part);
 
 /** A text that says "not yet" and names no open item that is listed, by the text's start. */
 function unnamed(texts: string[], items: number[]) {
@@ -46,6 +89,12 @@ const wordsOf = () => {
     ...lookHere.flatMap((l) => [l.need, l.where]),
     ...rules.flatMap((r) => [r.says, r.why]),
     ...notes.map((note) => note.text),
+    ...GUIDELINE.contracts.flatMap((contract) => [
+      ...contract.takes.map((take) => take.line),
+      ...contract.decides.map((decision) => decision.what),
+      ...contract.fixes,
+      ...contract.states.map((state) => state.line),
+    ]),
     ...Object.values(tables).flatMap((table) => Object.values(table)),
   ];
 };
@@ -86,5 +135,59 @@ describe('The guideline’s rules', () => {
       'Not yet: open item 9 moves it.',
     ]);
     expect(unnamed(['Not yet: open item 1 moves it.'], [1])).toEqual([]);
+  });
+});
+
+describe('The guideline’s contracts', () => {
+  it('213 case 19: each names an existing entry, a part to come’s entry too, and a rule of the charter it serves', () => {
+    // A set that found nothing would quiet the checks below.
+    expect(contractsOf().length).toBeGreaterThan(1);
+    const names = ENTRIES.map((entry) => entry.name);
+    for (const { part } of contractsOf()) expect(names, part).toContain(part);
+    expect(new Set(contractsOf().map((c) => c.part)).size).toBe(contractsOf().length);
+    expect(serving(contractsOf(), rulesOf())).toEqual([]);
+    expect(serving([{ part: 'X', serves: 'A rule nobody wrote' }], rulesOf())).toEqual(['X']);
+    // A part to come has its contract, and its `followed` names the item that builds it.
+    const coming = ENTRIES.filter((entry) => entry.toCome).map((entry) => entry.name);
+    expect(coming).toEqual(['FormMessage', 'PageState']);
+    for (const part of coming)
+      expect(contractsOf().find((c) => c.part === part)?.followed, part).toEqual({ item: 651 });
+    const held = contractsOf().map(({ part, heldBy, followed }) => ({
+      says: part,
+      why: '',
+      heldBy,
+      followed,
+    }));
+    expect(problems(held, (path) => existsSync(`${ROOT}/${path}`), ITEMS)).toEqual([]);
+  });
+
+  it('213 case 20: no contract takes a style, and each take is a content or a meaning', () => {
+    expect(contractsOf().flatMap((c) => c.takes).length).toBeGreaterThan(3);
+    expect(styled(contractsOf())).toEqual([]);
+    expect(styled([{ part: 'X', takes: [{ prop: 'variant', is: 'meaning', line: 'l' }] }])).toEqual(
+      ['X takes variant'],
+    );
+    for (const { part, takes } of contractsOf())
+      for (const take of takes) {
+        expect(['content', 'meaning'], part).toContain(take.is);
+        expect(take.line.length, part).toBeGreaterThan(8);
+      }
+  });
+
+  it('213 case 21: each decision reads keys that are in a theme table, and WEIGHTS and SIZES each have a use line', () => {
+    expect(contractsOf().flatMap((c) => c.decides).length).toBeGreaterThan(5);
+    expect(unkeyed(contractsOf())).toEqual([]);
+    const decision = (from: Contract['decides'][number]['from']) => ({
+      part: 'X',
+      decides: [{ what: 'w', from }],
+    });
+    expect(unkeyed([decision([])])).toEqual(['X: w']);
+    expect(unkeyed([decision([{ table: 'TONES', key: 'purple' as 'danger' }])])).toEqual(['X: w']);
+    expect(unkeyed([decision([{ table: 'TONES', key: 'danger' }])])).toEqual([]);
+    const { weights, sizes } = GUIDELINE.values;
+    expect(Object.keys(weights)).toEqual(Object.keys(WEIGHTS));
+    expect(Object.keys(sizes)).toEqual(Object.keys(SIZES));
+    for (const line of [...Object.values(weights), ...Object.values(sizes)])
+      expect(line.length).toBeGreaterThan(20);
   });
 });
