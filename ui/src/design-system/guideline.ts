@@ -6,9 +6,11 @@ import {
   ON_BRAND,
   RADII,
   ROLES,
+  SIZES,
   SPACING,
   TONES,
   TYPE,
+  WEIGHTS,
   WIDTHS,
 } from './tokens';
 
@@ -70,6 +72,8 @@ export type NoteAbout = 'tones' | 'styles' | 'widths' | 'icons' | 'formats';
 export type Values = {
   roles: Record<RoleName, string>;
   styles: Record<keyof typeof TYPE, string>;
+  weights: Record<keyof typeof WEIGHTS, string>;
+  sizes: Record<keyof typeof SIZES, string>;
   tones: Record<keyof typeof TONES, string>;
   spacing: Record<keyof typeof SPACING, string>;
   widths: Record<keyof typeof WIDTHS, string>;
@@ -81,12 +85,82 @@ export type Values = {
   notes: { about: NoteAbout; text: string }[];
 };
 
+/** The theme's tables, by name: what a part may decide from. */
+type Tables = {
+  TONES: typeof TONES;
+  TYPE: typeof TYPE;
+  WEIGHTS: typeof WEIGHTS;
+  SIZES: typeof SIZES;
+  SPACING: typeof SPACING;
+  WIDTHS: typeof WIDTHS;
+  ICON_SIZES: typeof ICON_SIZES;
+  RADII: typeof RADII;
+  ROLES: typeof ROLES;
+};
+
+/** One key of one of the theme's tables: a key that is not there is a type error. */
+type ThemeKey = { [T in keyof Tables]: { table: T; key: keyof Tables[T] } }[keyof Tables];
+
+/** What a screen passes a part: its words or its act (`content`), or what it means (`meaning`), never a style. */
+type Take = { prop: string; is: 'content' | 'meaning'; line: string };
+
+/** What a part decides, in words, and the theme keys it reads to decide it. */
+type Decision = { what: string; from: ThemeKey[] };
+
+/** One kind or state of a part, as its entry draws it: the tone it wears and the role it speaks. */
+export type PartState = {
+  name: string;
+  tone?: keyof typeof TONES;
+  /** The look a button of this meaning is drawn in: filled, the default look, subtle, or red filled. */
+  look?: 'filled' | 'default' | 'subtle' | 'red';
+  role?: 'alert' | 'status';
+  line: string;
+};
+
+/**
+ * One part's contract, the data its entry draws: what a screen gives it, what it decides from the
+ * theme, the rule it serves, what holds it, and whether it is built (`followed` naming the open
+ * item that builds a part to come).
+ */
+export type Contract = {
+  /** The name of the part's entry in the gallery. */
+  part: string;
+  takes: Take[];
+  decides: Decision[];
+  /** What the part fixes in its own code and no table holds: its spoken role, its place. */
+  fixes: string[];
+  states: PartState[];
+  /** The opening words of the charter's rule it serves. */
+  serves: string;
+  heldBy: HeldBy;
+  followed: Followed;
+};
+
+/** What a screen asks of a button: the main action of the page, another, a quiet one, a danger. */
+type ButtonMeaning = 'main' | 'other' | 'quiet' | 'danger';
+
+/**
+ * The looks the screens draw a `Button` in today (its variant, `red` where its colour is red), and
+ * the meaning each becomes when the screens move to `ActionButton`: red stays only on a danger,
+ * and a danger is only a delete's last step, so a red outline or red subtle button becomes another
+ * meaning.
+ */
+export type DrawnButtons = Record<
+  'filled' | 'filled red' | 'default' | 'default red' | 'subtle' | 'subtle red' | 'outline red',
+  ButtonMeaning
+>;
+
 /**
  * The design guideline, as text a coder or an agent reads from the top: the gallery draws it, the
  * typecheck holds its shape, so a rule that does not say what holds it is a type error. A choice a
  * screen's coder meets that is not here is asked, and its answer is written here as a rule.
  */
-export const GUIDELINE: { charter: Charter; values: Values } = {
+export const GUIDELINE: {
+  charter: Charter;
+  values: Values;
+  contracts: Contract[];
+  buttons: DrawnButtons;
+} = {
   charter: {
     goal: 'Decide the design once, so whoever codes a screen makes as few look-and-feel choices as possible, and the app stays consistent anyway.',
     credo:
@@ -145,10 +219,16 @@ export const GUIDELINE: { charter: Charter; values: Values } = {
         followed: 'yes',
       },
       {
-        says: 'Text takes a style of the type table, never a number for a weight or a size; the weights and sizes of their own tables are the design-system coder’s, and `tokens.ts` says what each is for.',
+        says: 'A part’s text takes a style of the type table, never a number for a weight or a size, and a screen’s running text is the theme’s body; the weights and sizes of their own tables are the design-system coder’s, and the values page says what each is for.',
         why: 'A style named once changes once, and a number written in a screen cannot be found again.',
         heldBy: { check: 'ui/src/design-system/literals.test.ts' },
         followed: 'yes',
+      },
+      {
+        says: 'A page has one main action, drawn as the filled button, and any other act is the other or the quiet one; a danger is red only at the last step of a delete, which a page of its own confirms (open item 306).',
+        why: 'Two filled buttons ask the person to choose between equals, and a red button before the last step cries danger where there is none; the person finds the next step by its look.',
+        heldBy: 'review',
+        followed: { item: 655 },
       },
       {
         says: 'A part sits in a level and imports only from the levels below it: an atom holds no other part of ours, a molecule is a few atoms made one thing, an organism is a block of a page.',
@@ -157,7 +237,7 @@ export const GUIDELINE: { charter: Charter; values: Values } = {
         followed: 'yes',
       },
       {
-        says: 'A part joins `ui/src/components/` at its third use in the app, with its gallery entry; its first two uses stay in their screens or in `ui/src/parts/`, and the first six parts, joined as the skeleton’s day-one set, are the exception. It is never made to wrap a Mantine part alone. The rule of three is for code, not for a look: a look is decided here before its first use.',
+        says: 'A part joins `ui/src/components/` at its third use in the app, with its gallery entry; its first two uses stay in their screens or in `ui/src/parts/`, and the first six parts, joined as the skeleton’s day-one set, are the exception: `StatusBadge`, then `FieldLabel`, `DetailField`, `SectionTitle`, `SectionCard` and `PageHeader`. It is never a part that decides nothing of Mantine’s look. The rule of three is for code, not for a look: a look is decided here before its first use.',
         why: 'A part made for one use is guessed at, and a part made after three is drawn from what they share; Mantine stays the base.',
         heldBy: 'review',
         followed: 'yes',
@@ -214,6 +294,15 @@ export const GUIDELINE: { charter: Charter; values: Values } = {
       body: 'Any running text and any value a person reads.',
       bodyStrong: 'A name or an amount that must stand out from the text around it.',
       caption: 'A note under or beside content: small and grey.',
+    },
+    weights: {
+      label: 'A field’s name: the weight of a label over a field or a fact. 500.',
+      emphasis:
+        'A name or an amount that must stand out from the text around it, and a small label that must be seen. 600.',
+      title: 'A heading: a page’s title and a block’s title. 700.',
+    },
+    sizes: {
+      chip: 'The language chip’s size in the header, which a screen’s prop and the frame’s stylesheet both draw. 12 px.',
     },
     tones: {
       danger: 'Something failed or will destroy: an error, a delete’s last step.',
@@ -274,7 +363,7 @@ export const GUIDELINE: { charter: Charter; values: Values } = {
       },
       {
         about: 'styles',
-        text: 'A text takes a style of this table; a size or a weight on a Text is written only where no style fits, with a comment saying why. Not yet checked: review holds it, and about 17 Text lines set one with no comment (open item 651). `WEIGHTS` and `SIZES` have no use line here; open item 654 adds them.',
+        text: 'A text takes a style of this table; a size or a weight on a Text is written only where no style fits, with a comment saying why. Not yet checked: review holds it, and about 17 Text lines set one with no comment (open item 651).',
       },
       {
         about: 'widths',
@@ -289,5 +378,196 @@ export const GUIDELINE: { charter: Charter; values: Values } = {
         text: 'A number, a day or a time is written by its one place, never by `new Intl` in a screen. Not yet: outside `ui/src/day.ts` five `new Intl.NumberFormat` stand in four files (one is `useMoney`’s own, the other four write a price, a quantity or the marks of a number by hand), and a number has no place of its own yet; open item 652 moves them.',
       },
     ],
+  },
+  /**
+   * Each part's contract, one row a part: a redraw of a contract edits its row here and nothing
+   * else, since the gallery's entry draws the row and the tests read it.
+   */
+  contracts: [
+    {
+      part: 'FormMessage',
+      takes: [
+        {
+          prop: 'kind',
+          is: 'meaning',
+          line: 'What the message is: error, warning, success, info, or saved (the one after a save).',
+        },
+        { prop: 'children', is: 'content', line: 'Its words.' },
+      ],
+      decides: [
+        {
+          what: 'Its colour, from its kind: error red, warning orange, success and saved green, info gray.',
+          from: [
+            { table: 'TONES', key: 'danger' },
+            { table: 'TONES', key: 'warning' },
+            { table: 'TONES', key: 'success' },
+            { table: 'TONES', key: 'info' },
+          ],
+        },
+        { what: 'Its text, the theme’s body.', from: [{ table: 'TYPE', key: 'body' }] },
+        {
+          what: 'The gap between it and the buttons above it.',
+          from: [{ table: 'SPACING', key: 'xs' }],
+        },
+      ],
+      fixes: [
+        'Its spoken role: alert for an error or a warning (a conflict is a warning), status for the rest.',
+        'Its place: the full width, no margin, under its buttons, one at a time.',
+      ],
+      states: [
+        { name: 'Error', tone: 'danger', role: 'alert', line: 'Something failed.' },
+        {
+          name: 'Warning',
+          tone: 'warning',
+          role: 'alert',
+          line: 'Something needs care, as a conflict.',
+        },
+        { name: 'Success', tone: 'success', role: 'status', line: 'Something worked.' },
+        { name: 'Info', tone: 'info', role: 'status', line: 'Something to know, nothing to fix.' },
+        { name: 'Saved', tone: 'success', role: 'status', line: 'The message after a save.' },
+      ],
+      serves: 'A screen picks parts, never a style',
+      heldBy: { check: 'ui/src/design-system/guideline.test.ts' },
+      followed: { item: 651 },
+    },
+    {
+      part: 'PageState',
+      takes: [
+        {
+          prop: 'state',
+          is: 'meaning',
+          line: 'Which state the page is in: loading, failed, forbidden, nothing, empty, or not found.',
+        },
+        { prop: 'onRetry', is: 'content', line: 'The act of a failed load’s retry.' },
+        { prop: 'add', is: 'content', line: 'The act of an empty list’s add button.' },
+        { prop: 'children', is: 'content', line: 'Its words, where a state has any.' },
+      ],
+      decides: [
+        { what: 'The title’s style.', from: [{ table: 'TYPE', key: 'pageTitle' }] },
+        { what: 'The message’s style.', from: [{ table: 'TYPE', key: 'caption' }] },
+        { what: 'The failed state’s colour.', from: [{ table: 'TONES', key: 'danger' }] },
+        {
+          what: 'The gap between its title and its message.',
+          from: [{ table: 'SPACING', key: 'xs' }],
+        },
+      ],
+      fixes: [
+        'Its loader and the loader’s spoken name, and its least height while it loads.',
+        'Its retry button: a default button under the failed message.',
+        'Its spoken role: alert for a failed load, status for the rest.',
+      ],
+      states: [
+        { name: 'Loading', line: 'The page’s data is on its way.' },
+        {
+          name: 'Failed',
+          tone: 'danger',
+          role: 'alert',
+          line: 'The data did not come; a retry follows.',
+        },
+        { name: 'Forbidden', role: 'status', line: 'The person may not open the page.' },
+        { name: 'Nothing', role: 'status', line: 'No page is open to the person yet.' },
+        {
+          name: 'Empty',
+          role: 'status',
+          line: 'A list with nothing in it; an add button follows.',
+        },
+        { name: 'Not found', role: 'status', line: 'The address names nothing.' },
+      ],
+      serves: 'A screen picks parts, never a style',
+      heldBy: { check: 'ui/src/design-system/guideline.test.ts' },
+      followed: { item: 651 },
+    },
+    {
+      part: 'ActionButton',
+      takes: [
+        {
+          prop: 'meaning',
+          is: 'meaning',
+          line: 'What the act is to the page: the main action, another act, a quiet one, or a danger.',
+        },
+        { prop: 'children', is: 'content', line: 'Its words.' },
+        { prop: 'onClick', is: 'content', line: 'The act it performs.' },
+      ],
+      decides: [
+        {
+          what: 'A danger’s colour: red, filled.',
+          from: [{ table: 'TONES', key: 'danger' }],
+        },
+        {
+          what: 'Its label’s weight: Mantine’s own button weight, 600.',
+          from: [{ table: 'WEIGHTS', key: 'emphasis' }],
+        },
+      ],
+      fixes: [
+        'Its look from its meaning: the main action filled in the client’s colour, another the default look, a quiet one subtle, a danger red filled.',
+        'Its size: Mantine’s small, one size for every button.',
+        'Its place: a page has one main action, and a danger is the last step of a delete, which a page of its own confirms.',
+      ],
+      states: [
+        { name: 'Main', look: 'filled', line: 'The page’s one main action.' },
+        { name: 'Other', look: 'default', line: 'Another act, as cancel or back.' },
+        {
+          name: 'Quiet',
+          look: 'subtle',
+          line: 'An act the page offers with no weight, as a link.',
+        },
+        {
+          name: 'Danger',
+          look: 'red',
+          tone: 'danger',
+          line: 'A delete’s last step, on the page that confirms it.',
+        },
+      ],
+      serves: 'A page has one main action',
+      heldBy: { check: 'ui/src/design-system/guideline.test.ts' },
+      followed: { item: 655 },
+    },
+    {
+      part: 'StatusBadge',
+      takes: [
+        {
+          prop: 'status',
+          is: 'meaning',
+          line: 'Which state the record is in: an order’s, a delivery request’s, or a person’s active or not (archived).',
+        },
+      ],
+      decides: [
+        {
+          what: 'Its colour, from its status: green for what is done or active, orange for what waits, red for cancelled, gray for a draft or inactive.',
+          from: [
+            { table: 'TONES', key: 'success' },
+            { table: 'TONES', key: 'warning' },
+            { table: 'TONES', key: 'danger' },
+            { table: 'TONES', key: 'info' },
+          ],
+        },
+      ],
+      fixes: [
+        'Its word, the dictionary’s for the status, in the person’s language.',
+        'Its look: Mantine’s light badge.',
+      ],
+      states: [
+        { name: 'draft', tone: 'info', line: 'An order still to be confirmed.' },
+        { name: 'confirmed', tone: 'warning', line: 'An order confirmed, its delivery to come.' },
+        { name: 'fulfilled', tone: 'success', line: 'An order delivered.' },
+        { name: 'cancelled', tone: 'danger', line: 'An order or a request cancelled.' },
+        { name: 'waiting', tone: 'warning', line: 'A request waiting for its delivery.' },
+        { name: 'delivered', tone: 'success', line: 'A request delivered.' },
+        { name: 'active', tone: 'success', line: 'A person who may sign in.' },
+        { name: 'inactive', tone: 'info', line: 'A person who is archived.' },
+      ],
+      serves: 'A screen picks parts, never a style',
+      heldBy: { check: 'ui/src/components/atoms/StatusBadge.test.tsx' },
+      followed: { item: 651 },
+    },
+  ],
+  buttons: {
+    filled: 'main',
+    'filled red': 'danger',
+    default: 'other',
+    'default red': 'other',
+    subtle: 'quiet',
+    'subtle red': 'quiet',
+    'outline red': 'other',
   },
 };

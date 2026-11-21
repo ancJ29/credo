@@ -9,6 +9,8 @@ import { Gallery } from './Gallery';
 import { ENTRIES, slugOf } from './entries';
 import { followedWords, heldWords } from './Charter';
 import { GUIDELINE } from './guideline';
+import { ContractPanel, FormMessageStates, PageStateStates } from './Contract';
+import { CredoMantine } from './CredoMantine';
 import { contrast, onBrand, onWhite, beforeOf, type Surface } from './onBrand';
 import {
   HEADER_WASHES,
@@ -17,9 +19,11 @@ import {
   ON_BRAND,
   RADII,
   ROLES,
+  SIZES,
   SPACING,
   TONES,
   TYPE,
+  WEIGHTS,
   WIDTHS,
 } from './tokens';
 import { credoVariables } from './cssVariables';
@@ -97,7 +101,12 @@ describe('Gallery', () => {
     expect(list().getByRole('region', { name: 'Start here' }).textContent).toContain('1');
     expect(list().getByRole('region', { name: 'Foundations' }).textContent).toContain('3');
     for (const [level, heading] of Object.entries(HEADINGS)) {
-      const files = found.filter((file) => file.level === level);
+      // A part to come has its entry and no file yet.
+      const coming = ENTRIES.filter((entry) => entry.toCome && entry.group === heading);
+      const files = [
+        ...found.filter((file) => file.level === level),
+        ...coming.map(({ name }) => ({ level, name })),
+      ];
       const group = within(list().getByRole('region', { name: heading }));
       expect(group.getAllByRole('link')).toHaveLength(files.length);
       expect(group.getByText(String(files.length))).toBeDefined();
@@ -274,6 +283,8 @@ describe('Gallery', () => {
     expect(stateNames()).toEqual([
       'Palette',
       'Type',
+      'Weights',
+      'Sizes',
       'Spacing',
       'Widths',
       'Icons',
@@ -779,7 +790,7 @@ describe('Gallery', () => {
   });
 
   it('213 case 1: every entry carries one to three use lines and one to three don’t-use lines', () => {
-    expect(ENTRIES).toHaveLength(15);
+    expect(ENTRIES).toHaveLength(18);
     for (const entry of ENTRIES) {
       for (const lines of [entry.useWhen, entry.dontUseWhen]) {
         expect(lines.length, entry.name).toBeGreaterThanOrEqual(1);
@@ -839,5 +850,153 @@ describe('Gallery', () => {
       'noindex',
     );
     expect(document.title).toBe('Credo: the design system’s gallery');
+  });
+
+  it('213 case 21: Values gives each weight and each size its use line, from the guideline, beside its value', () => {
+    open(`${BASE}/foundations/values`);
+    const { weights, sizes } = GUIDELINE.values;
+    for (const [table, values, unit] of [
+      [weights, WEIGHTS, ''],
+      [sizes, SIZES, ' px'],
+    ] as const) {
+      expect(Object.keys(table)).toEqual(Object.keys(values));
+      for (const [name, line] of Object.entries(table)) {
+        const row = part().getAllByText(line)[0]?.parentElement;
+        expect(row?.textContent, name).toContain(name);
+        expect(row?.textContent, name).toContain(
+          `${String(values[name as keyof typeof values])}${unit}`,
+        );
+      }
+    }
+  });
+
+  it('213 case 13: the entries of FormMessage and PageState draw each kind and state at its contract’s tone and role', () => {
+    const states = (name: string) =>
+      GUIDELINE.contracts.find((contract) => contract.part === name)!.states;
+    // A contract that lost its states would quiet the loops below.
+    expect(states('FormMessage').map((state) => state.name)).toEqual([
+      'Error',
+      'Warning',
+      'Success',
+      'Info',
+      'Saved',
+    ]);
+    expect(states('PageState').map((state) => state.name)).toEqual([
+      'Loading',
+      'Failed',
+      'Forbidden',
+      'Nothing',
+      'Empty',
+      'Not found',
+    ]);
+    const entry = (name: string) => ENTRIES.find((each) => each.name === name)!;
+    expect(entry('FormMessage').states).toBe(FormMessageStates);
+    expect(entry('PageState').states).toBe(PageStateStates);
+    let toned = 0;
+    for (const name of ['FormMessage', 'PageState']) {
+      open(`${BASE}/${slugOf(entry(name).group)}/${slugOf(name)}`);
+      for (const { name: state, tone, role } of states(name)) {
+        const plate = within(part().getByRole('figure', { name: state }));
+        if (role) {
+          const spoken = plate.getByRole(role);
+          if (tone) {
+            toned += 1;
+            expect(spoken.getAttribute('class') ?? '', state).toContain('Alert');
+            expect(spoken.getAttribute('style'), state).toContain(
+              `--mantine-color-${TONES[tone]}-`,
+            );
+          }
+        }
+      }
+      cleanup();
+    }
+    expect(toned).toBe(6);
+    // The spoken roles split as the contract says: an error and a warning alert, the rest are status.
+    open(`${BASE}/molecules/form-message`);
+    expect(part().getAllByRole('alert')).toHaveLength(2);
+    expect(part().getAllByRole('status')).toHaveLength(3);
+    cleanup();
+    open(`${BASE}/organisms/page-state`);
+    expect(part().getAllByRole('alert')).toHaveLength(1);
+    expect(part().getAllByRole('status')).toHaveLength(4);
+    expect(
+      within(part().getByRole('figure', { name: 'Loading' })).getByLabelText('Loading'),
+    ).toBeDefined();
+  });
+
+  it('213 case 13: a part to come’s panel shows what it takes and what it decides, and the item that builds it', () => {
+    open(`${BASE}/molecules/form-message`);
+    const side = about();
+    const takes = side.getByRole('heading', { level: 3, name: 'Takes from a screen' });
+    const decides = side.getByRole('heading', { level: 3, name: 'Decides itself' });
+    expect(takes.compareDocumentPosition(decides) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const { takes: given, decides: decided } = GUIDELINE.contracts[0];
+    for (const { prop } of given) expect(side.getByText(prop, { exact: true })).toBeDefined();
+    for (const { what } of decided)
+      expect(side.getByText(new RegExp(what.slice(0, 20)))).toBeDefined();
+    expect(side.getByText(/To come: open item 651 builds it\./)).toBeDefined();
+    cleanup();
+    // A part with no contract has neither section.
+    open(`${BASE}/atoms/back-link`);
+    expect(about().queryByRole('heading', { name: 'Takes from a screen' })).toBeNull();
+  });
+
+  it('213 case 15: the entry of ActionButton draws a button at each meaning’s look, a danger red', () => {
+    const states = GUIDELINE.contracts.find((contract) => contract.part === 'ActionButton')!.states;
+    expect(states.map((state) => state.look)).toEqual(['filled', 'default', 'subtle', 'red']);
+    open(`${BASE}/atoms/action-button`);
+    const looks = states.map(({ name }) =>
+      within(part().getByRole('figure', { name })).getByRole('button'),
+    );
+    expect(looks.map((button) => button.getAttribute('data-variant'))).toEqual([
+      'filled',
+      'default',
+      'subtle',
+      'filled',
+    ]);
+    expect(looks[3].getAttribute('style')).toContain(`--mantine-color-${TONES.danger}-`);
+    expect(looks[0].getAttribute('style') ?? '').not.toContain(`--mantine-color-${TONES.danger}-`);
+    expect(about().getByText(/To come: open item 655 builds it\./)).toBeDefined();
+  });
+
+  it('213 case 14: the entry of StatusBadge draws each status of the records in its word, a built part’s panel saying the screens do not use it yet', () => {
+    open(`${BASE}/atoms/status-badge`);
+    expect(stateNames()).toEqual(['An order', 'A delivery request', 'A person']);
+    const chips = [...document.querySelectorAll('[data-status]')];
+    expect(chips.map((chip) => chip.getAttribute('data-status'))).toEqual([
+      'draft',
+      'confirmed',
+      'fulfilled',
+      'cancelled',
+      'waiting',
+      'delivered',
+      'cancelled',
+      'active',
+      'inactive',
+    ]);
+    expect(chips.map((chip) => chip.textContent)).toEqual([
+      'Draft',
+      'Confirmed',
+      'Delivered',
+      'Cancelled',
+      'Pending delivery',
+      'Delivered',
+      'Cancelled',
+      'Active',
+      'Inactive',
+    ]);
+    expect(
+      about().getByText(/Built; the screens do not use it yet: open item 651 moves them\./),
+    ).toBeDefined();
+  });
+
+  it('213 case 13: a built part’s contract says the app follows it, and has no “to come”', () => {
+    render(
+      <CredoMantine colour={CREDO_COLOUR} test>
+        <ContractPanel contract={{ ...GUIDELINE.contracts[0], followed: 'yes' }} />
+      </CredoMantine>,
+    );
+    expect(screen.getByText(/The app follows it\./)).toBeDefined();
+    expect(screen.queryByText(/To come/)).toBeNull();
   });
 });

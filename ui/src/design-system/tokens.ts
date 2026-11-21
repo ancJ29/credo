@@ -24,7 +24,7 @@ export const BRAND_TEXT_FROM = 7;
 export const ANGLES = { header: BRAND_SHADES.deg, menu: 180 } as const;
 
 /**
- * The weights by role: a screen picks a role, never a number. `label` is a field's name, `emphasis`
+ * The weights by role: a part picks a role, never a number; a screen picks no weight. `label` is a field's name, `emphasis`
  * a name or an amount to stand out, `title` a heading. The frame's stylesheets read them as
  * `--credo-weight-<role>`.
  */
