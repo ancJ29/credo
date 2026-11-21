@@ -1,11 +1,12 @@
 import type { PhotoReply } from '@credo/shared';
-import { Alert, Avatar, Button, FileButton, Group, Image, Stack, Text } from '@mantine/core';
+import { Avatar, Button, FileButton, Group, Image, Stack, Text } from '@mantine/core';
 import { IconPhoto } from '@tabler/icons-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DetailCard } from './DetailCards';
 import { type PageProps, refusal } from '../page';
 import { shrinkToPhoto } from '../photo';
+import { FormMessage } from '../components/molecules/FormMessage';
 
 type Outcome = 'saved' | 'failed' | 'unusable' | 'conflict' | null;
 
@@ -62,13 +63,9 @@ export function PhotoPanel({ page, id, name, held, onHeld, editable }: Props) {
         )}
         {!held.photo && <Text c="dimmed">{t('person.photoNone')}</Text>}
       </Group>
-      {outcome === 'saved' && (
-        <Alert color="green" role="alert">
-          {t('person.photoSaved')}
-        </Alert>
-      )}
+      {outcome === 'saved' && <FormMessage kind="saved">{t('person.photoSaved')}</FormMessage>}
       {outcome !== null && outcome !== 'saved' && (
-        <Alert color="red" role="alert">
+        <FormMessage kind="error">
           {t(
             outcome === 'failed'
               ? 'person.photoFailed'
@@ -76,7 +73,7 @@ export function PhotoPanel({ page, id, name, held, onHeld, editable }: Props) {
                 ? 'person.photoUnusable'
                 : 'person.photoConflict',
           )}
-        </Alert>
+        </FormMessage>
       )}
       {editable && (
         <Stack gap={4} align="flex-start">

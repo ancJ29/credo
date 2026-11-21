@@ -7,8 +7,8 @@ import { required, shot, WIDTHS } from '../support';
 
 /**
  * Piece 2's groups A, B, C and D, four walks in one run: the staff setup and the staff list, the person's
- * pages, the import, the office's and the phone's, thirty-three screens (A's sixteen, B's seven, C's six
- * and D's four), each in Vietnamese and in English at the three widths (33 × 2 × 3 = 198). The `fake` project runs it on `pnpm fake -- …`, the UI alone over the data set,
+ * pages, the import, the office's and the phone's, thirty-four screens, each in Vietnamese and in English
+ * at the three widths (34 × 2 × 3 = 204). The `fake` project runs it on `pnpm fake -- …`, the UI alone over the data set,
  * and keeps the pictures as the full run's reference; the `full` project runs it on the stack
  * (`pnpm stack -- …`) and compares them with the bases, or with the fake run's pictures. Each screen opens at an address of its own, so a screen never meets
  * what an earlier one changed. Words come from the app's own dictionaries.
@@ -538,7 +538,7 @@ for (const [device, width] of Object.entries(WIDTHS)) {
       ['vi', 'Vietnamese'],
       ['en', 'English'],
     ] as const) {
-      test(`walks all thirty-three screens in ${name}`, async ({ page }) => {
+      test(`walks all thirty-four screens in ${name}`, async ({ page }) => {
         await walk(page, language, width);
       });
     }

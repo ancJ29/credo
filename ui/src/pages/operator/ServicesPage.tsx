@@ -1,16 +1,5 @@
 import { type Language } from '@credo/shared';
-import {
-  Alert,
-  Badge,
-  Button,
-  Center,
-  Group,
-  Loader,
-  Paper,
-  Stack,
-  Text,
-  Title,
-} from '@mantine/core';
+import { Badge, Button, Center, Group, Loader, Paper, Stack, Text, Title } from '@mantine/core';
 import { IconRefresh } from '@tabler/icons-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -18,6 +7,7 @@ import { type Api, ApiError, hopOf, type ServicesCheck } from '../../api';
 import { timeOf } from '../../day';
 import { refusal } from '../../page';
 import { TYPE } from '../../design-system/tokens';
+import { FormMessage } from '../../components/molecules/FormMessage';
 
 type Props = {
   api: Api;
@@ -162,13 +152,13 @@ function Report({
   return (
     <>
       {ok ? (
-        <Alert color={oneBuild ? 'green' : 'yellow'} role="status">
+        <FormMessage kind={oneBuild ? 'success' : 'warning'}>
           {t(oneBuild ? 'services.oneBuild' : 'services.twoBuilds')}
-        </Alert>
+        </FormMessage>
       ) : (
-        <Alert color="red" role="alert">
+        <FormMessage kind="error">
           {t(found.kind === 'storage' ? 'services.storageDown' : 'services.bffDown')}
-        </Alert>
+        </FormMessage>
       )}
       <Stack gap="sm">
         {rows.map((row) => (

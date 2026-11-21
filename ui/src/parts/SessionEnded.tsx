@@ -1,5 +1,6 @@
-import { Alert, Button, Group, Modal, Stack, Text } from '@mantine/core';
+import { Button, Group, Modal, Stack, Text } from '@mantine/core';
 import { useTranslation } from 'react-i18next';
+import { FormMessage } from '../components/molecules/FormMessage';
 
 type Props = {
   /** Idle, waiting on the device, or why the last try did not sign in. */
@@ -33,11 +34,7 @@ export function SessionEnded({ status, onContinue, onSignOut }: Props) {
     >
       <Stack>
         <Text>{t('passkey.endedText')}</Text>
-        {failed && (
-          <Alert color="red" role="alert">
-            {t(failed)}
-          </Alert>
-        )}
+        {failed && <FormMessage kind="error">{t(failed)}</FormMessage>}
         <Group justify="flex-end">
           <Button variant="default" onClick={onSignOut}>
             {t('user.signOut')}

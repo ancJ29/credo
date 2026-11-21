@@ -1,11 +1,12 @@
 // Case 11 of docs/plans/2026-11-20-design-fixes.md: no resolved style of any screen moves on any of
 // the ten colours. Every screen of the walks page is drawn once, as the capture draws it, in both
 // languages; each element's declarations are resolved (the cascade, the variables), class names
-// left out since a stylesheet's are hashed from its text; and the theme's variables, which are all
-// a colour changes, are read for each of ten colours (the theme's own style element, as Mantine
-// writes it). One hash a screen and colour is held against `resolved.pinned.txt`. Equal resolved
-// styles draw equal pixels only for what is hashed: text and attributes (an SVG's `fill`, an image's
-// `src`) are not, so the walks run stays the verdict. `RESOLVED_WRITE=1` rewrites the file, its diff to be read.
+// left out since a stylesheet's are hashed from its text; and the theme's root variables are read for
+// each of ten colours (the theme's own style element, as Mantine writes it). That is the half held
+// per colour: what a colour's resolver computes (`variantColorResolver`, the checks' `iconColor`) is
+// held at the scene's own colour only (item 644). One hash a screen and colour is held against
+// `resolved.pinned.txt`. Equal resolved styles draw equal pixels only for what is hashed: text and
+// attributes (an SVG's `fill`, an image's `src`) are not, so the walks run stays the verdict. `RESOLVED_WRITE=1` rewrites the file, its diff to be read.
 import { createHash } from 'node:crypto';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { join, relative } from 'node:path';

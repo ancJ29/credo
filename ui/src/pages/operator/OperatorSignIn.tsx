@@ -1,10 +1,11 @@
 import type { Language } from '@credo/shared';
-import { Alert, Button, Stack, Text } from '@mantine/core';
+import { Button, Stack, Text } from '@mantine/core';
 import { IconFingerprint } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { CREDO_BRAND } from '../../brand';
 import { SignInFrame } from '../SignIn';
 import { BRAND_GRADIENT } from '../../design-system/appTheme';
+import { FormMessage } from '../../components/molecules/FormMessage';
 
 type Props = {
   /** Idle, waiting on the device, the passkey not given, or a passkey that opens nothing here. */
@@ -28,9 +29,9 @@ export function OperatorSignIn({ status, onSubmit, languages, onLanguage }: Prop
     >
       <Stack gap="lg">
         {(status === 'notGiven' || status === 'refused') && (
-          <Alert color="red" role="alert">
+          <FormMessage kind="error">
             {t(status === 'notGiven' ? 'passkey.notGiven' : 'passkey.refused')}
-          </Alert>
+          </FormMessage>
         )}
         <Text c="dimmed" ta="center">
           {t('passkey.signInHint')}

@@ -7,7 +7,6 @@ import {
   type TenantConfig,
 } from '@credo/shared';
 import {
-  Alert,
   Button,
   Checkbox,
   ColorInput,
@@ -96,25 +95,19 @@ function SettingsForm({ config, outcome, saving, onSave, onReload, logoRefusal }
     <form onSubmit={submit}>
       <Stack gap="lg">
         {outcome === 'saved' && <FormMessage kind="saved">{t('settings.saved')}</FormMessage>}
-        {outcome === 'failed' && (
-          <Alert color="red" role="alert">
-            {t('settings.saveFailed')}
-          </Alert>
-        )}
+        {outcome === 'failed' && <FormMessage kind="error">{t('settings.saveFailed')}</FormMessage>}
         {outcome === 'refused' && (
-          <Alert color="red" role="alert">
-            {t('settings.saveRefused')}
-          </Alert>
+          <FormMessage kind="error">{t('settings.saveRefused')}</FormMessage>
         )}
         {outcome === 'conflict' && (
-          <Alert color="orange" role="alert">
+          <FormMessage kind="warning">
             <Stack gap="xs" align="flex-start">
               {t('settings.conflict')}
               <Button size="xs" variant="default" onClick={onReload}>
                 {t('settings.conflictReload')}
               </Button>
             </Stack>
-          </Alert>
+          </FormMessage>
         )}
         <DetailCard icon={<IconBuilding size={14} />} title={t('settings.basics')}>
           <Stack gap="lg">

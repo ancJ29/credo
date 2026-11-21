@@ -1,7 +1,7 @@
 import type { DeliveryRequest, OrderLine, RequestState, OrderState } from '@credo/shared';
 import {
-  Alert,
   Badge,
+  Box,
   Button,
   Group,
   Image,
@@ -18,6 +18,7 @@ import { useTranslation } from 'react-i18next';
 import { Loaded } from '../frame/Loaded';
 import { type PageProps, useLoad } from '../page';
 import { TYPE } from '../design-system/tokens';
+import { FormMessage } from '../components/molecules/FormMessage';
 
 /** An amount in đồng as the language writes a number. */
 export function useMoney() {
@@ -193,9 +194,9 @@ export function SendPanel({
           <Stack gap="sm" align="flex-start">
             <Title order={3}>{title}</Title>
             {drivers.length === 0 ? (
-              <Alert color="orange" role="alert" w="100%">
-                {t('orders.noDrivers')}
-              </Alert>
+              <Box w="100%">
+                <FormMessage kind="warning">{t('orders.noDrivers')}</FormMessage>
+              </Box>
             ) : (
               <>
                 <NativeSelect
@@ -249,21 +250,17 @@ export function OutcomeAlert<Doc>({
   const { t } = useTranslation();
   if (outcome === null) return null;
   if (outcome.kind === 'failed') {
-    return (
-      <Alert color="red" role="alert">
-        {failed}
-      </Alert>
-    );
+    return <FormMessage kind="error">{failed}</FormMessage>;
   }
   return (
-    <Alert color="orange" role="alert">
+    <FormMessage kind="warning">
       <Stack gap="xs" align="flex-start">
         {conflict}
         <Button variant="default" onClick={() => onTheirs(outcome.current)}>
           {t('orders.showTheirs')}
         </Button>
       </Stack>
-    </Alert>
+    </FormMessage>
   );
 }
 
@@ -280,9 +277,7 @@ export function ProofPhoto({ page, day, id }: { page: PageProps; day: string; id
         <Loaded status={loaded.status} onRetry={loaded.reload}>
           {loaded.data &&
             (missing ? (
-              <Alert color="yellow" role="alert">
-                {t('orders.proofMissing')}
-              </Alert>
+              <FormMessage kind="warning">{t('orders.proofMissing')}</FormMessage>
             ) : (
               <Image
                 src={loaded.data.url}

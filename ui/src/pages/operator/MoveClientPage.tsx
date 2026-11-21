@@ -1,5 +1,5 @@
 import { HOME_BOX, type MoveClientReply, type MoveClientRequest } from '@credo/shared';
-import { Alert, Button, Group, Paper, Stack, Text, Title } from '@mantine/core';
+import { Box, Button, Group, Paper, Stack, Text, Title } from '@mantine/core';
 import { type FormEvent, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router';
@@ -10,6 +10,7 @@ import { PasskeyNotGiven, type Passkeys } from '../../passkeys';
 import { BoxChoice } from '../../parts/BoxChoice';
 import { touch } from '../../touch';
 import { TYPE } from '../../design-system/tokens';
+import { FormMessage } from '../../components/molecules/FormMessage';
 
 type Props = {
   api: Api;
@@ -145,9 +146,11 @@ export function MoveClientPage({ api, passkeys, onSignedOut, wait = sleep }: Pro
     <Loaded status={loaded.status} onRetry={loaded.reload}>
       {!client ? (
         <Stack align="flex-start">
-          <Alert color="orange" role="note" w="100%">
-            {t('operator.rootUnknown')}
-          </Alert>
+          <Box w="100%">
+            <FormMessage kind="warning" standing>
+              {t('operator.rootUnknown')}
+            </FormMessage>
+          </Box>
           {back}
         </Stack>
       ) : (
@@ -156,11 +159,11 @@ export function MoveClientPage({ api, passkeys, onSignedOut, wait = sleep }: Pro
             <Title {...TYPE.pageTitle}>{t('operator.moveTitle', { name: client.name })}</Title>
             <Text c="dimmed">{t('operator.moveHere', { name: client.name, box: here })}</Text>
           </div>
-          <Alert color="orange" role="note" title={client.code}>
+          <FormMessage kind="warning" standing title={client.code}>
             {t('operator.moveIntro')}
-          </Alert>
+          </FormMessage>
           {problem !== null && (
-            <Alert color="red" role="alert">
+            <FormMessage kind="error">
               {problem === 'notGiven'
                 ? t('passkey.notGiven')
                 : problem === 'refused'
@@ -168,13 +171,9 @@ export function MoveClientPage({ api, passkeys, onSignedOut, wait = sleep }: Pro
                   : after
                     ? t('operator.moveFailedAfter', boxes)
                     : t('operator.moveFailed')}
-            </Alert>
+            </FormMessage>
           )}
-          {progress !== null && (
-            <Alert color="orange" role="status">
-              {progress}
-            </Alert>
-          )}
+          {progress !== null && <FormMessage kind="info">{progress}</FormMessage>}
           {client.move?.form === 'copying' && reply === null ? (
             <Stack align="flex-start">
               <Text>{t('operator.moveUnder', { box: client.move.box })}</Text>

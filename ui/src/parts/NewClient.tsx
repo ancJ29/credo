@@ -4,11 +4,12 @@ import {
   HOME_BOX,
   normaliseClientCode,
 } from '@credo/shared';
-import { Alert, Button, Paper, Stack, Text, TextInput, Title } from '@mantine/core';
+import { Button, Paper, Stack, Text, TextInput, Title } from '@mantine/core';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BoxChoice } from './BoxChoice';
 import { TYPE } from '../design-system/tokens';
+import { FormMessage } from '../components/molecules/FormMessage';
 
 type Props = {
   /** Idle, waiting on the service, the last attempt failed, or the code was already taken. */
@@ -52,16 +53,8 @@ export function NewClient({ status, boxes = [], onSubmit }: Props) {
         <Title {...TYPE.pageTitle}>{t('operator.newTitle')}</Title>
         <Text c="dimmed">{t('operator.newIntro')}</Text>
       </div>
-      {status === 'failed' && (
-        <Alert color="red" role="alert">
-          {t('operator.failed')}
-        </Alert>
-      )}
-      {status === 'taken' && (
-        <Alert color="orange" role="alert">
-          {t('operator.taken')}
-        </Alert>
-      )}
+      {status === 'failed' && <FormMessage kind="error">{t('operator.failed')}</FormMessage>}
+      {status === 'taken' && <FormMessage kind="warning">{t('operator.taken')}</FormMessage>}
       <form onSubmit={submit}>
         <Paper withBorder p="md">
           <Stack gap="lg">

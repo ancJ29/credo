@@ -1,4 +1,4 @@
-import { Alert, Button, Group, Paper, Stack, Text, Title } from '@mantine/core';
+import { Box, Button, Group, Paper, Stack, Text, Title } from '@mantine/core';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router';
@@ -8,6 +8,7 @@ import { refusal, useLoad } from '../../page';
 import { PasskeyNotGiven, type Passkeys } from '../../passkeys';
 import { touch } from '../../touch';
 import { TYPE } from '../../design-system/tokens';
+import { FormMessage } from '../../components/molecules/FormMessage';
 
 type Props = { api: Api; passkeys: Passkeys; onSignedOut: () => void };
 
@@ -59,9 +60,9 @@ export function DeleteOperatorPage({ api, passkeys, onSignedOut }: Props) {
     <Loaded status={loaded.status} onRetry={loaded.reload}>
       {!colleague ? (
         <Stack align="flex-start">
-          <Alert color="orange" role="alert" w="100%">
-            {t('team.unknown')}
-          </Alert>
+          <Box w="100%">
+            <FormMessage kind="warning">{t('team.unknown')}</FormMessage>
+          </Box>
           {back}
         </Stack>
       ) : (
@@ -70,11 +71,7 @@ export function DeleteOperatorPage({ api, passkeys, onSignedOut }: Props) {
             <Title {...TYPE.pageTitle}>{t('team.deleteTitle', { name: colleague.name })}</Title>
             <Text c="dimmed">{t('team.deleteIntro', { name: colleague.name })}</Text>
           </div>
-          {problem !== null && (
-            <Alert color="red" role="alert">
-              {t(PROBLEM[problem])}
-            </Alert>
-          )}
+          {problem !== null && <FormMessage kind="error">{t(PROBLEM[problem])}</FormMessage>}
           <Paper withBorder p="md">
             <Stack gap="lg">
               <Text {...TYPE.caption}>{t('team.deleteTouch')}</Text>

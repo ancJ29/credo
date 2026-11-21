@@ -36,7 +36,7 @@ describe('a new link for a colleague', () => {
     expect(api.newOperatorLink).toHaveBeenCalledExactlyOnceWith(DEMO_COLLEAGUE_ID, {
       confirm: expect.objectContaining({ token: 'fake.token' }) as unknown,
     });
-    expect(screen.getByRole('alert').textContent).toBe(
+    expect(screen.getByRole('status').textContent).toBe(
       words.team.linkMadeIntro.replace('{{name}}', 'Minh Quân'),
     );
     const link = screen.getByLabelText<HTMLInputElement>(words.team.link).value;

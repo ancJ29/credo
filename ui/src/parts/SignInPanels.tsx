@@ -1,5 +1,5 @@
 import { emailSchema, type EmployeeDoc } from '@credo/shared';
-import { Alert, Button, Group, Stack, Text, TextInput } from '@mantine/core';
+import { Button, Group, Stack, Text, TextInput } from '@mantine/core';
 import { IconMail, IconQrcode } from '@tabler/icons-react';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -7,6 +7,7 @@ import { DetailCard } from './DetailCards';
 import { type PageProps, refusal } from '../page';
 import { QrCode } from './QrCode';
 import { TYPE } from '../design-system/tokens';
+import { FormMessage } from '../components/molecules/FormMessage';
 
 const READ_ONLY = { input: { fontFamily: 'ui-monospace, monospace' } };
 
@@ -61,12 +62,12 @@ export function EmailPanel({
       <Text c="dimmed">{t('person.emailText')}</Text>
       <Text>{email ?? t('person.emailNone')}</Text>
       {said !== null && (
-        <Alert color="green" role="alert">
+        <FormMessage kind="saved">
           {said === 'set' ? t('person.emailChanged', { email }) : t('person.emailRemoved')}
-        </Alert>
+        </FormMessage>
       )}
       {problem !== null && (
-        <Alert color="red" role="alert">
+        <FormMessage kind="error">
           {t(
             problem === 'invalid'
               ? 'person.emailInvalid'
@@ -74,7 +75,7 @@ export function EmailPanel({
                 ? 'person.emailTaken'
                 : 'person.emailFailed',
           )}
-        </Alert>
+        </FormMessage>
       )}
       <form onSubmit={submit}>
         <Stack gap="sm" align="flex-start">
@@ -124,11 +125,7 @@ export function QrPanel({ page, id }: { page: PageProps; id: string }) {
     <DetailCard icon={<IconQrcode size={14} />} title={t('person.qrTitle')}>
       <Stack gap="sm" align="flex-start">
         <Text c="dimmed">{t('person.qrText')}</Text>
-        {failed && (
-          <Alert color="red" role="alert">
-            {t('person.qrFailed')}
-          </Alert>
-        )}
+        {failed && <FormMessage kind="error">{t('person.qrFailed')}</FormMessage>}
         {link !== null && (
           <Stack gap="xs" w="100%">
             <QrCode value={link} label={t('person.qrImage')} />

@@ -408,7 +408,11 @@ function PersonForm({
       >
         {t('staff.back')}
       </Button>
-      {employee.archived && <FormMessage kind="info">{t('person.archived')}</FormMessage>}
+      {employee.archived && (
+        <FormMessage kind="info" standing>
+          {t('person.archived')}
+        </FormMessage>
+      )}
       {outcome === 'saved' && <FormMessage kind="saved">{t('person.saved')}</FormMessage>}
       {(outcome === 'failed' || outcome === 'forbidden') && (
         <FormMessage kind="error">

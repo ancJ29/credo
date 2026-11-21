@@ -27,7 +27,7 @@ operator-passkeys/pk-4-no-operator steel 6b07a109e0b3
 operator-passkeys/pk-5-link-dead steel 3a7f983172e6
 operator-passkeys/pk-6-sign-in-ended steel 2d9268ec39ae
 operator-services/sv-1-all-well steel 7c6023abd47a
-operator-services/sv-2-two-builds steel 1cf4b1285c65
+operator-services/sv-2-two-builds steel 633c0fc33c53
 operator-services/sv-3-storage-silent steel 0fd4769b6f18
 operator-services/sv-4-bff-silent steel 609cd88a8ac1
 operator-services/sv-5-unavailable steel cc5a8d0adcf3
@@ -95,7 +95,7 @@ office-orders/orders-6-request steel 2dcef9f5e253
 office-orders/orders-7-cancelled steel a69e1834800e
 office-orders/orders-8-conflict steel 777798705479
 office-orders/orders-9-confirm-failed steel 9c57f94f8c7d
-office-orders/orders-10-no-drivers steel 08fb07e31e76
+office-orders/orders-10-no-drivers steel aa40d39c5f06
 office-orders/orders-11-fulfilled steel f2db39e65d1a
 office-orders/orders-12-proof steel f74e95969462
 office-orders/orders-13-moved-price steel cde201470d7b
@@ -125,9 +125,9 @@ operator-team/tm-3-added steel e82fb47aa9e0
 operator-team/tm-4-link steel 5ebbb61264ae
 operator-team/tm-5-delete steel 02c91f33a23c
 operator-team/tm-6-taken steel df4b3a6ebc98
-operator-delete-client/dc-1-page steel 257abc5c6fa0
-operator-delete-client/dc-2-code steel e6b0c30c6aeb
-operator-delete-client/dc-3-failed steel e6b0c30c6aeb
+operator-delete-client/dc-1-page steel ac40435e3796
+operator-delete-client/dc-2-code steel 6d92962075ee
+operator-delete-client/dc-3-failed steel 6d92962075ee
 operator-delete-client/dc-4-gone steel c1f1a8d81e5e
 admin-setup/1-sign-in emerald 866d5b160442
 admin-setup/2-sign-in-refused emerald 4ea3f05913f9
@@ -158,7 +158,7 @@ operator-passkeys/pk-4-no-operator emerald 2c5704f1c650
 operator-passkeys/pk-5-link-dead emerald 7281c960b3c4
 operator-passkeys/pk-6-sign-in-ended emerald fdba17e3fab7
 operator-services/sv-1-all-well emerald cb406b4b07b9
-operator-services/sv-2-two-builds emerald 564b269faf3e
+operator-services/sv-2-two-builds emerald 0f8bc7abf3f2
 operator-services/sv-3-storage-silent emerald a99888088e50
 operator-services/sv-4-bff-silent emerald 1275bc264caf
 operator-services/sv-5-unavailable emerald 5e2ede5c89ec
@@ -226,7 +226,7 @@ office-orders/orders-6-request emerald 9c3b51cd8ed2
 office-orders/orders-7-cancelled emerald 0147561d0f93
 office-orders/orders-8-conflict emerald 5d2d05acd42e
 office-orders/orders-9-confirm-failed emerald 8ff722535123
-office-orders/orders-10-no-drivers emerald 2d408a30239c
+office-orders/orders-10-no-drivers emerald a186a996a2b2
 office-orders/orders-11-fulfilled emerald fbec5237cb47
 office-orders/orders-12-proof emerald d915cc9a9b4c
 office-orders/orders-13-moved-price emerald 19d41c658b78
@@ -256,9 +256,9 @@ operator-team/tm-3-added emerald d62f1657b263
 operator-team/tm-4-link emerald cecf7bcb9948
 operator-team/tm-5-delete emerald 74c6c8a9e184
 operator-team/tm-6-taken emerald a6fb95cbb0cb
-operator-delete-client/dc-1-page emerald f65a8068849c
-operator-delete-client/dc-2-code emerald 4e714c416142
-operator-delete-client/dc-3-failed emerald 4e714c416142
+operator-delete-client/dc-1-page emerald e8a4a55c9748
+operator-delete-client/dc-2-code emerald e975f820bde8
+operator-delete-client/dc-3-failed emerald e975f820bde8
 operator-delete-client/dc-4-gone emerald b208e6efbc2e
 admin-setup/1-sign-in brick 9c8e3ce8aa92
 admin-setup/2-sign-in-refused brick 5f106ab42b56
@@ -289,7 +289,7 @@ operator-passkeys/pk-4-no-operator brick 878c3b4370d0
 operator-passkeys/pk-5-link-dead brick ad233f032085
 operator-passkeys/pk-6-sign-in-ended brick 9a0df08c950d
 operator-services/sv-1-all-well brick 7bfcb5cbc339
-operator-services/sv-2-two-builds brick b16501cd7a5f
+operator-services/sv-2-two-builds brick f82b4b919ccf
 operator-services/sv-3-storage-silent brick 5c1d4079ff12
 operator-services/sv-4-bff-silent brick 674696d466a0
 operator-services/sv-5-unavailable brick f2e85da77c8e
@@ -357,7 +357,7 @@ office-orders/orders-6-request brick 6bfbf4e94357
 office-orders/orders-7-cancelled brick 62678cb283a7
 office-orders/orders-8-conflict brick 07163be7f617
 office-orders/orders-9-confirm-failed brick ea526e6053c9
-office-orders/orders-10-no-drivers brick 9aee1a3c640d
+office-orders/orders-10-no-drivers brick da03e9a4b99b
 office-orders/orders-11-fulfilled brick 703adf2596c1
 office-orders/orders-12-proof brick dabc4adeb9b3
 office-orders/orders-13-moved-price brick be792b1cf652
@@ -387,9 +387,9 @@ operator-team/tm-3-added brick 0d33952350d7
 operator-team/tm-4-link brick 0016d3858181
 operator-team/tm-5-delete brick 88c4bb378fb3
 operator-team/tm-6-taken brick 967a730c8400
-operator-delete-client/dc-1-page brick 4bad3f1b436e
-operator-delete-client/dc-2-code brick 6ab6a30543d4
-operator-delete-client/dc-3-failed brick 6ab6a30543d4
+operator-delete-client/dc-1-page brick 0c34be9ce883
+operator-delete-client/dc-2-code brick 8e35fdff8d45
+operator-delete-client/dc-3-failed brick 8e35fdff8d45
 operator-delete-client/dc-4-gone brick f8886dcc1eb1
 admin-setup/1-sign-in bronze e07301622293
 admin-setup/2-sign-in-refused bronze 0e1ec06afefd
@@ -420,7 +420,7 @@ operator-passkeys/pk-4-no-operator bronze ca4c9bdb8383
 operator-passkeys/pk-5-link-dead bronze aa266478b52e
 operator-passkeys/pk-6-sign-in-ended bronze 307853115bf7
 operator-services/sv-1-all-well bronze cbbcf200cb6c
-operator-services/sv-2-two-builds bronze 41d4f97a69e1
+operator-services/sv-2-two-builds bronze 34ec10e3f5c6
 operator-services/sv-3-storage-silent bronze 6ecb0f98cf83
 operator-services/sv-4-bff-silent bronze ea0c50c44399
 operator-services/sv-5-unavailable bronze 021cf11ca77a
@@ -488,7 +488,7 @@ office-orders/orders-6-request bronze 2e52566ebedb
 office-orders/orders-7-cancelled bronze 86a90a704610
 office-orders/orders-8-conflict bronze 6c09ab85e635
 office-orders/orders-9-confirm-failed bronze 1356c1c2b9ff
-office-orders/orders-10-no-drivers bronze c0240259936b
+office-orders/orders-10-no-drivers bronze 7ec35f78cfb1
 office-orders/orders-11-fulfilled bronze 16fcd37bddef
 office-orders/orders-12-proof bronze 7e2b837a1d5f
 office-orders/orders-13-moved-price bronze 36a8e3555ebc
@@ -518,9 +518,9 @@ operator-team/tm-3-added bronze b7484cd83bff
 operator-team/tm-4-link bronze c67065558092
 operator-team/tm-5-delete bronze 50e8c67c3041
 operator-team/tm-6-taken bronze ff7bbad94e90
-operator-delete-client/dc-1-page bronze c88250812b4b
-operator-delete-client/dc-2-code bronze 862a51716411
-operator-delete-client/dc-3-failed bronze 862a51716411
+operator-delete-client/dc-1-page bronze 86a2e276348a
+operator-delete-client/dc-2-code bronze 105e9440e974
+operator-delete-client/dc-3-failed bronze 105e9440e974
 operator-delete-client/dc-4-gone bronze c41b861fae93
 admin-setup/1-sign-in plum 6f26ec81925b
 admin-setup/2-sign-in-refused plum 39845e50002b
@@ -551,7 +551,7 @@ operator-passkeys/pk-4-no-operator plum 26e6c499154d
 operator-passkeys/pk-5-link-dead plum 80c2213883b6
 operator-passkeys/pk-6-sign-in-ended plum bcc662b22103
 operator-services/sv-1-all-well plum cc2f1bd4a42d
-operator-services/sv-2-two-builds plum d435d6aaf8f4
+operator-services/sv-2-two-builds plum ef096c045ab8
 operator-services/sv-3-storage-silent plum 756c53b52122
 operator-services/sv-4-bff-silent plum c62b9b3f336e
 operator-services/sv-5-unavailable plum 475197b03b2a
@@ -619,7 +619,7 @@ office-orders/orders-6-request plum eec3e997fac8
 office-orders/orders-7-cancelled plum f9e332e6673e
 office-orders/orders-8-conflict plum 443d3d7aaa5c
 office-orders/orders-9-confirm-failed plum d7d01d6a3da9
-office-orders/orders-10-no-drivers plum f20e62246516
+office-orders/orders-10-no-drivers plum bc52faabd998
 office-orders/orders-11-fulfilled plum e5f1287e37a4
 office-orders/orders-12-proof plum eb139e213651
 office-orders/orders-13-moved-price plum dbb4548469d7
@@ -649,9 +649,9 @@ operator-team/tm-3-added plum bad7c36e5a4a
 operator-team/tm-4-link plum 8f7d5d267fe0
 operator-team/tm-5-delete plum 672ddfdcc20d
 operator-team/tm-6-taken plum 107cfcc057d0
-operator-delete-client/dc-1-page plum 693a9643a6e1
-operator-delete-client/dc-2-code plum 3c76b6b97adc
-operator-delete-client/dc-3-failed plum 3c76b6b97adc
+operator-delete-client/dc-1-page plum 6f3b74ab2bf1
+operator-delete-client/dc-2-code plum 58a626e97ef8
+operator-delete-client/dc-3-failed plum 58a626e97ef8
 operator-delete-client/dc-4-gone plum 8f23ae05f947
 admin-setup/1-sign-in indigo e419a801ec35
 admin-setup/2-sign-in-refused indigo 7644f4ca7eb7
@@ -682,7 +682,7 @@ operator-passkeys/pk-4-no-operator indigo 9ab6aa97270d
 operator-passkeys/pk-5-link-dead indigo 79701cc7b7b3
 operator-passkeys/pk-6-sign-in-ended indigo 9d4b13ee68f0
 operator-services/sv-1-all-well indigo 021025979672
-operator-services/sv-2-two-builds indigo a90229b74f3a
+operator-services/sv-2-two-builds indigo f2367700fa53
 operator-services/sv-3-storage-silent indigo 3ee353d64a89
 operator-services/sv-4-bff-silent indigo 2919e8451d80
 operator-services/sv-5-unavailable indigo 0d60dad6e79f
@@ -750,7 +750,7 @@ office-orders/orders-6-request indigo dce6f84ffc1f
 office-orders/orders-7-cancelled indigo 690835fe4849
 office-orders/orders-8-conflict indigo ae291fb6b086
 office-orders/orders-9-confirm-failed indigo 28e1226a9b16
-office-orders/orders-10-no-drivers indigo f588b22b3fe5
+office-orders/orders-10-no-drivers indigo bf9145040b8a
 office-orders/orders-11-fulfilled indigo 8742410786d0
 office-orders/orders-12-proof indigo 9166074061d7
 office-orders/orders-13-moved-price indigo 19d5ae183f8c
@@ -780,9 +780,9 @@ operator-team/tm-3-added indigo b43288f5a979
 operator-team/tm-4-link indigo aa0e3abba41b
 operator-team/tm-5-delete indigo be639ac0135c
 operator-team/tm-6-taken indigo f116a0aaa8c4
-operator-delete-client/dc-1-page indigo 02ed9b8a1aeb
-operator-delete-client/dc-2-code indigo 3ab39ff36af1
-operator-delete-client/dc-3-failed indigo 3ab39ff36af1
+operator-delete-client/dc-1-page indigo 4cd217c845d3
+operator-delete-client/dc-2-code indigo 123b6407fd06
+operator-delete-client/dc-3-failed indigo 123b6407fd06
 operator-delete-client/dc-4-gone indigo e6b4f5f23fe4
 admin-setup/1-sign-in company 2b7ff9bd3f77
 admin-setup/2-sign-in-refused company 50006f238ed6
@@ -813,7 +813,7 @@ operator-passkeys/pk-4-no-operator company ab4b820bf3d8
 operator-passkeys/pk-5-link-dead company 1bdfd6269130
 operator-passkeys/pk-6-sign-in-ended company 15f4f22c0bea
 operator-services/sv-1-all-well company 69d6748de5c2
-operator-services/sv-2-two-builds company b7cbcd107ad4
+operator-services/sv-2-two-builds company 4069cd9eec96
 operator-services/sv-3-storage-silent company 824c3cf5c1f0
 operator-services/sv-4-bff-silent company 3745800807d0
 operator-services/sv-5-unavailable company f1083d9b84ac
@@ -881,7 +881,7 @@ office-orders/orders-6-request company 87307930397a
 office-orders/orders-7-cancelled company 7b402cb0a0a5
 office-orders/orders-8-conflict company 86bae3ea944e
 office-orders/orders-9-confirm-failed company 0b80f8bdacf1
-office-orders/orders-10-no-drivers company 38a891a6e3ae
+office-orders/orders-10-no-drivers company b9494a098ad3
 office-orders/orders-11-fulfilled company a5e468bf6e56
 office-orders/orders-12-proof company c1a40c6ce97a
 office-orders/orders-13-moved-price company ca3de48067fe
@@ -911,9 +911,9 @@ operator-team/tm-3-added company 113cd60f7327
 operator-team/tm-4-link company d2f1cde4da83
 operator-team/tm-5-delete company 06a30414c80d
 operator-team/tm-6-taken company 2065bde6c989
-operator-delete-client/dc-1-page company fa7b51176a19
-operator-delete-client/dc-2-code company 867f609c89a7
-operator-delete-client/dc-3-failed company 867f609c89a7
+operator-delete-client/dc-1-page company 042525ecbf82
+operator-delete-client/dc-2-code company b91b536054b0
+operator-delete-client/dc-3-failed company b91b536054b0
 operator-delete-client/dc-4-gone company 4601b4965ab1
 admin-setup/1-sign-in terracotta bd4b7131bfe9
 admin-setup/2-sign-in-refused terracotta fbf39c03184f
@@ -944,7 +944,7 @@ operator-passkeys/pk-4-no-operator terracotta 4b969eab8267
 operator-passkeys/pk-5-link-dead terracotta ff71802ae5f7
 operator-passkeys/pk-6-sign-in-ended terracotta 2118b3b95ecf
 operator-services/sv-1-all-well terracotta 799e91045cf4
-operator-services/sv-2-two-builds terracotta f9bb5321707d
+operator-services/sv-2-two-builds terracotta 878fe78cfa64
 operator-services/sv-3-storage-silent terracotta 5b4deac10f1f
 operator-services/sv-4-bff-silent terracotta 42b218c197ad
 operator-services/sv-5-unavailable terracotta 8eec9722356f
@@ -1012,7 +1012,7 @@ office-orders/orders-6-request terracotta d2d564d68e2f
 office-orders/orders-7-cancelled terracotta 98e9b0c1e2b9
 office-orders/orders-8-conflict terracotta 846dee4d7eba
 office-orders/orders-9-confirm-failed terracotta 5c8720b2531d
-office-orders/orders-10-no-drivers terracotta 96adf219ead0
+office-orders/orders-10-no-drivers terracotta ee1f101ff6e2
 office-orders/orders-11-fulfilled terracotta 1aa014e86bc8
 office-orders/orders-12-proof terracotta e15c03164dec
 office-orders/orders-13-moved-price terracotta 67a2e4abcfa2
@@ -1042,9 +1042,9 @@ operator-team/tm-3-added terracotta 2037583bdf64
 operator-team/tm-4-link terracotta 487c122c735e
 operator-team/tm-5-delete terracotta 857849b1df53
 operator-team/tm-6-taken terracotta 020fb4c95f58
-operator-delete-client/dc-1-page terracotta 24abe4933801
-operator-delete-client/dc-2-code terracotta e072f93eddde
-operator-delete-client/dc-3-failed terracotta e072f93eddde
+operator-delete-client/dc-1-page terracotta d30b6982d38e
+operator-delete-client/dc-2-code terracotta be1d327455a9
+operator-delete-client/dc-3-failed terracotta be1d327455a9
 operator-delete-client/dc-4-gone terracotta faacf96e4d3d
 admin-setup/1-sign-in red a5625dd12165
 admin-setup/2-sign-in-refused red ab8de350ece1
@@ -1075,7 +1075,7 @@ operator-passkeys/pk-4-no-operator red 3724165974c1
 operator-passkeys/pk-5-link-dead red 5532042c352b
 operator-passkeys/pk-6-sign-in-ended red e1aca569682a
 operator-services/sv-1-all-well red d00bd6946e37
-operator-services/sv-2-two-builds red 2b6e70650387
+operator-services/sv-2-two-builds red ac95088536c0
 operator-services/sv-3-storage-silent red fc94ee52d8b4
 operator-services/sv-4-bff-silent red 86a89539386a
 operator-services/sv-5-unavailable red 2ebde8ee1f0e
@@ -1143,7 +1143,7 @@ office-orders/orders-6-request red 327b98b796ea
 office-orders/orders-7-cancelled red db0dc454c6ba
 office-orders/orders-8-conflict red d979f9533f66
 office-orders/orders-9-confirm-failed red 6a4e7225ccec
-office-orders/orders-10-no-drivers red 7aa0694d1086
+office-orders/orders-10-no-drivers red 19ce3bb48e8c
 office-orders/orders-11-fulfilled red 13a2b711fda7
 office-orders/orders-12-proof red 563085b36f4c
 office-orders/orders-13-moved-price red c63f4e55e7ec
@@ -1173,9 +1173,9 @@ operator-team/tm-3-added red 3f680d89e27b
 operator-team/tm-4-link red 078ad7b136ce
 operator-team/tm-5-delete red 7b831edae04d
 operator-team/tm-6-taken red 8fb2e041b096
-operator-delete-client/dc-1-page red a7c3493d52b5
-operator-delete-client/dc-2-code red 01a4bd5a28a8
-operator-delete-client/dc-3-failed red 01a4bd5a28a8
+operator-delete-client/dc-1-page red d10ef9c4adc4
+operator-delete-client/dc-2-code red e0011fba977d
+operator-delete-client/dc-3-failed red e0011fba977d
 operator-delete-client/dc-4-gone red 1277c360edf7
 admin-setup/1-sign-in amber bb8bea8ef874
 admin-setup/2-sign-in-refused amber 561d20d97f03
@@ -1206,7 +1206,7 @@ operator-passkeys/pk-4-no-operator amber ea696441e5df
 operator-passkeys/pk-5-link-dead amber c23e6a43b52f
 operator-passkeys/pk-6-sign-in-ended amber 92a02f992986
 operator-services/sv-1-all-well amber a6a7df1c2c0a
-operator-services/sv-2-two-builds amber 82e7dc8d7044
+operator-services/sv-2-two-builds amber 62d606498dba
 operator-services/sv-3-storage-silent amber 5bd58ed77573
 operator-services/sv-4-bff-silent amber cee26aa2cc5f
 operator-services/sv-5-unavailable amber cd892d4c81f3
@@ -1274,7 +1274,7 @@ office-orders/orders-6-request amber 0a4e9b6c17e7
 office-orders/orders-7-cancelled amber ef8a5b72e49b
 office-orders/orders-8-conflict amber 205123451e2c
 office-orders/orders-9-confirm-failed amber 3357be510878
-office-orders/orders-10-no-drivers amber 4770b9637d6f
+office-orders/orders-10-no-drivers amber 01925adfd6a2
 office-orders/orders-11-fulfilled amber 917cd752c363
 office-orders/orders-12-proof amber d030b59f4123
 office-orders/orders-13-moved-price amber b43fa1b1e996
@@ -1304,7 +1304,7 @@ operator-team/tm-3-added amber 8b8f70e57afe
 operator-team/tm-4-link amber da28411d6b65
 operator-team/tm-5-delete amber 5993975f117d
 operator-team/tm-6-taken amber 73da7c8710f6
-operator-delete-client/dc-1-page amber c170b78af7a5
-operator-delete-client/dc-2-code amber 056d26d82f2e
-operator-delete-client/dc-3-failed amber 056d26d82f2e
+operator-delete-client/dc-1-page amber 16b0956997a6
+operator-delete-client/dc-2-code amber e35882bed59f
+operator-delete-client/dc-3-failed amber e35882bed59f
 operator-delete-client/dc-4-gone amber ae1df9a46f64

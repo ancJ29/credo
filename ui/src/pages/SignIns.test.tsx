@@ -32,7 +32,7 @@ describe('an email on a person', () => {
     );
     await userEvent.click(screen.getByRole('button', { name: words.person.emailSet }));
 
-    expect((await screen.findAllByRole('alert'))[0]?.textContent).toBe(
+    expect((await screen.findAllByRole('status'))[0]?.textContent).toBe(
       filled(words.person.emailChanged, { email: 'hung@minh-phat.example' }),
     );
     expect(api.setEmail).toHaveBeenCalledWith(person('EMP-0002').id, {

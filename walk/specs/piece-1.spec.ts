@@ -232,11 +232,11 @@ for (const [device, width] of Object.entries(WIDTHS)) {
   test.describe(`piece 1: the client's admin, on a ${device} (${width})`, () => {
     test.use({ viewport: { width, height: 800 } });
 
-    test('walks all nine screens in Vietnamese', async ({ page }) => {
+    test('walks all twelve screens in Vietnamese', async ({ page }) => {
       await walk(page, 'vi', width);
     });
 
-    test('walks all nine screens in English', async ({ page }) => {
+    test('walks all twelve screens in English', async ({ page }) => {
       await walk(page, 'en', width);
     });
   });

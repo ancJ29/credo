@@ -217,7 +217,7 @@ const PROOF: Record<string, (w: (typeof DICTIONARIES)['en']) => string> = {
   'office-staff:office-4-nothing': (w) => `heading: ${w.nothing.title}`,
   'office-staff:office-5-settings': (w) => `link: ${w.nav.settings}`,
   'admin-staff:staff-17-email': (w) =>
-    `alert: ${w.person.emailChanged.replace('{{email}}', 'hung@minh-phat.example')}`,
+    `status: ${w.person.emailChanged.replace('{{email}}', 'hung@minh-phat.example')}`,
   'admin-staff:staff-18-qr': (w) => `img: ${w.person.qrImage}`,
   'office-staff:office-6-password': (w) => `status: ${w.ownPassword.changed}`,
   'office-staff:office-7-password-wrong': (w) => `alert: ${w.ownPassword.wrong}`,
@@ -348,7 +348,7 @@ describe('the passkeys walk, drawn', () => {
 /** What each services screen must say, in either language: the line that makes it that screen. */
 const SERVICES_PROOF: Record<string, (w: (typeof DICTIONARIES)['en']) => string[]> = {
   'operator-services:sv-1-all-well': (w) => [`status: ${w.services.oneBuild}`],
-  'operator-services:sv-2-two-builds': (w) => [`status: ${w.services.twoBuilds}`],
+  'operator-services:sv-2-two-builds': (w) => [`alert: ${w.services.twoBuilds}`],
   'operator-services:sv-3-storage-silent': (w) => [`alert: ${w.services.storageDown}`],
   'operator-services:sv-4-bff-silent': (w) => [`alert: ${w.services.bffDown}`],
   'operator-services:sv-5-unavailable': (w) => [`alert: ${w.operator.unavailableStorage}`],
