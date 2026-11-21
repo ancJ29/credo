@@ -257,9 +257,15 @@ from `pre-merge` at landing 1.
       first page; the design-system coder's line takes the feedback. Case 17 red at 18:17 on the
       entries' contracts and the charter's words, before the code; case 13's "part with no contract"
       is now Values. No screen's code moved.
-- [ ] **12. Landing 3.** The recap's lines, the gallery's card; item 651's own text recounted part
+- [x] **12. Landing 3.** The recap's lines, the gallery's card; item 651's own text recounted part
       by part, the next milestone's list in its one home. _Done when:_ the citation test exits 0.
       **3 min**. Your point 3.
+      _Evidence:_ the step's commit. The recap holds the three landings, its three markers filled
+      with the whole check and review facts and your point 2 yes, point 3 open; the products row and
+      the gallery's card gain the Pages group and its step. Item 651's recount by part sits in the
+      item; the next milestone's order stays in this plan's section of that name, the one home, since
+      the item's Fix already points at it and a second list would drift. The decisions row moved to
+      the top of its day. The plan's "14 tables" is now 12 least widths, as item 653 was corrected.
 
 ### The parts' contracts
 
@@ -321,7 +327,7 @@ Its own plan, one part a landing, each with your two picture runs: **1** the dia
 (`TOKENS.dialogTitle` reads `WEIGHTS.emphasis`; items 647 and 644), which proves the runs; **2**
 `FormMessage`, its 96 and the 88 lines finding a message by role (item 650); **3** `PageState`; **4**
 `ActionButton`, the 109 buttons; **5** `StatusBadge`; **6** the page base: 41 titles, 18 action
-rows, 14 back links, 14 tables; **7** the formats (item 652). About 50 machine minutes and two runs
+rows, 14 back links, 12 tables' least widths; **7** the formats (item 652). About 50 machine minutes and two runs
 a part, the dialog and the formats about 20.
 
 ## Earlier versions
@@ -357,8 +363,8 @@ asked again.
 | 649 | closes, step 5 |
 | 647 | its theme half, step 5; the 550 in the next milestone |
 | 654 | step 7: a contract naming a weight or a size needs its use line |
-| 653 | step 10: the table part's contract and `WIDTHS` key; the 14 screens' widths, next milestone |
-| 651 | next milestone: the screens' move moves pictures and needs your runs; step 12 recounts it |
+| 653 | step 10: the table part's contract and `WIDTHS` key; the 12 screens' widths, next milestone |
+| 651 | next milestone: the screens' move moves pictures and needs your runs; step 12 recounted it |
 | 652 | next milestone: no part here writes a number; its place comes with the four sites it moves |
 | 644, 650 | the next milestone |
 | 306, 307 | written as rules, steps 8 and 2; both parked for their triggers |
