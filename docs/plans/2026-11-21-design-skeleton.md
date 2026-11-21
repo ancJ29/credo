@@ -222,12 +222,25 @@ from `pre-merge` at landing 1.
 
 **Landing 3: the page's parts** (layers 2 and 4), from `pre-merge` at landing 2.
 
-- [ ] **10. The page base, from parts.** A Pages group, one entry: the frame
+- [x] **10. The page base, from parts.** A Pages group, one entry: the frame
       (`ui/src/frame/Shell.tsx#L130`: header, menu, phone bar below `sm`, padding `md`), then a page
       drawn from parts only on sample words, slot by slot. Parts: `PageShell`, `PageHeader`,
       `SectionCard`, `DetailColumns`, `FieldPair`, `BackLink` (the winner over the 14 by hand), the
       table part `ListTable` with a `WIDTHS` key for a table's least width (item 653); their code
       unchanged. Case 16. _Done when:_ the gates exit 0. **18 min** (213's step 3).
+      _Evidence:_ the step's commit. The Pages group holds five entries: `The page base` (two plates,
+      the frame drawn as its header, menu, page and phone bar, then a page from parts only: back
+      link, title, the main action, a status, two blocks, a field pair, a table, a message) and
+      `PageShell`, `DetailColumns`, `FieldPair` and `ListTable`; `PageHeader`, `SectionCard` and
+      `BackLink` keep their levels. `GUIDELINE.contracts` gains the seven rows; `WIDTHS` gains `table`
+      (640) with its use line, which `ListTable`'s contract decides (item 653's trigger; the part's code
+      is unchanged and still writes 640); `Contract` gains `used`, so a built part the screens already
+      draw says "Built and in use", and `BackLink`, which no screen draws, says it is not used yet.
+      Plan slips found: `Shell.tsx#L130` holds (`<AppShell`), the 14 back links by hand hold (as a
+      button or a link, none a `BackLink`), but the least widths sum to 12, not 14 (item 653 corrected);
+      cases 1, 8 and 13 had counts and a subject that the new entries move (18 entries to 23, five
+      widths to six, `BackLink` no longer the part with no contract: `FieldLabel` is). Case 16 red at
+      18:03, before the code, on the Pages group being empty; no screen's code moved.
 - [ ] **11. Every other part, and a new kind of page.** `FieldLabel`, `DoorHeading`, `LogoTile`,
       `BrandBand`, `DetailField`, `SectionTitle`, `DoorCard`; each duplicate's winner named on the
       other's entry (`DoorCard` or `ui/src/pages/SignIn.tsx#L66`'s `SignInFrame`, `DetailField` or

@@ -134,6 +134,8 @@ export type Contract = {
   serves: string;
   heldBy: HeldBy;
   followed: Followed;
+  /** Set on a built part the screens already draw, which they do not all follow yet. */
+  used?: true;
 };
 
 /** What a screen asks of a button: the main action of the page, another, a quiet one, a danger. */
@@ -182,7 +184,7 @@ export const GUIDELINE: {
       },
       {
         need: 'A screen’s coder: how a page is laid out',
-        where: 'The page base, in the Pages group, which stays empty until the plan’s landing 3.',
+        where: 'The page base, in the Pages group: the frame, then a page drawn from parts only.',
       },
       {
         need: 'A screen’s coder: what a screen says or offers',
@@ -326,6 +328,8 @@ export const GUIDELINE: {
         'A field of a form of several, a day field too: the order’s driver and its send day. 420 px at most.',
       amount: 'A field that holds an amount: the cash a driver takes in. 320 px at most.',
       date: 'A field that holds a day and stands alone, outside a form of several: the deliveries’ day, a day shown on its own. 240 px at most.',
+      table:
+        'A table’s least width, in the list table part: below it the table scrolls sideways and its columns keep their room. 640 px at least.',
     },
     icons: {
       inline:
@@ -367,7 +371,7 @@ export const GUIDELINE: {
       },
       {
         about: 'widths',
-        text: 'A width is named by its use, never a number. Not yet: the screens write the numbers: 440 px is written 3 times, 420 and 240 twice, 560 and 320 once, and three more are in no list: 140 (a quantity field), 155 (a filter) and 200 (the search field’s least). The most common width of all is also in no list: a table’s least width, set 14 times at 480 (once), 560 (3), 640 (2), 720 (4) and 760 (2), which the table part will decide, the design-system coder’s choice, at the plan’s landing 3; open item 653 holds it, and open item 651 moves the rest.',
+        text: 'A width is named by its use, never a number. Not yet: the screens write the numbers: 440 px is written 3 times, 420 and 240 twice, 560 and 320 once, and three more are in no list: 140 (a quantity field), 155 (a filter) and 200 (the search field’s least). The most common width of all is also in no list: a table’s least width, set 12 times at 480 (once), 560 (3), 640 (2), 720 (4) and 760 (2), which the table part now decides, the design-system coder’s choice, as the `table` width of 640 (the part writes its own 640 still); open item 653 moves the screens’ own, and open item 651 the rest.',
       },
       {
         about: 'icons',
@@ -559,6 +563,172 @@ export const GUIDELINE: {
       serves: 'A screen picks parts, never a style',
       heldBy: { check: 'ui/src/components/atoms/StatusBadge.test.tsx' },
       followed: { item: 651 },
+    },
+    {
+      part: 'PageShell',
+      takes: [
+        { prop: 'title', is: 'content', line: 'The page’s title.' },
+        { prop: 'actions', is: 'content', line: 'What acts on the whole page, beside its title.' },
+        {
+          prop: 'status',
+          is: 'meaning',
+          line: 'Whether the page’s data is loading, failed or ready.',
+        },
+        { prop: 'onRetry', is: 'content', line: 'The act of a failed load’s retry.' },
+        { prop: 'children', is: 'content', line: 'The page’s body, drawn when its data is ready.' },
+      ],
+      decides: [
+        { what: 'The title’s style.', from: [{ table: 'TYPE', key: 'pageTitle' }] },
+        {
+          what: 'The gap between the heading row and the body.',
+          from: [{ table: 'SPACING', key: 'lg' }],
+        },
+      ],
+      fixes: [
+        'The header row’s order: the title first, what acts on the page beside it.',
+        'Where a failed or loading state sits: in the place of the body, under the header row.',
+        'Not yet: it takes no back link and no record status, a screen draws them itself; open item 651 moves them into the part.',
+      ],
+      states: [
+        { name: 'Ready', line: 'The data is here: the heading row, then the body.' },
+        { name: 'Loading', line: 'The data is on its way: the heading row, then a loader.' },
+        {
+          name: 'Failed',
+          line: 'The data did not come: the heading row, then a message and a retry.',
+        },
+      ],
+      serves: 'A screen picks parts, never a style',
+      heldBy: { check: 'ui/src/design-system/guideline.test.ts' },
+      followed: { item: 651 },
+      used: true,
+    },
+    {
+      part: 'PageHeader',
+      takes: [
+        { prop: 'title', is: 'content', line: 'The page’s title.' },
+        { prop: 'actions', is: 'content', line: 'What acts on the whole page, beside its title.' },
+      ],
+      decides: [{ what: 'The title’s style.', from: [{ table: 'TYPE', key: 'pageTitle' }] }],
+      fixes: ['Its alignment: the title at the start, the actions at the end, on one line.'],
+      states: [
+        { name: 'With actions', line: 'The title, and the page’s actions beside it.' },
+        { name: 'Title only', line: 'The title alone.' },
+      ],
+      serves: 'A screen picks parts, never a style',
+      heldBy: { check: 'ui/src/design-system/guideline.test.ts' },
+      followed: 'yes',
+    },
+    {
+      part: 'SectionCard',
+      takes: [
+        { prop: 'icon', is: 'content', line: 'The icon of the section, never its size.' },
+        { prop: 'title', is: 'content', line: 'The section’s title.' },
+        { prop: 'children', is: 'content', line: 'What the section holds.' },
+      ],
+      decides: [
+        {
+          what: 'Its padding.',
+          from: [{ table: 'SPACING', key: 'lg' }],
+        },
+        {
+          what: 'The gap between its title and what it holds.',
+          from: [{ table: 'SPACING', key: 'md' }],
+        },
+        {
+          what: 'The icon’s size beside the title.',
+          from: [{ table: 'ICON_SIZES', key: 'inline' }],
+        },
+        { what: 'Its edge.', from: [{ table: 'ROLES', key: 'border' }] },
+      ],
+      fixes: [
+        'Its tile: a small grey tile behind the icon, and its corner.',
+        'Not yet: the screens pass the icon’s size themselves, 14 px, and the edge is Mantine’s own; open item 651 moves them into the part.',
+      ],
+      states: [{ name: 'Default', line: 'A title over what the section holds.' }],
+      serves: 'A screen picks parts, never a style',
+      heldBy: { check: 'ui/src/design-system/guideline.test.ts' },
+      followed: { item: 651 },
+      used: true,
+    },
+    {
+      part: 'DetailColumns',
+      takes: [
+        { prop: 'main', is: 'content', line: 'The blocks that identify the record.' },
+        {
+          prop: 'side',
+          is: 'content',
+          line: 'The blocks that act on it; none for a page without.',
+        },
+      ],
+      decides: [{ what: 'The gap between its columns.', from: [{ table: 'SPACING', key: 'lg' }] }],
+      fixes: [
+        'Its columns by width: two from 992 px (the main seven twelfths, the side five), one below with the main first.',
+        'With no side, the main takes the full width at every width.',
+      ],
+      states: [
+        { name: 'Main and side', line: 'Two columns on a wide window.' },
+        { name: 'Main only', line: 'The main takes the whole width.' },
+      ],
+      serves: 'A screen picks parts, never a style',
+      heldBy: { check: 'ui/src/design-system/guideline.test.ts' },
+      followed: 'yes',
+    },
+    {
+      part: 'FieldPair',
+      takes: [{ prop: 'children', is: 'content', line: 'The two fields of a row.' }],
+      decides: [{ what: 'The gap between its fields.', from: [{ table: 'SPACING', key: 'md' }] }],
+      fixes: ['Its columns by width: two a row from 768 px, one below.'],
+      states: [
+        { name: 'Two fields', line: 'Two fields beside each other, or one over the other.' },
+      ],
+      serves: 'A screen picks parts, never a style',
+      heldBy: { check: 'ui/src/design-system/guideline.test.ts' },
+      followed: 'yes',
+    },
+    {
+      part: 'BackLink',
+      takes: [
+        { prop: 'href', is: 'content', line: 'The address it leads back to.' },
+        { prop: 'children', is: 'content', line: 'Its words.' },
+      ],
+      decides: [
+        { what: 'Its colour.', from: [{ table: 'ROLES', key: 'brand-text' }] },
+        { what: 'Its arrow’s size.', from: [{ table: 'ICON_SIZES', key: 'inline' }] },
+      ],
+      fixes: [
+        'Its arrow, before the words, and the small gap between them.',
+        'Its text size: Mantine’s small.',
+        'Not yet: no screen draws it; 14 places draw a back link by hand, as a button or a link, and open item 651 moves them to this one.',
+      ],
+      states: [{ name: 'Default', line: 'An arrow, then its words.' }],
+      serves: 'A screen picks parts, never a style',
+      heldBy: { check: 'ui/src/design-system/guideline.test.ts' },
+      followed: { item: 651 },
+    },
+    {
+      part: 'ListTable',
+      takes: [
+        { prop: 'kind', is: 'meaning', line: 'Which list it draws: customers or products.' },
+        { prop: 'shown', is: 'content', line: 'The columns to draw, by key.' },
+        { prop: 'rows', is: 'content', line: 'The records, one row each.' },
+        { prop: 'language', is: 'content', line: 'The language its headings are written in.' },
+      ],
+      decides: [
+        {
+          what: 'Its least width, below which it scrolls sideways.',
+          from: [{ table: 'WIDTHS', key: 'table' }],
+        },
+      ],
+      fixes: [
+        'The price column’s side: its figures at the right.',
+        'Its rows under the pointer: the brand’s palest shade.',
+        'Not yet: the part writes its 640 itself, and the screens write five widths of their own, 12 times; open item 653 moves them.',
+      ],
+      states: [{ name: 'Default', line: 'The headings, then a row for each record.' }],
+      serves: 'A screen picks parts, never a style',
+      heldBy: { check: 'ui/src/design-system/guideline.test.ts' },
+      followed: { item: 653 },
+      used: true,
     },
   ],
   buttons: {

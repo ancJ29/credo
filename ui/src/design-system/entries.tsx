@@ -30,6 +30,14 @@ import { Charter } from './Charter';
 import { OnTheBrand, OnTheLinks } from './OnTheBrand';
 import { ActionButtonStates, FormMessageStates, PageStateStates } from './Contract';
 import {
+  DetailColumnsStates,
+  FieldPairStates,
+  ListTableStates,
+  PageFrame,
+  PageSample,
+  PageShellStates,
+} from './PageBase';
+import {
   Formats,
   Icons,
   Roles,
@@ -274,6 +282,77 @@ export const ENTRIES: Entry[] = [
       },
       { name: 'Labelled divider', node: <Divider w={394} label="hoặc" /> },
     ],
+  },
+  {
+    group: 'Pages',
+    name: 'The page base',
+    description:
+      'The frame every signed-in page sits in, then one page drawn from parts only, each slot named: the back link, the title, the actions, the body’s blocks and their fields, a status, the table and a message. A new page is built from these slots, and no style is chosen in it.',
+    props: 'Shell · BackLink · PageShell · DetailColumns · SectionCard · FieldPair · ListTable',
+    useWhen: [
+      'You are about to build a signed-in page and need to know which parts it is made of.',
+      'You need to know where a page’s back link, title, actions and blocks go.',
+    ],
+    dontUseWhen: [
+      'A page a person reaches before signing in: that is DoorCard’s.',
+      'A look the parts do not give: ask, and the guideline gains a part.',
+    ],
+    instead: 'DoorCard',
+    states: [
+      { name: 'The frame', node: <PageFrame /> },
+      { name: 'A page, from parts', node: <PageSample /> },
+    ],
+  },
+  {
+    group: 'Pages',
+    name: 'PageShell',
+    kind: 'Layout',
+    description:
+      'The shell of a page: its heading with what acts on it beside, then its body, drawn only when its data is ready.',
+    props:
+      'title: string · actions?: ReactNode · status: loading | failed | ready · onRetry · children',
+    useWhen: ['A signed-in page loads its data and shows it under its title.'],
+    dontUseWhen: [
+      'A page before sign-in: that is DoorCard’s.',
+      'A heading alone, with no data to wait for: that is PageHeader’s.',
+    ],
+    instead: 'PageHeader',
+    states: PageShellStates,
+  },
+  {
+    group: 'Pages',
+    name: 'DetailColumns',
+    kind: 'Layout',
+    description:
+      'The two columns of a detail page: what identifies the record, and what acts on it beside; one column on a phone.',
+    props: 'main: ReactNode · side?: ReactNode',
+    useWhen: ['A record’s page holds its details and its actions in separate blocks.'],
+    dontUseWhen: ['Two fields in a row: that is FieldPair’s.'],
+    instead: 'FieldPair',
+    states: DetailColumnsStates,
+  },
+  {
+    group: 'Pages',
+    name: 'FieldPair',
+    kind: 'Layout',
+    description: 'Two fields a row on a wide window, one over the other on a phone.',
+    props: 'children: ReactNode',
+    useWhen: ['Two fields of a block belong side by side.'],
+    dontUseWhen: ['The blocks of a page: that is DetailColumns’.'],
+    instead: 'DetailColumns',
+    states: FieldPairStates,
+  },
+  {
+    group: 'Pages',
+    name: 'ListTable',
+    kind: 'Lists',
+    description:
+      'A kind’s records as a table: its headings, a row each, the name linking to the record, the price at the right.',
+    props: 'kind: customers | products · shown: ColumnKey[] · rows: Shown[] · language',
+    useWhen: ['A page lists the records of a kind, one row each.'],
+    dontUseWhen: ['A few facts about one record: that is DetailField’s.'],
+    instead: 'DetailField',
+    states: ListTableStates,
   },
   {
     group: 'Atoms',
