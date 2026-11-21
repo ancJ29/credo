@@ -1,3 +1,5 @@
+import { HEADER_WASHES, MENU_WASHES, ON_BRAND, ROLES, TONES, TYPE } from './tokens';
+
 /**
  * What holds a rule: the file of a check that goes red when it is broken, or a person's review.
  * A check is the repository path of its file, which `guideline.test.ts` reads.
@@ -29,12 +31,28 @@ export type Charter = {
   rules: Rule[];
 };
 
+/** Every colour role a screen reads: the roles, the text on the client's colour, the washes. */
+export type RoleName =
+  | keyof typeof ROLES
+  | (typeof ON_BRAND)[number]
+  | keyof typeof HEADER_WASHES
+  | keyof typeof MENU_WASHES;
+
+/** The values page: what each value is for, one line each, typed over its table's keys so a value with no line is a type error. */
+export type Values = {
+  roles: Record<RoleName, string>;
+  styles: Record<keyof typeof TYPE, string>;
+  tones: Record<keyof typeof TONES, string>;
+  /** What a coder reads before the tables, where a rule or a name is not yet followed. */
+  notes: string[];
+};
+
 /**
  * The design guideline, as text a coder or an agent reads from the top: the gallery draws it, the
  * typecheck holds its shape, so a rule that does not say what holds it is a type error. A choice a
  * screen's coder meets that is not here is asked, and its answer is written here as a rule.
  */
-export const GUIDELINE: { charter: Charter } = {
+export const GUIDELINE: { charter: Charter; values: Values } = {
   charter: {
     goal: 'Decide the design once, so whoever codes a screen makes as few look-and-feel choices as possible, and the app stays consistent anyway.',
     credo:
@@ -90,6 +108,63 @@ export const GUIDELINE: { charter: Charter } = {
         heldBy: 'review',
         followed: 'yes',
       },
+    ],
+  },
+  values: {
+    roles: {
+      surface: 'The ground of a page and of a card.',
+      'surface-sunken':
+        'A ground one step below the page: a table’s header, a field’s well, a quiet panel.',
+      text: 'Body text and headings on a surface.',
+      'text-muted':
+        'Text one step softer than body: a hint, a note, a label that should not compete.',
+      border: 'A hairline inside one surface: a card’s edge, a divider, a table’s rule.',
+      'border-strong':
+        'A line that must be seen: a field’s edge, the divide between two blocks of a page.',
+      'hover-ink':
+        'A faint dark wash over any ground under the pointer: a row or a link that can be pressed.',
+      'brand-text':
+        'The client’s colour as text on white: a name that is also a link, the current marker; darker where the colour is too pale to read.',
+      'brand-tint':
+        'The palest wash of the client’s colour: a row under the pointer, a quiet highlight.',
+      'brand-tint-strong':
+        'One step stronger than brand-tint: a selected row, a chip standing on a tint.',
+      'brand-line': 'A hairline in the client’s colour: the edge of a highlighted block.',
+      'on-brand-tint': 'Text on brand-tint and brand-tint-strong.',
+      tip: 'The ground of a small hint that floats over the page, as the side strip’s tip.',
+      'on-tip': 'Text on tip.',
+      'warning-text': 'Text that warns, in an orange dark enough to read on white.',
+      'on-filled': 'Text and icons on a button filled with the client’s colour.',
+      'on-header': 'Text and icons on the header, which wears the client’s colour.',
+      'on-menu': 'Text and icons on the side menu’s ground.',
+      'header-hover': 'The wash on a header item under the pointer.',
+      'header-chip': 'The wash behind a small chip in the header, as the language chip.',
+      'header-avatar': 'The wash behind the avatar in the header.',
+      'header-avatar-edge': 'The edge of the avatar in the header.',
+      'header-badge': 'The wash behind a count or a mark in the header.',
+      'language-edge': 'The edge of the language chip.',
+      'language-picked': 'The wash on the language chosen.',
+      'menu-hover': 'The wash on a menu item under the pointer.',
+      'menu-current': 'The wash on the menu item of the page the person is on.',
+    },
+    styles: {
+      pageTitle: 'The title of a page, once a page: a level-2 heading.',
+      sectionLabel: 'The title of a block inside a page: small capitals, bold and wide.',
+      fieldLabel: 'The name of a field or of a fact: small capitals, spaced, in grey.',
+      body: 'Any running text and any value a person reads.',
+      bodyStrong: 'A name or an amount that must stand out from the text around it.',
+      caption: 'A note under or beside content: small and grey.',
+    },
+    tones: {
+      danger: 'Something failed or will destroy: an error, a delete’s last step.',
+      success: 'Something worked: a saved, sent or finished message, a done status.',
+      warning:
+        'Something needs care before it goes on: a caution, a status that waits for the person.',
+      info: 'Something to know with nothing to fix: a neutral note, a state that asks nothing.',
+    },
+    notes: [
+      'A screen names a meaning (danger, success, warning, info) or a role, never a Mantine colour. Not yet: the screens still write red, green, orange, gray and yellow (about 195 uses), and the later landings move them by rule; a yellow has no meaning and becomes warning.',
+      'A text takes a style of the table below; a size or a weight on a Text is written only where no style fits, with a comment saying why. Not yet checked: review holds it.',
     ],
   },
 };

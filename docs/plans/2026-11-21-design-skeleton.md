@@ -102,7 +102,7 @@ orchestrator's at each landing, about 20 minutes, not a step. One recap,
       bare address opening the second entry (case 7 with it); case 6 on a check whose file is gone,
       and on an item not listed; case 7 on the credo words cut by one letter; case 18 on the
       exported name changed, in the citation test. `ui/CLAUDE.md` holds 0 of "numbered shade".
-- [ ] **3. Values explains, and the meanings.** Each role, `on-*` value and wash its purpose line,
+- [x] **3. Values explains, and the meanings.** Each role, `on-*` value and wash its purpose line,
       typed over its table's keys; each swatch its value as `credoVariables` writes it for the
       chosen colour (jsdom has no computed style); each `TYPE` style its size, line height, weight,
       spacing and use, its name in plain letters; text takes a style, a `size` or `fw` on `Text`
@@ -110,6 +110,17 @@ orchestrator's at each landing, about 20 minutes, not a step. One recap,
       warning orange, info gray; a screen names a meaning or a role, never a Mantine colour (not
       yet). Cases 8 to 10. _Done when:_ the gates exit 0. **19 min** (203's step 5, a table in
       `tokens.ts` that Values draws).
+      _Evidence:_ the step's commit. `guideline.ts` holds `GUIDELINE.values`: a use line for each of the
+      25 roles, `on-*` values and washes, each of the six text styles and each of the four meanings,
+      typed over their tables' keys (`RoleName`, `keyof typeof TYPE`, `keyof typeof TONES`), and the
+      two notes where the Mantine colour names and the text rule are not yet followed. `TONES` in
+      `tokens.ts` is now the one place the names `red`, `green`, `orange` and `gray` are written for a
+      meaning; Values draws them as its Meanings state (`Values.tsx`), with each role's value as
+      `credoVariables` writes it and each style's size, line height, weight and spacing read from the
+      theme. Reds on the Gallery test file, 14:51: case 9 on the value read from the table, case 10
+      on the spacing fixed at 0, case 8 on a tone's colour changed and on a use line not drawn, and
+      case 8's types on a role with no line (the typecheck). The gates exit 0 at 14:58 (`ui`) and
+      15:00 (`visual`).
 - [ ] **4. Every value by its use.** Spacing steps by what they separate; the widths the screens
       draw (440, 420, 240, 560, 320), one a use; icon sizes (14 px on 29 of 44, five others);
       corners and shadows; formats, each in its one place: money `useMoney`

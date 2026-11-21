@@ -9,7 +9,6 @@ import {
   Stack,
   Text,
   TextInput,
-  Title,
   useMantineTheme,
 } from '@mantine/core';
 import type { ReactNode } from 'react';
@@ -27,7 +26,7 @@ import { PageHeader } from '../components/organisms/PageHeader';
 import { SectionCard } from '../components/organisms/SectionCard';
 import { Charter } from './Charter';
 import { OnTheBrand, OnTheLinks } from './OnTheBrand';
-import { HEADER_WASHES, MENU_WASHES, ROLES, TYPE, WEIGHTS } from './tokens';
+import { Roles, Tones, Type } from './Values';
 
 /** A sample company logo for the tile: a plain shape, no real company's. */
 const SAMPLE_LOGO =
@@ -133,63 +132,9 @@ function Palette() {
   );
 }
 
-/** Each text style by name, drawn as a screen reads it, and the weights by role. */
-function Type() {
-  const theme = useMantineTheme();
-  return (
-    <Stack gap={4}>
-      <Text size="sm">Type: {theme.fontFamily}</Text>
-      <Title {...TYPE.pageTitle}>pageTitle</Title>
-      <Title order={3} {...TYPE.sectionLabel}>
-        sectionLabel
-      </Title>
-      <Text component="span" {...TYPE.fieldLabel}>
-        fieldLabel
-      </Text>
-      <Text {...TYPE.body}>body</Text>
-      <Text {...TYPE.bodyStrong}>bodyStrong</Text>
-      <Text {...TYPE.caption}>caption</Text>
-      {Object.entries(WEIGHTS).map(([role, weight]) => (
-        <Text key={role} fw={weight}>
-          weight {role}: {weight}
-        </Text>
-      ))}
-    </Stack>
-  );
-}
-
 function Gaps() {
   const theme = useMantineTheme();
   return <Text size="sm">Gaps: {Object.values(theme.spacing).join(', ')}</Text>;
-}
-
-/** Every colour role a screen reads, by name: the roles, the text on the client's colour, the washes on the header's and menu's ground. Each swatch draws the variable the app writes, so it follows the colour. */
-const ON_THE_BRAND = ['on-filled', 'on-header', 'on-menu'] as const;
-
-function Roles() {
-  const swatch = (role: string, ground?: string) => (
-    <Group key={role} gap="sm" wrap="nowrap">
-      <Paper
-        w={24}
-        h={24}
-        style={{
-          background: ground
-            ? `linear-gradient(var(--credo-${role}), var(--credo-${role})), var(${ground})`
-            : `var(--credo-${role})`,
-          border: '1px solid var(--credo-border)',
-        }}
-      />
-      <Text size="sm">{role}</Text>
-    </Group>
-  );
-  return (
-    <Stack gap={4}>
-      {Object.keys(ROLES).map((role) => swatch(role))}
-      {ON_THE_BRAND.map((role) => swatch(role))}
-      {Object.keys(HEADER_WASHES).map((role) => swatch(role, '--credo-header-gradient'))}
-      {Object.keys(MENU_WASHES).map((role) => swatch(role, '--credo-menu-gradient'))}
-    </Stack>
-  );
 }
 
 /** Every part of the design system, by level, each in its states: the table the gallery's list is drawn from. */
@@ -215,8 +160,8 @@ export const ENTRIES: Entry[] = [
     group: 'Foundations',
     name: 'Values',
     description:
-      "The brand's ten shades, the type, the gaps and the colour roles the theme gives every part.",
-    props: 'theme.colors.brand · theme.fontFamily · theme.spacing · ROLES',
+      "The brand's ten shades, each text style with its size, line height, weight and spacing, the gaps, each colour role with its value for the chosen colour and what it is for, and the four meanings a colour carries.",
+    props: 'theme.colors.brand · TYPE · theme.spacing · ROLES · TONES',
     useWhen: [
       'You need a colour, a text style or a gap for a screen.',
       "You are choosing between the brand's shades or the colour roles.",
@@ -231,6 +176,7 @@ export const ENTRIES: Entry[] = [
       { name: 'Type', node: <Type /> },
       { name: 'Gaps', node: <Gaps /> },
       { name: 'Roles', node: <Roles /> },
+      { name: 'Meanings', node: <Tones /> },
     ],
   },
   {

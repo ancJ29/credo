@@ -43,6 +43,16 @@ export const TYPE = {
 } as const;
 
 /**
+ * The four meanings a screen's colour carries, each written once as the Mantine colour that draws it.
+ * This is the one place a Mantine colour name is written for a meaning: a screen names the meaning
+ * (`danger`), never `red`. The screens still write the names today (the guideline's values page).
+ */
+export const TONES = { danger: 'red', success: 'green', warning: 'orange', info: 'gray' } as const;
+
+/** The text on the client's colour, one value for each surface that wears it, by role. */
+export const ON_BRAND = ['on-filled', 'on-header', 'on-menu'] as const;
+
+/**
  * The legacy app's values that the new app's theme lacks, and the gallery reads. The greys, green,
  * red, font and shadows are `appTheme.ts`'s `themeOf` already and are not copied here; the corner
  * steps and gaps are the two tables at the top of this file.

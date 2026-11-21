@@ -10,7 +10,8 @@ import { ENTRIES, slugOf } from './entries';
 import { followedWords, heldWords } from './Charter';
 import { GUIDELINE } from './guideline';
 import { contrast, onBrand, onWhite, beforeOf, type Surface } from './onBrand';
-import { HEADER_WASHES, MENU_WASHES, ROLES, TYPE } from './tokens';
+import { HEADER_WASHES, MENU_WASHES, ON_BRAND, ROLES, TONES, TYPE } from './tokens';
+import { credoVariables } from './cssVariables';
 import { PALETTES } from './palettes';
 import { shadesOf } from './appTheme';
 
@@ -251,16 +252,14 @@ describe('Gallery', () => {
   it('11: draws the values', () => {
     open(`${BASE}/foundations/values`);
 
-    expect(stateNames()).toEqual(['Palette', 'Type', 'Gaps', 'Roles']);
+    expect(stateNames()).toEqual(['Palette', 'Type', 'Gaps', 'Roles', 'Meanings']);
     expect(part().getAllByTitle(/^brand \d$/)).toHaveLength(10);
     expect(part().getByText(/^Type: /)).toBeDefined();
     expect(part().getByText(/^Gaps: /)).toBeDefined();
     for (const style of Object.keys(TYPE)) expect(part().getByText(style)).toBeDefined();
     for (const role of [
       ...Object.keys(ROLES),
-      'on-filled',
-      'on-header',
-      'on-menu',
+      ...ON_BRAND,
       ...Object.keys(HEADER_WASHES),
       ...Object.keys(MENU_WASHES),
     ])
@@ -270,6 +269,89 @@ describe('Gallery', () => {
       'style.background',
       'var(--credo-brand-text)',
     );
+  });
+
+  it('8: Values gives each role, on-brand value, wash, style and meaning its use line, from the guideline', () => {
+    open(`${BASE}/foundations/values`);
+    const { roles, styles, tones } = GUIDELINE.values;
+    // A table that found nothing would quiet the loops below.
+    expect(Object.keys(roles).length).toBe(
+      Object.keys(ROLES).length +
+        ON_BRAND.length +
+        Object.keys(HEADER_WASHES).length +
+        Object.keys(MENU_WASHES).length,
+    );
+    for (const line of [...Object.values(roles), ...Object.values(styles), ...Object.values(tones)])
+      expect(part().getAllByText(line, { exact: true }).length).toBeGreaterThan(0);
+    // A line is a sentence, not a name left to be filled.
+    for (const line of Object.values(roles)) expect(line.length).toBeGreaterThan(10);
+  });
+
+  it('9: Values draws each role’s value as credoVariables writes it for the chosen colour, and it follows the colour', async () => {
+    const written = (colour: string) =>
+      credoVariables({ colors: { brand: shadesOf(colour) } } as never).variables;
+    const names = Object.keys(GUIDELINE.values.roles);
+    const read = () =>
+      Object.fromEntries(
+        names.map((role) => [
+          role,
+          part().getByText(role, { exact: true }).nextElementSibling?.textContent,
+        ]),
+      );
+    open(`${BASE}/foundations/values`);
+    const steel = written(CREDO_COLOUR);
+    expect(read()).toEqual(
+      Object.fromEntries(names.map((role) => [role, steel[`--credo-${role}`]])),
+    );
+    expect(steel['--credo-header-chip']).toMatch(/^rgba\(/);
+
+    const user = userEvent.setup();
+    await user.click(screen.getByRole('combobox', { name: 'Colour theme' }));
+    await user.click(
+      within(await screen.findByRole('listbox')).getByRole('option', { name: 'Emerald' }),
+    );
+    const emerald = written(PALETTES.find(({ name }) => name === 'emerald')!.shades[7]);
+    expect(read()).toEqual(
+      Object.fromEntries(names.map((role) => [role, emerald[`--credo-${role}`]])),
+    );
+    // A value that follows the colour moves with it: some stock colour writes a role differently.
+    expect(
+      PALETTES.some(({ shades }) =>
+        names.some((role) => written(shades[7])[`--credo-${role}`] !== steel[`--credo-${role}`]),
+      ),
+    ).toBe(true);
+    window.localStorage.clear();
+  });
+
+  it('10: Values draws each text style’s size, line height, weight and spacing, its name in plain letters', () => {
+    open(`${BASE}/foundations/values`);
+    const FACTS: Record<keyof typeof TYPE, string> = {
+      pageTitle: 'size 22 px · line height 1.4 · weight 700 · spacing 0 px',
+      sectionLabel: 'size 12 px · line height 1.4 · weight 700 · spacing 0.5 px',
+      fieldLabel: 'size 12 px · line height 1.4 · weight 600 · spacing 0.3 px',
+      body: 'size 16 px · line height 1.55 · weight 400 · spacing 0 px',
+      bodyStrong: 'size 16 px · line height 1.55 · weight 600 · spacing 0 px',
+      caption: 'size 14 px · line height 1.45 · weight 400 · spacing 0 px',
+    };
+    for (const [name, facts] of Object.entries(FACTS)) {
+      const plain = part().getByText(name, { exact: true });
+      // The name is written as typed, outside any style that would change its letters.
+      expect(plain.style.textTransform).toBe('');
+      expect(plain.nextElementSibling?.textContent).toBe(facts);
+    }
+    expect(Object.keys(FACTS)).toEqual(Object.keys(TYPE));
+  });
+
+  it('8: Values draws the four meanings, each with the Mantine colour that draws it and its line', () => {
+    open(`${BASE}/foundations/values`);
+    for (const [tone, colour] of Object.entries(TONES)) {
+      const name = part().getByText(tone, { exact: true });
+      expect(name.nextElementSibling?.textContent).toBe(colour);
+      expect(name.nextElementSibling?.nextElementSibling?.textContent).toBe(
+        GUIDELINE.values.tones[tone as keyof typeof TONES],
+      );
+    }
+    expect(Object.values(TONES)).toEqual(['red', 'green', 'orange', 'gray']);
   });
 
   it('9: On the brand draws the six colours’ header, buttons and menu, before the rule and after, each with its ratio', () => {

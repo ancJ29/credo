@@ -22,7 +22,7 @@ function problems(rules: Rule[], exists: (path: string) => boolean, items: numbe
   return found;
 }
 
-const rulesOf = () => Object.values(GUIDELINE).flatMap((page) => page.rules);
+const rulesOf = () => GUIDELINE.charter.rules;
 
 describe('The guideline’s rules', () => {
   it('6: each says what holds it, a check whose file exists or review, and whether the app follows it or the open item that moves it', () => {
