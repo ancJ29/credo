@@ -1,11 +1,11 @@
-import { Burger, Button, Collapse, MantineProvider, Select, Text, Title } from '@mantine/core';
+import { Burger, Button, Collapse, Select, Text, Title } from '@mantine/core';
 import { IconChevronRight } from '@tabler/icons-react';
 import { CREDO_COLOUR } from '@credo/shared';
 import { Fragment, useState, type ReactNode } from 'react';
 import { Link, useLocation } from 'react-router';
 import { ENTRIES, GROUPS, slugOf, type Entry } from './entries';
 import classes from './Gallery.module.css';
-import { themeOf } from './appTheme';
+import { CredoMantine } from './CredoMantine';
 import { PALETTES } from './palettes';
 
 /** The gallery's own address: the page and what is below it. */
@@ -214,11 +214,7 @@ export function Gallery({
     />
   );
   return (
-    <MantineProvider
-      theme={themeOf(colour)}
-      forceColorScheme="light"
-      env={test ? 'test' : 'default'}
-    >
+    <CredoMantine colour={colour} test={test}>
       <title>Credo: the design system’s gallery</title>
       <meta name="robots" content="noindex" />
       <div className={classes.root}>
@@ -278,6 +274,6 @@ export function Gallery({
           )}
         </div>
       </div>
-    </MantineProvider>
+    </CredoMantine>
   );
 }

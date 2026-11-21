@@ -1,10 +1,8 @@
 import type { Language } from '@credo/shared';
-import { MantineProvider } from '@mantine/core';
 import { type ReactNode, useMemo } from 'react';
 import { I18nextProvider } from 'react-i18next';
 import { createI18n } from '../i18n';
-import { themeOf } from '../design-system/appTheme';
-import { credoVariables } from '../design-system/cssVariables';
+import { CredoMantine } from '../design-system/CredoMantine';
 
 type Props = {
   /** The tenant's brand colour. */
@@ -26,16 +24,9 @@ export type Look = Pick<Props, 'scheme' | 'root'>;
 /** The look and the words: what every screen is drawn inside. */
 export function Providers({ colour, language, scheme, root, test, children }: Props) {
   const i18n = useMemo(() => createI18n(language), [language]);
-  const theme = useMemo(() => themeOf(colour), [colour]);
   return (
-    <MantineProvider
-      theme={theme}
-      cssVariablesResolver={credoVariables}
-      forceColorScheme={scheme ?? 'light'}
-      getRootElement={root}
-      env={test ? 'test' : 'default'}
-    >
+    <CredoMantine colour={colour} scheme={scheme} root={root} test={test}>
       <I18nextProvider i18n={i18n}>{children}</I18nextProvider>
-    </MantineProvider>
+    </CredoMantine>
   );
 }
