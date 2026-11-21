@@ -81,8 +81,8 @@ export const TOKENS = {
   badgeRadius: RADII.sm,
   /** A table row under the pointer: the brand's palest shade. */
   rowHover: 'var(--credo-brand-tint)',
-  /** A dialog's title: large, at 550. */
-  dialogTitle: { fontSize: 'var(--mantine-font-size-lg)', fontWeight: 550 },
+  /** A dialog's title: large, at `WEIGHTS.emphasis`. */
+  dialogTitle: { fontSize: 'var(--mantine-font-size-lg)', fontWeight: WEIGHTS.emphasis },
   /** A dialog's header: the legacy's padding, 12 above and below, 16 at the sides. */
   dialogHeader: { padding: 'var(--mantine-spacing-sm) var(--mantine-spacing-md)' },
   /** A section card's padding: the theme's `lg` (24 px). */
