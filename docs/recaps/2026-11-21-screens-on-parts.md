@@ -15,7 +15,7 @@ flowchart LR
 ## What was proved
 
 - **Landing 1**: the value was seen red on the old 550, then green, and the pinned styles file changed for that one screen alone. <!-- FILL: landing 1's check run, in words -->
-- Your first picture run of landing 1 wrote the six new pictures, committed alone. <!-- FILL: your second picture run of landing 1, in words -->
+- Your first picture run of landing 1 wrote the six new pictures, committed alone, and your second picture run, with no flags, read every picture as committed.
 - **Landings 2 to 7**: <!-- FILL: each landing's checks, in words -->
 
 ## What is left

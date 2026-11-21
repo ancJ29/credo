@@ -82,9 +82,9 @@ piece 203's step 8. Your runs: about 20 each for a few walks, longer for twelve.
 - [x] **1. The value.** `TOKENS.dialogTitle` reads `WEIGHTS.emphasis`, its comment and test with it;
       the snapshot rewritten and read. Case 1. _Done when:_ the gates exit 0 and the pinned diff is 10
       lines, all `operator-passkeys/pk-6-sign-in-ended`. **20 min** (213's step 5). _Done 2026-11-21: case 1 seen red on the old 550, then green; the pinned diff is 10 colours of `operator-passkeys/pk-6-sign-in-ended`, no other screen._
-- [ ] **2. Landing 1.** The recap begun; your `bash walk/run.sh passkeys --moved pk-6-sign-in-ended
+- [x] **2. Landing 1.** The recap begun; your `bash walk/run.sh passkeys --moved pk-6-sign-in-ended
       --write`, the six bases committed alone, then `bash walk/run.sh passkeys`. _Done when:_ the
-      second reads green, every count 0. **9 min**, and your two runs.
+      second reads green, every count 0. **9 min**, and your two runs. _Done 2026-11-21: the recap begun and item 647 closed; your second picture run of landing 1 read green, every picture as committed, every count 0._
 
 **Landing 2: messages.**
 
