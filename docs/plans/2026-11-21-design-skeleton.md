@@ -241,12 +241,22 @@ from `pre-merge` at landing 1.
       cases 1, 8 and 13 had counts and a subject that the new entries move (18 entries to 23, five
       widths to six, `BackLink` no longer the part with no contract: `FieldLabel` is). Case 16 red at
       18:03, before the code, on the Pages group being empty; no screen's code moved.
-- [ ] **11. Every other part, and a new kind of page.** `FieldLabel`, `DoorHeading`, `LogoTile`,
+- [x] **11. Every other part, and a new kind of page.** `FieldLabel`, `DoorHeading`, `LogoTile`,
       `BrandBand`, `DetailField`, `SectionTitle`, `DoorCard`; each duplicate's winner named on the
       other's entry (`DoorCard` or `ui/src/pages/SignIn.tsx#L66`'s `SignInFrame`, `DetailField` or
       `FieldPair`). A kind of page is written at its first page, from the base's slots, judged by
       you before its second. Case 17. _Done when:_ the gates exit 0. **11 min** (213's step 1, a
       field on every entry).
+      _Evidence:_ the step's commit. `GUIDELINE.contracts` gains the seven rows, so every part's entry
+      (18 of the Atoms, Molecules, Organisms and Pages) draws Takes and Decides; `DoorCard`'s entry
+      names `SignInFrame` (its own card, item 651), `DetailField`'s and `FieldPair`'s each name the
+      other (the plan's "DetailField or FieldPair" read as the field and the row that holds two);
+      `SectionTitle` and `DoorCard` follow item 651 (the icon's size passed by callers; no screen
+      draws `DoorCard`). The charter gains two rules: a part's look and the feedback's route, the
+      human's two answers of 18:08 and 18:09 (the decisions row), and a kind of page written at its
+      first page; the design-system coder's line takes the feedback. Case 17 red at 18:17 on the
+      entries' contracts and the charter's words, before the code; case 13's "part with no contract"
+      is now Values. No screen's code moved.
 - [ ] **12. Landing 3.** The recap's lines, the gallery's card; item 651's own text recounted part
       by part, the next milestone's list in its one home. _Done when:_ the citation test exits 0.
       **3 min**. Your point 3.

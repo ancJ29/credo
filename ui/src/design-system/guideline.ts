@@ -174,7 +174,7 @@ export const GUIDELINE: {
       },
       {
         reader: 'A design-system coder',
-        does: 'Owns each part’s look, read from the theme, and changes it when it needs changing. A new part matches the existing ones, and the gallery is the check. The values and their use lines below are this coder’s reference.',
+        does: 'Owns each part’s look, read from the theme, and changes it when it needs changing. A new part matches the existing ones, and the gallery is the check. The values and their use lines below are this coder’s reference. Takes the feedback of product owners, sales or the human, in their own words, and turns it into a change of a part or a rule.',
       },
     ],
     lookHere: [
@@ -213,6 +213,18 @@ export const GUIDELINE: {
         why: 'A look written in a screen is one more place to change and one more way to differ; in a part it changes once, and the design-system coder keeps the new look matching the old.',
         heldBy: 'review',
         followed: { item: 651 },
+      },
+      {
+        says: 'A part’s look (a tone, a variant, which of today’s looks becomes which meaning) is the design-system coder’s to decide and keep consistent, never asked of a person outside it; feedback on the look comes from product owners, sales or the human in their own words, and the design-system coder turns it into a change of a part or a rule.',
+        why: 'The people who see the app say what they see and want, not which variant draws it; a look chosen by many hands is a second way, and the design-system coder is the one who keeps the app one app.',
+        heldBy: 'review',
+        followed: 'yes',
+      },
+      {
+        says: 'A kind of page (a list, a detail, a form) is written when its first page is built, from the page base’s slots, and a person looks at it before a second page of that kind is built.',
+        why: 'A kind guessed before any page needs it is a second way; one drawn from a real first page, judged once, is the pattern the next pages copy.',
+        heldBy: 'review',
+        followed: 'yes',
       },
       {
         says: 'A screen writes no numbered shade of a palette; text on the client’s colour comes from the on-brand values, never from a white written in the screen. Mantine’s own slots (`--mantine-color-body`, `-text`, `-default-border`, `-default-hover`) and an avatar’s `color="initials"` are allowed.',
@@ -729,6 +741,150 @@ export const GUIDELINE: {
       heldBy: { check: 'ui/src/design-system/guideline.test.ts' },
       followed: { item: 653 },
       used: true,
+    },
+    {
+      part: 'FieldLabel',
+      takes: [{ prop: 'children', is: 'content', line: 'The label’s words.' }],
+      decides: [
+        {
+          what: 'Its style: small capitals, spaced, in grey.',
+          from: [{ table: 'TYPE', key: 'fieldLabel' }],
+        },
+      ],
+      fixes: ['Its element: a span, so it sits inside a line.'],
+      states: [{ name: 'Phone', line: 'A label over a field or a value.' }],
+      serves: 'A screen picks parts, never a style',
+      heldBy: { check: 'ui/src/design-system/guideline.test.ts' },
+      followed: 'yes',
+    },
+    {
+      part: 'DoorHeading',
+      takes: [
+        { prop: 'title', is: 'content', line: 'The door’s title.' },
+        { prop: 'subtitle', is: 'content', line: 'A line under the title; none draws none.' },
+      ],
+      decides: [
+        { what: 'The title’s weight.', from: [{ table: 'WEIGHTS', key: 'title' }] },
+        { what: 'The subtitle’s style.', from: [{ table: 'TYPE', key: 'caption' }] },
+      ],
+      fixes: ['Both centred, and the gap under the subtitle, 32 px, before what follows.'],
+      states: [
+        { name: 'With subtitle', line: 'A title and a line under it.' },
+        { name: 'Title only', line: 'The title alone.' },
+      ],
+      serves: 'A screen picks parts, never a style',
+      heldBy: { check: 'ui/src/design-system/guideline.test.ts' },
+      followed: 'yes',
+    },
+    {
+      part: 'LogoTile',
+      takes: [
+        {
+          prop: 'logo',
+          is: 'content',
+          line: 'The company’s logo; none, or one that fails to load, draws nothing.',
+        },
+        { prop: 'alt', is: 'content', line: 'The company’s name, said for the logo.' },
+      ],
+      decides: [
+        {
+          what: 'Its line: a pale hairline in the client’s colour.',
+          from: [{ table: 'ROLES', key: 'brand-line' }],
+        },
+      ],
+      fixes: ['Its tile: 44 px square with a corner of 10 px, the logo fitted inside.'],
+      states: [
+        { name: 'With a logo', line: 'The logo in its tile.' },
+        { name: 'No logo', line: 'Nothing is drawn.' },
+      ],
+      serves: 'A screen picks parts, never a style',
+      heldBy: { check: 'ui/src/design-system/guideline.test.ts' },
+      followed: 'yes',
+    },
+    {
+      part: 'BrandBand',
+      takes: [
+        { prop: 'name', is: 'content', line: 'The company’s name.' },
+        { prop: 'logo', is: 'content', line: 'The company’s logo, if it has one.' },
+      ],
+      decides: [
+        {
+          what: 'Its wash: the client’s palest shade.',
+          from: [{ table: 'ROLES', key: 'brand-tint' }],
+        },
+        { what: 'The line beneath it.', from: [{ table: 'ROLES', key: 'brand-tint-strong' }] },
+        { what: 'The name’s weight.', from: [{ table: 'WEIGHTS', key: 'title' }] },
+        { what: 'The gap between the logo and the name.', from: [{ table: 'SPACING', key: 'md' }] },
+      ],
+      fixes: ['Its padding, 28 px above and below and 40 at the sides, and its centring.'],
+      states: [{ name: 'Default', line: 'The logo tile beside the name.' }],
+      serves: 'A screen picks parts, never a style',
+      heldBy: { check: 'ui/src/design-system/guideline.test.ts' },
+      followed: 'yes',
+    },
+    {
+      part: 'DetailField',
+      takes: [
+        { prop: 'label', is: 'content', line: 'The name of the fact.' },
+        { prop: 'value', is: 'content', line: 'The fact; none draws a dash.' },
+      ],
+      decides: [{ what: 'The label’s style.', from: [{ table: 'TYPE', key: 'fieldLabel' }] }],
+      fixes: ['A dash for no value, and the small gap between the label and the value.'],
+      states: [
+        { name: 'With a value, and with none', line: 'A label over its value, or over a dash.' },
+      ],
+      serves: 'A screen picks parts, never a style',
+      heldBy: { check: 'ui/src/design-system/guideline.test.ts' },
+      followed: 'yes',
+    },
+    {
+      part: 'SectionTitle',
+      takes: [
+        { prop: 'icon', is: 'content', line: 'The icon of the section, never its size.' },
+        { prop: 'label', is: 'content', line: 'The section’s short title.' },
+      ],
+      decides: [
+        { what: 'The label’s style.', from: [{ table: 'TYPE', key: 'sectionLabel' }] },
+        { what: 'The icon’s size.', from: [{ table: 'ICON_SIZES', key: 'inline' }] },
+        { what: 'The tile’s corner.', from: [{ table: 'RADII', key: 'sm' }] },
+      ],
+      fixes: [
+        'Its tile: a grey square of 24 px behind the icon.',
+        'Not yet: the screens pass the icon’s size themselves; open item 651 moves them into the part.',
+      ],
+      states: [{ name: 'Default', line: 'A tile with its icon, then the label.' }],
+      serves: 'A screen picks parts, never a style',
+      heldBy: { check: 'ui/src/design-system/guideline.test.ts' },
+      followed: { item: 651 },
+      used: true,
+    },
+    {
+      part: 'DoorCard',
+      takes: [
+        { prop: 'name', is: 'content', line: 'The company’s name.' },
+        { prop: 'logo', is: 'content', line: 'The company’s logo, if it has one.' },
+        { prop: 'children', is: 'content', line: 'What the card holds.' },
+      ],
+      decides: [
+        { what: 'Its corner.', from: [{ table: 'RADII', key: 'md' }] },
+        { what: 'Its edge.', from: [{ table: 'ROLES', key: 'border-strong' }] },
+        {
+          what: 'Its width at most, given by the page around it.',
+          from: [{ table: 'WIDTHS', key: 'card' }],
+        },
+      ],
+      fixes: [
+        'Its bar: 4 px in the brand’s gradient across the top; then the band, then the body with its own padding.',
+        'Its shadow: the one that lifts a door off its page.',
+        'Not yet: no screen draws it; `SignInFrame` in `ui/src/pages/SignIn.tsx` draws a card of its own, and open item 651 moves it to this one.',
+      ],
+      states: [
+        { name: 'Sign-in', line: 'The card holding the sign-in fields.' },
+        { name: 'Login link', line: 'The card holding the login-link choices.' },
+      ],
+      serves: 'A screen picks parts, never a style',
+      heldBy: { check: 'ui/src/design-system/guideline.test.ts' },
+      followed: { item: 651 },
     },
   ],
   buttons: {

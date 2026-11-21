@@ -175,6 +175,22 @@ describe('The guideline’s rules', () => {
   });
 });
 
+describe('The guideline’s rules about who decides', () => {
+  it('213 step 11: the charter says a part’s look is the design-system coder’s and feedback reaches that coder in its giver’s words, and a kind of page is written at its first page', () => {
+    const says = rulesOf().map((rule) => rule.says);
+    const look = says.filter((text) => text.startsWith('A part’s look'));
+    expect(look).toHaveLength(1);
+    expect(look[0]).toMatch(/design-system coder/);
+    expect(look[0]).toMatch(/never asked of a person/);
+    expect(look[0]).toMatch(/product owners, sales/);
+    expect(says.filter((text) => text.startsWith('A kind of page'))).toHaveLength(1);
+    // The gap rule stands beside them.
+    expect(
+      says.some((text) => text.startsWith('A choice this guideline does not make is asked')),
+    ).toBe(true);
+  });
+});
+
 describe('The guideline’s contracts', () => {
   it('213 case 19: each names an existing entry, a part to come’s entry too, and a rule of the charter it serves', () => {
     // A set that found nothing would quiet the checks below.

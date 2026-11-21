@@ -337,7 +337,9 @@ export const ENTRIES: Entry[] = [
     kind: 'Layout',
     description: 'Two fields a row on a wide window, one over the other on a phone.',
     props: 'children: ReactNode',
-    useWhen: ['Two fields of a block belong side by side.'],
+    useWhen: [
+      'Two fields of a block belong side by side, each a DetailField when it is read, not edited.',
+    ],
     dontUseWhen: ['The blocks of a page: that is DetailColumns’.'],
     instead: 'DetailColumns',
     states: FieldPairStates,
@@ -513,6 +515,7 @@ export const ENTRIES: Entry[] = [
     dontUseWhen: [
       'The value is edited: use a field.',
       "A section's title: that is SectionTitle's.",
+      'Two of them in a row: put them in a FieldPair, which lays out the row.',
     ],
     instead: 'FieldLabel',
     states: [
@@ -570,7 +573,10 @@ export const ENTRIES: Entry[] = [
       "A door's card: a bar in the brand's gradient across its top, the company's band, then what it holds.",
     props: 'name: string · logo?: string · children: ReactNode',
     useWhen: ['A page a person reaches before sign-in, the card holding its words and buttons.'],
-    dontUseWhen: ["A block inside a signed-in page: that is SectionCard's."],
+    dontUseWhen: [
+      "A block inside a signed-in page: that is SectionCard's.",
+      "The card `SignInFrame` (`ui/src/pages/SignIn.tsx`) draws for itself: this card is the one to use, and the frame's moves to it (open item 651).",
+    ],
     instead: 'SectionCard',
     states: [
       {

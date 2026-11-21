@@ -936,8 +936,8 @@ describe('Gallery', () => {
       expect(side.getByText(new RegExp(what.slice(0, 20)))).toBeDefined();
     expect(side.getByText(/To come: open item 651 builds it\./)).toBeDefined();
     cleanup();
-    // A part with no contract has neither section (FieldLabel's comes with step 11).
-    open(`${BASE}/atoms/field-label`);
+    // A page with no contract has neither section: Values is no part.
+    open(`${BASE}/foundations/values`);
     expect(about().queryByRole('heading', { name: 'Takes from a screen' })).toBeNull();
   });
 
@@ -1067,5 +1067,38 @@ describe('Gallery', () => {
     cleanup();
     open(`${BASE}/atoms/back-link`);
     expect(about().getByText(/Built; the screens do not use it yet: open item 651/)).toBeDefined();
+  });
+
+  it('213 case 17: every part’s entry draws its contract, and each duplicate’s winner is named on the other’s entry', () => {
+    const parts = ENTRIES.filter(
+      (entry) =>
+        ['Atoms', 'Molecules', 'Organisms', 'Pages'].includes(entry.group) &&
+        entry.name !== 'The page base',
+    );
+    // A set that found nothing would quiet the loop.
+    expect(parts.length).toBe(18);
+    expect(GUIDELINE.contracts.map((contract) => contract.part).sort()).toEqual(
+      parts.map((entry) => entry.name).sort(),
+    );
+    for (const { group, name } of parts) {
+      open(`${BASE}/${slugOf(group)}/${slugOf(name)}`);
+      expect(
+        about().getByRole('heading', { level: 3, name: 'Takes from a screen' }),
+        name,
+      ).toBeDefined();
+      expect(
+        about().getByRole('heading', { level: 3, name: 'Decides itself' }),
+        name,
+      ).toBeDefined();
+      cleanup();
+    }
+    const words = (name: string) => {
+      const entry = ENTRIES.find((each) => each.name === name)!;
+      return [...entry.useWhen, ...entry.dontUseWhen].join(' ');
+    };
+    // The screens’ own frame of a door draws a card of its own: the entry names it and the winner.
+    expect(words('DoorCard')).toContain('SignInFrame');
+    expect(words('DetailField')).toContain('FieldPair');
+    expect(words('FieldPair')).toContain('DetailField');
   });
 });
