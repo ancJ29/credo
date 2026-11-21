@@ -162,6 +162,18 @@ orchestrator's at each landing, about 20 minutes, not a step. One recap,
       words, prettier clean. Plan slip: step 5 changed five files under `ui/src/frame`,
       `ui/src/pages` and `ui/src/parts` (same resolved styles, the pinned file unchanged), so the
       "prints nothing" diff for steps after 1 cannot hold as written.
+- [x] **6b. Landing 1's rework.** The review before `main`'s six blocks, its afters and the
+      human's correction (a screen's coder picks parts only; the values are the design-system coder's
+      reference). _Done when:_ the gates exit 0. **25 min** (the rows of steps 2 to 5, more text, less
+      code).
+      _Evidence:_ the step's commit. The charter names two readers, and a rule "a screen picks parts,
+      never a style" stands second, held by review, `followed` item 651; the rule on colour says what
+      its check holds (a shade, a white) and allows Mantine's own slots and an avatar's `initials`;
+      rule 5 names its folders and "never to wrap a Mantine part alone"; the light rule names its check.
+      The notes each name an open item (651 to 654 filed; a test reads every "not yet" against the
+      listed items) and each draws in its own state of Values; the overlapping use lines are
+      separated; the test titles of this piece say "213 case N". Reds, 16:16 to 16:17: the "not yet"
+      test on a note that named no item, case 8's notes on a note drawn in another state.
 
 **Landing 2: the rules** (layer 3), from `pre-merge` at landing 1.
 
