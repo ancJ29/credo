@@ -1813,7 +1813,7 @@ The gallery's test (`ui/src/design-system/Gallery.test.tsx`, its cases 4 and 8) 
 
 The rule of three is written at the `components/` note and again in the levels' lines; neither says the six day-one samples are the exception, and the `design-system/` note does not finish C17's "everything in here is a ___". One statement, the exception named, the sentence finished.
 
-*Update 2026-11-21, the design skeleton's rework of landing 1:* `ui/CLAUDE.md` no longer states the rule of three; the design guideline's rule 5 (`ui/src/design-system/guideline.ts`) states it once, with the folders (`ui/src/components/` at the third use, `ui/src/parts/` or the screen for the first two), the first six parts as the exception and "never to wrap a Mantine part alone". *Still open:* the `design-system/` note's sentence of C17.
+*Update 2026-11-21, the design skeleton's rework of landing 1:* `ui/CLAUDE.md` no longer states the rule of three; the design guideline's rule of three (`ui/src/design-system/guideline.ts`) states it once, with the folders (`ui/src/components/` at the third use, `ui/src/parts/` or the screen for the first two), the first six parts as the exception and "never to wrap a Mantine part alone". *Still open:* the `design-system/` note's sentence of C17.
 
 ## 507. The theme drops the dialog header's padding, and the gallery draws no dialog or table (the same review, Low) — the machine; `[DEFERRED]`
 

@@ -139,7 +139,7 @@ export const GUIDELINE: { charter: Charter; values: Values } = {
         followed: { item: 651 },
       },
       {
-        says: 'A colour is read by its role, never by a numbered shade of a palette; text on the client’s colour comes from the on-brand values, never from a white written in the screen. Mantine’s own slots (`--mantine-color-body`, `-text`, `-default-border`, `-default-hover`) and an avatar’s `color="initials"` are allowed.',
+        says: 'A screen writes no numbered shade of a palette; text on the client’s colour comes from the on-brand values, never from a white written in the screen. Mantine’s own slots (`--mantine-color-body`, `-text`, `-default-border`, `-default-hover`) and an avatar’s `color="initials"` are allowed.',
         why: 'The client’s colour changes every shade, so a shade written in a screen reads on one colour and fails on another.',
         heldBy: { check: 'ui/src/design-system/literals.test.ts' },
         followed: 'yes',
