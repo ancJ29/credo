@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import {
   Group,
   Paper,
@@ -9,8 +10,21 @@ import {
   type MantineTheme,
 } from '@mantine/core';
 import { credoVariables } from './cssVariables';
-import { GUIDELINE, type RoleName } from './guideline';
-import { HEADER_WASHES, MENU_WASHES, ON_BRAND, ROLES, TONES, TYPE } from './tokens';
+import { FRAME_VALUES } from './tokens';
+import { GUIDELINE, type FormatName, type RoleName, type ShadowName } from './guideline';
+import { IconBuilding } from '@tabler/icons-react';
+import {
+  HEADER_WASHES,
+  ICON_SIZES,
+  MENU_WASHES,
+  ON_BRAND,
+  RADII,
+  ROLES,
+  SPACING,
+  TONES,
+  TYPE,
+  WIDTHS,
+} from './tokens';
 
 /** What a text style may set: the props `TYPE` spreads. */
 type Style = { order?: number; fz?: string; size?: string; fw?: number; lts?: number };
@@ -135,6 +149,129 @@ export function Tones() {
           </Text>
           <Text size="sm">{GUIDELINE.values.tones[tone]}</Text>
         </Group>
+      ))}
+    </Stack>
+  );
+}
+
+/** One row of a value table: the name, what it is as a number, a sample drawn from it, and what it is for. */
+function ValueRow({
+  name,
+  value,
+  sample,
+  use,
+}: {
+  name: string;
+  value: string;
+  sample?: ReactNode;
+  use: string;
+}) {
+  return (
+    <Group gap="sm" wrap="nowrap" align="flex-start">
+      <Text size="sm" w={96} style={{ flex: 'none' }}>
+        {name}
+      </Text>
+      <Text size="sm" c="dimmed" w={64} style={{ flex: 'none' }}>
+        {value}
+      </Text>
+      {sample}
+      <Text size="sm">{use}</Text>
+    </Group>
+  );
+}
+
+const names = <T extends object>(table: T) => Object.keys(table) as (keyof T & string)[];
+
+/** The spacing steps, each drawn as a bar of its size, with what it separates. */
+export function Spacing() {
+  return (
+    <Stack gap={4}>
+      {names(SPACING).map((step) => (
+        <ValueRow
+          key={step}
+          name={step}
+          value={SPACING[step]}
+          sample={
+            <Paper
+              h={8}
+              bg="var(--credo-brand-line)"
+              style={{ width: SPACING[step], flex: 'none' }}
+            />
+          }
+          use={GUIDELINE.values.spacing[step]}
+        />
+      ))}
+    </Stack>
+  );
+}
+
+/** The widths, each with what it is the width of. */
+export function Widths() {
+  return (
+    <Stack gap={4}>
+      {names(WIDTHS).map((use) => (
+        <ValueRow
+          key={use}
+          name={use}
+          value={`${WIDTHS[use]} px`}
+          use={GUIDELINE.values.widths[use]}
+        />
+      ))}
+    </Stack>
+  );
+}
+
+/** The icon sizes, each drawn at its size, with where it sits. */
+export function Icons() {
+  return (
+    <Stack gap={4}>
+      {names(ICON_SIZES).map((place) => (
+        <ValueRow
+          key={place}
+          name={place}
+          value={`${ICON_SIZES[place]} px`}
+          sample={<IconBuilding size={ICON_SIZES[place]} style={{ flex: 'none' }} />}
+          use={GUIDELINE.values.icons[place]}
+        />
+      ))}
+    </Stack>
+  );
+}
+
+/** The corners and the shadows, each drawn on a tile, with what it is for. */
+export function Shapes() {
+  const shadow = (name: ShadowName) =>
+    name === 'lg' || name === 'xl' ? `var(--mantine-shadow-${name})` : FRAME_VALUES[name];
+  return (
+    <Stack gap={4}>
+      {names(RADII).map((step) => (
+        <ValueRow
+          key={step}
+          name={step}
+          value={RADII[step]}
+          sample={<Paper w={24} h={24} radius={step} withBorder style={{ flex: 'none' }} />}
+          use={GUIDELINE.values.corners[step]}
+        />
+      ))}
+      {(Object.keys(GUIDELINE.values.shadows) as ShadowName[]).map((name) => (
+        <ValueRow
+          key={name}
+          name={name}
+          value="shadow"
+          sample={<Paper w={24} h={24} style={{ flex: 'none', boxShadow: shadow(name) }} />}
+          use={GUIDELINE.values.shadows[name]}
+        />
+      ))}
+    </Stack>
+  );
+}
+
+/** What each kind of text is written by, and where it lives. */
+export function Formats() {
+  return (
+    <Stack gap={4}>
+      {(Object.keys(GUIDELINE.values.formats) as FormatName[]).map((format) => (
+        <ValueRow key={format} name={format} value="" use={GUIDELINE.values.formats[format]} />
       ))}
     </Stack>
   );

@@ -10,7 +10,18 @@ import { ENTRIES, slugOf } from './entries';
 import { followedWords, heldWords } from './Charter';
 import { GUIDELINE } from './guideline';
 import { contrast, onBrand, onWhite, beforeOf, type Surface } from './onBrand';
-import { HEADER_WASHES, MENU_WASHES, ON_BRAND, ROLES, TONES, TYPE } from './tokens';
+import {
+  HEADER_WASHES,
+  ICON_SIZES,
+  MENU_WASHES,
+  ON_BRAND,
+  RADII,
+  ROLES,
+  SPACING,
+  TONES,
+  TYPE,
+  WIDTHS,
+} from './tokens';
 import { credoVariables } from './cssVariables';
 import { PALETTES } from './palettes';
 import { shadesOf } from './appTheme';
@@ -252,10 +263,19 @@ describe('Gallery', () => {
   it('11: draws the values', () => {
     open(`${BASE}/foundations/values`);
 
-    expect(stateNames()).toEqual(['Palette', 'Type', 'Gaps', 'Roles', 'Meanings']);
+    expect(stateNames()).toEqual([
+      'Palette',
+      'Type',
+      'Spacing',
+      'Widths',
+      'Icons',
+      'Corners and shadows',
+      'Formats',
+      'Roles',
+      'Meanings',
+    ]);
     expect(part().getAllByTitle(/^brand \d$/)).toHaveLength(10);
     expect(part().getByText(/^Type: /)).toBeDefined();
-    expect(part().getByText(/^Gaps: /)).toBeDefined();
     for (const style of Object.keys(TYPE)) expect(part().getByText(style)).toBeDefined();
     for (const role of [
       ...Object.keys(ROLES),
@@ -285,6 +305,38 @@ describe('Gallery', () => {
       expect(part().getAllByText(line, { exact: true }).length).toBeGreaterThan(0);
     // A line is a sentence, not a name left to be filled.
     for (const line of Object.values(roles)) expect(line.length).toBeGreaterThan(10);
+  });
+
+  it('8: Values gives each spacing step, width, icon size, corner, shadow and format its use line, from the guideline, next to its value', () => {
+    open(`${BASE}/foundations/values`);
+    const { spacing, widths, icons, corners, shadows, formats } = GUIDELINE.values;
+    const tables = [
+      [spacing, Object.keys(SPACING), 5],
+      [widths, Object.keys(WIDTHS), 5],
+      [icons, Object.keys(ICON_SIZES), 5],
+      [corners, Object.keys(RADII), 5],
+      [shadows, ['lg', 'xl', 'bar-shadow', 'header-shadow'], 4],
+      [formats, ['money', 'date', 'time'], 3],
+    ] as const;
+    for (const [table, keys, count] of tables) {
+      // A table of another size would quiet the check on its keys.
+      expect(Object.keys(table)).toEqual(keys);
+      expect(keys).toHaveLength(count);
+      for (const [name, line] of Object.entries(table)) {
+        expect(line.length).toBeGreaterThan(20);
+        const row = part().getAllByText(line)[0]?.parentElement;
+        expect(row?.textContent).toContain(name);
+      }
+    }
+    // The value drawn is the table's, not a copy: its own text, beside its name.
+    const valueOf = (name: string, value: string) =>
+      part()
+        .getAllByText(name, { exact: true })
+        .some((el) => el.nextElementSibling?.textContent === value);
+    expect(valueOf('md', SPACING.md)).toBe(true);
+    expect(valueOf('card', `${WIDTHS.card} px`)).toBe(true);
+    expect(valueOf('mark', `${ICON_SIZES.mark} px`)).toBe(true);
+    expect(valueOf('xl', RADII.xl)).toBe(true);
   });
 
   it('9: Values draws each role’s value as credoVariables writes it for the chosen colour, and it follows the colour', async () => {

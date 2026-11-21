@@ -1,4 +1,16 @@
-import { HEADER_WASHES, MENU_WASHES, ON_BRAND, ROLES, TONES, TYPE } from './tokens';
+import {
+  FRAME_VALUES,
+  HEADER_WASHES,
+  ICON_SIZES,
+  MENU_WASHES,
+  ON_BRAND,
+  RADII,
+  ROLES,
+  SPACING,
+  TONES,
+  TYPE,
+  WIDTHS,
+} from './tokens';
 
 /**
  * What holds a rule: the file of a check that goes red when it is broken, or a person's review.
@@ -38,11 +50,24 @@ export type RoleName =
   | keyof typeof HEADER_WASHES
   | keyof typeof MENU_WASHES;
 
+/** The shadows a screen or the frame draws: Mantine's `lg` and `xl`, and the frame's two. */
+export type ShadowName =
+  'lg' | 'xl' | Extract<keyof typeof FRAME_VALUES, 'bar-shadow' | 'header-shadow'>;
+
+/** The kinds of value a screen writes as text, each with its one place. */
+export type FormatName = 'money' | 'date' | 'time';
+
 /** The values page: what each value is for, one line each, typed over its table's keys so a value with no line is a type error. */
 export type Values = {
   roles: Record<RoleName, string>;
   styles: Record<keyof typeof TYPE, string>;
   tones: Record<keyof typeof TONES, string>;
+  spacing: Record<keyof typeof SPACING, string>;
+  widths: Record<keyof typeof WIDTHS, string>;
+  icons: Record<keyof typeof ICON_SIZES, string>;
+  corners: Record<keyof typeof RADII, string>;
+  shadows: Record<ShadowName, string>;
+  formats: Record<FormatName, string>;
   /** What a coder reads before the tables, where a rule or a name is not yet followed. */
   notes: string[];
 };
@@ -162,9 +187,55 @@ export const GUIDELINE: { charter: Charter; values: Values } = {
         'Something needs care before it goes on: a caution, a status that waits for the person.',
       info: 'Something to know with nothing to fix: a neutral note, a state that asks nothing.',
     },
+    spacing: {
+      xs: 'Between the parts of one small thing: an icon and its word, a header’s items, a field and the note under it.',
+      sm: 'Between the fields or rows of one block that belong together: the fields of a form’s group, a list’s rows.',
+      md: 'Between the contents of one card, and the padding of a card on a phone.',
+      lg: 'Between the blocks of a page, and the padding of a section card.',
+      xl: 'Between the big parts of a long page, as the steps of a setup, and the padding of a centred card on a wide window.',
+    },
+    widths: {
+      card: 'A card that stands alone in the middle of the window: the sign-in card, the loading page, the unknown-company page. 440 px at most, the whole width below it.',
+      column:
+        'A page that is one column of text and fields: the own-password page. 560 px at most.',
+      field:
+        'A field of a form of several, which a person fills in a line: the order’s driver and day. 420 px at most.',
+      amount: 'A field that holds an amount: the cash a driver takes in. 320 px at most.',
+      date: 'A field that holds a day, and nothing else: the deliveries’ day, the order’s day. 240 px at most.',
+    },
+    icons: {
+      inline:
+        'An icon beside a title or a back link: a section’s title tile, a page’s back arrow. 14 px.',
+      field:
+        'An icon inside a field or at the end of a row: a search field’s magnifier, a row’s arrow. 16 px.',
+      button: 'An icon on a button or in a field’s left side, and a header’s control. 18 px.',
+      bar: 'The phone bar’s more mark, the one icon set on a bar below the page. 22 px.',
+      mark: 'The company’s mark on the header and the sign-in card, with a thin stroke. 36 px.',
+    },
+    corners: {
+      xs: 'Not drawn by a screen today: 2 px, for a mark of a few pixels.',
+      sm: 'A small tile or a badge: a section title’s icon tile, a logo on the sign-in card, a status badge. 4 px.',
+      md: 'The default: a card, a paper, a photo, a button and a field. 8 px.',
+      lg: 'Not drawn by a screen today: 12 px, which the frame’s own stylesheets write for one corner.',
+      xl: 'A round pick: the colour swatches on the settings page. 16 px.',
+    },
+    shadows: {
+      lg: 'A card that floats over a ground of its own: the sign-in card.',
+      xl: 'A card that must lift off its page: the door card.',
+      'bar-shadow': 'The soft shadow cast upward by the phone bar.',
+      'header-shadow': 'The soft shadow below the header, on the phone only.',
+    },
+    formats: {
+      money:
+        'An amount in dong is written by `useMoney` (in `ui/src/parts/OrderParts.tsx`), never by a formatter in a screen.',
+      date: 'A day is written by `dayOf` for a saved time and `shownDay` for a day as `YYYY-MM-DD`, both in `ui/src/day.ts`, in the language shown.',
+      time: 'A time of day is written by `timeOf` in `ui/src/day.ts`, to the second on 24 hours, in the language shown.',
+    },
     notes: [
       'A screen names a meaning (danger, success, warning, info) or a role, never a Mantine colour. Not yet: the screens still write red, green, orange, gray and yellow (about 195 uses), and the later landings move them by rule; a yellow has no meaning and becomes warning.',
       'A text takes a style of the table below; a size or a weight on a Text is written only where no style fits, with a comment saying why. Not yet checked: review holds it.',
+      'A screen names a width and an icon size by its use, never a number. Not yet: the screens write the numbers. Of 45 icons, 30 are 14 px, 7 are 18, 3 are 16, 2 are 36, 2 are 20 and 1 is 22 (the two 20 px icons, a fingerprint on a button, are the button’s 18); of the widths, 440 px is written 3 times, 420 and 240 twice, 560 and 320 once, and three more are in no list: 140 (a quantity field), 155 (a filter) and 200 (the search field’s least).',
+      'A number, a day or a time is written by its one place, never by `new Intl` in a screen. Not yet: outside `ui/src/day.ts` five `new Intl.NumberFormat` stand in four files (one is `useMoney`’s own, the other four write a price, a quantity or the marks of a number by hand), and a number has no place of its own yet.',
     ],
   },
 };

@@ -26,7 +26,7 @@ import { PageHeader } from '../components/organisms/PageHeader';
 import { SectionCard } from '../components/organisms/SectionCard';
 import { Charter } from './Charter';
 import { OnTheBrand, OnTheLinks } from './OnTheBrand';
-import { Roles, Tones, Type } from './Values';
+import { Formats, Icons, Roles, Shapes, Spacing, Tones, Type, Widths } from './Values';
 
 /** A sample company logo for the tile: a plain shape, no real company's. */
 const SAMPLE_LOGO =
@@ -132,11 +132,6 @@ function Palette() {
   );
 }
 
-function Gaps() {
-  const theme = useMantineTheme();
-  return <Text size="sm">Gaps: {Object.values(theme.spacing).join(', ')}</Text>;
-}
-
 /** Every part of the design system, by level, each in its states: the table the gallery's list is drawn from. */
 export const ENTRIES: Entry[] = [
   {
@@ -160,8 +155,8 @@ export const ENTRIES: Entry[] = [
     group: 'Foundations',
     name: 'Values',
     description:
-      "The brand's ten shades, each text style with its size, line height, weight and spacing, the gaps, each colour role with its value for the chosen colour and what it is for, and the four meanings a colour carries.",
-    props: 'theme.colors.brand · TYPE · theme.spacing · ROLES · TONES',
+      "The brand's ten shades, each text style with its size, line height, weight and spacing, each spacing step, width, icon size, corner and shadow with its use, the formats' places, each colour role with its value for the chosen colour and what it is for, and the four meanings a colour carries.",
+    props: 'theme.colors.brand · TYPE · SPACING · WIDTHS · ICON_SIZES · RADII · ROLES · TONES',
     useWhen: [
       'You need a colour, a text style or a gap for a screen.',
       "You are choosing between the brand's shades or the colour roles.",
@@ -174,7 +169,11 @@ export const ENTRIES: Entry[] = [
     states: [
       { name: 'Palette', node: <Palette /> },
       { name: 'Type', node: <Type /> },
-      { name: 'Gaps', node: <Gaps /> },
+      { name: 'Spacing', node: <Spacing /> },
+      { name: 'Widths', node: <Widths /> },
+      { name: 'Icons', node: <Icons /> },
+      { name: 'Corners and shadows', node: <Shapes /> },
+      { name: 'Formats', node: <Formats /> },
       { name: 'Roles', node: <Roles /> },
       { name: 'Meanings', node: <Tones /> },
     ],

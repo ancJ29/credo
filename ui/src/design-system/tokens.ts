@@ -7,6 +7,16 @@ const BRAND_SHADES = { from: 7, to: 9, deg: 135 } as const;
 export const RADII = { xs: '2px', sm: '4px', md: '8px', lg: '12px', xl: '16px' } as const;
 export const SPACING = { xs: '8px', sm: '12px', md: '16px', lg: '24px', xl: '32px' } as const;
 
+/**
+ * The widths a screen gives a block or a field, by what it holds: a screen names the use, never
+ * the number. The screens write the numbers today (the guideline's values page).
+ */
+export const WIDTHS = { card: 440, column: 560, field: 420, amount: 320, date: 240 } as const;
+
+/** The icon sizes in px, by where the icon sits: a screen names the place, never the number. The
+ * screens write the numbers today (the guideline's values page). */
+export const ICON_SIZES = { inline: 14, field: 16, button: 18, bar: 22, mark: 36 } as const;
+
 /** Where the frame's brand text starts looking for a shade that reads on white: shade 7 (`onWhite`). */
 export const BRAND_TEXT_FROM = 7;
 

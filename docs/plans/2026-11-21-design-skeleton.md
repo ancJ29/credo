@@ -121,11 +121,23 @@ orchestrator's at each landing, about 20 minutes, not a step. One recap,
       on the spacing fixed at 0, case 8 on a tone's colour changed and on a use line not drawn, and
       case 8's types on a role with no line (the typecheck). The gates exit 0 at 14:58 (`ui`) and
       15:00 (`visual`).
-- [ ] **4. Every value by its use.** Spacing steps by what they separate; the widths the screens
+- [x] **4. Every value by its use.** Spacing steps by what they separate; the widths the screens
       draw (440, 420, 240, 560, 320), one a use; icon sizes (14 px on 29 of 44, five others);
       corners and shadows; formats, each in its one place: money `useMoney`
       (`ui/src/parts/OrderParts.tsx#L23`), dates and times `ui/src/day.ts` (8 `new Intl.` in 5
       files: not yet). Case 8. _Done when:_ the gates exit 0. **17 min** (203's step 1).
+      _Evidence:_ the step's commit. `GUIDELINE.values` gains a use line for each of the five
+      spacing steps, the five widths (card 440, column 560, field 420, amount 320, date 240), the
+      five icon sizes (inline 14, field 16, button 18, bar 22, mark 36), the five corners, the four
+      shadows and the three formats (money, date, time), each typed over its table's keys
+      (`SPACING`, `RADII`, and the new `WIDTHS` and `ICON_SIZES` in `tokens.ts`); Values draws each
+      as a state (Spacing, Widths, Icons, Corners and shadows, Formats) in place of the old Gaps
+      line. Recounted: the icons are 30 at 14 px of 45 (not 29 of 44), with five other sizes; the
+      `new Intl.` outside `day.ts` and the tests are 5 `NumberFormat` in 4 files (8 in 5 files is
+      with `day.ts`'s 3). Two notes say what is not yet (the screens write the widths and icon
+      sizes as numbers; the 5 `new Intl.` sites). Reds on the Gallery test file, 15:10: case 8 on a
+      width drawn one more than its table, and on an icon drawn with a corner's line; the
+      typecheck on a corner with no line; green 41 of 41.
 - [ ] **5. One key, one value, the leftovers.** `TYPE` on `size` (a `Text`'s `size` also sets its
       line height, which `fz` drops; on a `Title`, `size: 'xs'` keeps the level's); `FRAME_VALUES`'
       `menu-size` and `link-size` one value; item 649; item 647's three theme weights read `WEIGHTS`
