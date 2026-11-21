@@ -40,29 +40,19 @@ a directory of your own making is not on this list and is not a directory (vites
 - **`parts/`**: a piece a screen is built from, that no route mounts
   (`ui/src/parts/DetailCards.tsx`'s `DetailCard`, `ui/src/parts/PageShell.tsx`'s `PageShell`).
 - **`design-system/`**: the look in one place: a token, the app's own theme and the six palettes
-  (`ui/src/design-system/appTheme.ts`'s `themeOf`, which holds the main shade, the badge, table and dialog
-  entries and the resolver that gives a client's colour its text, `ui/src/design-system/palettes.ts`'s
-  `PALETTES`, and its `theme.module.css`; the text on a colour is `ui/src/design-system/onBrand.ts`'s
-  `onBrand`, written as `--credo-on-*` variables by `ui/src/design-system/cssVariables.ts`'s
-  `credoVariables`, which a screen reads and never names white; a screen names no numbered shade: it reads a
-  role of `ui/src/design-system/tokens.ts`'s `ROLES`, `HEADER_WASHES` or `MENU_WASHES`, a
-  `--credo-<role>` variable, or Mantine's own slot (`--mantine-color-body`, `-text`, `-default-border`,
-  `-default-hover`) and an avatar's `color="initials"`, while Mantine's colour names (`dimmed`, `red`, `orange`, `green`, `gray`,
-  `yellow`; about 195 uses in `ui/src` today) stay until the skeleton piece; a screen reads its text by name
-  too: a style of `ui/src/design-system/tokens.ts`'s `TYPE` spread as props (`<Text {...TYPE.caption}>`) or a weight
-  of `WEIGHTS` (`fw={WEIGHTS.emphasis}`) or a size of `SIZES`, the frame's stylesheets reading the weight and size variables `FRAME_VALUES` writes (`ui/src/design-system/tokens.ts`)), and the
-  gallery page that shows the parts (`ui/src/design-system/Gallery.tsx`'s `Gallery`, served at `/48b74d079/gallery`; each part's entry is a row of `ui/src/design-system/entries.tsx`'s `ENTRIES`).
-- **`components/`**: a piece of the design system, in a level directory, with its gallery entry. Mantine
-  stays the base: a piece joins when it is drawn a third time, never to wrap a Mantine part alone.
-  Levels are `atoms/`, `molecules/` and `organisms/`; each is a directory of components, not of its own
-  making. **`components/atoms/`**: a small part that holds no other component of ours
-  (`ui/src/components/atoms/StatusBadge.tsx`'s `StatusBadge`). **`components/molecules/`**: a few atoms
-  made one thing (`ui/src/components/molecules/DetailField.tsx`'s `DetailField`).
-  **`components/organisms/`**: a block of a page, made of molecules and atoms
-  (`ui/src/components/organisms/SectionCard.tsx`'s `SectionCard`). A component imports only from the
-  levels below its own, the tokens and packages; `eslint.config.js` holds it. The rule of three: a piece
-  joins `components/` at its third use in the app, with its gallery entry; its first two stay in their
-  screen or in `parts/`.
+  (`ui/src/design-system/appTheme.ts`'s `themeOf`, `ui/src/design-system/palettes.ts`'s `PALETTES`,
+  `ui/src/design-system/tokens.ts`'s `ROLES`, the text on a colour in `ui/src/design-system/onBrand.ts`'s
+  `onBrand`), and the gallery page that shows the parts (`ui/src/design-system/Gallery.tsx`'s `Gallery`,
+  served at `/48b74d079/gallery`; each part's entry is a row of `ui/src/design-system/entries.tsx`'s
+  `ENTRIES`). **The rules of the look, the goal and where to look are in
+  `ui/src/design-system/guideline.ts`'s `GUIDELINE`: read it before drawing a screen, and ask what it
+  does not say.**
+- **`components/`**: a piece of the design system, in a level directory (`atoms/`, `molecules/`,
+  `organisms/`), with its gallery entry; Mantine stays the base
+  (`ui/src/components/atoms/StatusBadge.tsx`'s `StatusBadge`,
+  `ui/src/components/molecules/DetailField.tsx`'s `DetailField`,
+  `ui/src/components/organisms/SectionCard.tsx`'s `SectionCard`). What each level holds and when a
+  piece joins are rules in the guideline.
 - **`i18n/`**: the dictionary (`ui/src/i18n/en.ts`'s `en`).
 - **`mock/`**: the standalone harness that draws a screen on fake data
   (`ui/src/mock/MockPage.tsx`'s `MockPage`).

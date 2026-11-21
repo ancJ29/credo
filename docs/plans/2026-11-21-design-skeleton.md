@@ -80,7 +80,7 @@ orchestrator's at each landing, about 20 minutes, not a step. One recap,
       `instead` naming no entry and on a link to the wrong address, case 3 on a changed heading;
       green 34 of 34. The gates exit 0 at 13:58 (`ui`) and 13:59 (`visual`), the diff of the done
       check printing nothing.
-- [ ] **2. The home and the charter.** `guideline.ts` and its rule type: what the rule says, why,
+- [x] **2. The home and the charter.** `guideline.ts` and its rule type: what the rule says, why,
       what holds it (a check's file, or review), and whether the app follows it yet or which item
       moves it. The charter: your goal; what credo is (one platform many small and medium
       companies in Vietnam share, its modules added over time, not one trade's app); where a coder
@@ -94,6 +94,14 @@ orchestrator's at each landing, about 20 minutes, not a step. One recap,
       `docs/memo/ui-code.md`'s new-screen list gain "its look from the guideline". Cases 4 to 7 and
       18. _Done when:_ the gates exit 0, `grep -c "numbered shade" ui/CLAUDE.md` prints 0. **17 min**
       (203's step 1, a rule and its gallery entry, no screen changed).
+      _Evidence:_ the step's commit. `guideline.ts` holds `GUIDELINE`, whose `charter` has the goal,
+      what credo is, where to look and six rules, each typed with what holds it and whether the app
+      follows it; the gallery's first group Start here draws it as a plate (`Charter.tsx`); the list
+      holds the seven groups, Rules and Pages empty until landings 2 and 3. Reds on the Gallery and
+      guideline test files, 14:33 to 14:34: case 4 on Foundations and Rules swapped; case 5 on the
+      bare address opening the second entry (case 7 with it); case 6 on a check whose file is gone,
+      and on an item not listed; case 7 on the credo words cut by one letter; case 18 on the
+      exported name changed, in the citation test. `ui/CLAUDE.md` holds 0 of "numbered shade".
 - [ ] **3. Values explains, and the meanings.** Each role, `on-*` value and wash its purpose line,
       typed over its table's keys; each swatch its value as `credoVariables` writes it for the
       chosen colour (jsdom has no computed style); each `TYPE` style its size, line height, weight,

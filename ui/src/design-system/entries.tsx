@@ -25,6 +25,7 @@ import { SectionTitle } from '../components/molecules/SectionTitle';
 import { DoorCard } from '../components/organisms/DoorCard';
 import { PageHeader } from '../components/organisms/PageHeader';
 import { SectionCard } from '../components/organisms/SectionCard';
+import { Charter } from './Charter';
 import { OnTheBrand, OnTheLinks } from './OnTheBrand';
 import { HEADER_WASHES, MENU_WASHES, ROLES, TYPE, WEIGHTS } from './tokens';
 
@@ -86,7 +87,15 @@ function LinkState() {
 }
 
 /** The levels of the list, in order. */
-export const GROUPS = ['Foundations', 'Atoms', 'Molecules', 'Organisms'] as const;
+export const GROUPS = [
+  'Start here',
+  'Foundations',
+  'Rules',
+  'Pages',
+  'Atoms',
+  'Molecules',
+  'Organisms',
+] as const;
 
 /** One part of the list: where it sits, its words, its props as the file declares them, its states. */
 export type Entry = {
@@ -185,6 +194,23 @@ function Roles() {
 
 /** Every part of the design system, by level, each in its states: the table the gallery's list is drawn from. */
 export const ENTRIES: Entry[] = [
+  {
+    group: 'Start here',
+    name: 'The charter',
+    description:
+      'What the guideline is for, what credo is, where a coder looks for a choice, and the rules that hold for every screen.',
+    props: 'GUIDELINE.charter',
+    useWhen: [
+      'You are about to code a screen and have not read the guideline.',
+      'A choice of look or feel comes up and you do not know where to look.',
+    ],
+    dontUseWhen: [
+      'You need a colour, a text style or a gap: that is Values.',
+      'A part already draws what you need: use the part.',
+    ],
+    instead: 'Values',
+    states: [{ name: 'The charter', node: <Charter /> }],
+  },
   {
     group: 'Foundations',
     name: 'Values',

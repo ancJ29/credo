@@ -7,6 +7,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { openApp } from '../../tests/open';
 import { Gallery } from './Gallery';
 import { ENTRIES, slugOf } from './entries';
+import { followedWords, heldWords } from './Charter';
+import { GUIDELINE } from './guideline';
 import { contrast, onBrand, onWhite, beforeOf, type Surface } from './onBrand';
 import { HEADER_WASHES, MENU_WASHES, ROLES, TYPE } from './tokens';
 import { PALETTES } from './palettes';
@@ -64,14 +66,23 @@ describe('Gallery', () => {
     for (const name of names) expect(style).toContain(`--credo-${name}: `);
   });
 
-  it('4: lists Foundations, Atoms, Molecules and Organisms in order, each with its count and every component file of its level', () => {
+  it('4: lists Start here, Foundations, Rules, Pages, Atoms, Molecules and Organisms in order, each with its count and every component file of its level', () => {
     open(`${BASE}/atoms/field-label`);
 
     const heads = list()
       .getAllByRole('heading')
       .map((heading) => heading.textContent);
-    expect(heads).toEqual(['Foundations', 'Atoms', 'Molecules', 'Organisms']);
+    expect(heads).toEqual([
+      'Start here',
+      'Foundations',
+      'Rules',
+      'Pages',
+      'Atoms',
+      'Molecules',
+      'Organisms',
+    ]);
     expect(found.length).toBeGreaterThan(0);
+    expect(list().getByRole('region', { name: 'Start here' }).textContent).toContain('1');
     expect(list().getByRole('region', { name: 'Foundations' }).textContent).toContain('3');
     for (const [level, heading] of Object.entries(HEADINGS)) {
       const files = found.filter((file) => file.level === level);
@@ -95,14 +106,39 @@ describe('Gallery', () => {
     expect(screen.getAllByRole('article')).toHaveLength(1);
   });
 
-  it('6: the bare address opens the first part and the list marks it current', () => {
+  it('6: the bare address opens the charter and the list marks it current', () => {
     open(BASE);
 
-    expect(part().getByRole('heading', { level: 2, name: 'Values' })).toBeDefined();
-    expect(list().getByRole('link', { name: 'Values' }).getAttribute('aria-current')).toBe('page');
+    expect(part().getByRole('heading', { level: 2, name: 'The charter' })).toBeDefined();
+    expect(list().getByRole('link', { name: 'The charter' }).getAttribute('aria-current')).toBe(
+      'page',
+    );
+    expect(list().getByRole('link', { name: 'Values' }).getAttribute('aria-current')).toBeNull();
     expect(
       list().getByRole('link', { name: 'FieldLabel' }).getAttribute('aria-current'),
     ).toBeNull();
+  });
+
+  it('guideline 7: the charter draws its words from guideline.ts, the same text', () => {
+    open(BASE);
+
+    const { goal, credo, lookHere, rules } = GUIDELINE.charter;
+    expect(lookHere.length).toBeGreaterThan(1);
+    expect(rules.length).toBeGreaterThan(1);
+    const plate = within(part().getByRole('figure', { name: 'The charter' }));
+    expect(plate.getByText(goal)).toBeDefined();
+    expect(plate.getByText(credo)).toBeDefined();
+    for (const { need, where } of lookHere) {
+      expect(plate.getByText(`${need}.`)).toBeDefined();
+      expect(plate.getByText(where, { exact: false })).toBeDefined();
+    }
+    for (const rule of rules) {
+      expect(plate.getByText(rule.says)).toBeDefined();
+      expect(plate.getByText(rule.why)).toBeDefined();
+    }
+    // Each rule's caption says what holds it and whether the app follows it.
+    expect(plate.getAllByText(/^Held by /)).toHaveLength(rules.length);
+    expect(plate.getAllByText(/The app follows it\.$/)).toHaveLength(rules.length);
   });
 
   it('7: an address that names no part says so beside the list and draws no part', () => {
@@ -205,8 +241,15 @@ describe('Gallery', () => {
     expect(part().getByRole('link', { name: 'Quay lại đăng nhập' })).toBeDefined();
   });
 
+  it('guideline 7: a rule says in words what holds it and whether the app follows it, or the item that moves it', () => {
+    expect(heldWords('review')).toBe('Held by review.');
+    expect(heldWords({ check: 'a/b.test.ts' })).toBe('Held by a/b.test.ts.');
+    expect(followedWords('yes')).toBe('The app follows it.');
+    expect(followedWords({ item: 12 })).toBe('Not yet: open item 12 moves it.');
+  });
+
   it('11: draws the values', () => {
-    open(BASE);
+    open(`${BASE}/foundations/values`);
 
     expect(stateNames()).toEqual(['Palette', 'Type', 'Gaps', 'Roles']);
     expect(part().getAllByTitle(/^brand \d$/)).toHaveLength(10);
@@ -480,7 +523,7 @@ describe('Gallery', () => {
     });
 
     it('the colour themes: choosing one redraws every part in it, the Foundations’ palette included, and the browser remembers it', async () => {
-      open(BASE);
+      open(`${BASE}/foundations/values`);
       const before = swatches();
       const emerald = PALETTES.find(({ name }) => name === 'emerald')!;
 
@@ -491,7 +534,7 @@ describe('Gallery', () => {
       after.forEach((style, at) => expect(style).not.toBe(before[at]));
 
       cleanup();
-      open(BASE);
+      open(`${BASE}/foundations/values`);
       expect(chooser().value).toBe('Emerald');
       expect(brand7()).toBe(emerald.shades[7]);
       expect(swatches()).toEqual(after);
@@ -532,7 +575,7 @@ describe('Gallery', () => {
   });
 
   it('the workbench: a part with no kind has its group and name for a path, and an address naming no part has none', () => {
-    open(BASE);
+    open(`${BASE}/foundations/values`);
     expect(bar().getByText('Foundations /')).toBeDefined();
     expect(bar().getByText('Values')).toBeDefined();
     cleanup();
@@ -573,7 +616,7 @@ describe('Gallery', () => {
   });
 
   it('1: every entry carries one to three use lines and one to three don’t-use lines', () => {
-    expect(ENTRIES).toHaveLength(14);
+    expect(ENTRIES).toHaveLength(15);
     for (const entry of ENTRIES) {
       for (const lines of [entry.useWhen, entry.dontUseWhen]) {
         expect(lines.length, entry.name).toBeGreaterThanOrEqual(1);
