@@ -101,7 +101,7 @@ The map of walks. A dash is a part of the day not built yet.
    plan's table stays as it was at its commit, never kept in step. *Rejected:* a test-case file
    beside the tests. It repeats the names, and goes stale at the first test nobody copies in.
 5. **One review, of everything `pre-merge` holds that `main` lacks, only where it is worth it,
-   once the whole check on `pre-merge` is green, at most once a push and over what `main` has
+   once the checks the section on `pre-merge` names are green, at most once a push and over what `main` has
    gained since the last review; a step or a piece reaching `pre-merge` gets its own checks and
    the human's look, not a review.** *Worth it* means the held change is code a user meets in the
    app's screens, sign-in, money, a client's data, or what runs on ridge, in CI or in a deploy.
@@ -256,8 +256,9 @@ has taken `pre-merge` in.
   package's own gates and the citation test, and `main` moves on their green.** A package's own
   gates are its `pnpm --filter @credo/<pkg> check`, which is `bash ops/gate.sh <pkg>`: typecheck
   and test (coverage at 100 %) of that package, then eslint, prettier and knip over the whole
-  tree. For `ui` that is its unit tests and not `visual`'s pictures, which are `visual`'s own
-  gate and run when `visual` is the touched package. *Why:* the human, 11-21 (quoted in rule 5).
+  tree. A landing that touches `ui` is checked by `ui`'s own check and by `visual`'s
+  (`pnpm --filter @credo/visual check`) too, since `visual` draws `ui`'s screens and the gallery
+  and is the one gate that sees a look move. *Why:* the human, 11-21 (quoted in rule 5).
 - **The whole check (`pnpm check`) runs on `pre-merge` where a change can break more than its
   package: a landing that touches two packages or more; a file another package imports (a file
   named in a package's `exports`, in `shared`, `bff`, `scripts` or `ui`: `shared` is imported by
