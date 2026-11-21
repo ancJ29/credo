@@ -278,7 +278,7 @@ export const GUIDELINE: { charter: Charter; values: Values } = {
       },
       {
         about: 'widths',
-        text: 'A width is named by its use, never a number. Not yet: the screens write the numbers: 440 px is written 3 times, 420 and 240 twice, 560 and 320 once, and three more are in no list: 140 (a quantity field), 155 (a filter) and 200 (the search field’s least). The most common width of all is also in no list: a table’s least width, set 14 times at 480 (once), 560 (3), 640 (2), 720 (4) and 760 (2), which only the human can choose; open item 653 asks it, and open item 651 moves the rest.',
+        text: 'A width is named by its use, never a number. Not yet: the screens write the numbers: 440 px is written 3 times, 420 and 240 twice, 560 and 320 once, and three more are in no list: 140 (a quantity field), 155 (a filter) and 200 (the search field’s least). The most common width of all is also in no list: a table’s least width, set 14 times at 480 (once), 560 (3), 640 (2), 720 (4) and 760 (2), which the table part will decide, the design-system coder’s choice, at the plan’s landing 3; open item 653 holds it, and open item 651 moves the rest.',
       },
       {
         about: 'icons',
