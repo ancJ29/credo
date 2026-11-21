@@ -134,6 +134,8 @@ export type Contract = {
   serves: string;
   heldBy: HeldBy;
   followed: Followed;
+  /** Set on a built part the screens already draw, which they do not all follow yet. */
+  used?: true;
 };
 
 /** What a screen asks of a button: the main action of the page, another, a quiet one, a danger. */
@@ -172,7 +174,7 @@ export const GUIDELINE: {
       },
       {
         reader: 'A design-system coder',
-        does: 'Owns each part’s look, read from the theme, and changes it when it needs changing. A new part matches the existing ones, and the gallery is the check. The values and their use lines below are this coder’s reference.',
+        does: 'Owns each part’s look, read from the theme, and changes it when it needs changing. A new part matches the existing ones, and the gallery is the check. The values and their use lines below are this coder’s reference. Takes the feedback of product owners, sales or the human, in their own words, and turns it into a change of a part or a rule.',
       },
     ],
     lookHere: [
@@ -182,11 +184,12 @@ export const GUIDELINE: {
       },
       {
         need: 'A screen’s coder: how a page is laid out',
-        where: 'The page base, in the Pages group, which stays empty until the plan’s landing 3.',
+        where: 'The page base, in the Pages group: the frame, then a page drawn from parts only.',
       },
       {
         need: 'A screen’s coder: what a screen says or offers',
-        where: 'A rule, in the Rules group, which stays empty until the plan’s landing 2.',
+        where:
+          'The part’s contract, in the panel beside its entry: what a screen gives it and what it decides. A rule that holds for every screen is in the rules below. The Rules group stays empty.',
       },
       {
         need: 'A design-system coder: a colour, a text style, a gap, a width, an icon size or a corner',
@@ -211,6 +214,18 @@ export const GUIDELINE: {
         why: 'A look written in a screen is one more place to change and one more way to differ; in a part it changes once, and the design-system coder keeps the new look matching the old.',
         heldBy: 'review',
         followed: { item: 651 },
+      },
+      {
+        says: 'A part’s look (a tone, a variant, which of today’s looks becomes which meaning) is the design-system coder’s to decide and keep consistent, never asked of a person outside it; feedback on the look comes from product owners, sales or the human in their own words, and the design-system coder turns it into a change of a part or a rule.',
+        why: 'The people who see the app say what they see and want, not which variant draws it; a look chosen by many hands is a second way, and the design-system coder is the one who keeps the app one app.',
+        heldBy: 'review',
+        followed: 'yes',
+      },
+      {
+        says: 'A kind of page (a list, a detail, a form) is written when its first page is built, from the page base’s slots, and a person looks at it before a second page of that kind is built.',
+        why: 'A kind guessed before any page needs it is a second way; one drawn from a real first page, judged once, is the pattern the next pages copy.',
+        heldBy: 'review',
+        followed: 'yes',
       },
       {
         says: 'A screen writes no numbered shade of a palette; text on the client’s colour comes from the on-brand values, never from a white written in the screen. Mantine’s own slots (`--mantine-color-body`, `-text`, `-default-border`, `-default-hover`) and an avatar’s `color="initials"` are allowed.',
@@ -326,6 +341,8 @@ export const GUIDELINE: {
         'A field of a form of several, a day field too: the order’s driver and its send day. 420 px at most.',
       amount: 'A field that holds an amount: the cash a driver takes in. 320 px at most.',
       date: 'A field that holds a day and stands alone, outside a form of several: the deliveries’ day, a day shown on its own. 240 px at most.',
+      table:
+        'A table’s least width, in the list table part: below it the table scrolls sideways and its columns keep their room. 640 px at least.',
     },
     icons: {
       inline:
@@ -367,7 +384,7 @@ export const GUIDELINE: {
       },
       {
         about: 'widths',
-        text: 'A width is named by its use, never a number. Not yet: the screens write the numbers: 440 px is written 3 times, 420 and 240 twice, 560 and 320 once, and three more are in no list: 140 (a quantity field), 155 (a filter) and 200 (the search field’s least). The most common width of all is also in no list: a table’s least width, set 14 times at 480 (once), 560 (3), 640 (2), 720 (4) and 760 (2), which the table part will decide, the design-system coder’s choice, at the plan’s landing 3; open item 653 holds it, and open item 651 moves the rest.',
+        text: 'A width is named by its use, never a number. Not yet: the screens write the numbers: 440 px is written 3 times, 420 and 240 twice, 560 and 320 once, and three more are in no list: 140 (a quantity field), 155 (a filter) and 200 (the search field’s least). The most common width of all is also in no list: a table’s least width, set 12 times at 480 (once), 560 (3), 640 (2), 720 (4) and 760 (2), which the table part now decides, the design-system coder’s choice, as the `table` width of 640 (the part writes its own 640 still); open item 653 moves the screens’ own, and open item 651 the rest.',
       },
       {
         about: 'icons',
@@ -558,6 +575,316 @@ export const GUIDELINE: {
       ],
       serves: 'A screen picks parts, never a style',
       heldBy: { check: 'ui/src/components/atoms/StatusBadge.test.tsx' },
+      followed: { item: 651 },
+    },
+    {
+      part: 'PageShell',
+      takes: [
+        { prop: 'title', is: 'content', line: 'The page’s title.' },
+        { prop: 'actions', is: 'content', line: 'What acts on the whole page, beside its title.' },
+        {
+          prop: 'status',
+          is: 'meaning',
+          line: 'Whether the page’s data is loading, failed or ready.',
+        },
+        { prop: 'onRetry', is: 'content', line: 'The act of a failed load’s retry.' },
+        { prop: 'children', is: 'content', line: 'The page’s body, drawn when its data is ready.' },
+      ],
+      decides: [
+        { what: 'The title’s style.', from: [{ table: 'TYPE', key: 'pageTitle' }] },
+        {
+          what: 'The gap between the heading row and the body.',
+          from: [{ table: 'SPACING', key: 'lg' }],
+        },
+      ],
+      fixes: [
+        'The header row’s order: the title first, what acts on the page beside it.',
+        'Where a failed or loading state sits: in the place of the body, under the header row.',
+        'Not yet: it takes no back link and no record status, a screen draws them itself; open item 651 moves them into the part.',
+      ],
+      states: [
+        { name: 'Ready', line: 'The data is here: the heading row, then the body.' },
+        { name: 'Loading', line: 'The data is on its way: the heading row, then a loader.' },
+        {
+          name: 'Failed',
+          line: 'The data did not come: the heading row, then a message and a retry.',
+        },
+      ],
+      serves: 'A screen picks parts, never a style',
+      heldBy: { check: 'ui/src/design-system/guideline.test.ts' },
+      followed: { item: 651 },
+      used: true,
+    },
+    {
+      part: 'PageHeader',
+      takes: [
+        { prop: 'title', is: 'content', line: 'The page’s title.' },
+        { prop: 'actions', is: 'content', line: 'What acts on the whole page, beside its title.' },
+      ],
+      decides: [{ what: 'The title’s style.', from: [{ table: 'TYPE', key: 'pageTitle' }] }],
+      fixes: ['Its alignment: the title at the start, the actions at the end, on one line.'],
+      states: [
+        { name: 'With actions', line: 'The title, and the page’s actions beside it.' },
+        { name: 'Title only', line: 'The title alone.' },
+      ],
+      serves: 'A screen picks parts, never a style',
+      heldBy: { check: 'ui/src/design-system/guideline.test.ts' },
+      followed: 'yes',
+    },
+    {
+      part: 'SectionCard',
+      takes: [
+        { prop: 'icon', is: 'content', line: 'The icon of the section, never its size.' },
+        { prop: 'title', is: 'content', line: 'The section’s title.' },
+        { prop: 'children', is: 'content', line: 'What the section holds.' },
+      ],
+      decides: [
+        {
+          what: 'Its padding.',
+          from: [{ table: 'SPACING', key: 'lg' }],
+        },
+        {
+          what: 'The gap between its title and what it holds.',
+          from: [{ table: 'SPACING', key: 'md' }],
+        },
+        {
+          what: 'The icon’s size beside the title.',
+          from: [{ table: 'ICON_SIZES', key: 'inline' }],
+        },
+        { what: 'Its edge.', from: [{ table: 'ROLES', key: 'border' }] },
+      ],
+      fixes: [
+        'Its tile: a small grey tile behind the icon, and its corner.',
+        'Not yet: the screens pass the icon’s size themselves, 14 px, and the edge is Mantine’s own; open item 651 moves them into the part.',
+      ],
+      states: [{ name: 'Default', line: 'A title over what the section holds.' }],
+      serves: 'A screen picks parts, never a style',
+      heldBy: { check: 'ui/src/design-system/guideline.test.ts' },
+      followed: { item: 651 },
+      used: true,
+    },
+    {
+      part: 'DetailColumns',
+      takes: [
+        { prop: 'main', is: 'content', line: 'The blocks that identify the record.' },
+        {
+          prop: 'side',
+          is: 'content',
+          line: 'The blocks that act on it; none for a page without.',
+        },
+      ],
+      decides: [{ what: 'The gap between its columns.', from: [{ table: 'SPACING', key: 'lg' }] }],
+      fixes: [
+        'Its columns by width: two from 992 px (the main seven twelfths, the side five), one below with the main first.',
+        'With no side, the main takes the full width at every width.',
+      ],
+      states: [
+        { name: 'Main and side', line: 'Two columns on a wide window.' },
+        { name: 'Main only', line: 'The main takes the whole width.' },
+      ],
+      serves: 'A screen picks parts, never a style',
+      heldBy: { check: 'ui/src/design-system/guideline.test.ts' },
+      followed: 'yes',
+    },
+    {
+      part: 'FieldPair',
+      takes: [{ prop: 'children', is: 'content', line: 'The two fields of a row.' }],
+      decides: [{ what: 'The gap between its fields.', from: [{ table: 'SPACING', key: 'md' }] }],
+      fixes: ['Its columns by width: two a row from 768 px, one below.'],
+      states: [
+        { name: 'Two fields', line: 'Two fields beside each other, or one over the other.' },
+      ],
+      serves: 'A screen picks parts, never a style',
+      heldBy: { check: 'ui/src/design-system/guideline.test.ts' },
+      followed: 'yes',
+    },
+    {
+      part: 'BackLink',
+      takes: [
+        { prop: 'href', is: 'content', line: 'The address it leads back to.' },
+        { prop: 'children', is: 'content', line: 'Its words.' },
+      ],
+      decides: [
+        { what: 'Its colour.', from: [{ table: 'ROLES', key: 'brand-text' }] },
+        { what: 'Its arrow’s size.', from: [{ table: 'ICON_SIZES', key: 'inline' }] },
+      ],
+      fixes: [
+        'Its arrow, before the words, and the small gap between them.',
+        'Its text size: Mantine’s small.',
+        'Not yet: no screen draws it; 14 places draw a back link by hand, as a button or a link, and open item 651 moves them to this one.',
+      ],
+      states: [{ name: 'Default', line: 'An arrow, then its words.' }],
+      serves: 'A screen picks parts, never a style',
+      heldBy: { check: 'ui/src/design-system/guideline.test.ts' },
+      followed: { item: 651 },
+    },
+    {
+      part: 'ListTable',
+      takes: [
+        { prop: 'kind', is: 'meaning', line: 'Which list it draws: customers or products.' },
+        { prop: 'shown', is: 'content', line: 'The columns to draw, by key.' },
+        { prop: 'rows', is: 'content', line: 'The records, one row each.' },
+        { prop: 'language', is: 'content', line: 'The language its headings are written in.' },
+      ],
+      decides: [
+        {
+          what: 'Its least width, below which it scrolls sideways.',
+          from: [{ table: 'WIDTHS', key: 'table' }],
+        },
+      ],
+      fixes: [
+        'The price column’s side: its figures at the right.',
+        'Its rows under the pointer: the brand’s palest shade.',
+        'Not yet: the part writes its 640 itself, and the screens write five widths of their own, 12 times; open item 653 moves them.',
+      ],
+      states: [{ name: 'Default', line: 'The headings, then a row for each record.' }],
+      serves: 'A screen picks parts, never a style',
+      heldBy: { check: 'ui/src/design-system/guideline.test.ts' },
+      followed: { item: 653 },
+      used: true,
+    },
+    {
+      part: 'FieldLabel',
+      takes: [{ prop: 'children', is: 'content', line: 'The label’s words.' }],
+      decides: [
+        {
+          what: 'Its style: small capitals, spaced, in grey.',
+          from: [{ table: 'TYPE', key: 'fieldLabel' }],
+        },
+      ],
+      fixes: ['Its element: a span, so it sits inside a line.'],
+      states: [{ name: 'Phone', line: 'A label over a field or a value.' }],
+      serves: 'A screen picks parts, never a style',
+      heldBy: { check: 'ui/src/design-system/guideline.test.ts' },
+      followed: 'yes',
+    },
+    {
+      part: 'DoorHeading',
+      takes: [
+        { prop: 'title', is: 'content', line: 'The door’s title.' },
+        { prop: 'subtitle', is: 'content', line: 'A line under the title; none draws none.' },
+      ],
+      decides: [
+        { what: 'The title’s weight.', from: [{ table: 'WEIGHTS', key: 'title' }] },
+        { what: 'The subtitle’s style.', from: [{ table: 'TYPE', key: 'caption' }] },
+      ],
+      fixes: ['Both centred, and the gap under the subtitle, 32 px, before what follows.'],
+      states: [
+        { name: 'With subtitle', line: 'A title and a line under it.' },
+        { name: 'Title only', line: 'The title alone.' },
+      ],
+      serves: 'A screen picks parts, never a style',
+      heldBy: { check: 'ui/src/design-system/guideline.test.ts' },
+      followed: 'yes',
+    },
+    {
+      part: 'LogoTile',
+      takes: [
+        {
+          prop: 'logo',
+          is: 'content',
+          line: 'The company’s logo; none, or one that fails to load, draws nothing.',
+        },
+        { prop: 'alt', is: 'content', line: 'The company’s name, said for the logo.' },
+      ],
+      decides: [
+        {
+          what: 'Its line: a pale hairline in the client’s colour.',
+          from: [{ table: 'ROLES', key: 'brand-line' }],
+        },
+      ],
+      fixes: ['Its tile: 44 px square with a corner of 10 px, the logo fitted inside.'],
+      states: [
+        { name: 'With a logo', line: 'The logo in its tile.' },
+        { name: 'No logo', line: 'Nothing is drawn.' },
+      ],
+      serves: 'A screen picks parts, never a style',
+      heldBy: { check: 'ui/src/design-system/guideline.test.ts' },
+      followed: 'yes',
+    },
+    {
+      part: 'BrandBand',
+      takes: [
+        { prop: 'name', is: 'content', line: 'The company’s name.' },
+        { prop: 'logo', is: 'content', line: 'The company’s logo, if it has one.' },
+      ],
+      decides: [
+        {
+          what: 'Its wash: the client’s palest shade.',
+          from: [{ table: 'ROLES', key: 'brand-tint' }],
+        },
+        { what: 'The line beneath it.', from: [{ table: 'ROLES', key: 'brand-tint-strong' }] },
+        { what: 'The name’s weight.', from: [{ table: 'WEIGHTS', key: 'title' }] },
+        { what: 'The gap between the logo and the name.', from: [{ table: 'SPACING', key: 'md' }] },
+      ],
+      fixes: ['Its padding, 28 px above and below and 40 at the sides, and its centring.'],
+      states: [{ name: 'Default', line: 'The logo tile beside the name.' }],
+      serves: 'A screen picks parts, never a style',
+      heldBy: { check: 'ui/src/design-system/guideline.test.ts' },
+      followed: 'yes',
+    },
+    {
+      part: 'DetailField',
+      takes: [
+        { prop: 'label', is: 'content', line: 'The name of the fact.' },
+        { prop: 'value', is: 'content', line: 'The fact; none draws a dash.' },
+      ],
+      decides: [{ what: 'The label’s style.', from: [{ table: 'TYPE', key: 'fieldLabel' }] }],
+      fixes: ['A dash for no value, and the small gap between the label and the value.'],
+      states: [
+        { name: 'With a value, and with none', line: 'A label over its value, or over a dash.' },
+      ],
+      serves: 'A screen picks parts, never a style',
+      heldBy: { check: 'ui/src/design-system/guideline.test.ts' },
+      followed: 'yes',
+    },
+    {
+      part: 'SectionTitle',
+      takes: [
+        { prop: 'icon', is: 'content', line: 'The icon of the section, never its size.' },
+        { prop: 'label', is: 'content', line: 'The section’s short title.' },
+      ],
+      decides: [
+        { what: 'The label’s style.', from: [{ table: 'TYPE', key: 'sectionLabel' }] },
+        { what: 'The icon’s size.', from: [{ table: 'ICON_SIZES', key: 'inline' }] },
+        { what: 'The tile’s corner.', from: [{ table: 'RADII', key: 'sm' }] },
+      ],
+      fixes: [
+        'Its tile: a grey square of 24 px behind the icon.',
+        'Not yet: the screens pass the icon’s size themselves; open item 651 moves them into the part.',
+      ],
+      states: [{ name: 'Default', line: 'A tile with its icon, then the label.' }],
+      serves: 'A screen picks parts, never a style',
+      heldBy: { check: 'ui/src/design-system/guideline.test.ts' },
+      followed: { item: 651 },
+      used: true,
+    },
+    {
+      part: 'DoorCard',
+      takes: [
+        { prop: 'name', is: 'content', line: 'The company’s name.' },
+        { prop: 'logo', is: 'content', line: 'The company’s logo, if it has one.' },
+        { prop: 'children', is: 'content', line: 'What the card holds.' },
+      ],
+      decides: [
+        { what: 'Its corner.', from: [{ table: 'RADII', key: 'md' }] },
+        { what: 'Its edge.', from: [{ table: 'ROLES', key: 'border-strong' }] },
+        {
+          what: 'Its width at most, given by the page around it.',
+          from: [{ table: 'WIDTHS', key: 'card' }],
+        },
+      ],
+      fixes: [
+        'Its bar: 4 px in the brand’s gradient across the top; then the band, then the body with its own padding.',
+        'Its shadow: the one that lifts a door off its page.',
+        'Not yet: no screen draws it; `SignInFrame` in `ui/src/pages/SignIn.tsx` draws a card of its own, and open item 651 moves it to this one.',
+      ],
+      states: [
+        { name: 'Sign-in', line: 'The card holding the sign-in fields.' },
+        { name: 'Login link', line: 'The card holding the login-link choices.' },
+      ],
+      serves: 'A screen picks parts, never a style',
+      heldBy: { check: 'ui/src/design-system/guideline.test.ts' },
       followed: { item: 651 },
     },
   ],

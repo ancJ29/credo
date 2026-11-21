@@ -331,7 +331,7 @@ describe('Gallery', () => {
     const { spacing, widths, icons, corners, shadows, formats } = GUIDELINE.values;
     const tables = [
       [spacing, Object.keys(SPACING), 5],
-      [widths, Object.keys(WIDTHS), 5],
+      [widths, Object.keys(WIDTHS), 6],
       [icons, Object.keys(ICON_SIZES), 5],
       [corners, Object.keys(RADII), 5],
       [shadows, ['lg', 'xl', 'bar-shadow', 'header-shadow'], 4],
@@ -790,7 +790,7 @@ describe('Gallery', () => {
   });
 
   it('213 case 1: every entry carries one to three use lines and one to three don’t-use lines', () => {
-    expect(ENTRIES).toHaveLength(18);
+    expect(ENTRIES).toHaveLength(23);
     for (const entry of ENTRIES) {
       for (const lines of [entry.useWhen, entry.dontUseWhen]) {
         expect(lines.length, entry.name).toBeGreaterThanOrEqual(1);
@@ -936,8 +936,8 @@ describe('Gallery', () => {
       expect(side.getByText(new RegExp(what.slice(0, 20)))).toBeDefined();
     expect(side.getByText(/To come: open item 651 builds it\./)).toBeDefined();
     cleanup();
-    // A part with no contract has neither section.
-    open(`${BASE}/atoms/back-link`);
+    // A page with no contract has neither section: Values is no part.
+    open(`${BASE}/foundations/values`);
     expect(about().queryByRole('heading', { name: 'Takes from a screen' })).toBeNull();
   });
 
@@ -998,5 +998,107 @@ describe('Gallery', () => {
     );
     expect(screen.getByText(/The app follows it\./)).toBeDefined();
     expect(screen.queryByText(/To come/)).toBeNull();
+  });
+
+  it('213 case 16: each slot of the page base is an entry with a contract, and the base draws a page from them', async () => {
+    const SLOTS = [
+      'PageShell',
+      'PageHeader',
+      'SectionCard',
+      'DetailColumns',
+      'FieldPair',
+      'BackLink',
+      'ListTable',
+    ];
+    // The Pages group holds the base and four of the slots; the other three sit in their levels.
+    const inPages = ENTRIES.filter((entry) => entry.group === 'Pages').map((entry) => entry.name);
+    expect(inPages).toEqual([
+      'The page base',
+      'PageShell',
+      'DetailColumns',
+      'FieldPair',
+      'ListTable',
+    ]);
+    for (const name of SLOTS) {
+      const entry = ENTRIES.find((each) => each.name === name);
+      expect(entry, name).toBeDefined();
+      expect(
+        GUIDELINE.contracts.find((contract) => contract.part === name),
+        name,
+      ).toBeDefined();
+      open(`${BASE}/${slugOf(entry!.group)}/${slugOf(name)}`);
+      expect(about().getByRole('heading', { level: 3, name: 'Takes from a screen' })).toBeDefined();
+      expect(about().getByRole('heading', { level: 3, name: 'Decides itself' })).toBeDefined();
+      cleanup();
+    }
+    // The table's least width is a key of `WIDTHS`, with its use line (item 653).
+    const table = GUIDELINE.contracts.find((contract) => contract.part === 'ListTable')!;
+    expect(table.decides.flatMap((decision) => decision.from)).toContainEqual({
+      table: 'WIDTHS',
+      key: 'table',
+    });
+    expect(GUIDELINE.values.widths.table.length).toBeGreaterThan(20);
+    // The base draws the frame, then a page whose every slot is a part.
+    open(`${BASE}/pages/the-page-base`);
+    expect(stateNames()).toEqual(['The frame', 'A page, from parts']);
+    const frame = within(part().getByRole('figure', { name: 'The frame' }));
+    for (const slot of ['Header', 'Menu', 'Phone bar', 'Page']) {
+      expect(frame.getByText(slot)).toBeDefined();
+    }
+    const page = within(part().getByRole('figure', { name: 'A page, from parts' }));
+    expect(page.getByRole('link', { name: 'Back to staff' })).toBeDefined();
+    expect(page.getByRole('heading', { level: 2, name: 'Staff member' })).toBeDefined();
+    expect(page.getByRole('button', { name: 'Save' })).toBeDefined();
+    expect(page.getAllByRole('heading', { level: 3 })).toHaveLength(3);
+    expect(page.getByRole('table')).toBeDefined();
+    expect(page.getAllByRole('row')).toHaveLength(4);
+    expect(page.getByText('Active')).toBeDefined();
+    expect(page.getByRole('status')).toBeDefined();
+    cleanup();
+    // A built part the screens draw says so; one no screen draws says it is not used yet.
+    open(`${BASE}/pages/page-shell`);
+    expect(stateNames()).toEqual(['Ready', 'Loading', 'Failed']);
+    await userEvent.click(
+      within(part().getByRole('figure', { name: 'Failed' })).getByRole('button', {
+        name: 'Try again',
+      }),
+    );
+    expect(about().getByText(/Built and in use; .* open item 651 moves them\./)).toBeDefined();
+    cleanup();
+    open(`${BASE}/atoms/back-link`);
+    expect(about().getByText(/Built; the screens do not use it yet: open item 651/)).toBeDefined();
+  });
+
+  it('213 case 17: every part’s entry draws its contract, and each duplicate’s winner is named on the other’s entry', () => {
+    const parts = ENTRIES.filter(
+      (entry) =>
+        ['Atoms', 'Molecules', 'Organisms', 'Pages'].includes(entry.group) &&
+        entry.name !== 'The page base',
+    );
+    // A set that found nothing would quiet the loop.
+    expect(parts.length).toBe(18);
+    expect(GUIDELINE.contracts.map((contract) => contract.part).sort()).toEqual(
+      parts.map((entry) => entry.name).sort(),
+    );
+    for (const { group, name } of parts) {
+      open(`${BASE}/${slugOf(group)}/${slugOf(name)}`);
+      expect(
+        about().getByRole('heading', { level: 3, name: 'Takes from a screen' }),
+        name,
+      ).toBeDefined();
+      expect(
+        about().getByRole('heading', { level: 3, name: 'Decides itself' }),
+        name,
+      ).toBeDefined();
+      cleanup();
+    }
+    const words = (name: string) => {
+      const entry = ENTRIES.find((each) => each.name === name)!;
+      return [...entry.useWhen, ...entry.dontUseWhen].join(' ');
+    };
+    // The screens’ own frame of a door draws a card of its own: the entry names it and the winner.
+    expect(words('DoorCard')).toContain('SignInFrame');
+    expect(words('DetailField')).toContain('FieldPair');
+    expect(words('FieldPair')).toContain('DetailField');
   });
 });

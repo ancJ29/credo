@@ -11,7 +11,14 @@ export const SPACING = { xs: '8px', sm: '12px', md: '16px', lg: '24px', xl: '32p
  * The widths a screen gives a block or a field, by what it holds: a screen names the use, never
  * the number. The screens write the numbers today (the guideline's values page).
  */
-export const WIDTHS = { card: 440, column: 560, field: 420, amount: 320, date: 240 } as const;
+export const WIDTHS = {
+  card: 440,
+  column: 560,
+  field: 420,
+  amount: 320,
+  date: 240,
+  table: 640,
+} as const;
 
 /** The icon sizes in px, by where the icon sits: a screen names the place, never the number. The
  * screens write the numbers today (the guideline's values page). */

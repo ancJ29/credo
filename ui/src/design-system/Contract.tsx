@@ -42,9 +42,11 @@ export function ContractPanel({ contract, built }: { contract: Contract; built?:
           Serves: {contract.serves}. {heldWords(contract.heldBy)}{' '}
           {contract.followed === 'yes'
             ? followedWords(contract.followed)
-            : built
-              ? `Built; the screens do not use it yet: open item ${contract.followed.item} moves them.`
-              : `To come: open item ${contract.followed.item} builds it.`}
+            : built && contract.used
+              ? `Built and in use; the screens do not all follow it yet: open item ${contract.followed.item} moves them.`
+              : built
+                ? `Built; the screens do not use it yet: open item ${contract.followed.item} moves them.`
+                : `To come: open item ${contract.followed.item} builds it.`}
         </Text>
       </section>
     </>
