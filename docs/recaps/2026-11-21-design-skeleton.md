@@ -22,5 +22,5 @@ The review: landing 1's asked for text fixes, made and reread before `main` move
 ## What is left
 
 - Point 1: yes, 11-21. Point 2: yes, 11-21 ("1 yes"); a part's look details are the design-system coder's.
-- Point 3, open: in the gallery's Pages group, is this the base a new page is built from, with no style chosen in it? A yes closes landing 3; a no names the slot or part, and step 10 or 11 reopens.
+- Point 3: yes, 11-21 ("yes to point 3, as you recommend"); the page base is the base a new page is built from, with no style chosen in it.
 - The screens move to the guideline in the next milestone (item 651).
