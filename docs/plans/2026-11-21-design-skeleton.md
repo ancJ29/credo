@@ -45,7 +45,7 @@ Each step's gate is `bash ops/gate.sh ui`, `bash ops/gate.sh visual` and the cit
 `pnpm --filter @credo/scripts exec vitest run src/citations.test.ts`; each case red once. Every
 step after 1 also ends with `visual/src/resolved.pinned.txt` unchanged (step 1's diff cannot hold:
 step 6's slip). Sizes are `worktrees/runs.tsv`'s rows of the same shape, this piece's first. The
-review before `main` is the orchestrator's at each landing, about 20 minutes. One recap,
+review before `main` is the orchestrator's at landing 1 only, about 20 minutes: landings 2 and 3 move `main` on `ui`'s and `visual`'s own checks and the citation test, with no whole check and no review (QA's rule of 11-21). One recap,
 `docs/recaps/2026-11-21-design-skeleton.md`, added to at each landing.
 
 **Landing 1: the floor** (layers 0, 1 and the parts' use lines).
@@ -212,8 +212,13 @@ from `pre-merge` at landing 1.
       17:39 to 17:41: case 14 on the old `StatusBadge` (no `STATUSES`, no `status` prop), case 15 on
       a table with `outline red` taken out and case 14's contract check on a tone changed. No screen's
       code, no walk picture moved; the gallery gains the `ActionButton` entry.
-- [ ] **9. Landing 2.** The recap's lines, the gallery's card. _Done when:_ the citation test exits
+- [x] **9. Landing 2.** The recap's lines, the gallery's card. _Done when:_ the citation test exits
       0. **3 min** (the recap kind's last three rows; 213's step 6 took 1). Your point 2.
+      _Evidence:_ the step's commit. The recap holds landings 1 and 2 and names landing 3 (steps 10 to
+      12) as to come; its two markers for the whole check and the review stay for the piece's last
+      landing, its line says landings 2 and 3 are checked by `ui`'s and `visual`'s own checks and the
+      citation test; point 1 is filled from your yes and point 2 is open. The products row and the
+      gallery's card gain landing 2's parts.
 
 **Landing 3: the page's parts** (layers 2 and 4), from `pre-merge` at landing 2.
 
