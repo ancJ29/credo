@@ -4,7 +4,7 @@ This page is for a new developer or a tester, and for every session that plans a
 
 **These rules bind** every feature's plan, every test, every check run here and every landing on [pre-merge](../partners/words.md#pre-merge), the branch where finished work waits. Where they say "the human", they mean the project's owner.
 
-**In short.** Each feature starts with a case table, one behaviour a line. A test counts only if it has been seen failing once when its behaviour breaks. A finished piece lands on pre-merge after a quick check. At most every two hours, sooner only when it is really needed and the machine is free, the [whole check](../partners/words.md#whole-check), the [gate](../partners/words.md#gate) of the six TypeScript packages together, runs on pre-merge. Then comes one review by another model, and only then does [main](../partners/words.md#main), the branch that holds only checked code, move. The owner has up to five points in a feature, each a look: its [walk](../partners/words.md#walk), a page or a diagram, answered yes or no. A look is not a gate. The work goes on past it, and a no reopens the piece.
+**In short.** Each feature starts with a case table, one behaviour a line. A test counts only if it has been seen failing once when its behaviour breaks. A finished piece lands on pre-merge after a quick check, and a landing that touches one package moves [main](../partners/words.md#main), the branch that holds only checked code, on that package's own gates. The [whole check](../partners/words.md#whole-check), the [gate](../partners/words.md#gate) of the six TypeScript packages together, runs only where a change can break more than its package, and once before the day's push. One review by another model runs only where a user, money, a client's data or what runs on ridge is touched, at most once a push. The owner has up to five points in a feature, each a look: its [walk](../partners/words.md#walk), a page or a diagram, answered yes or no. A look is not a gate. The work goes on past it, and a no reopens the piece.
 
 ## At a glance
 
@@ -20,12 +20,13 @@ flowchart LR
   red --> green["green · 100 %<br/>machine"]
   green --> merge["land on pre-merge<br/>machine, quick check"]
   merge --> on["work goes on<br/>machine"]
-  merge -. every two hours, sooner if needed and the machine is free .-> whole["whole check<br/>machine, on pre-merge"]
-  whole --> review["one review<br/>machine, another model"]
-  review --> main["main<br/>machine"]
+  merge -. only where more than one package can break, and once before the push .-> whole["whole check<br/>machine, on pre-merge"]
+  merge --> main["main<br/>machine"]
+  whole -. only where it is worth it .-> review["one review<br/>machine, another model"]
   green --> walks["walks<br/>human, yes or no"]
   walks -- yes --> act["the act<br/>human, deploy · partner"]
   review -. a block .-> merge
+  review --> main
   walks -. a no .-> table
 ```
 
@@ -38,11 +39,11 @@ The eight rules, [below](#the-rules):
    only a test calls is dead.
 3. Each case is tested as near its code as it can be.
 4. Each test is named after its case; no second list.
-5. One review of all that `pre-merge` holds and `main` lacks, by another model, after the whole
-   check is green and before `main` moves. One fix pass. Each finding is fixed, rejected or
-   deferred, with its reason.
+5. One review, where it is worth it, of what `pre-merge` holds and `main` lacks, by another
+   model, at most once a push. One fix pass. Each finding is fixed, rejected or deferred, with
+   its reason.
 6. A flaky red is a bug, never rerun. Only the gate that can change a conclusion is run, and a
-   package's gate is one command. The whole check runs on `pre-merge` at most every two hours, sooner only when it is really needed and the machine is free ([below](#the-whole-check-on-pre-merge)).
+   package's gate is one command. The whole check runs only where a change can break more than its package ([below](#the-whole-check-on-pre-merge)).
 7. The screens are the end-to-end check: each person's day on their device, yes or no a screen
    until its look changes. Pixels are counted raw.
 8. Every line is tested, or says why not.
@@ -99,9 +100,16 @@ The map of walks. A dash is a part of the day not built yet.
 4. **The test names are the cases.** Once built, each test's name is its case's sentence; the
    plan's table stays as it was at its commit, never kept in step. *Rejected:* a test-case file
    beside the tests. It repeats the names, and goes stale at the first test nobody copies in.
-5. **One review, of everything `pre-merge` holds that `main` lacks, once the whole check on
-   `pre-merge` is green and before `main` moves; a step or a piece reaching `pre-merge` gets its
-   own checks and the human's look, not a review.** The reviewer is a model other than the one that
+5. **One review, of everything `pre-merge` holds that `main` lacks, only where it is worth it,
+   once the checks the section on `pre-merge` names are green, at most once a push and over what `main` has
+   gained since the last review; a step or a piece reaching `pre-merge` gets its own checks and
+   the human's look, not a review.** *Worth it* means the held change is code a user meets in the
+   app's screens, sign-in, money, a client's data, or what runs on ridge, in CI or in a deploy.
+   A change that moves no screen (a gallery part, a design-system value, a document's prose) gets
+   no review: its check is its gates and the human's look. *Why:* the human, 11-21, on a
+   landing of components that took three whole checks and a review: "thanks, and for the build of
+   components, whole check is not really neccessary each time, don't you think so? Just review
+   what really worthly". The reviewer is a model other than the one that
    wrote most of those commits, counted by the `Co-Authored-By` lines. It reads the work of several
    authors at once, so no one author's model can be ruled out. The one that wrote most shares the
    blind spots of most of what is read. It asks, in order, whether the code is boring and simple,
@@ -110,10 +118,11 @@ The map of walks. A dash is a part of the day not built yet.
    a review of each step or piece before `pre-merge`, which this rule asked until 2026-11-19: the
    human, "we should only do this kind of review right before merge code from pre-merge to main".
    *Rejected:* the author's model reviewing its own code. It shares the blind spots that wrote it.
-   A finding that blocks (a defect, a wrong fact) is fixed on `pre-merge` and the whole check runs
-   again; the rest becomes an open item or a note. Each finding is listed and tagged `[FIXED]`,
+   A finding that blocks (a defect, a wrong fact) is fixed on `pre-merge` and re-checked by the
+   touched package's gate, and by the whole check only where the fix itself touches what the
+   whole check is for (the list in the section below); the rest becomes an open item or a note. Each finding is listed and tagged `[FIXED]`,
    `[REJECTED]` or `[DEFERRED]`, with its reason; a deferred one names where it went.
-   **One review, one fix pass, and that pass's own gate is the re-check.** The reviewer may be
+   **One review, one fix pass, and that pass's own gate, by the line above, is the re-check.** The reviewer may be
    asked to reread the fixed lines; nothing else reads the work again. What a second round would
    raise is deferred by the tagging above, never handed to a third reviewer — with one exception,
    deferred in no round: a finding whose text, acted on, would cost something that cannot be
@@ -134,7 +143,7 @@ The map of walks. A dash is a part of the day not built yet.
    answers the session's question (a typecheck, one test), which is not the gate and is never
    reported as one; the gate, one command, before a stop or a commit: the touched package's at a
    commit, plus the citation test ([below](#the-whole-check-on-pre-merge)); the whole check on
-   `pre-merge`, at most every two hours (sooner when really needed and the machine is free), never on each merge result. *Rejected:* the whole gate
+   `pre-merge` only where that section says, never on each merge result. *Rejected:* the whole gate
    at every step or every merge. Several worktrees run at once, and a full run's minutes buy no
    verdict a smaller gate does not already give.
 
@@ -243,25 +252,35 @@ has taken `pre-merge` in.
   reads a `.md` file; a "prettier exit 0" on a documents change read no file and is not reported
   as evidence. The citation test reads every living document's citations, and a conflict marker
   in `docs/open-items.md` or a link to a heading that moved is read by a person, not by a step.
-- **The whole check (`pnpm check`) runs on `pre-merge` at most once every two hours, and only
-  when `pre-merge` has moved past the last commit it checked.** The orchestrator starts it at its
-  first stop after two hours have passed, and once more before the day's push. It reads
+- **A landing whose code touches one package (and `.md` files) is checked on `pre-merge` by that
+  package's own gates and the citation test, and `main` moves on their green.** A package's own
+  gates are its `pnpm --filter @credo/<pkg> check`, which is `bash ops/gate.sh <pkg>`: typecheck
+  and test (coverage at 100 %) of that package, then eslint, prettier and knip over the whole
+  tree. A landing that touches `ui` is checked by `ui`'s own check and by `visual`'s
+  (`pnpm --filter @credo/visual check`) too, since `visual` draws `ui`'s screens and the gallery
+  and is the one gate that sees a look move. *Why:* the human, 11-21 (quoted in rule 5).
+- **The whole check (`pnpm check`) runs on `pre-merge` where a change can break more than its
+  package: a landing that touches two packages or more; a file another package imports (a file
+  named in a package's `exports`, in `shared`, `bff`, `scripts` or `ui`: `shared` is imported by
+  every other package, `bff` by `scripts`, `ui` by `scripts`, `visual` and `walk`, `scripts` by
+  `walk`); the root's config or the lockfile; and once more before the day's push, over what
+  `main` has gained since the last whole check.** It runs only when `pre-merge` has moved past the
+  last commit it checked. The orchestrator starts it at the first stop after such a landing. It reads
   `git rev-parse HEAD` in `pre-merge`'s worktree as it starts, since the gate's log does not name
   the commit it checked, and nothing lands on `pre-merge` while the check runs: the tree would
-  change under it. **It may run before the two hours are up when it is really needed and no other
-  process holds the machine.** *Really needed* means `main` waits on it, or the human asks; the
-  orchestrator judges that and writes its reason in one line in its record. *No other process
-  holds the machine* means the test lock is free, the gate lock is free, no other session's gate
-  or timed run is going, and the load is under 8 (the load rules below). *Why:* the clock only
-  guards a busy machine, and a free one gains nothing by waiting.
-- **A green moves `main` to the commit that run checked, not to `pre-merge`'s tip.** From
+  change under it. **It starts when no other process holds the machine, and a human's ask for it
+  starts it at once.** *No other process holds the machine* means the test lock is free, the gate lock is free, no other session's gate
+  or timed run is going, and the load is under 8 (the load rules below). *Why:* a busy machine
+  gains nothing from a run that waits behind another, and a free one gains nothing by waiting.
+- **A green moves `main` to the commit that run checked, not to `pre-merge`'s tip; a landing of
+  one package moves it to that landing's commit on its own gates' green.** From
   `main`'s worktree, run:
 
   ```sh
   git merge --ff-only <that commit>
   ```
 
-  You will see a fast-forward to that commit. So `main` holds only checked trees.
+  You will see a fast-forward to that commit. So `main` holds only checked trees: each commit it holds passed its package's gates, and the whole check has passed over what it gained since the last one before each push.
   Pushes and deploys stay as they were, the human's.
 - **A red names its step and is fixed forward on the piece's branch, which lands again, or the
   piece is taken out by a revert of its landing on `pre-merge`, never by rewriting `pre-merge`:**
@@ -273,12 +292,12 @@ has taken `pre-merge` in.
   verdict.
 - **A piece counts as merged when `main` holds it**, at the fast-forward, not at the landing.
 - **Flips:** the orchestrator's start becomes a timer if work ever lands on `pre-merge` while no
-  orchestrator session is running, or if its stops come more than two hours apart while the branch
-  has moved; the piece's start moves back to `main` if pieces are taken out of `pre-merge` more
+  orchestrator session is running, or if a landing that needs the whole check waits on a stop that does not come; the piece's start moves back to `main` if pieces are taken out of `pre-merge` more
   than rarely; the check gets a second, detached checkout if landings waiting on a run pass ten
   minutes a day.
 
-*Rejected:* the whole check held to the clock while `main` waits on it and the machine is free: minutes idle for no safety.
+*Rejected:* the whole check held to a two-hour clock, which this section asked until 2026-11-21: a landing of one package waited on or paid for a run its own gates had already read back.
+*Rejected:* the whole check at each landing that touches one package: three runs and a review, about 51 minutes, on one landing of `ui` and documents alone (piece 213's first landing, 2026-11-21).
 *Rejected:* the whole check at every merge result: a whole run per landing, for a collision the
 one-second test shows first.
 *Rejected:* a scheduled job in the
@@ -390,7 +409,7 @@ Rule 8's hints carry two, the reasons the old app refused hints:
 ## History of this file
 
 Decided 2026-10-27, after reading the old app's QA process.
-Last amended 2026-11-20, from the human's word that the whole check may run before its two hours are up when it is really needed and nothing else holds the machine; on 2026-11-19, from the human's ask that the review come once, right before `main` moves, and not on each step or piece; on 2026-11-11, a line on logs in records, and from the human's proposal that the whole check stop gating each merge:
+Last amended 2026-11-21, from the human's word, "thanks, and for the build of components, whole check is not really neccessary each time, don't you think so? Just review what really worthly": the whole check and the review run only where they are worth it, not at each landing of one package; on 2026-11-20, from the human's word that the whole check may run before its two hours are up when it is really needed and nothing else holds the machine; on 2026-11-19, from the human's ask that the review come once, right before `main` moves, and not on each step or piece; on 2026-11-11, a line on logs in records, and from the human's proposal that the whole check stop gating each merge:
 a finished piece lands on `pre-merge`, the whole check runs there at most every two hours, and
 `main` holds only checked trees. This file holds the rules as they stand; their history is in
 `git log`.

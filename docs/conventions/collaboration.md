@@ -108,8 +108,8 @@ The loop is drawn [at a glance](#at-a-glance). Five hand-offs, each with its rul
    **A gate is the touched package's**, and [QA](qa.md#the-rules)'s rule 6 says what that gate
    is, step by step. The check a step runs is the one that can change its
    conclusion: the package the step wrote in, plus the citation test, and the whole workspace's
-   check only where the step crossed packages; the whole check otherwise runs on `pre-merge`
-   ([QA](qa.md#the-whole-check-on-pre-merge)). A brief that names a wider gate than the step's own done
+   check only where the step crossed packages; the whole check otherwise runs on `pre-merge` only where
+   QA says ([QA](qa.md#the-whole-check-on-pre-merge)). A brief that names a wider gate than the step's own done
    check is answered with the touched package's and the reason, not obeyed. *Why:* a step gated
    on the whole project stalls on reds in files it was not allowed to touch, none of them its own.
 
