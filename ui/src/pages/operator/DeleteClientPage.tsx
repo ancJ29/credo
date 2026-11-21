@@ -1,5 +1,5 @@
 import { normaliseClientCode } from '@credo/shared';
-import { Box, Button, Group, Paper, Stack, Text, TextInput, Title } from '@mantine/core';
+import { Button, Group, Paper, Stack, Text, TextInput, Title } from '@mantine/core';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router';
@@ -104,27 +104,17 @@ export function DeleteClientPage({ api, passkeys, onSignedOut }: Props) {
       {!client ? (
         <Stack align="flex-start">
           {finished ? (
-            <Box w="100%">
-              <FormMessage kind="success">{t('operator.deleteClientFinished')}</FormMessage>
-            </Box>
+            <FormMessage kind="success">{t('operator.deleteClientFinished')}</FormMessage>
           ) : (
             <>
-              <Box w="100%">
-                <FormMessage kind="warning" standing>
-                  {t('operator.deleteClientUnfinished')}
-                </FormMessage>
-              </Box>
-              {problem !== null && (
-                <Box w="100%">
-                  <FormMessage kind="error">{t(PROBLEM[problem])}</FormMessage>
-                </Box>
-              )}
+              <FormMessage kind="warning" standing>
+                {t('operator.deleteClientUnfinished')}
+              </FormMessage>
+              {problem !== null && <FormMessage kind="error">{t(PROBLEM[problem])}</FormMessage>}
               {left !== null && (
-                <Box w="100%">
-                  <FormMessage kind="info">
-                    {t('operator.deleteClientLeft', { count: left })}
-                  </FormMessage>
-                </Box>
+                <FormMessage kind="info">
+                  {t('operator.deleteClientLeft', { count: left })}
+                </FormMessage>
               )}
               <Button color="red" variant="outline" loading={busy} onClick={() => void resume()}>
                 {t('operator.deleteClientResume')}

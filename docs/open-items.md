@@ -1229,9 +1229,11 @@ The one-gate-command convention gives every package one check command, and the r
 
 `down` signals a pid only when its command line contains `local-main.ts`, the build folder's `c-storage` path, or `bff/src/main.ts` (`scripts/src/local.ts`, the ownership matchers in `down`). The first and the last are not specific to this checkout, so another checkout's keeper or BFF that took a handle's pid after its process died would be signalled. It needs an exact pid collision with a live process of the same shape.
 
-## 212. The staff walk's test titles say thirty-three screens; it walks thirty-four — the machine; `[OPEN]` (the ui shape piece's picture run, 2026-11-10, Low)
+## 212. The staff walk's test titles say thirty-three screens; it walks thirty-four — the machine; `[FIXED]` 2026-11-21 by the screens-on-parts piece's step 5, with item 650 (the ui shape piece's picture run, 2026-11-10, Low)
 
 `walk/specs/piece-2.spec.ts` names its tests "walks all thirty-three screens" (the title in the loop at the end of the file) and its header comment counts thirty-three (A's sixteen, B's seven, C's six and D's four, 33 × 2 × 3 = 198). Its committed pictures are `walk/specs/piece-2.spec.ts-snapshots/`, six a screen (two languages at three widths), 204 files naming 34 distinct screens, and the picture run compared 204. So a screen was added and the count was left. The verdict is untouched (the bases hold the same 204); the fault is a title that miscounts its own subject and later reads as evidence. *Fix:* correct the title and the comment's arithmetic, or say which group gained the screen.
+
+*Update 2026-11-21, the screens-on-parts piece's step 5:* the title in `walk/specs/piece-2.spec.ts` says thirty-four and the header counts thirty-four (34 × 2 × 3 = 204), the same change as item 650's. The item is closed.
 
 ## 213. The picture walk's log ends with a verdict and `== done`, not the `== exit` line the QA convention asks for — the machine; `[OPEN]` (the ui shape piece's picture run, 2026-11-10, Low)
 

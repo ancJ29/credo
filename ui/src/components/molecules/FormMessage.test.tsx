@@ -32,6 +32,11 @@ describe('FormMessage', () => {
     expect(screen.queryByRole('alert')).toBeNull();
   });
 
+  it('222 case 20: a message spans the whole column it sits in, even a left-aligned one', () => {
+    draw(<FormMessage kind="error">Wide</FormMessage>);
+    expect(screen.getByRole('alert').getAttribute('style')).toContain('width: 100%');
+  });
+
   it('222 case 3: a title, where given, sits above the words', () => {
     draw(
       <FormMessage kind="error" title="ACME-01">

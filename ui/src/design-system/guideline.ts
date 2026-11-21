@@ -439,7 +439,7 @@ export const GUIDELINE: {
       ],
       fixes: [
         'Its spoken role: alert for an error or a warning (a conflict is a warning), status for the rest, note for a standing one.',
-        'Its place: the full width, no margin, under its buttons, one at a time.',
+        'Its place: the whole width of the column it sits in, even a left-aligned one, no margin, under its buttons, one at a time.',
       ],
       states: [
         { name: 'Error', tone: 'danger', role: 'alert', line: 'Something failed.' },

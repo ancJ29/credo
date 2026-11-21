@@ -1,15 +1,5 @@
 import { normaliseClientCode, passwordIsValid } from '@credo/shared';
-import {
-  Box,
-  Button,
-  Group,
-  Paper,
-  PasswordInput,
-  Stack,
-  Text,
-  TextInput,
-  Title,
-} from '@mantine/core';
+import { Button, Group, Paper, PasswordInput, Stack, Text, TextInput, Title } from '@mantine/core';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router';
@@ -87,9 +77,7 @@ export function RootPasswordPage({ api, passkeys, onSignedOut }: Props) {
     <Loaded status={loaded.status} onRetry={loaded.reload}>
       {!client ? (
         <Stack align="flex-start">
-          <Box w="100%">
-            <FormMessage kind="warning">{t('operator.rootUnknown')}</FormMessage>
-          </Box>
+          <FormMessage kind="warning">{t('operator.rootUnknown')}</FormMessage>
           {back}
         </Stack>
       ) : done ? (

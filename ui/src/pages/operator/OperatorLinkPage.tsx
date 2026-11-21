@@ -1,4 +1,4 @@
-import { Box, Button, Group, Paper, Stack, Text, TextInput, Title } from '@mantine/core';
+import { Button, Group, Paper, Stack, Text, TextInput, Title } from '@mantine/core';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router';
@@ -65,9 +65,7 @@ export function OperatorLinkPage({ api, passkeys, onSignedOut }: Props) {
     <Loaded status={loaded.status} onRetry={loaded.reload}>
       {!colleague || problem === 'gone' ? (
         <Stack align="flex-start">
-          <Box w="100%">
-            <FormMessage kind="warning">{t('team.unknown')}</FormMessage>
-          </Box>
+          <FormMessage kind="warning">{t('team.unknown')}</FormMessage>
           {back}
         </Stack>
       ) : made ? (

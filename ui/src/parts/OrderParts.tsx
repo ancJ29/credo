@@ -1,7 +1,6 @@
 import type { DeliveryRequest, OrderLine, RequestState, OrderState } from '@credo/shared';
 import {
   Badge,
-  Box,
   Button,
   Group,
   Image,
@@ -194,9 +193,7 @@ export function SendPanel({
           <Stack gap="sm" align="flex-start">
             <Title order={3}>{title}</Title>
             {drivers.length === 0 ? (
-              <Box w="100%">
-                <FormMessage kind="warning">{t('orders.noDrivers')}</FormMessage>
-              </Box>
+              <FormMessage kind="warning">{t('orders.noDrivers')}</FormMessage>
             ) : (
               <>
                 <NativeSelect

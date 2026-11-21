@@ -1,5 +1,5 @@
 import { HOME_BOX, type MoveClientReply, type MoveClientRequest } from '@credo/shared';
-import { Box, Button, Group, Paper, Stack, Text, Title } from '@mantine/core';
+import { Button, Group, Paper, Stack, Text, Title } from '@mantine/core';
 import { type FormEvent, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router';
@@ -146,11 +146,9 @@ export function MoveClientPage({ api, passkeys, onSignedOut, wait = sleep }: Pro
     <Loaded status={loaded.status} onRetry={loaded.reload}>
       {!client ? (
         <Stack align="flex-start">
-          <Box w="100%">
-            <FormMessage kind="warning" standing>
-              {t('operator.rootUnknown')}
-            </FormMessage>
-          </Box>
+          <FormMessage kind="warning" standing>
+            {t('operator.rootUnknown')}
+          </FormMessage>
           {back}
         </Stack>
       ) : (

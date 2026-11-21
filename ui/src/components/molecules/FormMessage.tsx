@@ -17,7 +17,7 @@ export function FormMessage({
   const tone = kind === 'saved' ? 'success' : kind === 'error' ? 'danger' : kind;
   const role = standing ? 'note' : kind === 'error' || kind === 'warning' ? 'alert' : 'status';
   return (
-    <Alert color={TONES[tone]} role={role} title={title}>
+    <Alert color={TONES[tone]} role={role} title={title} w="100%">
       {children}
     </Alert>
   );
