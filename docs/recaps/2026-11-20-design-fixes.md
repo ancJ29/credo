@@ -1,6 +1,6 @@
 # The design fixes, recap, 2026-11-20
 
-You asked for readable text on every client's colour, colours named by what they are for, and type named. Landings A and B are in `main`; C is on its branch.
+You asked for readable text on every client's colour, colours named by what they are for, and type named. Landings A, B and C are in `main`.
 
 ```mermaid
 flowchart LR
@@ -19,12 +19,11 @@ Darkening each primary until white passes; Mantine's `autoContrast`; the memo's 
 
 ## What was proved
 
-Two checks, each red once on a planted fault, refuse a numbered shade (case 10) and a numeric weight or size (case 13, item 309 closed). A palette check hashes every screen's resolved styles on ten colours; it moved only where step 7 said. Pictures: A moved 410 of six client walks, B 162 of five, the operator walks 0; B's second run read green, 35 compares 0 moved.
+Two checks, each red once on a planted fault, refuse a numbered shade (case 10) and a numeric weight or size (case 13, item 309 closed). A palette check hashes every screen's resolved styles on ten colours; it moved only where step 7 said. Pictures: A moved 410 of six client walks, B 162 of five, the operator walks 0; B's second run read green, 35 compares 0 moved; C moved none, its one run read green the same way (35 compares, 0 moved, 0 new).
 
 ## What is left
 
-- C's picture run, yours: <!-- FILL: landing C's run, to come -->
-- Look 5, the type names in the gallery: open. Look 1, the six colours, answered yes. Points 2 to 4 hold no answer in the plan.
+- The looks, the six colours and the type names in the gallery, and points 2 to 4: answered yes on 11-21.
 - Item 636 stays open for the switch's thumb: terracotta (2.91) and amber (1.61) fail 3:1. Item 308, the phone's title, stays parked, no look asked.
 
 ## Evidence

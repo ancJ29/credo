@@ -282,8 +282,11 @@ shape, else piece 126's. One recap, step 11, before C lands, not one a landing.
       each commit. The review before `main`'s four blocks are fixed in 312a2220: step 9 ticked here,
       point 5 reworded to what the page draws, item 513 gone, the open items' moved line numbers
       followed and each read against its target; items 647 to 649 filed.
-- [ ] **12. Landing C.** As step 8, one run with no flags. _Done when:_ green, every count 0. **13 min,
-      and your run.**
+- [x] **12. Landing C.** As step 8, one run with no flags. _Done when:_ green, every count 0. **13 min,
+      and your run.** _Evidence:_ the human's run at `84103d32` read green, all 35 compares 0 moved, 0 new,
+      0 without a counterpart, 0 unreadable, the operator walks and the other walks unchanged; it took
+      21 minutes 36 seconds; the branch then landed on `pre-merge` at `7b278aaa`, and the whole check there
+      read green.
 
 ## Keeping every test and walk green
 
