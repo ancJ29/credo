@@ -187,13 +187,31 @@ from `pre-merge` at landing 1.
       it does not serve; case 20 on a take named `variant`; case 21 on a key not in its table and on
       a weight with no use line (and the typecheck on it). `docs/products.md`'s gallery row no longer
       says landing 1 is not landed. Gates run on the committed tree, their verdicts in the report.
-- [ ] **8. The parts that offer, and a status.** `ActionButton`, its four meanings your yes, with the
+- [x] **8. The parts that offer, and a status.** `ActionButton`, its four meanings your yes, with the
       `docs/decisions.md` row; today's 109 buttons mapped (about 50 `default`, 6 `subtle`, 4
       `outline`, 9 red, the rest filled); one main action a page; a confirm is a page (item 306).
       `StatusBadge` moved to its contract, no screen reaching it; `StateBadge`
       (`ui/src/parts/OrderParts.tsx#L29`) and the staff chips
       (`ui/src/pages/client/StaffListPage.tsx#L141-L145`) not yet, item 651. Cases 14, 15. _Done
       when:_ the gates exit 0. **16 min** (213's step 2, a type and its entry).
+      _Evidence:_ the step's commit. `GUIDELINE.contracts` gains `ActionButton` (Atoms, a part to come
+      drawn from Mantine, `followed` item 655: takes its meaning, its words and its act; decides a
+      danger's red and its label's weight; fixes its look by meaning, its size and its place) and
+      `StatusBadge` (takes a `status`; decides its tone from `TONES`; fixes its word and its look);
+      `GUIDELINE.buttons` maps each look the screens draw a `Button` in to one of the four meanings,
+      and the charter gains the rule "a page has one main action" (held by review, followed item
+      655). `StatusBadge` is rebuilt over `Status`, the order, request and person statuses, its tone
+      and its word the part's (`STATUS_TONE`, a type error where a status lacks one), no screen
+      reaching it; the gallery's entry draws the three groups of statuses and says it is built and
+      the screens do not use it yet (item 651, which keeps `StateBadge` and the staff chips). The
+      `docs/decisions.md` row for the four meanings and one main action a page is the human's "6. One
+      main button per page, YES"; item 655 holds the move. Counts on the tree: 109 `Button`s outside
+      the design system, 49 `default` and 1 more `default` in red, 40 filled and 4 filled in red and
+      1 by a condition, 6 `subtle` (3, 2 gray, 1 red), 4 `outline` in red, 4 whose variant a
+      condition picks: red on 11 in all, 9 where the `subtle` and `default` red are left out. Reds
+      17:39 to 17:41: case 14 on the old `StatusBadge` (no `STATUSES`, no `status` prop), case 15 on
+      a table with `outline red` taken out and case 14's contract check on a tone changed. No screen's
+      code, no walk picture moved; the gallery gains the `ActionButton` entry.
 - [ ] **9. Landing 2.** The recap's lines, the gallery's card. _Done when:_ the citation test exits
       0. **3 min** (the recap kind's last three rows; 213's step 6 took 1). Your point 2.
 

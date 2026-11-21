@@ -101,7 +101,7 @@ function Part({ entry, picker }: { entry: Entry; picker: ReactNode }) {
           <h3 className={classes.sideHead}>Props</h3>
           <code className={classes.props}>{entry.props}</code>
         </section>
-        {contract && <ContractPanel contract={contract} />}
+        {contract && <ContractPanel contract={contract} built={!entry.toCome} />}
         {entry.states.length > 1 && (
           <section className={classes.sideSection}>
             <h3 className={classes.sideHead}>Show</h3>

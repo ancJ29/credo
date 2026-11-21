@@ -24,6 +24,43 @@ function problems(rules: Rule[], exists: (path: string) => boolean, items: numbe
   return found;
 }
 
+/** Every screen's source, the design system's own and the tests left out. */
+const SCREENS = import.meta.glob<string>(
+  ['../**/*.tsx', '!../**/*.test.tsx', '!../design-system/**'],
+  { query: '?raw', import: 'default', eager: true },
+);
+
+/** The looks a source draws its `Button`s in: the variants its tag names (filled where none), `red` added where its colour is red. */
+function drawnButtons(source: string) {
+  const looks: string[] = [];
+  for (const start of source.matchAll(/<Button\b/g)) {
+    let depth = 0;
+    let quote = '';
+    let end = start.index + 7;
+    for (; end < source.length; end += 1) {
+      const c = source[end];
+      if (quote) quote = c === quote ? '' : quote;
+      else if (c === '"' || c === "'" || c === '`') quote = c;
+      else if (c === '{') depth += 1;
+      else if (c === '}') depth -= 1;
+      else if (c === '>' && depth === 0 && source[end - 1] !== '=') break;
+    }
+    const tag = source.slice(start.index, end);
+    const variant = /variant=(?:"([^"]+)"|\{([^}]+)\})/.exec(tag);
+    const colour = /color=(?:"([^"]+)"|\{([^}]+)\})/.exec(tag);
+    const red = /\bred\b/.test(colour?.[1] ?? colour?.[2] ?? '') ? ' red' : '';
+    const named = variant ? [...(variant[1] ?? variant[2]).matchAll(/'([^']+)'|^([a-z]+)$/g)] : [];
+    const variants = named.map((m) => m[1] ?? m[2]);
+    for (const each of variants.length > 0 ? variants : variant ? ['?'] : ['filled'])
+      looks.push(`${each}${red}`);
+  }
+  return looks;
+}
+
+/** The looks drawn that no meaning of `ActionButton` takes. */
+const unmapped = (looks: string[], map: Record<string, string>) =>
+  [...new Set(looks)].filter((look) => !(look in map));
+
 const rulesOf = () => GUIDELINE.charter.rules;
 const contractsOf = () => GUIDELINE.contracts;
 
@@ -149,9 +186,11 @@ describe('The guideline’s contracts', () => {
     expect(serving([{ part: 'X', serves: 'A rule nobody wrote' }], rulesOf())).toEqual(['X']);
     // A part to come has its contract, and its `followed` names the item that builds it.
     const coming = ENTRIES.filter((entry) => entry.toCome).map((entry) => entry.name);
-    expect(coming).toEqual(['FormMessage', 'PageState']);
+    expect(coming).toEqual(['ActionButton', 'FormMessage', 'PageState']);
     for (const part of coming)
-      expect(contractsOf().find((c) => c.part === part)?.followed, part).toEqual({ item: 651 });
+      expect(contractsOf().find((c) => c.part === part)?.followed, part).toEqual({
+        item: part === 'ActionButton' ? 655 : 651,
+      });
     const held = contractsOf().map(({ part, heldBy, followed }) => ({
       says: part,
       why: '',
@@ -189,5 +228,41 @@ describe('The guideline’s contracts', () => {
     expect(Object.keys(sizes)).toEqual(Object.keys(SIZES));
     for (const line of [...Object.values(weights), ...Object.values(sizes)])
       expect(line.length).toBeGreaterThan(20);
+  });
+});
+
+describe('The guideline’s buttons', () => {
+  it('213 case 15: every look a screen draws a Button in maps to one of ActionButton’s four meanings', () => {
+    const looks = Object.values(SCREENS).flatMap(drawnButtons);
+    // A set that found nothing would quiet the check below: the plan counts 109 on its tree.
+    expect(Object.keys(SCREENS).length).toBeGreaterThan(50);
+    expect(looks.length).toBeGreaterThan(100);
+    expect(new Set(looks).size).toBeGreaterThan(4);
+    const map: Record<string, string> = GUIDELINE.buttons;
+    expect(unmapped(looks, map)).toEqual([]);
+    expect(new Set(Object.values(map))).toEqual(new Set(['main', 'other', 'quiet', 'danger']));
+    const meanings = contractsOf()
+      .find((c) => c.part === 'ActionButton')!
+      .states.map((state) => state.name);
+    expect(meanings).toEqual(['Main', 'Other', 'Quiet', 'Danger']);
+  });
+
+  it('213 case 15: a variant the table does not name is found, whether a word, a conditional or a red one', () => {
+    const map: Record<string, string> = GUIDELINE.buttons;
+    expect(drawnButtons('<Button>Save</Button>')).toEqual(['filled']);
+    expect(drawnButtons('<Button variant="outline" color="red" loading={a}>x</Button>')).toEqual([
+      'outline red',
+    ]);
+    expect(
+      drawnButtons("<Button variant={rest > 0 ? 'default' : 'filled'} onClick={() => go(a > 1)}>"),
+    ).toEqual(['default', 'filled']);
+    expect(drawnButtons('<ActionIcon variant="light"><Button color="red">x</Button>')).toEqual([
+      'filled red',
+    ]);
+    expect(unmapped(['light', 'subtle red', 'filled'], map)).toEqual(['light']);
+    expect(unmapped(drawnButtons('<Button variant="transparent">x</Button>'), map)).toEqual([
+      'transparent',
+    ]);
+    expect(unmapped(drawnButtons('<Button variant={pick}>x</Button>'), map)).toEqual(['pick']);
   });
 });

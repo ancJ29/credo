@@ -790,7 +790,7 @@ describe('Gallery', () => {
   });
 
   it('213 case 1: every entry carries one to three use lines and one to three don’t-use lines', () => {
-    expect(ENTRIES).toHaveLength(17);
+    expect(ENTRIES).toHaveLength(18);
     for (const entry of ENTRIES) {
       for (const lines of [entry.useWhen, entry.dontUseWhen]) {
         expect(lines.length, entry.name).toBeGreaterThanOrEqual(1);
@@ -939,6 +939,55 @@ describe('Gallery', () => {
     // A part with no contract has neither section.
     open(`${BASE}/atoms/back-link`);
     expect(about().queryByRole('heading', { name: 'Takes from a screen' })).toBeNull();
+  });
+
+  it('213 case 15: the entry of ActionButton draws a button at each meaning’s look, a danger red', () => {
+    const states = GUIDELINE.contracts.find((contract) => contract.part === 'ActionButton')!.states;
+    expect(states.map((state) => state.look)).toEqual(['filled', 'default', 'subtle', 'red']);
+    open(`${BASE}/atoms/action-button`);
+    const looks = states.map(({ name }) =>
+      within(part().getByRole('figure', { name })).getByRole('button'),
+    );
+    expect(looks.map((button) => button.getAttribute('data-variant'))).toEqual([
+      'filled',
+      'default',
+      'subtle',
+      'filled',
+    ]);
+    expect(looks[3].getAttribute('style')).toContain(`--mantine-color-${TONES.danger}-`);
+    expect(looks[0].getAttribute('style') ?? '').not.toContain(`--mantine-color-${TONES.danger}-`);
+    expect(about().getByText(/To come: open item 655 builds it\./)).toBeDefined();
+  });
+
+  it('213 case 14: the entry of StatusBadge draws each status of the records in its word, a built part’s panel saying the screens do not use it yet', () => {
+    open(`${BASE}/atoms/status-badge`);
+    expect(stateNames()).toEqual(['An order', 'A delivery request', 'A person']);
+    const chips = [...document.querySelectorAll('[data-status]')];
+    expect(chips.map((chip) => chip.getAttribute('data-status'))).toEqual([
+      'draft',
+      'confirmed',
+      'fulfilled',
+      'cancelled',
+      'waiting',
+      'delivered',
+      'cancelled',
+      'active',
+      'inactive',
+    ]);
+    expect(chips.map((chip) => chip.textContent)).toEqual([
+      'Draft',
+      'Confirmed',
+      'Delivered',
+      'Cancelled',
+      'Pending delivery',
+      'Delivered',
+      'Cancelled',
+      'Active',
+      'Inactive',
+    ]);
+    expect(
+      about().getByText(/Built; the screens do not use it yet: open item 651 moves them\./),
+    ).toBeDefined();
   });
 
   it('213 case 13: a built part’s contract says the app follows it, and has no “to come”', () => {

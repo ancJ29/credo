@@ -12,12 +12,14 @@ import {
   useMantineTheme,
 } from '@mantine/core';
 import type { ReactNode } from 'react';
+import { I18nextProvider } from 'react-i18next';
+import { createI18n } from '../i18n';
 import { IconBuilding, IconKeyboard, IconLock, IconQrcode, IconUser } from '@tabler/icons-react';
 import { BackLink } from '../components/atoms/BackLink';
 import { DoorHeading } from '../components/atoms/DoorHeading';
 import { FieldLabel } from '../components/atoms/FieldLabel';
 import { LogoTile } from '../components/atoms/LogoTile';
-import { StatusBadge } from '../components/atoms/StatusBadge';
+import { StatusBadge, type Status } from '../components/atoms/StatusBadge';
 import { BrandBand } from '../components/molecules/BrandBand';
 import { DetailField } from '../components/molecules/DetailField';
 import { SectionTitle } from '../components/molecules/SectionTitle';
@@ -26,7 +28,7 @@ import { PageHeader } from '../components/organisms/PageHeader';
 import { SectionCard } from '../components/organisms/SectionCard';
 import { Charter } from './Charter';
 import { OnTheBrand, OnTheLinks } from './OnTheBrand';
-import { FormMessageStates, PageStateStates } from './Contract';
+import { ActionButtonStates, FormMessageStates, PageStateStates } from './Contract';
 import {
   Formats,
   Icons,
@@ -43,6 +45,20 @@ import {
 /** A sample company logo for the tile: a plain shape, no real company's. */
 const SAMPLE_LOGO =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath d='M6 34 20 6l14 28z' fill='teal'/%3E%3C/svg%3E";
+
+/** Each status of a row, as the person reads it: the part draws its words, so the sample is given the dictionary. */
+const SAMPLE_WORDS = createI18n('en');
+function StatusRow({ statuses }: { statuses: Status[] }) {
+  return (
+    <I18nextProvider i18n={SAMPLE_WORDS}>
+      <Group>
+        {statuses.map((status) => (
+          <StatusBadge key={status} status={status} />
+        ))}
+      </Group>
+    </I18nextProvider>
+  );
+}
 
 /** The old app's sign-in page as the card holds it, in sentence case: the first of the door card's two states. */
 function SignInState() {
@@ -348,24 +364,44 @@ export const ENTRIES: Entry[] = [
     name: 'StatusBadge',
     kind: 'Marks',
     description:
-      "A record's state as a chip: green when active, grey when not. It takes its word as a prop.",
-    props: 'active: boolean · label: string',
-    useWhen: ['A record is active or not, shown as a chip beside its name.'],
+      'A status as a chip: the part decides its tone and its word, in the language of the person reading.',
+    props: 'status: Status',
+    useWhen: ['A record’s status is shown as a chip beside its name or in its row.'],
     dontUseWhen: [
-      'More than two states or other colours: not drawn here yet.',
-      "A message to the person: that is not a record's state.",
+      'A message to the person: that is FormMessage’s.',
+      'A status of no record, or a colour of the screen’s own choosing: ask, and the guideline gains a status.',
     ],
+    instead: 'FormMessage',
     states: [
       {
-        name: 'Active and inactive',
-        node: (
-          <Group>
-            <StatusBadge active label="Active" />
-            <StatusBadge active={false} label="Inactive" />
-          </Group>
-        ),
+        name: 'An order',
+        node: <StatusRow statuses={['draft', 'confirmed', 'fulfilled', 'cancelled']} />,
       },
+      {
+        name: 'A delivery request',
+        node: <StatusRow statuses={['waiting', 'delivered', 'cancelled']} />,
+      },
+      { name: 'A person', node: <StatusRow statuses={['active', 'inactive']} /> },
     ],
+  },
+  {
+    group: 'Atoms',
+    name: 'ActionButton',
+    kind: 'Buttons',
+    toCome: true,
+    description:
+      'The button a page offers an act with: its meaning (the main action, another, a quiet one or a danger) and its words and act, drawn at the look the meaning decides. Mantine’s Button, at the values it decides.',
+    props: 'meaning: main | other | quiet | danger · children: string · onClick',
+    useWhen: [
+      'A page offers an act: one main action a page, the others as other or quiet.',
+      'A delete’s last step, on the page that confirms it, is a danger.',
+    ],
+    dontUseWhen: [
+      'A move to another page: that is a link, not an act.',
+      'A second main action on one page: ask which is the main.',
+    ],
+    instead: 'BackLink',
+    states: ActionButtonStates,
   },
   {
     group: 'Molecules',

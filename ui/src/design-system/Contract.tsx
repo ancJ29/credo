@@ -13,7 +13,7 @@ export const contractOf = (part: string) =>
 const keyWords = ({ table, key }: Contract['decides'][number]['from'][number]) => `${table}.${key}`;
 
 /** A part's contract in the side panel: what a screen gives it, what it decides, what it serves and holds. */
-export function ContractPanel({ contract }: { contract: Contract }) {
+export function ContractPanel({ contract, built }: { contract: Contract; built?: boolean }) {
   return (
     <>
       <section className={classes.sideSection}>
@@ -42,7 +42,9 @@ export function ContractPanel({ contract }: { contract: Contract }) {
           Serves: {contract.serves}. {heldWords(contract.heldBy)}{' '}
           {contract.followed === 'yes'
             ? followedWords(contract.followed)
-            : `To come: open item ${contract.followed.item} builds it.`}
+            : built
+              ? `Built; the screens do not use it yet: open item ${contract.followed.item} moves them.`
+              : `To come: open item ${contract.followed.item} builds it.`}
         </Text>
       </section>
     </>
@@ -103,3 +105,13 @@ function PageStateSample({ state: { name, role, tone } }: { state: PartState }) 
 
 /** Each state a page can be in instead of its body, at its contract's tone and role. */
 export const PageStateStates = platesOf('PageState', (state) => <PageStateSample state={state} />);
+
+/** A button at each meaning's look, Mantine's Button: the page's one main action first. */
+export const ActionButtonStates = platesOf('ActionButton', ({ name, look }) => (
+  <Button
+    variant={look === 'red' ? 'filled' : look}
+    color={look === 'red' ? TONES.danger : undefined}
+  >
+    {name === 'Danger' ? 'Delete the record' : `${name} action`}
+  </Button>
+));

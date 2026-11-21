@@ -111,6 +111,8 @@ type Decision = { what: string; from: ThemeKey[] };
 export type PartState = {
   name: string;
   tone?: keyof typeof TONES;
+  /** The look a button of this meaning is drawn in: filled, the default look, subtle, or red filled. */
+  look?: 'filled' | 'default' | 'subtle' | 'red';
   role?: 'alert' | 'status';
   line: string;
 };
@@ -134,12 +136,31 @@ export type Contract = {
   followed: Followed;
 };
 
+/** What a screen asks of a button: the main action of the page, another, a quiet one, a danger. */
+type ButtonMeaning = 'main' | 'other' | 'quiet' | 'danger';
+
+/**
+ * The looks the screens draw a `Button` in today (its variant, `red` where its colour is red), and
+ * the meaning each becomes when the screens move to `ActionButton`: red stays only on a danger,
+ * and a danger is only a delete's last step, so a red outline or red subtle button becomes another
+ * meaning.
+ */
+export type DrawnButtons = Record<
+  'filled' | 'filled red' | 'default' | 'default red' | 'subtle' | 'subtle red' | 'outline red',
+  ButtonMeaning
+>;
+
 /**
  * The design guideline, as text a coder or an agent reads from the top: the gallery draws it, the
  * typecheck holds its shape, so a rule that does not say what holds it is a type error. A choice a
  * screen's coder meets that is not here is asked, and its answer is written here as a rule.
  */
-export const GUIDELINE: { charter: Charter; values: Values; contracts: Contract[] } = {
+export const GUIDELINE: {
+  charter: Charter;
+  values: Values;
+  contracts: Contract[];
+  buttons: DrawnButtons;
+} = {
   charter: {
     goal: 'Decide the design once, so whoever codes a screen makes as few look-and-feel choices as possible, and the app stays consistent anyway.',
     credo:
@@ -202,6 +223,12 @@ export const GUIDELINE: { charter: Charter; values: Values; contracts: Contract[
         why: 'A style named once changes once, and a number written in a screen cannot be found again.',
         heldBy: { check: 'ui/src/design-system/literals.test.ts' },
         followed: 'yes',
+      },
+      {
+        says: 'A page has one main action, drawn as the filled button, and any other act is the other or the quiet one; a danger is red only at the last step of a delete, which a page of its own confirms (open item 306).',
+        why: 'Two filled buttons ask the person to choose between equals, and a red button before the last step cries danger where there is none; the person finds the next step by its look.',
+        heldBy: 'review',
+        followed: { item: 655 },
       },
       {
         says: 'A part sits in a level and imports only from the levels below it: an atom holds no other part of ours, a molecule is a few atoms made one thing, an organism is a block of a page.',
@@ -450,5 +477,97 @@ export const GUIDELINE: { charter: Charter; values: Values; contracts: Contract[
       heldBy: { check: 'ui/src/design-system/guideline.test.ts' },
       followed: { item: 651 },
     },
+    {
+      part: 'ActionButton',
+      takes: [
+        {
+          prop: 'meaning',
+          is: 'meaning',
+          line: 'What the act is to the page: the main action, another act, a quiet one, or a danger.',
+        },
+        { prop: 'children', is: 'content', line: 'Its words.' },
+        { prop: 'onClick', is: 'content', line: 'The act it performs.' },
+      ],
+      decides: [
+        {
+          what: 'A danger’s colour: red, filled.',
+          from: [{ table: 'TONES', key: 'danger' }],
+        },
+        {
+          what: 'Its label’s weight: Mantine’s own button weight, 600.',
+          from: [{ table: 'WEIGHTS', key: 'emphasis' }],
+        },
+      ],
+      fixes: [
+        'Its look from its meaning: the main action filled in the client’s colour, another the default look, a quiet one subtle, a danger red filled.',
+        'Its size: Mantine’s small, one size for every button.',
+        'Its place: a page has one main action, and a danger is the last step of a delete, which a page of its own confirms.',
+      ],
+      states: [
+        { name: 'Main', look: 'filled', line: 'The page’s one main action.' },
+        { name: 'Other', look: 'default', line: 'Another act, as cancel or back.' },
+        {
+          name: 'Quiet',
+          look: 'subtle',
+          line: 'An act the page offers with no weight, as a link.',
+        },
+        {
+          name: 'Danger',
+          look: 'red',
+          tone: 'danger',
+          line: 'A delete’s last step, on the page that confirms it.',
+        },
+      ],
+      serves: 'A page has one main action',
+      heldBy: { check: 'ui/src/design-system/guideline.test.ts' },
+      followed: { item: 655 },
+    },
+    {
+      part: 'StatusBadge',
+      takes: [
+        {
+          prop: 'status',
+          is: 'meaning',
+          line: 'Which state the record is in: an order’s, a delivery request’s, or a person’s active or not (archived).',
+        },
+      ],
+      decides: [
+        {
+          what: 'Its colour, from its status: green for what is done or active, orange for what waits, red for cancelled, gray for a draft or inactive.',
+          from: [
+            { table: 'TONES', key: 'success' },
+            { table: 'TONES', key: 'warning' },
+            { table: 'TONES', key: 'danger' },
+            { table: 'TONES', key: 'info' },
+          ],
+        },
+      ],
+      fixes: [
+        'Its word, the dictionary’s for the status, in the person’s language.',
+        'Its look: Mantine’s light badge.',
+      ],
+      states: [
+        { name: 'draft', tone: 'info', line: 'An order still to be confirmed.' },
+        { name: 'confirmed', tone: 'warning', line: 'An order confirmed, its delivery to come.' },
+        { name: 'fulfilled', tone: 'success', line: 'An order delivered.' },
+        { name: 'cancelled', tone: 'danger', line: 'An order or a request cancelled.' },
+        { name: 'waiting', tone: 'warning', line: 'A request waiting for its delivery.' },
+        { name: 'delivered', tone: 'success', line: 'A request delivered.' },
+        { name: 'active', tone: 'success', line: 'A person who may sign in.' },
+        { name: 'inactive', tone: 'info', line: 'A person who is archived.' },
+      ],
+      serves: 'A screen picks parts, never a style',
+      heldBy: { check: 'ui/src/components/atoms/StatusBadge.test.tsx' },
+      followed: { item: 651 },
+    },
   ],
+  buttons: {
+    filled: 'main',
+    'filled red': 'danger',
+    default: 'other',
+    'default red': 'other',
+    subtle: 'quiet',
+    'subtle red': 'quiet',
+    'outline red': 'other',
+  },
 };
