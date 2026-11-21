@@ -173,6 +173,13 @@
   font-weight: 700;
 }
 
+.useLines {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
 .props {
   display: block;
   font-family: var(--mantine-font-family-monospace);

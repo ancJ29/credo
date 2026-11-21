@@ -56,6 +56,7 @@ function Part({ entry, picker }: { entry: Entry; picker: ReactNode }) {
   const [alone, setAlone] = useState(false);
   const [at, setAt] = useState(0);
   const shown = alone ? [entry.states[at]] : entry.states;
+  const instead = ENTRIES.find(({ name }) => name === entry.instead);
   return (
     <article className={classes.part}>
       <div className={classes.stage}>
@@ -74,6 +75,27 @@ function Part({ entry, picker }: { entry: Entry; picker: ReactNode }) {
           {entry.description}
         </Text>
         <section className={classes.sideSection}>
+          <h3 className={classes.sideHead}>Use when</h3>
+          <ul className={classes.useLines}>
+            {entry.useWhen.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+        </section>
+        <section className={classes.sideSection}>
+          <h3 className={classes.sideHead}>Don’t use when</h3>
+          <ul className={classes.useLines}>
+            {entry.dontUseWhen.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+          {instead && (
+            <Text size="sm" mt={6}>
+              Instead: <Link to={pathOf(instead)}>{instead.name}</Link>
+            </Text>
+          )}
+        </section>
+        <section className={classes.sideSection}>
           <h3 className={classes.sideHead}>Props</h3>
           <code className={classes.props}>{entry.props}</code>
         </section>
@@ -85,7 +107,6 @@ function Part({ entry, picker }: { entry: Entry; picker: ReactNode }) {
                 size="xs"
                 fullWidth
                 variant={alone ? 'default' : 'filled'}
-                aria-label="All states side by side"
                 aria-pressed={!alone}
                 onClick={() => setAlone(false)}
               >
@@ -95,7 +116,6 @@ function Part({ entry, picker }: { entry: Entry; picker: ReactNode }) {
                 size="xs"
                 fullWidth
                 variant={alone ? 'filled' : 'default'}
-                aria-label="One state at a time"
                 aria-pressed={alone}
                 onClick={() => setAlone(true)}
               >

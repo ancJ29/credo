@@ -6,7 +6,7 @@ import { DEMO_CONFIG } from '@credo/shared/demo';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { openApp } from '../../tests/open';
 import { Gallery } from './Gallery';
-import { ENTRIES } from './entries';
+import { ENTRIES, slugOf } from './entries';
 import { contrast, onBrand, onWhite, beforeOf, type Surface } from './onBrand';
 import { HEADER_WASHES, MENU_WASHES, ROLES, TYPE } from './tokens';
 import { PALETTES } from './palettes';
@@ -139,25 +139,25 @@ describe('Gallery', () => {
     }
   });
 
-  it('9: on a part of two states or more “One state at a time” shows one state and a row to pick another; a part of one state has no switch; another part opens on all states', async () => {
+  it('9: on a part of two states or more “One at a time” shows one state and a row to pick another; a part of one state has no switch; another part opens on all states', async () => {
     const user = userEvent.setup();
     open(`${BASE}/organisms/door-card`);
 
     expect(stateNames()).toEqual(['Sign-in', 'Login link']);
-    await user.click(screen.getByRole('button', { name: 'One state at a time' }));
+    await user.click(screen.getByRole('button', { name: 'One at a time' }));
     expect(stateNames()).toEqual(['Sign-in']);
     await user.click(screen.getByRole('button', { name: 'Login link' }));
     expect(stateNames()).toEqual(['Login link']);
-    await user.click(screen.getByRole('button', { name: 'All states side by side' }));
+    await user.click(screen.getByRole('button', { name: 'Side by side' }));
     expect(stateNames()).toEqual(['Sign-in', 'Login link']);
 
-    await user.click(screen.getByRole('button', { name: 'One state at a time' }));
+    await user.click(screen.getByRole('button', { name: 'One at a time' }));
     await user.click(list().getByRole('link', { name: 'PageHeader' }));
     expect(stateNames()).toEqual(['With actions', 'Title only']);
 
     await user.click(list().getByRole('link', { name: 'FieldLabel' }));
-    expect(screen.queryByRole('button', { name: 'One state at a time' })).toBeNull();
-    expect(screen.queryByRole('button', { name: 'All states side by side' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'One at a time' })).toBeNull();
+    expect(screen.queryByRole('button', { name: 'Side by side' })).toBeNull();
   });
 
   it('10: the door heading, the logo tile and the page header each draw the state the mock adds', () => {
@@ -553,7 +553,7 @@ describe('Gallery', () => {
     expect(about().getByRole('combobox', { name: 'Colour theme' })).toBeDefined();
     expect(about().queryAllByRole('figure')).toHaveLength(0);
 
-    await user.click(about().getByRole('button', { name: 'One state at a time' }));
+    await user.click(about().getByRole('button', { name: 'One at a time' }));
     expect(about().getByRole('button', { name: 'Login link' })).toBeDefined();
   });
 
@@ -570,6 +570,60 @@ describe('Gallery', () => {
 
     expect(screen.getByRole('combobox', { name: 'Colour theme' })).toBeDefined();
     expect(screen.queryByRole('complementary', { name: 'About this part' })).toBeNull();
+  });
+
+  it('1: every entry carries one to three use lines and one to three don’t-use lines', () => {
+    expect(ENTRIES).toHaveLength(14);
+    for (const entry of ENTRIES) {
+      for (const lines of [entry.useWhen, entry.dontUseWhen]) {
+        expect(lines.length, entry.name).toBeGreaterThanOrEqual(1);
+        expect(lines.length, entry.name).toBeLessThanOrEqual(3);
+        for (const line of lines) expect(line.trim(), entry.name).not.toBe('');
+      }
+    }
+  });
+
+  it('2: an entry’s “instead” names an entry that exists, and the panel links to its address', () => {
+    const withInstead = ENTRIES.filter((entry) => entry.instead !== undefined);
+    expect(withInstead.length).toBeGreaterThan(0);
+    for (const entry of withInstead) {
+      const target = ENTRIES.find(({ name }) => name === entry.instead);
+      expect(target, `${entry.name} instead ${entry.instead}`).toBeDefined();
+      expect(target?.name).not.toBe(entry.name);
+
+      open(`${BASE}/${slugOf(entry.group)}/${slugOf(entry.name)}`);
+      const link = about().getByRole('link', { name: entry.instead });
+      expect(link.getAttribute('href')).toBe(
+        `${BASE}/${slugOf(target!.group)}/${slugOf(target!.name)}`,
+      );
+      cleanup();
+    }
+
+    open(`${BASE}/atoms/field-label`);
+    expect(about().queryByText(/^Instead:/)).not.toBeNull();
+    cleanup();
+    open(`${BASE}/atoms/back-link`);
+    expect(about().queryByText(/^Instead:/)).toBeNull();
+  });
+
+  it('3: the side panel shows the part’s use lines under its description, before its props', () => {
+    for (const entry of ENTRIES) {
+      open(`${BASE}/${slugOf(entry.group)}/${slugOf(entry.name)}`);
+      const side = about();
+      const use = side.getByRole('heading', { level: 3, name: 'Use when' });
+      const dont = side.getByRole('heading', { level: 3, name: 'Don’t use when' });
+      for (const line of [...entry.useWhen, ...entry.dontUseWhen]) {
+        expect(side.getByText(line), entry.name).toBeDefined();
+      }
+      const before = (a: Node, b: Node) =>
+        Boolean(a.compareDocumentPosition(b) & Node.DOCUMENT_POSITION_FOLLOWING);
+      expect(before(side.getByText(entry.description), use), entry.name).toBe(true);
+      expect(before(use, dont), entry.name).toBe(true);
+      expect(before(dont, side.getByRole('heading', { level: 3, name: 'Props' })), entry.name).toBe(
+        true,
+      );
+      cleanup();
+    }
   });
 
   it('3: asks search engines not to list it and carries its title', () => {

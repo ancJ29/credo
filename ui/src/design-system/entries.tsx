@@ -96,6 +96,12 @@ export type Entry = {
   kind?: string;
   description: string;
   props: string;
+  /** One to three short lines: when a screen builder uses this part. */
+  useWhen: string[];
+  /** One to three short lines: when not to, each saying what is right instead. */
+  dontUseWhen: string[];
+  /** The name of the entry to use instead, drawn as a link to it. */
+  instead?: string;
   states: { name: string; node: ReactNode }[];
 };
 
@@ -185,6 +191,15 @@ export const ENTRIES: Entry[] = [
     description:
       "The brand's ten shades, the type, the gaps and the colour roles the theme gives every part.",
     props: 'theme.colors.brand · theme.fontFamily · theme.spacing · ROLES',
+    useWhen: [
+      'You need a colour, a text style or a gap for a screen.',
+      "You are choosing between the brand's shades or the colour roles.",
+    ],
+    dontUseWhen: [
+      'A part already draws what you need: use the part, not its raw values.',
+      "The text sits on the client's colour: that is On the brand's.",
+    ],
+    instead: 'On the brand',
     states: [
       { name: 'Palette', node: <Palette /> },
       { name: 'Type', node: <Type /> },
@@ -198,6 +213,12 @@ export const ENTRIES: Entry[] = [
     description:
       "The text on a client's colour, the white before the rule beside the rule's pick (white where it reaches 4.5:1, else dark), for each of the six stock colours and two typed ones, with the least ratio against the surface's shades; and the links, shade 6 before beside the rule's pick on white.",
     props: 'onBrand(shades, surface) · surface: filled | header | menu · onWhite(shades, from)',
+    useWhen: [
+      "Text or a link sits on the client's colour, in a button, the header or the menu.",
+      'You need to know which text colour a surface takes.',
+    ],
+    dontUseWhen: ["The text sits on white or a pale ground: Values' roles hold it."],
+    instead: 'Values',
     states: [
       { name: 'Buttons', node: <OnTheBrand surface="filled" /> },
       { name: 'Header', node: <OnTheBrand surface="header" /> },
@@ -211,6 +232,14 @@ export const ENTRIES: Entry[] = [
     description:
       "Mantine's own button, field and badge, as the theme dresses them; the gradient button, the default button and the labelled divider each have their own row.",
     props: 'Button · TextInput · Badge · Divider',
+    useWhen: [
+      'You need a button, a field, a badge or a divider no part of ours draws.',
+      "You want to see how the theme dresses Mantine's own parts.",
+    ],
+    dontUseWhen: [
+      'A part of ours already draws it: use that part.',
+      'You want to choose a colour yourself: the theme gives them.',
+    ],
     states: [
       {
         name: 'Button, field, badge',
@@ -249,6 +278,12 @@ export const ENTRIES: Entry[] = [
     description:
       "A label in small capitals, bold and spaced: the legacy's field and section label.",
     props: 'children: string',
+    useWhen: ['A small capitalised label sits over a field or a value in a form.'],
+    dontUseWhen: [
+      "A section's title: that is SectionTitle's.",
+      "A page's title: that is PageHeader's.",
+    ],
+    instead: 'SectionTitle',
     states: [{ name: 'Phone', node: <FieldLabel>Phone</FieldLabel> }],
   },
   {
@@ -258,6 +293,12 @@ export const ENTRIES: Entry[] = [
     description:
       "A door's title as a heading, bold and centred, and a small dimmed subtitle beneath only when given.",
     props: 'title: string · subtitle?: string',
+    useWhen: ["A door's title, and a subtitle only if it has one, at the top of a card."],
+    dontUseWhen: [
+      "A page's title with actions beside it: that is PageHeader's.",
+      "A section's title inside a page: that is SectionTitle's.",
+    ],
+    instead: 'PageHeader',
     states: [
       {
         name: 'With subtitle',
@@ -287,6 +328,8 @@ export const ENTRIES: Entry[] = [
     description:
       "A link back to where its caller says: a small arrow before its words, in the brand's shade 7.",
     props: 'href: string · children: string',
+    useWhen: ['A page leads back to where it came from, as one line under its content.'],
+    dontUseWhen: ['A button that does something: use a button.', 'A link inside running text.'],
     states: [{ name: 'Default', node: <BackLink href="#">Quay lại đăng nhập</BackLink> }],
   },
   {
@@ -296,6 +339,9 @@ export const ENTRIES: Entry[] = [
     description:
       "A company's logo in a small tile with a pale brand line. With no logo, or one that fails to load, it draws nothing.",
     props: 'logo?: string · alt: string',
+    useWhen: ["A company's logo appears alone, small, in a tile."],
+    dontUseWhen: ["The logo beside the company's name: that is BrandBand's."],
+    instead: 'BrandBand',
     states: [
       { name: 'With a logo', node: <LogoTile logo={SAMPLE_LOGO} alt="Sample company" /> },
       {
@@ -316,6 +362,11 @@ export const ENTRIES: Entry[] = [
     description:
       "A record's state as a chip: green when active, grey when not. It takes its word as a prop.",
     props: 'active: boolean · label: string',
+    useWhen: ['A record is active or not, shown as a chip beside its name.'],
+    dontUseWhen: [
+      'More than two states or other colours: not drawn here yet.',
+      "A message to the person: that is not a record's state.",
+    ],
     states: [
       {
         name: 'Active and inactive',
@@ -335,6 +386,9 @@ export const ENTRIES: Entry[] = [
     description:
       "The company's logo tile beside its name, bold and centred on the brand's palest shade, a brand-1 line beneath.",
     props: 'name: string · logo?: string',
+    useWhen: ["The company's logo and name lead a door or a card."],
+    dontUseWhen: ["The logo alone: that is LogoTile's.", "A page's title: that is PageHeader's."],
+    instead: 'LogoTile',
     states: [
       {
         name: 'Default',
@@ -352,6 +406,12 @@ export const ENTRIES: Entry[] = [
     kind: 'Fields',
     description: 'A label over its value; with no value, a dash. It takes its words as props.',
     props: 'label: string · value?: string',
+    useWhen: ["A record's label and its value are read, not edited."],
+    dontUseWhen: [
+      'The value is edited: use a field.',
+      "A section's title: that is SectionTitle's.",
+    ],
+    instead: 'FieldLabel',
     states: [
       {
         name: 'With a value, and with none',
@@ -370,6 +430,12 @@ export const ENTRIES: Entry[] = [
     kind: 'Headings',
     description: "A section's title: a grey icon tile beside a small, bold label in capitals.",
     props: 'icon: ReactNode · label: string',
+    useWhen: ['A section of a page or a card opens with its icon and a short label.'],
+    dontUseWhen: [
+      "The page's own title: that is PageHeader's.",
+      "A label over one field: that is FieldLabel's.",
+    ],
+    instead: 'PageHeader',
     states: [
       { name: 'Default', node: <SectionTitle icon={<IconBuilding size={14} />} label="Basics" /> },
     ],
@@ -381,6 +447,9 @@ export const ENTRIES: Entry[] = [
     description:
       "A door's card: a bar in the brand's gradient across its top, the company's band, then what it holds.",
     props: 'name: string · logo?: string · children: ReactNode',
+    useWhen: ['A page a person reaches before sign-in, the card holding its words and buttons.'],
+    dontUseWhen: ["A block inside a signed-in page: that is SectionCard's."],
+    instead: 'SectionCard',
     states: [
       {
         name: 'Sign-in',
@@ -406,6 +475,12 @@ export const ENTRIES: Entry[] = [
     kind: 'Cards',
     description: 'A bordered block: a section title over what it holds. No edit mode.',
     props: 'icon: ReactNode · title: string · children: ReactNode',
+    useWhen: ['A signed-in page groups its fields or details in a block with a title.'],
+    dontUseWhen: [
+      "A page before sign-in: that is DoorCard's.",
+      'Content with no title: no card, only the page.',
+    ],
+    instead: 'DoorCard',
     states: [
       {
         name: 'Default',
@@ -423,6 +498,12 @@ export const ENTRIES: Entry[] = [
     kind: 'Headers',
     description: "A page's heading, with what acts on the page beside it. No phone variant.",
     props: 'title: string · actions?: ReactNode',
+    useWhen: ['A page opens with its title, and the actions that act on the whole page beside it.'],
+    dontUseWhen: [
+      "A section inside the page: that is SectionTitle's.",
+      "The title of a card before sign-in: that is DoorHeading's.",
+    ],
+    instead: 'SectionTitle',
     states: [
       {
         name: 'With actions',

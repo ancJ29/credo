@@ -165,10 +165,17 @@ begun at step 4 and added to at each landing, which the design agent rereads.
 **Landing 1** (from `pre-merge` with piece 215 in it: `git log --oneline pre-merge | grep -c
 gallery-provider` at least 1, then `git merge-base --is-ancestor pre-merge HEAD` exit 0).
 
-- [ ] **1. The use lines.** The fields, the 14 entries' lines, the panel; cases 1 to 3; item 629 (the
+- [x] **1. The use lines.** The fields, the 14 entries' lines, the panel; cases 1 to 3; item 629 (the
       Show buttons pressed by their visible words). _Done when:_ the gates exit 0 and `git diff
       --name-only pre-merge...HEAD -- ui/src/frame ui/src/pages ui/src/parts ui/src/components` prints
       nothing. **17 min** (203's step 1, a new field and its cases).
+      _Evidence:_ `6ce0fd4e` (the pre-main review of piece 215's after, taken in: `CredoMantine`
+      memoises `themeOf(colour)` on `colour`, no case of its own, held by the gates), then the
+      step's commit. Reds on the Gallery test file, 13:55: item 629's finders on the old hidden names
+      (two cases red), case 1 on an entry with no use line and on one with four, case 2 on an
+      `instead` naming no entry and on a link to the wrong address, case 3 on a changed heading;
+      green 34 of 34. The gates exit 0 at 13:58 (`ui`) and 13:59 (`visual`), the diff of the done
+      check printing nothing.
 - [ ] **2. Values explains.** The purpose lines, the values, the type specs; cases 4 to 6. _Done
       when:_ the gates exit 0, `visual/src/resolved.pinned.txt` unchanged. **19 min** (203's step 5, a
       table in `tokens.ts` that Values draws).
