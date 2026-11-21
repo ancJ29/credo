@@ -121,8 +121,8 @@
   flex: 1;
   display: flex;
   flex-wrap: wrap;
-  align-items: center;
-  align-content: center;
+  align-items: safe center;
+  align-content: safe center;
   justify-content: center;
   gap: 28px 32px;
   min-width: 0;

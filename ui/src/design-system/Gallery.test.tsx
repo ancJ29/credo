@@ -55,6 +55,15 @@ const stateNames = () =>
     .map((figure) => figure.getAttribute('aria-label'));
 
 describe('Gallery', () => {
+  it("writes the roles' variables the swatches read, as the app does", () => {
+    open(`${BASE}/foundations/values`);
+
+    const style = document.querySelector('style[data-mantine-styles]')?.textContent ?? '';
+    const names = Object.keys(ROLES);
+    expect(names.length).toBeGreaterThan(1);
+    for (const name of names) expect(style).toContain(`--credo-${name}: `);
+  });
+
   it('4: lists Foundations, Atoms, Molecules and Organisms in order, each with its count and every component file of its level', () => {
     open(`${BASE}/atoms/field-label`);
 
