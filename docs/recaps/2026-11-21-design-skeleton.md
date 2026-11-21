@@ -11,7 +11,7 @@ flowchart LR
 
 - **Start here** is the gallery's first page, the bare address: your goal, what credo is, the two readers, where each looks, seven rules, each saying what holds it and whether the app follows it. A gap is asked, then made a rule. A screen's coder picks parts, never a style; a design-system coder owns each look.
 - **Values** says what each colour role, text style, gap, width, icon size, corner, shadow and format is for, and draws each. Four meanings (danger, success, warning, info) are the one place a colour name is written.
-- **The 14 parts' entries** each say when to use the part, when not, and what instead.
+- **The 15 entries** (11 parts) say when to use, when not, and what instead, but BackLink, StatusBadge and Mantine's.
 - It all lives in `ui/src/design-system/guideline.ts`, which a coder reads as text and the gallery draws.
 
 ## What the machine decided
@@ -22,7 +22,7 @@ flowchart LR
 
 ## What was proved
 
-Steps 1 to 5: `10e505e6`, `babd456f`, `da4df0a4`, `f673aa0c`, `9dfe105c`. Each case was seen red first. No screen's look moved: the pinned file of resolved styles is unchanged. Step 5 touched the frame's stylesheet and the sign-in title, to name the same sizes and weights once.
+Steps 1 to 5: `10e505e6`, `babd456f`, `da4df0a4`, `f673aa0c`, `9dfe105c`. Each case was seen red first. No screen's look moved: the pinned styles file is unchanged. Step 5 touched the frame's stylesheet and the sign-in title, to name the same sizes and weights once.
 <!-- FILL: the whole check on pre-merge, once it has run -->
 <!-- FILL: the review before main, once it has run -->
 
