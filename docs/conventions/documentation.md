@@ -110,8 +110,8 @@ to rot, because the change that breaks it touches no line there.
   [Where to look](../../README.md#where-to-look).** A new kind of note gets its row there in the
   commit that makes it; a page that would write a fact already homed links the home instead. A home
   outside `main` (the orchestrator branch's board, pieces and run table, the kit's rules for every
-  project, a session's memory) is named there as such and never copied in. The review before `main`
-  moves reads each new page against this ([QA](qa.md)'s rule 5). *Why:* on 2026-11-19 the 13 kinds
+  project, a session's memory) is named there as such and never copied in. The one review
+  ([QA](qa.md)'s rule 5), where it runs, reads each new page against this. *Why:* on 2026-11-19 the 13 kinds
   of note and fact each sat in one to nine places with no declared home, and the copies drifted.
   *Rejected:* the homes listed in this convention as well: a second list is the copy this rule
   forbids, and the front page is the page a reader opens first.
