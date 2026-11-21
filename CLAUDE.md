@@ -48,8 +48,8 @@ otherwise runs whole.
 - **Every session in a piece's worktree runs [the session skill](.claude/skills/session/SKILL.md)**:
   the plan read first, one step, its tick and its evidence in the recap, then the stop.
 - **One bare repo, many worktrees**, all under `$ROOT_DIR`, the folder that holds `.bare`. `main`
-  is the trunk and only receives fast-forwards, from `pre-merge`, to a commit its whole check has
-  passed; `pre-merge` receives each finished piece's merge, and each piece works on its own branch,
+  is the trunk and only receives fast-forwards, from `pre-merge`, to a commit its checks have
+  passed (the whole check where QA says); `pre-merge` receives each finished piece's merge, and each piece works on its own branch,
   started from `pre-merge`'s tip, in its own worktree ([QA](docs/conventions/qa.md#the-whole-check-on-pre-merge)).
   The worktrees share one stash stack, so never run a bare `git stash`. The `orchestrator` branch
   holds the orchestrator's board. It never takes `main` in, and reaches `main` only as one squash

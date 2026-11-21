@@ -56,7 +56,7 @@ What an operator signs in with. An operator makes the first one by opening a one
 
 ## pre-merge
 
-The place where a finished piece waits while the [whole check](#whole-check) runs on it. Only a piece that has passed there is added to [main](#main).
+The place where a finished piece waits while the [whole check](#whole-check) runs on it. Only a piece that has passed its checks there is added to [main](#main).
 
 ## production
 
@@ -88,7 +88,7 @@ The page that shows every screen of every [walk](#walk), in two languages. We an
 
 ## whole check
 
-The [gate](#gate) of the six TypeScript packages, run together on [pre-merge](#pre-merge). It runs there at most once every two hours, sooner only when it is really needed and nothing else holds the machine.
+The [gate](#gate) of the six TypeScript packages, run together on [pre-merge](#pre-merge). It runs there only where a change can break more than its package, and once before the day's push, when nothing else holds the machine.
 
 ## worktree
 
