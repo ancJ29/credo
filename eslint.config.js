@@ -4,7 +4,7 @@ import reactHooks from 'eslint-plugin-react-hooks';
 import tseslint from 'typescript-eslint';
 
 // The design system's direction: a component imports only from the levels below its own, the tokens
-// and packages (ui/CLAUDE.md, `components/`). Tests are outside it.
+// and packages (the design guideline's rule 4, `ui/src/design-system/guideline.ts`). Tests are outside it.
 const LEVELS = [
   { level: 'atoms', above: ['molecules', 'organisms'] },
   { level: 'molecules', above: ['organisms'] },

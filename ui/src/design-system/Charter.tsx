@@ -12,7 +12,7 @@ export const followedWords = (followed: Followed) =>
 
 /** The charter drawn as a plate: the guideline's words as `guideline.ts` holds them, the goal first. */
 export function Charter() {
-  const { goal, credo, lookHere, rules } = GUIDELINE.charter;
+  const { goal, credo, readers, lookHere, rules } = GUIDELINE.charter;
   return (
     <Stack gap="lg" w={560} maw="100%">
       <Stack gap={4}>
@@ -26,6 +26,19 @@ export function Charter() {
           What credo is
         </Title>
         <Text>{credo}</Text>
+      </Stack>
+      <Stack gap={4}>
+        <Title order={3} {...TYPE.sectionLabel}>
+          Who reads it
+        </Title>
+        {readers.map(({ reader, does }) => (
+          <Text key={reader}>
+            <Text component="span" {...TYPE.bodyStrong}>
+              {reader}.
+            </Text>{' '}
+            {does}
+          </Text>
+        ))}
       </Stack>
       <Stack gap={4}>
         <Title order={3} {...TYPE.sectionLabel}>

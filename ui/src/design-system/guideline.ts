@@ -37,7 +37,9 @@ export type Charter = {
   goal: string;
   /** What credo is, so a choice fits the product and not one trade. */
   credo: string;
-  /** Where a coder looks for a choice, by what is needed, in the order to look. */
+  /** The two readers of the guideline and what each does with it. */
+  readers: { reader: string; does: string }[];
+  /** Where each reader looks for a choice, by what is needed, in the order to look. */
   lookHere: { need: string; where: string }[];
   /** The rules that hold for every screen and every part. */
   rules: Rule[];
@@ -57,7 +59,14 @@ export type ShadowName =
 /** The kinds of value a screen writes as text, each with its one place. */
 export type FormatName = 'money' | 'date' | 'time';
 
-/** The values page: what each value is for, one line each, typed over its table's keys so a value with no line is a type error. */
+/** The states a note stands beside: the note is drawn at the top of that state of the values page. */
+export type NoteAbout = 'tones' | 'styles' | 'widths' | 'icons' | 'formats';
+
+/**
+ * The values page, the design-system coder's reference: what each value is for, one line each. A
+ * value of a table is typed over its table's keys, so one with no line is a type error; the shadows
+ * and the formats have no table of their own, so their names are written here.
+ */
 export type Values = {
   roles: Record<RoleName, string>;
   styles: Record<keyof typeof TYPE, string>;
@@ -68,8 +77,8 @@ export type Values = {
   corners: Record<keyof typeof RADII, string>;
   shadows: Record<ShadowName, string>;
   formats: Record<FormatName, string>;
-  /** What a coder reads before the tables, where a rule or a name is not yet followed. */
-  notes: string[];
+  /** What a coder reads first in a state, where a rule or a name is not yet followed. */
+  notes: { about: NoteAbout; text: string }[];
 };
 
 /**
@@ -81,15 +90,35 @@ export const GUIDELINE: { charter: Charter; values: Values } = {
   charter: {
     goal: 'Decide the design once, so whoever codes a screen makes as few look-and-feel choices as possible, and the app stays consistent anyway.',
     credo:
-      'Credo is one platform that many small and medium companies in Vietnam share, its modules added over time. It is not one trade’s app: a choice fits any of them, and a company’s own colour is the one thing that differs.',
-    lookHere: [
-      { need: 'How a page is laid out', where: 'The page base, in the Pages group.' },
-      { need: 'What a screen says or offers', where: 'A rule, in the Rules group.' },
+      'Credo is one platform that many small and medium companies in Vietnam share, its modules added over time. It is not one trade’s app: a choice fits any of them, and a company’s own colour, name and logo are what differ.',
+    readers: [
       {
-        need: 'A piece to build a screen from',
+        reader: 'A screen’s coder',
+        does: 'Picks parts and passes them content and meaning (a main action, a danger), never a colour, a size, a gap or a weight. A choice no part offers is asked, then written here as a rule or as a part.',
+      },
+      {
+        reader: 'A design-system coder',
+        does: 'Owns each part’s look, read from the theme, and changes it when it needs changing. A new part matches the existing ones, and the gallery is the check. The values and their use lines below are this coder’s reference.',
+      },
+    ],
+    lookHere: [
+      {
+        need: 'A screen’s coder: a piece to build a screen from',
         where: 'A part, in Atoms, Molecules or Organisms.',
       },
-      { need: 'A colour, a text style, a gap', where: 'A value, in Foundations.' },
+      {
+        need: 'A screen’s coder: how a page is laid out',
+        where: 'The page base, in the Pages group, which stays empty until the plan’s landing 3.',
+      },
+      {
+        need: 'A screen’s coder: what a screen says or offers',
+        where: 'A rule, in the Rules group, which stays empty until the plan’s landing 2.',
+      },
+      {
+        need: 'A design-system coder: a colour, a text style, a gap, a width, an icon size or a corner',
+        where:
+          'A value and its use line, in Foundations. A screen’s coder does not pick these: the part does.',
+      },
       {
         need: 'Anything else',
         where:
@@ -104,13 +133,19 @@ export const GUIDELINE: { charter: Charter; values: Values } = {
         followed: 'yes',
       },
       {
-        says: 'A screen reads a colour by its role, never by a shade of a palette; text on the client’s colour comes from the on-brand values, never from a white written in the screen.',
+        says: 'A screen picks parts, never a style: it passes a part content and meaning (a main action, a danger), and never a colour, a size, a gap or a weight.',
+        why: 'A look written in a screen is one more place to change and one more way to differ; in a part it changes once, and the design-system coder keeps the new look matching the old.',
+        heldBy: 'review',
+        followed: { item: 651 },
+      },
+      {
+        says: 'A colour is read by its role, never by a numbered shade of a palette; text on the client’s colour comes from the on-brand values, never from a white written in the screen. Mantine’s own slots (`--mantine-color-body`, `-text`, `-default-border`, `-default-hover`) and an avatar’s `color="initials"` are allowed.',
         why: 'The client’s colour changes every shade, so a shade written in a screen reads on one colour and fails on another.',
         heldBy: { check: 'ui/src/design-system/literals.test.ts' },
         followed: 'yes',
       },
       {
-        says: 'A screen reads its text by name: a style of the type table, or a weight or a size of its own tables, never a number.',
+        says: 'Text takes a style of the type table, never a number for a weight or a size; the weights and sizes of their own tables are the design-system coder’s, and `tokens.ts` says what each is for.',
         why: 'A style named once changes once, and a number written in a screen cannot be found again.',
         heldBy: { check: 'ui/src/design-system/literals.test.ts' },
         followed: 'yes',
@@ -122,15 +157,15 @@ export const GUIDELINE: { charter: Charter; values: Values } = {
         followed: 'yes',
       },
       {
-        says: 'A part joins the parts at its third use in the app, with its gallery entry; its first two uses stay in their screens. The rule of three is for code, not for a look: a look is decided here before its first use.',
-        why: 'A part made for one use is guessed at, and a part made after three is drawn from what they share.',
+        says: 'A part joins `ui/src/components/` at its third use in the app, with its gallery entry; its first two uses stay in their screens or in `ui/src/parts/`, and the first six parts, joined as the skeleton’s day-one set, are the exception. It is never made to wrap a Mantine part alone. The rule of three is for code, not for a look: a look is decided here before its first use.',
+        why: 'A part made for one use is guessed at, and a part made after three is drawn from what they share; Mantine stays the base.',
         heldBy: 'review',
         followed: 'yes',
       },
       {
         says: 'The app is light only, whatever the device asks.',
         why: 'The human’s answer: the legacy is light only, and a second set of values is not worth carrying yet.',
-        heldBy: 'review',
+        heldBy: { check: 'ui/src/frame/Providers.test.tsx' },
         followed: 'yes',
       },
     ],
@@ -199,16 +234,17 @@ export const GUIDELINE: { charter: Charter; values: Values } = {
       column:
         'A page that is one column of text and fields: the own-password page. 560 px at most.',
       field:
-        'A field of a form of several, which a person fills in a line: the order’s driver and day. 420 px at most.',
+        'A field of a form of several, a day field too: the order’s driver and its send day. 420 px at most.',
       amount: 'A field that holds an amount: the cash a driver takes in. 320 px at most.',
-      date: 'A field that holds a day, and nothing else: the deliveries’ day, the order’s day. 240 px at most.',
+      date: 'A field that holds a day and stands alone, outside a form of several: the deliveries’ day, a day shown on its own. 240 px at most.',
     },
     icons: {
       inline:
         'An icon beside a title or a back link: a section’s title tile, a page’s back arrow. 14 px.',
       field:
-        'An icon inside a field or at the end of a row: a search field’s magnifier, a row’s arrow. 16 px.',
-      button: 'An icon on a button or in a field’s left side, and a header’s control. 18 px.',
+        'An icon in a search field or at the end of a row: a search field’s magnifier, a row’s arrow. 16 px.',
+      button:
+        'An icon on a button, in the left side of a form’s field (the sign-in fields’), and a header’s control. 18 px.',
       bar: 'The phone bar’s more mark, the one icon set on a bar below the page. 22 px.',
       mark: 'The company’s mark on the header and the sign-in card, with a thin stroke. 36 px.',
     },
@@ -216,7 +252,7 @@ export const GUIDELINE: { charter: Charter; values: Values } = {
       xs: 'Not drawn by a screen today: 2 px, for a mark of a few pixels.',
       sm: 'A small tile or a badge: a section title’s icon tile, a logo on the sign-in card, a status badge. 4 px.',
       md: 'The default: a card, a paper, a photo, a button and a field. 8 px.',
-      lg: 'Not drawn by a screen today: 12 px, which the frame’s own stylesheets write for one corner.',
+      lg: 'Not drawn by a screen today: 12 px, which the frame’s own stylesheets write for one corner; they write a 6 px corner twice, which no step here names.',
       xl: 'A round pick: the colour swatches on the settings page. 16 px.',
     },
     shadows: {
@@ -232,10 +268,26 @@ export const GUIDELINE: { charter: Charter; values: Values } = {
       time: 'A time of day is written by `timeOf` in `ui/src/day.ts`, to the second on 24 hours, in the language shown.',
     },
     notes: [
-      'A screen names a meaning (danger, success, warning, info) or a role, never a Mantine colour. Not yet: the screens still write red, green, orange, gray and yellow (about 195 uses), and the later landings move them by rule; a yellow has no meaning and becomes warning.',
-      'A text takes a style of the table below; a size or a weight on a Text is written only where no style fits, with a comment saying why. Not yet checked: review holds it.',
-      'A screen names a width and an icon size by its use, never a number. Not yet: the screens write the numbers. Of 45 icons, 30 are 14 px, 7 are 18, 3 are 16, 2 are 36, 2 are 20 and 1 is 22 (the two 20 px icons, a fingerprint on a button, are the button’s 18); of the widths, 440 px is written 3 times, 420 and 240 twice, 560 and 320 once, and three more are in no list: 140 (a quantity field), 155 (a filter) and 200 (the search field’s least).',
-      'A number, a day or a time is written by its one place, never by `new Intl` in a screen. Not yet: outside `ui/src/day.ts` five `new Intl.NumberFormat` stand in four files (one is `useMoney`’s own, the other four write a price, a quantity or the marks of a number by hand), and a number has no place of its own yet.',
+      {
+        about: 'tones',
+        text: 'A screen names a meaning (danger, success, warning, info), never a Mantine colour. Not yet: the screens still write red, green, orange, gray and yellow (about 130 uses) and `dimmed` (about 50 more), which move with the parts; a yellow has no meaning and becomes warning. Open item 651 moves them.',
+      },
+      {
+        about: 'styles',
+        text: 'A text takes a style of this table; a size or a weight on a Text is written only where no style fits, with a comment saying why. Not yet checked: review holds it, and about 17 Text lines set one with no comment (open item 651). `WEIGHTS` and `SIZES` have no use line here; open item 654 adds them.',
+      },
+      {
+        about: 'widths',
+        text: 'A width is named by its use, never a number. Not yet: the screens write the numbers: 440 px is written 3 times, 420 and 240 twice, 560 and 320 once, and three more are in no list: 140 (a quantity field), 155 (a filter) and 200 (the search field’s least). The most common width of all is also in no list: a table’s least width, set 14 times at 480 (once), 560 (3), 640 (2), 720 (4) and 760 (2), which only the human can choose; open item 653 asks it, and open item 651 moves the rest.',
+      },
+      {
+        about: 'icons',
+        text: 'An icon size is named by where the icon sits, never a number. Not yet: of 45 icons, 30 are written as 14 px, 7 as 18, 3 as 16, 2 as 36, 2 as 20 and 1 as 22 (the two 20 px icons, a fingerprint on a button, are the button’s 18); open item 651 moves them.',
+      },
+      {
+        about: 'formats',
+        text: 'A number, a day or a time is written by its one place, never by `new Intl` in a screen. Not yet: outside `ui/src/day.ts` five `new Intl.NumberFormat` stand in four files (one is `useMoney`’s own, the other four write a price, a quantity or the marks of a number by hand), and a number has no place of its own yet; open item 652 moves them.',
+      },
     ],
   },
 };

@@ -78,7 +78,7 @@ describe('Gallery', () => {
     for (const name of names) expect(style).toContain(`--credo-${name}: `);
   });
 
-  it('4: lists Start here, Foundations, Rules, Pages, Atoms, Molecules and Organisms in order, each with its count and every component file of its level', () => {
+  it('213 case 4: lists Start here, Foundations, Rules, Pages, Atoms, Molecules and Organisms in order, each with its count and every component file of its level', () => {
     open(`${BASE}/atoms/field-label`);
 
     const heads = list()
@@ -118,7 +118,7 @@ describe('Gallery', () => {
     expect(screen.getAllByRole('article')).toHaveLength(1);
   });
 
-  it('6: the bare address opens the charter and the list marks it current', () => {
+  it('213 case 5: the bare address opens the charter and the list marks it current', () => {
     open(BASE);
 
     expect(part().getByRole('heading', { level: 2, name: 'The charter' })).toBeDefined();
@@ -131,15 +131,20 @@ describe('Gallery', () => {
     ).toBeNull();
   });
 
-  it('guideline 7: the charter draws its words from guideline.ts, the same text', () => {
+  it('213 case 7: the charter draws its words from guideline.ts, the same text', () => {
     open(BASE);
 
-    const { goal, credo, lookHere, rules } = GUIDELINE.charter;
+    const { goal, credo, readers, lookHere, rules } = GUIDELINE.charter;
+    expect(readers).toHaveLength(2);
     expect(lookHere.length).toBeGreaterThan(1);
     expect(rules.length).toBeGreaterThan(1);
     const plate = within(part().getByRole('figure', { name: 'The charter' }));
     expect(plate.getByText(goal)).toBeDefined();
     expect(plate.getByText(credo)).toBeDefined();
+    for (const { reader, does } of readers) {
+      expect(plate.getByText(`${reader}.`)).toBeDefined();
+      expect(plate.getByText(does, { exact: false })).toBeDefined();
+    }
     for (const { need, where } of lookHere) {
       expect(plate.getByText(`${need}.`)).toBeDefined();
       expect(plate.getByText(where, { exact: false })).toBeDefined();
@@ -150,7 +155,10 @@ describe('Gallery', () => {
     }
     // Each rule's caption says what holds it and whether the app follows it.
     expect(plate.getAllByText(/^Held by /)).toHaveLength(rules.length);
-    expect(plate.getAllByText(/The app follows it\.$/)).toHaveLength(rules.length);
+    const unmet = rules.filter((rule) => rule.followed !== 'yes');
+    expect(unmet.length).toBeGreaterThan(0);
+    expect(plate.getAllByText(/The app follows it\.$/)).toHaveLength(rules.length - unmet.length);
+    expect(plate.getAllByText(/Not yet: open item \d+ moves it\.$/)).toHaveLength(unmet.length);
   });
 
   it('7: an address that names no part says so beside the list and draws no part', () => {
@@ -253,7 +261,7 @@ describe('Gallery', () => {
     expect(part().getByRole('link', { name: 'Quay lại đăng nhập' })).toBeDefined();
   });
 
-  it('guideline 7: a rule says in words what holds it and whether the app follows it, or the item that moves it', () => {
+  it('213 case 7: a rule says in words what holds it and whether the app follows it, or the item that moves it', () => {
     expect(heldWords('review')).toBe('Held by review.');
     expect(heldWords({ check: 'a/b.test.ts' })).toBe('Held by a/b.test.ts.');
     expect(followedWords('yes')).toBe('The app follows it.');
@@ -291,7 +299,7 @@ describe('Gallery', () => {
     );
   });
 
-  it('8: Values gives each role, on-brand value, wash, style and meaning its use line, from the guideline', () => {
+  it('213 case 8: Values gives each role, on-brand value, wash, style and meaning its use line, from the guideline', () => {
     open(`${BASE}/foundations/values`);
     const { roles, styles, tones } = GUIDELINE.values;
     // A table that found nothing would quiet the loops below.
@@ -307,7 +315,7 @@ describe('Gallery', () => {
     for (const line of Object.values(roles)) expect(line.length).toBeGreaterThan(10);
   });
 
-  it('8: Values gives each spacing step, width, icon size, corner, shadow and format its use line, from the guideline, next to its value', () => {
+  it('213 case 8: Values gives each spacing step, width, icon size, corner, shadow and format its use line, from the guideline, next to its value', () => {
     open(`${BASE}/foundations/values`);
     const { spacing, widths, icons, corners, shadows, formats } = GUIDELINE.values;
     const tables = [
@@ -339,7 +347,7 @@ describe('Gallery', () => {
     expect(valueOf('xl', RADII.xl)).toBe(true);
   });
 
-  it('9: Values draws each role’s value as credoVariables writes it for the chosen colour, and it follows the colour', async () => {
+  it('213 case 9: Values draws each role’s value as credoVariables writes it for the chosen colour, and it follows the colour', async () => {
     const written = (colour: string) =>
       credoVariables({ colors: { brand: shadesOf(colour) } } as never).variables;
     const names = Object.keys(GUIDELINE.values.roles);
@@ -375,7 +383,7 @@ describe('Gallery', () => {
     window.localStorage.clear();
   });
 
-  it('10: Values draws each text style’s size, line height, weight and spacing, its name in plain letters', () => {
+  it('213 case 10: Values draws each text style’s size, line height, weight and spacing, its name in plain letters', () => {
     open(`${BASE}/foundations/values`);
     const FACTS: Record<keyof typeof TYPE, string> = {
       pageTitle: 'size 22 px · line height 1.4 · weight 700 · spacing 0 px',
@@ -394,7 +402,28 @@ describe('Gallery', () => {
     expect(Object.keys(FACTS)).toEqual(Object.keys(TYPE));
   });
 
-  it('8: Values draws the four meanings, each with the Mantine colour that draws it and its line', () => {
+  it('213 case 8: Values draws each note at the top of the state it is about, and no state draws another’s', () => {
+    open(`${BASE}/foundations/values`);
+    const { notes } = GUIDELINE.values;
+    // A guideline with a note short of a state would quiet the loop below.
+    expect(new Set(notes.map((note) => note.about)).size).toBe(5);
+    const states = {
+      tones: 'Meanings',
+      styles: 'Type',
+      widths: 'Widths',
+      icons: 'Icons',
+      formats: 'Formats',
+    } as const;
+    for (const { about, text } of notes) {
+      for (const [other, state] of Object.entries(states)) {
+        const plate = within(part().getByRole('figure', { name: state }));
+        if (other === about) expect(plate.getAllByText(text)).toHaveLength(1);
+        else expect(plate.queryByText(text)).toBeNull();
+      }
+    }
+  });
+
+  it('213 case 8: Values draws the four meanings, each with the Mantine colour that draws it and its line', () => {
     open(`${BASE}/foundations/values`);
     for (const [tone, colour] of Object.entries(TONES)) {
       const name = part().getByText(tone, { exact: true });
@@ -749,7 +778,7 @@ describe('Gallery', () => {
     expect(screen.queryByRole('complementary', { name: 'About this part' })).toBeNull();
   });
 
-  it('1: every entry carries one to three use lines and one to three don’t-use lines', () => {
+  it('213 case 1: every entry carries one to three use lines and one to three don’t-use lines', () => {
     expect(ENTRIES).toHaveLength(15);
     for (const entry of ENTRIES) {
       for (const lines of [entry.useWhen, entry.dontUseWhen]) {
@@ -760,7 +789,7 @@ describe('Gallery', () => {
     }
   });
 
-  it('2: an entry’s “instead” names an entry that exists, and the panel links to its address', () => {
+  it('213 case 2: an entry’s “instead” names an entry that exists, and the panel links to its address', () => {
     const withInstead = ENTRIES.filter((entry) => entry.instead !== undefined);
     expect(withInstead.length).toBeGreaterThan(0);
     for (const entry of withInstead) {
@@ -783,7 +812,7 @@ describe('Gallery', () => {
     expect(about().queryByText(/^Instead:/)).toBeNull();
   });
 
-  it('3: the side panel shows the part’s use lines under its description, before its props', () => {
+  it('213 case 3: the side panel shows the part’s use lines under its description, before its props', () => {
     for (const entry of ENTRIES) {
       open(`${BASE}/${slugOf(entry.group)}/${slugOf(entry.name)}`);
       const side = about();

@@ -10,10 +10,16 @@ import {
   type MantineTheme,
 } from '@mantine/core';
 import { credoVariables } from './cssVariables';
-import { FRAME_VALUES } from './tokens';
-import { GUIDELINE, type FormatName, type RoleName, type ShadowName } from './guideline';
+import {
+  GUIDELINE,
+  type FormatName,
+  type NoteAbout,
+  type RoleName,
+  type ShadowName,
+} from './guideline';
 import { IconBuilding } from '@tabler/icons-react';
 import {
+  FRAME_VALUES,
   HEADER_WASHES,
   ICON_SIZES,
   MENU_WASHES,
@@ -60,12 +66,24 @@ const LEVEL: Partial<Record<keyof typeof TYPE, number>> = { pageTitle: 2, sectio
 
 const SAMPLE = 'Sample text 1,250,000';
 
+/** The notes of one state: what a coder reads first where a rule or a name is not yet followed. */
+function Notes({ about }: { about: NoteAbout }) {
+  return GUIDELINE.values.notes
+    .filter((note) => note.about === about)
+    .map(({ text }) => (
+      <Text key={text} size="sm">
+        {text}
+      </Text>
+    ));
+}
+
 /** Each text style: drawn as a screen reads it, its name in plain letters, what it draws and what it is for. */
 export function Type() {
   const theme = useMantineTheme();
   const { fontFamily } = theme;
   return (
     <Stack gap="sm">
+      <Notes about="styles" />
       <Text size="sm">Type: {fontFamily}</Text>
       {(Object.keys(TYPE) as (keyof typeof TYPE)[]).map((name) => {
         const style: Style = TYPE[name];
@@ -135,11 +153,7 @@ export function Roles() {
 export function Tones() {
   return (
     <Stack gap={4}>
-      {GUIDELINE.values.notes.map((note) => (
-        <Text key={note} size="sm">
-          {note}
-        </Text>
-      ))}
+      <Notes about="tones" />
       {(Object.keys(TONES) as (keyof typeof TONES)[]).map((tone) => (
         <Group key={tone} gap="sm" wrap="nowrap" align="flex-start">
           <Paper w={24} h={24} bg={`${TONES[tone]}.6`} style={{ flex: 'none' }} />
@@ -209,6 +223,7 @@ export function Spacing() {
 export function Widths() {
   return (
     <Stack gap={4}>
+      <Notes about="widths" />
       {names(WIDTHS).map((use) => (
         <ValueRow
           key={use}
@@ -225,6 +240,7 @@ export function Widths() {
 export function Icons() {
   return (
     <Stack gap={4}>
+      <Notes about="icons" />
       {names(ICON_SIZES).map((place) => (
         <ValueRow
           key={place}
@@ -270,6 +286,7 @@ export function Shapes() {
 export function Formats() {
   return (
     <Stack gap={4}>
+      <Notes about="formats" />
       {(Object.keys(GUIDELINE.values.formats) as FormatName[]).map((format) => (
         <ValueRow key={format} name={format} value="" use={GUIDELINE.values.formats[format]} />
       ))}
