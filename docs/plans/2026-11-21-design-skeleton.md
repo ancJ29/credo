@@ -152,9 +152,16 @@ orchestrator's at each landing, about 20 minutes, not a step. One recap,
       is fixed, its 550 waits. Case 11 red on the Gallery's neighbour, `appTheme.test.tsx`, 15:21,
       with the three weights moved one off. The one `frameKept` snapshot moved by the heading's
       `size` (the same font size, written by its own variable); the pinned file unchanged.
-- [ ] **6. Landing 1.** The recap begun; the gallery's row and card in `docs/products.md`. No picture
+- [x] **6. Landing 1.** The recap begun; the gallery's row and card in `docs/products.md`. No picture
       run: the pinned file holds its 0, and the gallery is looked at, not pictured (item 515).
       _Done when:_ the citation test exits 0. **15 min** (203's step 11). Your point 1.
+      _Evidence:_ the step's commit. `docs/recaps/2026-11-21-design-skeleton.md` is begun, landing 1
+      only, with markers for the whole check, the review before `main` and your look at point 1;
+      the gallery's row in `docs/products.md` and its card now say Start here, Values by use and the
+      entries' use lines. The step's own check: the citation test exits 0, the recap within 400
+      words, prettier clean. Plan slip: step 5 changed five files under `ui/src/frame`,
+      `ui/src/pages` and `ui/src/parts` (same resolved styles, the pinned file unchanged), so the
+      "prints nothing" diff for steps after 1 cannot hold as written.
 
 **Landing 2: the rules** (layer 3), from `pre-merge` at landing 1.
 
