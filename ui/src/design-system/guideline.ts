@@ -188,7 +188,8 @@ export const GUIDELINE: {
       },
       {
         need: 'A screen’s coder: what a screen says or offers',
-        where: 'A rule, in the Rules group, which stays empty until the plan’s landing 2.',
+        where:
+          'The part’s contract, in the panel beside its entry: what a screen gives it and what it decides. A rule that holds for every screen is in the rules below. The Rules group stays empty.',
       },
       {
         need: 'A design-system coder: a colour, a text style, a gap, a width, an icon size or a corner',
