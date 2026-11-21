@@ -113,7 +113,7 @@ export type PartState = {
   tone?: keyof typeof TONES;
   /** The look a button of this meaning is drawn in: filled, the default look, subtle, or red filled. */
   look?: 'filled' | 'default' | 'subtle' | 'red';
-  role?: 'alert' | 'status';
+  role?: 'alert' | 'status' | 'note';
   line: string;
 };
 
@@ -409,6 +409,12 @@ export const GUIDELINE: {
           is: 'meaning',
           line: 'What the message is: error, warning, success, info, or saved (the one after a save).',
         },
+        { prop: 'title', is: 'content', line: 'A line above its words, as a record’s code.' },
+        {
+          prop: 'standing',
+          is: 'meaning',
+          line: 'That it is a note the page read when it loaded, not the outcome of an act: spoken as a note.',
+        },
         { prop: 'children', is: 'content', line: 'Its words.' },
       ],
       decides: [
@@ -428,7 +434,7 @@ export const GUIDELINE: {
         },
       ],
       fixes: [
-        'Its spoken role: alert for an error or a warning (a conflict is a warning), status for the rest.',
+        'Its spoken role: alert for an error or a warning (a conflict is a warning), status for the rest, note for a standing one.',
         'Its place: the full width, no margin, under its buttons, one at a time.',
       ],
       states: [
@@ -442,10 +448,17 @@ export const GUIDELINE: {
         { name: 'Success', tone: 'success', role: 'status', line: 'Something worked.' },
         { name: 'Info', tone: 'info', role: 'status', line: 'Something to know, nothing to fix.' },
         { name: 'Saved', tone: 'success', role: 'status', line: 'The message after a save.' },
+        {
+          name: 'Standing',
+          tone: 'warning',
+          role: 'note',
+          line: 'A note the page read when it loaded, with the record’s code above its words.',
+        },
       ],
       serves: 'A screen picks parts, never a style',
       heldBy: { check: 'ui/src/design-system/guideline.test.ts' },
       followed: { item: 651 },
+      used: true,
     },
     {
       part: 'PageState',

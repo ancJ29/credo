@@ -880,6 +880,7 @@ describe('Gallery', () => {
       'Success',
       'Info',
       'Saved',
+      'Standing',
     ]);
     expect(states('PageState').map((state) => state.name)).toEqual([
       'Loading',
@@ -910,11 +911,12 @@ describe('Gallery', () => {
       }
       cleanup();
     }
-    expect(toned).toBe(6);
+    expect(toned).toBe(7);
     // The spoken roles split as the contract says: an error and a warning alert, the rest are status.
     open(`${BASE}/molecules/form-message`);
     expect(part().getAllByRole('alert')).toHaveLength(2);
     expect(part().getAllByRole('status')).toHaveLength(3);
+    expect(part().getAllByRole('note')).toHaveLength(1);
     cleanup();
     open(`${BASE}/organisms/page-state`);
     expect(part().getAllByRole('alert')).toHaveLength(1);
@@ -924,7 +926,7 @@ describe('Gallery', () => {
     ).toBeDefined();
   });
 
-  it('213 case 13: a part to come’s panel shows what it takes and what it decides, and the item that builds it', () => {
+  it('213 case 13: a part’s panel shows what it takes and what it decides, and the item that moves the screens', () => {
     open(`${BASE}/molecules/form-message`);
     const side = about();
     const takes = side.getByRole('heading', { level: 3, name: 'Takes from a screen' });
@@ -934,7 +936,7 @@ describe('Gallery', () => {
     for (const { prop } of given) expect(side.getByText(prop, { exact: true })).toBeDefined();
     for (const { what } of decided)
       expect(side.getByText(new RegExp(what.slice(0, 20)))).toBeDefined();
-    expect(side.getByText(/To come: open item 651 builds it\./)).toBeDefined();
+    expect(side.getByText(/Built and in use; .* open item 651 moves them\./)).toBeDefined();
     cleanup();
     // A page with no contract has neither section: Values is no part.
     open(`${BASE}/foundations/values`);

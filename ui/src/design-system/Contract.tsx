@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { GUIDELINE, type Contract, type PartState } from './guideline';
 import { followedWords, heldWords } from './Charter';
 import classes from './Gallery.module.css';
+import { FormMessage } from '../components/molecules/FormMessage';
 import { TONES, TYPE } from './tokens';
 
 /** The contract of a part, by the name of its entry. */
@@ -67,15 +68,20 @@ const WORDS: Record<string, string> = {
   Forbidden: 'You may not open this page. Ask the person who runs the company.',
   Nothing: 'No page is open to you yet.',
   Empty: 'No staff yet. Add the first.',
+  Standing: 'This client has no staff yet, so nothing can move.',
   'Not found': 'This address names no page.',
 };
 
-/** A form message at each kind's tone and spoken role, Mantine's Alert. */
-export const FormMessageStates = platesOf('FormMessage', ({ name, tone, role }) => (
+/** A form message at each kind, drawn by the part itself: the standing plate is a warning read at load, with a code above. */
+export const FormMessageStates = platesOf('FormMessage', ({ name }) => (
   <Stack w={394} maw="100%">
-    <Alert color={TONES[tone!]} role={role}>
-      {WORDS[name]}
-    </Alert>
+    {name === 'Standing' ? (
+      <FormMessage kind="warning" standing title="ACME-01">
+        {WORDS[name]}
+      </FormMessage>
+    ) : (
+      <FormMessage kind={name.toLowerCase() as 'error'}>{WORDS[name]}</FormMessage>
+    )}
   </Stack>
 ));
 

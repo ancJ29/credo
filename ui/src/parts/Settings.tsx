@@ -28,6 +28,7 @@ import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LANGUAGE_NAMES } from '../i18n';
 import { Loaded } from '../frame/Loaded';
+import { FormMessage } from '../components/molecules/FormMessage';
 import { DetailCard } from './DetailCards';
 import { PALETTES, paletteOfColour } from '../design-system/palettes';
 import { TYPE, WEIGHTS } from '../design-system/tokens';
@@ -94,11 +95,7 @@ function SettingsForm({ config, outcome, saving, onSave, onReload, logoRefusal }
   return (
     <form onSubmit={submit}>
       <Stack gap="lg">
-        {outcome === 'saved' && (
-          <Alert color="green" role="alert">
-            {t('settings.saved')}
-          </Alert>
-        )}
+        {outcome === 'saved' && <FormMessage kind="saved">{t('settings.saved')}</FormMessage>}
         {outcome === 'failed' && (
           <Alert color="red" role="alert">
             {t('settings.saveFailed')}

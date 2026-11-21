@@ -165,7 +165,7 @@ async function walk(page: Page, language: Language, width: number) {
 
   // 4. Saved: the app shows the new name and colour.
   await page.getByRole('button', { name: words.settings.save }).click();
-  await expect(page.getByRole('alert')).toHaveText(words.settings.saved);
+  await expect(page.getByRole('status')).toHaveText(words.settings.saved);
   await expect(page.getByRole('heading', { level: 1, name: NEW_NAME })).toBeVisible();
   await at('4-saved');
 
@@ -185,7 +185,7 @@ async function walk(page: Page, language: Language, width: number) {
   await page.getByRole('switch', { name: words.settings.whiteMenu }).check();
   await page.getByRole('heading', { level: 2 }).click();
   await page.getByRole('button', { name: words.settings.save }).click();
-  await expect(page.getByRole('alert')).toHaveText(words.settings.saved);
+  await expect(page.getByRole('status')).toHaveText(words.settings.saved);
   await expect(page.locator('header')).toHaveAttribute('data-white', 'true');
   await at('10-saved-white');
 
@@ -193,7 +193,7 @@ async function walk(page: Page, language: Language, width: number) {
   await page.getByRole('switch', { name: words.settings.menuIcons }).check();
   await page.getByRole('heading', { level: 2 }).click();
   await page.getByRole('button', { name: words.settings.save }).click();
-  await expect(page.getByRole('alert')).toHaveText(words.settings.saved);
+  await expect(page.getByRole('status')).toHaveText(words.settings.saved);
   if (width >= WIDTHS.tablet) {
     await page.getByRole('button', { name: words.nav.hideMenu }).click();
     await expect(

@@ -88,11 +88,11 @@ piece 203's step 8. Your runs: about 20 each for a few walks, longer for twelve.
 
 **Landing 2: messages.**
 
-- [ ] **3. The part and one screen.** `FormMessage`'s contract gains what its sites need: `title`
+- [x] **3. The part and one screen.** `FormMessage`'s contract gains what its sites need: `title`
       (content; `DeleteClientPage.tsx#L138`, `MoveClientPage.tsx#L159`) and `standing` (meaning: a
       note there from the page's load, spoken `note`, four sites). The part in
       `components/molecules/`, its entry drawn from it; the settings page's saved line moved. Cases 2,
-      3, 19. _Done when:_ the gates exit 0, the pinned file unchanged. **14 min**.
+      3, 19. _Done when:_ the gates exit 0, the pinned file unchanged. **14 min**. _Done 2026-11-21: `FormMessage` built in `components/molecules/` with `title` and `standing`, its entry drawn from it, the settings page's saved line moved (now spoken `status`; its finders in `Settings.test.tsx`, `App.test.tsx` and `walk/specs/piece-1.spec.ts` follow); cases 2, 3 and 19 each seen red once; the gates and the citation test exit 0, the pinned file unchanged._
 - [ ] **4. The client's.** The 47 in `pages/client/` and `SignIn.tsx`, each kind read from its colour
       and words, the finders with them. Case 4. _Done when:_ the gates exit 0. **20 min**.
 - [ ] **5. The rest.** The 45 in `parts/` and `pages/operator/`; the nine whose colour or role
