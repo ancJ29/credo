@@ -1,5 +1,5 @@
 import { operatorNameSchema } from '@credo/shared';
-import { Alert, Button, Group, Paper, Stack, Text, TextInput, Title } from '@mantine/core';
+import { Button, Group, Paper, Stack, Text, TextInput, Title } from '@mantine/core';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
@@ -9,6 +9,7 @@ import { refusal } from '../../page';
 import { PasskeyNotGiven, type Passkeys } from '../../passkeys';
 import { touch } from '../../touch';
 import { TYPE } from '../../design-system/tokens';
+import { FormMessage } from '../../components/molecules/FormMessage';
 
 type Props = { api: Api; passkeys: Passkeys; onSignedOut: () => void };
 
@@ -70,9 +71,7 @@ export function AddOperatorPage({ api, passkeys, onSignedOut }: Props) {
   return made ? (
     <Stack gap="lg">
       <Title {...TYPE.pageTitle}>{t('team.addedTitle')}</Title>
-      <Alert color="green" role="alert">
-        {t('team.addedIntro', { name: made.name })}
-      </Alert>
+      <FormMessage kind="success">{t('team.addedIntro', { name: made.name })}</FormMessage>
       <Paper withBorder p="md">
         <TextInput
           label={t('team.link')}
@@ -99,9 +98,9 @@ export function AddOperatorPage({ api, passkeys, onSignedOut }: Props) {
         <Text c="dimmed">{t('team.newIntro')}</Text>
       </div>
       {problem !== null && (
-        <Alert color={problem === 'taken' ? 'orange' : 'red'} role="alert">
+        <FormMessage kind={problem === 'taken' ? 'warning' : 'error'}>
           {t(PROBLEM[problem])}
-        </Alert>
+        </FormMessage>
       )}
       <form onSubmit={submit}>
         <Paper withBorder p="md">

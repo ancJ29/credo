@@ -8,7 +8,6 @@ import {
   TOTAL_MAX,
 } from '@credo/shared';
 import {
-  Alert,
   Anchor,
   Button,
   Group,
@@ -28,6 +27,7 @@ import { useMoney } from '../../parts/OrderParts';
 import { type PageProps, refusal, useLoad } from '../../page';
 import { useGapText } from '../../parts/ReconcileParts';
 import { TYPE } from '../../design-system/tokens';
+import { FormMessage } from '../../components/molecules/FormMessage';
 
 /** What the page says of its last try to close: nothing, a day closed, a failure that kept the
  * cash, or a day that moved under the page (another set of requests, or closed already). */
@@ -127,19 +127,13 @@ export function DriverDayPage(page: PageProps) {
               {t('reconcile.back')}
             </Anchor>
             {outcome === 'closed' && (
-              <Alert color="green" role="alert">
-                {t('reconcile.closedNow')}
-              </Alert>
+              <FormMessage kind="success">{t('reconcile.closedNow')}</FormMessage>
             )}
             {outcome === 'failed' && (
-              <Alert color="red" role="alert">
-                {t('reconcile.failed')}
-              </Alert>
+              <FormMessage kind="error">{t('reconcile.failed')}</FormMessage>
             )}
             {outcome === 'moved' && (
-              <Alert color="orange" role="alert">
-                {t('reconcile.moved')}
-              </Alert>
+              <FormMessage kind="warning">{t('reconcile.moved')}</FormMessage>
             )}
             <Paper withBorder p="md">
               <Stack gap="sm">
@@ -226,9 +220,7 @@ export function DriverDayPage(page: PageProps) {
                       <Title order={3}>{t('reconcile.close')}</Title>
                       <Text c="dimmed">{t('reconcile.closeText')}</Text>
                       {figures.tooLarge && (
-                        <Alert color="orange" role="alert">
-                          {t('reconcile.tooLarge')}
-                        </Alert>
+                        <FormMessage kind="warning">{t('reconcile.tooLarge')}</FormMessage>
                       )}
                       {asking && handedIn !== null ? (
                         <Stack gap="xs" align="flex-start">

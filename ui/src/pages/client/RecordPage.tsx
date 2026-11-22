@@ -10,6 +10,7 @@ import { type PageProps, refusal, useLoad } from '../../page';
 import { CustomerForm } from '../../parts/CustomerForm';
 import { ProductForm } from '../../parts/ProductForm';
 import { TYPE } from '../../design-system/tokens';
+import { FormMessage } from '../../components/molecules/FormMessage';
 
 type Outcome = 'saved' | 'failed' | 'forbidden' | 'refused' | 'conflict' | null;
 
@@ -142,12 +143,10 @@ function Record<D extends { version: string }, V>({
         {t(`lists.${kind}.back`)}
       </Button>
       {doc && outcome === 'saved' && (
-        <Alert color="green" role="alert">
-          {t(`lists.${kind}.saved`)}
-        </Alert>
+        <FormMessage kind="saved">{t(`lists.${kind}.saved`)}</FormMessage>
       )}
       {doc && (outcome === 'failed' || outcome === 'forbidden' || outcome === 'refused') && (
-        <Alert color="red" role="alert">
+        <FormMessage kind="error">
           {t(
             outcome === 'failed'
               ? `lists.${kind}.saveFailed`
@@ -155,10 +154,10 @@ function Record<D extends { version: string }, V>({
                 ? `lists.${kind}.saveForbidden`
                 : spec.refusedWords,
           )}
-        </Alert>
+        </FormMessage>
       )}
       {doc && outcome === 'conflict' && (
-        <Alert color="orange" role="alert">
+        <FormMessage kind="warning">
           <Stack gap="xs" align="flex-start">
             {t(`lists.${kind}.conflict`)}
             <Button
@@ -174,7 +173,7 @@ function Record<D extends { version: string }, V>({
               {t(`lists.${kind}.conflictReload`)}
             </Button>
           </Stack>
-        </Alert>
+        </FormMessage>
       )}
       {doc &&
         spec.form({

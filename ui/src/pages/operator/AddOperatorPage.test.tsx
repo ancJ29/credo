@@ -34,7 +34,7 @@ describe('adding an operator', () => {
       name: 'Thu Hà',
       confirm: expect.objectContaining({ token: 'fake.token' }) as unknown,
     });
-    expect(screen.getByRole('alert').textContent).toBe(
+    expect(screen.getByRole('status').textContent).toBe(
       words.team.addedIntro.replace('{{name}}', 'Thu Hà'),
     );
     const link = screen.getByLabelText<HTMLInputElement>(words.team.link).value;

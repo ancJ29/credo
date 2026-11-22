@@ -332,7 +332,7 @@ describe('the customers and the products', () => {
     );
     await userEvent.click(screen.getByRole('button', { name: words.lists.customers.save }));
 
-    expect((await screen.findByRole('alert')).textContent).toBe(words.lists.customers.saved);
+    expect((await screen.findByRole('status')).textContent).toBe(words.lists.customers.saved);
     const kept = Object.fromEntries(
       Object.entries({ ...one.extra, tier: 'gold' }).filter(([key]) => key !== 'phone'),
     );
@@ -356,7 +356,7 @@ describe('the customers and the products', () => {
     await userEvent.clear(screen.getByRole('textbox', { name: words.lists.customers.note }));
     await userEvent.click(screen.getByRole('button', { name: words.lists.customers.save }));
 
-    expect((await screen.findByRole('alert')).textContent).toBe(words.lists.customers.saved);
+    expect((await screen.findByRole('status')).textContent).toBe(words.lists.customers.saved);
     const { address: _address, note: _note, ...kept } = one.extra;
     expect(drawn.api.saveCustomer).toHaveBeenCalledExactlyOnceWith(one.id, {
       version: 'c1',
@@ -534,7 +534,7 @@ describe('the customers and the products', () => {
     expect(valueOf(box)).toBe('120.000');
     await userEvent.click(screen.getByRole('button', { name: wordsVi.lists.products.save }));
 
-    expect((await screen.findByRole('alert')).textContent).toBe(wordsVi.lists.products.saved);
+    expect((await screen.findByRole('status')).textContent).toBe(wordsVi.lists.products.saved);
     expect(drawn.api.saveProduct).toHaveBeenCalledExactlyOnceWith(
       one.id,
       expect.objectContaining({ price: 120000 }),
@@ -602,7 +602,7 @@ describe('the customers and the products', () => {
 
     await userEvent.click(stock());
     await userEvent.click(screen.getByRole('button', { name: words.lists.products.save }));
-    expect((await screen.findByRole('alert')).textContent).toBe(words.lists.products.saved);
+    expect((await screen.findByRole('status')).textContent).toBe(words.lists.products.saved);
     expect(drawn.api.saveProduct).toHaveBeenLastCalledWith(
       one.id,
       expect.objectContaining({ version: 'p1', stocked: false, price: one.price }),
@@ -664,7 +664,7 @@ describe('the customers and the products', () => {
     await screen.findByRole('heading', { level: 2, name: noted.name });
     await userEvent.clear(screen.getByRole('textbox', { name: words.lists.products.note }));
     await userEvent.click(screen.getByRole('button', { name: words.lists.products.save }));
-    expect((await screen.findByRole('alert')).textContent).toBe(words.lists.products.saved);
+    expect((await screen.findByRole('status')).textContent).toBe(words.lists.products.saved);
     const { note: _note, ...kept } = hidden;
     expect(first.api.saveProduct).toHaveBeenCalledExactlyOnceWith(
       noted.id,
@@ -682,7 +682,7 @@ describe('the customers and the products', () => {
     });
     await screen.findByRole('heading', { level: 2, name: quiet.name });
     await userEvent.click(screen.getByRole('button', { name: words.lists.products.save }));
-    expect((await screen.findByRole('alert')).textContent).toBe(words.lists.products.saved);
+    expect((await screen.findByRole('status')).textContent).toBe(words.lists.products.saved);
     expect(second.api.saveProduct).toHaveBeenCalledExactlyOnceWith(
       quiet.id,
       expect.objectContaining({ extra: { note: 5 } }),
@@ -700,7 +700,7 @@ describe('the customers and the products', () => {
     );
     await userEvent.click(screen.getByRole('button', { name: words.lists.products.save }));
 
-    expect((await screen.findByRole('alert')).textContent).toBe(words.lists.products.saved);
+    expect((await screen.findByRole('status')).textContent).toBe(words.lists.products.saved);
     expect(drawn.api.saveProduct).toHaveBeenCalledExactlyOnceWith(
       quiet.id,
       expect.objectContaining({ extra: { ...quiet.extra, note: 'Giao trong ngày.' } }),

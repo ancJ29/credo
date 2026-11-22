@@ -1,5 +1,5 @@
 import { normaliseClientCode } from '@credo/shared';
-import { Alert, Button, Group, Paper, Stack, Text, TextInput, Title } from '@mantine/core';
+import { Button, Group, Paper, Stack, Text, TextInput, Title } from '@mantine/core';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate, useParams } from 'react-router';
@@ -9,6 +9,7 @@ import { refusal, useLoad } from '../../page';
 import { PasskeyNotGiven, type Passkeys } from '../../passkeys';
 import { touch } from '../../touch';
 import { TYPE } from '../../design-system/tokens';
+import { FormMessage } from '../../components/molecules/FormMessage';
 
 type Props = { api: Api; passkeys: Passkeys; onSignedOut: () => void };
 
@@ -103,23 +104,17 @@ export function DeleteClientPage({ api, passkeys, onSignedOut }: Props) {
       {!client ? (
         <Stack align="flex-start">
           {finished ? (
-            <Alert color="green" role="status" w="100%">
-              {t('operator.deleteClientFinished')}
-            </Alert>
+            <FormMessage kind="success">{t('operator.deleteClientFinished')}</FormMessage>
           ) : (
             <>
-              <Alert color="orange" role="note" w="100%">
+              <FormMessage kind="warning" standing>
                 {t('operator.deleteClientUnfinished')}
-              </Alert>
-              {problem !== null && (
-                <Alert color="red" role="alert" w="100%">
-                  {t(PROBLEM[problem])}
-                </Alert>
-              )}
+              </FormMessage>
+              {problem !== null && <FormMessage kind="error">{t(PROBLEM[problem])}</FormMessage>}
               {left !== null && (
-                <Alert color="orange" role="status" w="100%">
+                <FormMessage kind="info">
                   {t('operator.deleteClientLeft', { count: left })}
-                </Alert>
+                </FormMessage>
               )}
               <Button color="red" variant="outline" loading={busy} onClick={() => void resume()}>
                 {t('operator.deleteClientResume')}
@@ -135,18 +130,12 @@ export function DeleteClientPage({ api, passkeys, onSignedOut }: Props) {
               {t('operator.deleteClientTitle', { name: client.name })}
             </Title>
           </div>
-          <Alert color="red" role="note" title={client.code}>
+          <FormMessage kind="warning" standing title={client.code}>
             {t('operator.deleteClientIntro', { name: client.name })}
-          </Alert>
-          {problem !== null && (
-            <Alert color="red" role="alert">
-              {t(PROBLEM[problem])}
-            </Alert>
-          )}
+          </FormMessage>
+          {problem !== null && <FormMessage kind="error">{t(PROBLEM[problem])}</FormMessage>}
           {left !== null && (
-            <Alert color="orange" role="status">
-              {t('operator.deleteClientLeft', { count: left })}
-            </Alert>
+            <FormMessage kind="info">{t('operator.deleteClientLeft', { count: left })}</FormMessage>
           )}
           <form onSubmit={submit}>
             <Paper withBorder p="md">

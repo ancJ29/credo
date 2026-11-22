@@ -311,7 +311,9 @@ describe('cancelling a request', () => {
     expect(drawn.api.cancelDelivery).toHaveBeenCalledExactlyOnceWith(waiting.day, waiting.id, {
       version: 'g1',
     });
-    expect((await screen.findByRole('alert')).textContent).toContain(words.orders.requestCancelled);
+    expect((await screen.findByRole('status')).textContent).toContain(
+      words.orders.requestCancelled,
+    );
     expect(screen.getByText(words.orders.state.cancelled)).toBeTruthy();
     expect(
       screen.queryByRole('heading', { level: 3, name: words.orders.cancelRequest }),
@@ -333,7 +335,7 @@ describe('cancelling a request', () => {
     );
     await userEvent.click(screen.getByRole('button', { name: words.orders.sendAgainSubmit }));
     const number = `GH-${String(DEMO_DELIVERIES.length + 1).padStart(5, '0')}`;
-    expect((await screen.findByRole('alert')).textContent).toBe(
+    expect((await screen.findByRole('status')).textContent).toBe(
       words.orders.done.sent.replace('{{number}}', number),
     );
     expect(number).not.toBe(waiting.number);

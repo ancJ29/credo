@@ -1,5 +1,5 @@
 import { type JoinOptionsReply, type Language, tokenOfFragment } from '@credo/shared';
-import { Alert, Button, Center, Loader, Stack, Text } from '@mantine/core';
+import { Button, Center, Loader, Stack, Text } from '@mantine/core';
 import { IconFingerprint } from '@tabler/icons-react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -11,6 +11,7 @@ import { PasskeyNotGiven, type Passkeys } from '../../passkeys';
 import { SignInFrame } from '../SignIn';
 import { BRAND_GRADIENT } from '../../design-system/appTheme';
 import { TYPE } from '../../design-system/tokens';
+import { FormMessage } from '../../components/molecules/FormMessage';
 
 type Props = {
   api: Api;
@@ -88,16 +89,10 @@ export function JoinPage({ api, device, passkeys, languages, onLanguage }: Props
           <Loader aria-label={t('common.loading')} />
         </Center>
       )}
-      {seen.phase === 'dead' && (
-        <Alert color="red" role="alert">
-          {t('passkey.dead')}
-        </Alert>
-      )}
+      {seen.phase === 'dead' && <FormMessage kind="error">{t('passkey.dead')}</FormMessage>}
       {seen.phase === 'unavailable' && (
         <Stack>
-          <Alert color="red" role="alert">
-            {t('common.unavailable')}
-          </Alert>
+          <FormMessage kind="error">{t('common.unavailable')}</FormMessage>
           <Button
             onClick={() => {
               setSeen({ phase: 'loading' });
@@ -120,16 +115,8 @@ export function JoinPage({ api, device, passkeys, languages, onLanguage }: Props
                   : t('passkey.joinMadeByNone')}
             </Text>
           </Stack>
-          {status === 'notGiven' && (
-            <Alert color="red" role="alert">
-              {t('passkey.notGiven')}
-            </Alert>
-          )}
-          {status === 'failed' && (
-            <Alert color="red" role="alert">
-              {t('common.unavailable')}
-            </Alert>
-          )}
+          {status === 'notGiven' && <FormMessage kind="error">{t('passkey.notGiven')}</FormMessage>}
+          {status === 'failed' && <FormMessage kind="error">{t('common.unavailable')}</FormMessage>}
           <Text c="dimmed">{t('passkey.joinHint')}</Text>
           <Button
             fullWidth

@@ -1,10 +1,11 @@
 import { passwordIsValid, type SessionReply } from '@credo/shared';
-import { Alert, Button, Paper, PasswordInput, Stack, Text, Title } from '@mantine/core';
+import { Button, Paper, PasswordInput, Stack, Text, Title } from '@mantine/core';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { type PageProps, refusal } from '../../page';
 import { waitWords } from '../waitWords';
 import { TYPE } from '../../design-system/tokens';
+import { FormMessage } from '../../components/molecules/FormMessage';
 
 const OUTCOME_WORDS = {
   changed: 'ownPassword.changed',
@@ -53,9 +54,9 @@ export function OwnPasswordPage(props: Props) {
       <Title {...TYPE.pageTitle}>{t('ownPassword.title')}</Title>
       <Text c="dimmed">{t('ownPassword.text')}</Text>
       {outcome !== null && (
-        <Alert color={outcome === 'changed' ? 'green' : 'red'} role="alert">
+        <FormMessage kind={outcome === 'changed' ? 'success' : 'error'}>
           {outcome === 'wait' ? waitWords(t, waitSeconds) : t(OUTCOME_WORDS[outcome])}
-        </Alert>
+        </FormMessage>
       )}
       <Paper withBorder p="md">
         <form onSubmit={(event) => void change(event)}>

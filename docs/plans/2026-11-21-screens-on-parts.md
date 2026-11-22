@@ -88,23 +88,23 @@ piece 203's step 8. Your runs: about 20 each for a few walks, longer for twelve.
 
 **Landing 2: messages.**
 
-- [ ] **3. The part and one screen.** `FormMessage`'s contract gains what its sites need: `title`
+- [x] **3. The part and one screen.** `FormMessage`'s contract gains what its sites need: `title`
       (content; `DeleteClientPage.tsx#L138`, `MoveClientPage.tsx#L159`) and `standing` (meaning: a
       note there from the page's load, spoken `note`, four sites). The part in
       `components/molecules/`, its entry drawn from it; the settings page's saved line moved. Cases 2,
-      3, 19. _Done when:_ the gates exit 0, the pinned file unchanged. **14 min**.
-- [ ] **4. The client's.** The 47 in `pages/client/` and `SignIn.tsx`, each kind read from its colour
-      and words, the finders with them. Case 4. _Done when:_ the gates exit 0. **20 min**.
-- [ ] **5. The rest.** The 45 in `parts/` and `pages/operator/`; the nine whose colour or role
+      3, 19. _Done when:_ the gates exit 0, the pinned file unchanged. **14 min**. _Done 2026-11-21: `FormMessage` built in `components/molecules/` with `title` and `standing`, its entry drawn from it, the settings page's saved line moved (now spoken `status`; its finders in `Settings.test.tsx`, `App.test.tsx` and `walk/specs/piece-1.spec.ts` follow); cases 2, 3 and 19 each seen red once; the gates and the citation test exit 0, the pinned file unchanged._
+- [x] **4. The client's.** The 47 in `pages/client/` and `SignIn.tsx`, each kind read from its colour
+      and words, the finders with them. Case 4. _Done when:_ the gates exit 0. **20 min**. _Done 2026-11-21: the 47 moved onto `FormMessage` (red to error, orange to warning, green to success or saved, gray to info; the recount holds, 48 `<Alert` with `RecordPage.tsx#L136`'s not-found line, landing 4's, left), the part's `children` widened to a node for the five messages that hold an act beside their words; 18 ui finders, 7 of `visual`'s words test and 10 walk-spec finders of green messages follow from `alert` to `status`; case 4 seen red once on the unmoved finders (16 tests), then green; the pinned diff is 40 lines, all `admin-setup` `2-sign-in-refused` and `12-sign-in-wait` (the walks page's two screens of `piece-1`, which lose the margin), no other screen; the gates, the walk check and the citation test exit 0._
+- [x] **5. The rest.** The 45 in `parts/` and `pages/operator/`; the nine whose colour or role
       disagrees with a kind (four notes, three orange status lines, two yellows) set by their words,
       named in the tick; item 650 after its grep; item 644's line,
       `visual/src/resolved.test.ts#L4-L5`. _Done when:_ the gates and `pnpm --filter @credo/walk
       check` exit 0, `git grep -cP '<Alert\b'` S counts 3 (`Loaded`, `Boot`, the not-found line:
-      landing 4's). **20 min**.
-- [ ] **6. Landing 2.** The card begun (a saved line); the whole check; your two runs over `piece-1
+      landing 4's). **20 min**. _Done 2026-11-21: the 45 in `parts/` and `pages/operator/` recount holds (17 files) and are on `FormMessage`; `<Alert` in S counts 3. The nine whose colour or role disagreed are set by their words: four notes, all `warning` and `standing` (the delete page's unfinished-deletion line and its intro, which was red and is now orange, the move page's two), three orange status lines (the two delete-progress counts and the move progress) set `info`, spoken `status` and gray, and two yellows (the missing delivery photo and the two builds) set `warning`, the two builds now spoken `alert`. The page's grey "archived" line (`PersonPage.tsx#L411`) is a note from the page's load, so `info` and `standing`, spoken `note`. `FormMessage` takes the whole width of its column by its own code (case 20, its contract line saying so), so the nine messages that had `w="100%"` in a left-aligned stack keep their width with no wrapper, and the messages that shrank to their words there now span. Six green messages that were spoken `alert` are `success` or `saved` and now `status`; their finders in 5 ui tests, `visual`'s words test (2 lines) and the services walk spec (2) follow, 8 ui tests seen red once on the unmoved finders. Item 650: the titles say twelve and thirty-four, the second header's sum and picture count with them; item 644: the header says which half is held. The pinned diff against step 4 is 56 screens, 10 colours each, style hashes (the part's width declaration appears wherever a message is drawn), by `walk/run.sh` walk name: `admin-lists` lists-4, 5, 8, 14, 15, 16, 17, 19; `piece-1` (folder `admin-setup`) 2-sign-in-refused, 4-saved, 7-save-failed, 8-save-conflict, 10-saved-white, 11-menu-icons, 12-sign-in-wait; `piece-2` (folders `admin-staff` and `office-staff`) staff-3, 6, 9, 10, 11, 15, 17, 21, 22 and office-6-password, office-7-password-wrong; `driver-deliveries` driver-4, 5, 6; `office-orders` orders-4, 8, 9, 14; `office-reconcile` reconcile-5, 7, 8; `delete-client` dc-1, 2, 3 (the intro's kind too); `passkeys` pk-3, 4, 5, 6; `root-password` rp-2, 3, 4; `services` sv-1, 2, 3, 4 (sv-2 yellow to orange, now spoken `alert`); `operator` op-3, 4, 9; `team` tm-3, 4, 6. `office-orders` `orders-15-photo-missing` moves unseen by the pinned file (yellow to orange): its message shows only when the proof image's `onError` fires, which the static draw never does, so it joins `--moved` by hand. Both gates, the walk check and the citation test exit 0._
+- [x] **6. Landing 2.** The card begun (a saved line); the whole check; your two runs over `piece-1
       piece-2 admin-lists office-orders driver-deliveries office-reconcile services delete-client`.
       _Done when:_ the second reads green, every count 0. **9 min**, the whole check's 20, your runs.
-      Your point 1.
+      Your point 1. _Done 2026-11-22: your write run over all twelve walks, after `main` was taken in at `3d913754`, read green, and its pictures are committed alone at `9d6b319b`; your second picture run, over the four walks whose pictures changed (`piece-1`, `office-orders`, `services`, `delete-client`), read green, every count as asked. Left to the landing: the whole check on `pre-merge`, the review before `main`, and your point 1, open._
 
 **Landing 3: buttons.**
 

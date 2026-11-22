@@ -550,10 +550,10 @@ export const ENTRIES: Entry[] = [
     group: 'Molecules',
     name: 'FormMessage',
     kind: 'Messages',
-    toCome: true,
     description:
-      'A message under a form’s buttons: its kind (error, warning, success, info or saved) and its words, drawn at the kind’s colour and spoken role. Mantine’s Alert, at the values it decides.',
-    props: 'kind: error | warning | success | info | saved · children: string',
+      'A message to the person, by its kind: its colour and spoken role follow the kind, and a standing note from the page load is spoken as a note.',
+    props:
+      "kind: 'error' | 'warning' | 'success' | 'info' | 'saved' · title?: string · standing?: boolean · children: ReactNode",
     useWhen: [
       'A form or an act tells the person what happened: it failed, it needs care, it worked.',
       'The message of a save, once, under the buttons that saved.',

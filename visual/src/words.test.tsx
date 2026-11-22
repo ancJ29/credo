@@ -217,9 +217,9 @@ const PROOF: Record<string, (w: (typeof DICTIONARIES)['en']) => string> = {
   'office-staff:office-4-nothing': (w) => `heading: ${w.nothing.title}`,
   'office-staff:office-5-settings': (w) => `link: ${w.nav.settings}`,
   'admin-staff:staff-17-email': (w) =>
-    `alert: ${w.person.emailChanged.replace('{{email}}', 'hung@minh-phat.example')}`,
+    `status: ${w.person.emailChanged.replace('{{email}}', 'hung@minh-phat.example')}`,
   'admin-staff:staff-18-qr': (w) => `img: ${w.person.qrImage}`,
-  'office-staff:office-6-password': (w) => `alert: ${w.ownPassword.changed}`,
+  'office-staff:office-6-password': (w) => `status: ${w.ownPassword.changed}`,
   'office-staff:office-7-password-wrong': (w) => `alert: ${w.ownPassword.wrong}`,
   'phone-sign-in:phone-1-signed-in': (w) => `heading: ${w.staff.title}`,
   'phone-sign-in:phone-2-code-used': (w) => `heading: ${w.qrSignIn.refusedTitle}`,
@@ -240,9 +240,9 @@ const PROOF: Record<string, (w: (typeof DICTIONARIES)['en']) => string> = {
   'admin-lists:lists-12-product': () => `heading: ${DEMO_PRODUCTS.find(hasNote)!.name}`,
   'admin-lists:lists-13-product-no-note': () =>
     `heading: ${DEMO_PRODUCTS.find((one) => !hasNote(one))!.name}`,
-  'admin-lists:lists-14-customer-saved': (w) => `alert: ${w.lists.customers.saved}`,
+  'admin-lists:lists-14-customer-saved': (w) => `status: ${w.lists.customers.saved}`,
   'admin-lists:lists-15-customer-conflict': (w) => `alert: ${w.lists.customers.conflict}`,
-  'admin-lists:lists-16-product-saved': (w) => `alert: ${w.lists.products.saved}`,
+  'admin-lists:lists-16-product-saved': (w) => `status: ${w.lists.products.saved}`,
   'admin-lists:lists-17-product-conflict': (w) => `alert: ${w.lists.products.conflict}`,
   'admin-lists:lists-18-customer-new': (w) => `heading: ${w.lists.customers.newTitle}`,
   'admin-lists:lists-19-code-taken': (w) => `alert: ${w.lists.customers.codeTaken}`,
@@ -253,7 +253,7 @@ const PROOF: Record<string, (w: (typeof DICTIONARIES)['en']) => string> = {
   'office-orders:orders-2-new': () => 'cell: Cát xây tô',
   'office-orders:orders-3-confirm': (w) => `combobox "${w.orders.driver}" = "${DRIVER_ID}"`,
   'office-orders:orders-4-confirmed': (w) =>
-    `alert: ${w.orders.done.confirmed.replace('{{number}}', 'GH-00015')}`,
+    `status: ${w.orders.done.confirmed.replace('{{number}}', 'GH-00015')}`,
   'office-orders:orders-5-requests': (w) => `heading: ${w.nav.deliveries}`,
   'office-orders:orders-6-request': (w) =>
     `heading: ${w.orders.requestTitle.replace('{{number}}', WAITING.number)}`,
@@ -266,7 +266,7 @@ const PROOF: Record<string, (w: (typeof DICTIONARIES)['en']) => string> = {
   'office-orders:orders-12-proof': (w) => `heading: ${w.orders.proofTitle}`,
   'office-orders:orders-13-moved-price': (w) =>
     `heading: ${w.orders.orderTitle.replace('{{number}}', DRAFT_YESTERDAY.number)}`,
-  'office-orders:orders-14-repriced': (w) => `alert: ${w.orders.done.saved}`,
+  'office-orders:orders-14-repriced': (w) => `status: ${w.orders.done.saved}`,
   // jsdom loads no picture, so the browser's error on the lost address, which draws the line
   // `orders.proofMissing`, is held by `DeliveriesPages.test.tsx`; the page's own heading is here
   'office-orders:orders-15-photo-missing': (w) => `heading: ${w.orders.proofTitle}`,
@@ -275,7 +275,7 @@ const PROOF: Record<string, (w: (typeof DICTIONARIES)['en']) => string> = {
     `heading: ${w.orders.requestTitle.replace('{{number}}', WAITING_OF_DRIVER.number)}`,
   // the preview and its buttons exist only once the photo was chosen
   'driver-deliveries:driver-3-photo': (w) => `heading: ${w.myDeliveries.photoTitle}`,
-  'driver-deliveries:driver-4-delivered': (w) => `alert: ${w.myDeliveries.done}`,
+  'driver-deliveries:driver-4-delivered': (w) => `status: ${w.myDeliveries.done}`,
   'driver-deliveries:driver-5-send-failed': (w) => `alert: ${w.myDeliveries.sendFailed}`,
   'driver-deliveries:driver-6-cancelled': (w) => `alert: ${w.myDeliveries.cancelled}`,
   'office-reconcile:reconcile-1-requests': (w) =>
@@ -286,7 +286,7 @@ const PROOF: Record<string, (w: (typeof DICTIONARIES)['en']) => string> = {
     `textbox "${w.reconcile.cash}" = "${numberIn(w, 47_380_000)}"`,
   // the button of the check exists only once Close the day was pressed
   'office-reconcile:reconcile-4-check': (w) => `button: ${w.reconcile.closeConfirm}`,
-  'office-reconcile:reconcile-5-closed': (w) => `alert: ${w.reconcile.closedNow}`,
+  'office-reconcile:reconcile-5-closed': (w) => `status: ${w.reconcile.closedNow}`,
   'office-reconcile:reconcile-6-yesterday': (w) =>
     `main: ${w.reconcile.dayClosedGap.replace('{{gap}}', w.reconcile.gapShort.replace('{{amount}}', moneyIn(w, 20_000)))}`,
   'office-reconcile:reconcile-7-moved': (w) => `alert: ${w.reconcile.moved}`,
@@ -348,7 +348,7 @@ describe('the passkeys walk, drawn', () => {
 /** What each services screen must say, in either language: the line that makes it that screen. */
 const SERVICES_PROOF: Record<string, (w: (typeof DICTIONARIES)['en']) => string[]> = {
   'operator-services:sv-1-all-well': (w) => [`status: ${w.services.oneBuild}`],
-  'operator-services:sv-2-two-builds': (w) => [`status: ${w.services.twoBuilds}`],
+  'operator-services:sv-2-two-builds': (w) => [`alert: ${w.services.twoBuilds}`],
   'operator-services:sv-3-storage-silent': (w) => [`alert: ${w.services.storageDown}`],
   'operator-services:sv-4-bff-silent': (w) => [`alert: ${w.services.bffDown}`],
   'operator-services:sv-5-unavailable': (w) => [`alert: ${w.operator.unavailableStorage}`],

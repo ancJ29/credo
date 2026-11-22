@@ -262,7 +262,7 @@ describe('Delivered', () => {
     expect(drawn.api.deliver).toHaveBeenCalledExactlyOnceWith(waiting.day, waiting.id, {
       version: 'g1',
     });
-    expect((await screen.findByRole('alert')).textContent).toBe(words.myDeliveries.done);
+    expect((await screen.findByRole('status')).textContent).toBe(words.myDeliveries.done);
     expect(screen.getByText(words.orders.state.delivered)).toBeTruthy();
     // the photo is read back from the request's own route, and nothing is left to press
     const proof = await screen.findByRole('img', {
@@ -321,7 +321,7 @@ describe('Delivered, when it goes wrong', () => {
     expect(drawn.api.deliver).toHaveBeenLastCalledWith(waiting.day, waiting.id, {
       version: 'g1',
     });
-    expect((await screen.findByRole('alert')).textContent).toBe(words.myDeliveries.done);
+    expect((await screen.findByRole('status')).textContent).toBe(words.myDeliveries.done);
   });
 
   it('A photo that cannot be sent (no answer, or the store refused it) stays on the phone, says it was not sent, leaves the request waiting and marks nothing delivered, and Send again asks for a new address', async () => {
@@ -340,7 +340,7 @@ describe('Delivered, when it goes wrong', () => {
 
       await userEvent.click(screen.getByRole('button', { name: words.myDeliveries.send }));
 
-      expect((await screen.findByRole('alert')).textContent).toBe(words.myDeliveries.done);
+      expect((await screen.findByRole('status')).textContent).toBe(words.myDeliveries.done);
       expect(drawn.api.askPhotoAddress).toHaveBeenCalledTimes(2);
       expect(drawn.api.putPhoto).toHaveBeenCalledTimes(2);
       expect(drawn.api.deliver).toHaveBeenCalledExactlyOnceWith(waiting.day, waiting.id, {

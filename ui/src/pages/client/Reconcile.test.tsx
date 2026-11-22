@@ -268,7 +268,7 @@ describe('closing the day', () => {
       waiting: [waiting.id],
       handedIn: 47_380_000,
     });
-    expect((await screen.findByRole('alert')).textContent).toBe(words.reconcile.closedNow);
+    expect((await screen.findByRole('status')).textContent).toBe(words.reconcile.closedNow);
     const closed = await screen.findByRole('table', { name: words.reconcile.closedTitle });
     expect(
       within(closed)
@@ -316,7 +316,7 @@ describe('a day that moved, a close that failed', () => {
     await userEvent.click(await closeButton());
     expect(screen.getByText(words.reconcile.closeNoWaiting)).toBeTruthy();
     await userEvent.click(screen.getByRole('button', { name: words.reconcile.closeConfirm }));
-    expect((await screen.findByRole('alert')).textContent).toBe(words.reconcile.closedNow);
+    expect((await screen.findByRole('status')).textContent).toBe(words.reconcile.closedNow);
     const closed = await screen.findByRole('table', { name: words.reconcile.closedTitle });
     expect(
       within(closed).getByText(words.reconcile.byRoot.replace('{{name}}', 'root')),

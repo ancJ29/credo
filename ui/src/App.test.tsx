@@ -329,7 +329,7 @@ describe('the app', () => {
     await userEvent.type(name, 'Minh Phát Sài Gòn');
     await userEvent.click(screen.getByRole('button', { name: words.settings.save }));
 
-    expect((await screen.findByRole('alert')).textContent).toBe(words.settings.saved);
+    expect((await screen.findByRole('status')).textContent).toBe(words.settings.saved);
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Minh Phát Sài Gòn');
     expect(saveConfig).toHaveBeenCalledExactlyOnceWith(
       { ...config, name: 'Minh Phát Sài Gòn' },
@@ -350,7 +350,7 @@ describe('the app', () => {
     );
     await userEvent.click(screen.getByRole('button', { name: words.settings.save }));
 
-    expect((await screen.findByRole('alert')).textContent).toBe(words.settings.saved);
+    expect((await screen.findByRole('status')).textContent).toBe(words.settings.saved);
     expect(saveConfig).toHaveBeenCalledExactlyOnceWith({ ...config, colour: '#9e2d20' }, 'v1');
     expect(brandColour()).toBe('#9e2d20');
   });

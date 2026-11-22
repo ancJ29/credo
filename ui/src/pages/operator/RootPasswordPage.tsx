@@ -1,15 +1,5 @@
 import { normaliseClientCode, passwordIsValid } from '@credo/shared';
-import {
-  Alert,
-  Button,
-  Group,
-  Paper,
-  PasswordInput,
-  Stack,
-  Text,
-  TextInput,
-  Title,
-} from '@mantine/core';
+import { Button, Group, Paper, PasswordInput, Stack, Text, TextInput, Title } from '@mantine/core';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router';
@@ -20,6 +10,7 @@ import { refusal, useLoad } from '../../page';
 import { PasskeyNotGiven, type Passkeys } from '../../passkeys';
 import { touch } from '../../touch';
 import { TYPE } from '../../design-system/tokens';
+import { FormMessage } from '../../components/molecules/FormMessage';
 
 type Props = { api: Api; passkeys: Passkeys; onSignedOut: () => void };
 
@@ -86,9 +77,7 @@ export function RootPasswordPage({ api, passkeys, onSignedOut }: Props) {
     <Loaded status={loaded.status} onRetry={loaded.reload}>
       {!client ? (
         <Stack align="flex-start">
-          <Alert color="orange" role="alert" w="100%">
-            {t('operator.rootUnknown')}
-          </Alert>
+          <FormMessage kind="warning">{t('operator.rootUnknown')}</FormMessage>
           {back}
         </Stack>
       ) : done ? (
@@ -96,9 +85,9 @@ export function RootPasswordPage({ api, passkeys, onSignedOut }: Props) {
           <Title {...TYPE.pageTitle}>
             {t(done.made === null ? 'operator.rootDoneTitle' : 'operator.rootMadeTitle')}
           </Title>
-          <Alert color="green" role="alert">
+          <FormMessage kind="success">
             {t(done.made === null ? 'operator.rootDoneIntro' : 'operator.rootMadeIntro')}
-          </Alert>
+          </FormMessage>
           {done.made !== null && (
             <Paper withBorder p="md">
               <TextInput
@@ -125,11 +114,7 @@ export function RootPasswordPage({ api, passkeys, onSignedOut }: Props) {
             <Title {...TYPE.pageTitle}>{t('operator.rootTitle', { name: client.name })}</Title>
             <Text c="dimmed">{t('operator.rootIntro', { name: client.name })}</Text>
           </div>
-          {problem !== null && (
-            <Alert color="red" role="alert">
-              {t(PROBLEM[problem])}
-            </Alert>
-          )}
+          {problem !== null && <FormMessage kind="error">{t(PROBLEM[problem])}</FormMessage>}
           <form onSubmit={submit}>
             <Paper withBorder p="md">
               <Stack gap="lg">

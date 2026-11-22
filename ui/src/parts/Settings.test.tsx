@@ -90,10 +90,10 @@ describe('Settings', () => {
 
   it('a saved settings page says so, and a fresh one says nothing', () => {
     const { rerender } = draw(<Settings {...props({ outcome: 'saved' })} />);
-    expect(screen.getByRole('alert').textContent).toBe(words.saved);
+    expect(screen.getByRole('status').textContent).toBe(words.saved);
 
     rerender(<Settings {...props()} />);
-    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.queryByRole('status')).toBeNull();
   });
 
   it('sends the whole draft on save', async () => {

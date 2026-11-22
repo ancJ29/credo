@@ -1,14 +1,5 @@
 import { can, type EmployeeDoc, employeeCodeIsValid, staffConfig } from '@credo/shared';
-import {
-  Alert,
-  Button,
-  NativeSelect,
-  Stack,
-  Text,
-  Textarea,
-  TextInput,
-  Title,
-} from '@mantine/core';
+import { Button, NativeSelect, Stack, Text, Textarea, TextInput, Title } from '@mantine/core';
 import { IconLogin, IconNote, IconPhone, IconUser } from '@tabler/icons-react';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -31,6 +22,7 @@ import {
 } from '../../parts/personalFields';
 import { type PageProps, refusal, useLoad } from '../../page';
 import { TYPE } from '../../design-system/tokens';
+import { FormMessage } from '../../components/molecules/FormMessage';
 
 const READ_ONLY = { input: { fontFamily: 'ui-monospace, monospace' } };
 const EMPTY = {
@@ -121,9 +113,7 @@ export function AddPersonPage(page: PageProps) {
     return (
       <Stack gap="lg">
         <Title {...TYPE.pageTitle}>{t('addPerson.madeTitle')}</Title>
-        <Alert color="green" role="alert">
-          {t('addPerson.madeIntro')}
-        </Alert>
+        <FormMessage kind="success">{t('addPerson.madeIntro')}</FormMessage>
         <DetailCard icon={<IconLogin size={14} />} title={t('addPerson.madeCard')}>
           <FieldPair>
             <TextInput
@@ -167,16 +157,8 @@ export function AddPersonPage(page: PageProps) {
         <Title {...TYPE.pageTitle}>{t('addPerson.title')}</Title>
         <Text c="dimmed">{t('addPerson.intro')}</Text>
       </div>
-      {status === 'failed' && (
-        <Alert color="red" role="alert">
-          {t('addPerson.failed')}
-        </Alert>
-      )}
-      {status === 'taken' && (
-        <Alert color="orange" role="alert">
-          {t('addPerson.taken')}
-        </Alert>
-      )}
+      {status === 'failed' && <FormMessage kind="error">{t('addPerson.failed')}</FormMessage>}
+      {status === 'taken' && <FormMessage kind="warning">{t('addPerson.taken')}</FormMessage>}
       <Loaded status={loaded.status} onRetry={loaded.reload}>
         <form onSubmit={(event) => void submit(event)}>
           <Stack gap="lg">

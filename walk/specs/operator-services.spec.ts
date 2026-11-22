@@ -57,7 +57,7 @@ async function walk(page: Page, language: Language, width: number) {
 
   // 2. Two builds: c-storage runs the newer one.
   await open(page, language, { path: '/operator/services', operator: true, drift: true });
-  await expect(page.getByRole('status')).toHaveText(words.services.twoBuilds);
+  await expect(page.getByRole('alert')).toHaveText(words.services.twoBuilds);
   await expect(service(words.services.storage).getByText(words.services.differs)).toBeVisible();
   await loaderGone();
   await at('sv-2-two-builds');
@@ -170,7 +170,7 @@ async function walkFull(page: Page, language: Language, width: number) {
   // 2. Two builds: c-storage runs the newer one.
   await answerReally(DEMO_SERVICES.driftBuild);
   await openFull(page, language, handle, '/operator/services');
-  await expect(page.getByRole('status')).toHaveText(words.services.twoBuilds);
+  await expect(page.getByRole('alert')).toHaveText(words.services.twoBuilds);
   await expect(service(words.services.storage).getByText(words.services.differs)).toBeVisible();
   await settled();
   await picture('sv-2-two-builds');

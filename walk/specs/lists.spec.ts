@@ -279,7 +279,7 @@ async function walk(page: Page, language: Language, width: number) {
   await expect(title(PLAIN_CUSTOMER.name)).toBeVisible();
   await page.getByRole('textbox', { name: words.lists.customers.note }).fill(NOTE_WRITTEN);
   await press(words.lists.customers.save);
-  await expect(page.getByRole('alert')).toHaveText(words.lists.customers.saved);
+  await expect(page.getByRole('status')).toHaveText(words.lists.customers.saved);
   await at('lists-14-customer-saved');
 
   // 15. Someone else saved first: the fake answers the save with a conflict once; on the stack
@@ -297,7 +297,7 @@ async function walk(page: Page, language: Language, width: number) {
   await expect(title(PLAIN_PRODUCT.name)).toBeVisible();
   await page.getByRole('textbox', { name: priceLabel }).fill(NEW_PRICE);
   await press(words.lists.products.save);
-  await expect(page.getByRole('alert')).toHaveText(words.lists.products.saved);
+  await expect(page.getByRole('status')).toHaveText(words.lists.products.saved);
   await at('lists-16-product-saved');
 
   // 17. Someone else saved the product first, as on screen 15.

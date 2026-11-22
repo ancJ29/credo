@@ -1,8 +1,9 @@
-import { Alert, Button, Group, Paper, Stack, TextInput, Title } from '@mantine/core';
+import { Button, Group, Paper, Stack, TextInput, Title } from '@mantine/core';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { CopyText } from './CopyText';
 import { TYPE } from '../design-system/tokens';
+import { FormMessage } from '../components/molecules/FormMessage';
 
 type Props = {
   /** The client's sign-in address: its own (`https://<code>.<domain>/login`) from the operator's address, else `…/login?client-code=<code>`. */
@@ -36,9 +37,7 @@ export function ClientMade({ link, rootName, password, onAnother }: Props) {
   return (
     <Stack gap="lg">
       <Title {...TYPE.pageTitle}>{t('operator.madeTitle')}</Title>
-      <Alert color="green" role="alert">
-        {t('operator.madeIntro')}
-      </Alert>
+      <FormMessage kind="success">{t('operator.madeIntro')}</FormMessage>
       <Paper withBorder p="md">
         <Stack gap="lg">
           <Field label={t('operator.link')} value={link} />

@@ -63,7 +63,7 @@ describe('the services status', () => {
   it('C: When a deploy is half done the three builds differ: the page says so, and marks the build that is out of step', async () => {
     open({ drift: true });
 
-    expect((await screen.findByRole('status')).textContent).toBe(words.services.twoBuilds);
+    expect((await screen.findByRole('alert')).textContent).toBe(words.services.twoBuilds);
     const storage = await card(words.services.storage);
     expect(storage.getByText(DEMO_SERVICES.driftBuild)).toBeTruthy();
     expect(storage.getByText(words.services.differs)).toBeTruthy();
@@ -82,7 +82,7 @@ describe('the services status', () => {
       },
     });
 
-    expect((await screen.findByRole('status')).textContent).toBe(words.services.twoBuilds);
+    expect((await screen.findByRole('alert')).textContent).toBe(words.services.twoBuilds);
     expect(screen.queryByText(words.services.differs)).toBeNull();
   });
 
@@ -100,7 +100,7 @@ describe('the services status', () => {
       },
     });
 
-    expect((await screen.findByRole('status')).textContent).toBe(words.services.twoBuilds);
+    expect((await screen.findByRole('alert')).textContent).toBe(words.services.twoBuilds);
     for (const name of [words.services.bff, words.services.storage]) {
       const service = await card(name);
       expect(service.getByText(same), name).toBeTruthy();
@@ -113,7 +113,7 @@ describe('the services status', () => {
     open({ language: 'vi', drift: true });
     const vi = DICTIONARIES.vi;
 
-    expect((await screen.findByRole('status')).textContent).toBe(vi.services.twoBuilds);
+    expect((await screen.findByRole('alert')).textContent).toBe(vi.services.twoBuilds);
     expect((await card(vi.services.storage)).getByText(vi.services.differs)).toBeTruthy();
     expect(screen.getByRole('heading', { level: 2 }).textContent).toBe(wordsVi.nav.services);
   });

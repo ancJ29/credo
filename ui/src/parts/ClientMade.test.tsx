@@ -33,7 +33,7 @@ describe('ClientMade', () => {
   it('says the password is shown once', () => {
     draw(<ClientMade {...MADE} onAnother={vi.fn()} />);
 
-    expect(screen.getByRole('alert').textContent).toBe(words.madeIntro);
+    expect(screen.getByRole('status').textContent).toBe(words.madeIntro);
   });
 
   it('offers another client', async () => {

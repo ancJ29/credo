@@ -1,4 +1,4 @@
-import { Alert, Button, Group, Paper, Stack, Text, TextInput, Title } from '@mantine/core';
+import { Button, Group, Paper, Stack, Text, TextInput, Title } from '@mantine/core';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router';
@@ -9,6 +9,7 @@ import { refusal, useLoad } from '../../page';
 import { PasskeyNotGiven, type Passkeys } from '../../passkeys';
 import { touch } from '../../touch';
 import { TYPE } from '../../design-system/tokens';
+import { FormMessage } from '../../components/molecules/FormMessage';
 
 type Props = { api: Api; passkeys: Passkeys; onSignedOut: () => void };
 
@@ -64,17 +65,15 @@ export function OperatorLinkPage({ api, passkeys, onSignedOut }: Props) {
     <Loaded status={loaded.status} onRetry={loaded.reload}>
       {!colleague || problem === 'gone' ? (
         <Stack align="flex-start">
-          <Alert color="orange" role="alert" w="100%">
-            {t('team.unknown')}
-          </Alert>
+          <FormMessage kind="warning">{t('team.unknown')}</FormMessage>
           {back}
         </Stack>
       ) : made ? (
         <Stack gap="lg">
           <Title {...TYPE.pageTitle}>{t('team.linkMadeTitle')}</Title>
-          <Alert color="green" role="alert">
+          <FormMessage kind="success">
             {t('team.linkMadeIntro', { name: colleague.name })}
-          </Alert>
+          </FormMessage>
           <Paper withBorder p="md">
             <TextInput
               label={t('team.link')}
@@ -99,11 +98,7 @@ export function OperatorLinkPage({ api, passkeys, onSignedOut }: Props) {
               })}
             </Text>
           </div>
-          {problem !== null && (
-            <Alert color="red" role="alert">
-              {t(PROBLEM[problem])}
-            </Alert>
-          )}
+          {problem !== null && <FormMessage kind="error">{t(PROBLEM[problem])}</FormMessage>}
           <Paper withBorder p="md">
             <Stack gap="lg">
               <Text {...TYPE.caption}>{t('team.linkTouch')}</Text>

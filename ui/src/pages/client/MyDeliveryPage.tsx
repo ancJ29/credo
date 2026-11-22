@@ -1,5 +1,5 @@
 import { type DeliveryDoc, type Language, photoAddressRequestOf } from '@credo/shared';
-import { Alert, Anchor, Button, Group, Image, Paper, Stack, Text, Title } from '@mantine/core';
+import { Anchor, Button, Group, Image, Paper, Stack, Text, Title } from '@mantine/core';
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router';
@@ -8,6 +8,7 @@ import { Loaded } from '../../frame/Loaded';
 import { LinesTable, ProofPhoto, StateBadge, useMoney } from '../../parts/OrderParts';
 import { type PageProps, refusal, useLoad } from '../../page';
 import { TYPE, WEIGHTS } from '../../design-system/tokens';
+import { FormMessage } from '../../components/molecules/FormMessage';
 
 /** The customer as the driver needs them: their name, their phone (a tap calls it) and their address. */
 function WhereTo({ customer }: { customer: DeliveryDoc['request']['customer'] }) {
@@ -97,14 +98,10 @@ export function MyDeliveryPage(page: PageProps) {
               <StateBadge state={doc.request.state} />
             </Group>
             {doc.request.state === 'cancelled' && (
-              <Alert color="red" role="alert">
-                {t('myDeliveries.cancelled')}
-              </Alert>
+              <FormMessage kind="error">{t('myDeliveries.cancelled')}</FormMessage>
             )}
             {doc.request.state === 'delivered' && (
-              <Alert color="green" role="alert">
-                {t('myDeliveries.done')}
-              </Alert>
+              <FormMessage kind="success">{t('myDeliveries.done')}</FormMessage>
             )}
             <Paper withBorder p="md">
               <Stack gap="sm">
@@ -137,14 +134,10 @@ export function MyDeliveryPage(page: PageProps) {
                   onChange={(event) => void choose(event.currentTarget.files?.[0])}
                 />
                 {problem === 'unusable' && (
-                  <Alert color="red" role="alert">
-                    {t('myDeliveries.unusable')}
-                  </Alert>
+                  <FormMessage kind="error">{t('myDeliveries.unusable')}</FormMessage>
                 )}
                 {problem === 'failed' && (
-                  <Alert color="red" role="alert">
-                    {t('myDeliveries.sendFailed')}
-                  </Alert>
+                  <FormMessage kind="error">{t('myDeliveries.sendFailed')}</FormMessage>
                 )}
                 {photo === null ? (
                   <Button size="lg" onClick={() => camera.current?.click()}>

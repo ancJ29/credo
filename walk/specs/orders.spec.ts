@@ -268,7 +268,7 @@ async function walk(page: Page, language: Language, width: number) {
 
   // 4. Confirmed: the order's number and its request's.
   await press(words.orders.confirmSubmit);
-  await expect(page.getByRole('alert')).toContainText(
+  await expect(page.getByRole('status')).toContainText(
     words.orders.done.confirmed.replace('{{number}}', 'GH-00015'),
   );
   await at('orders-4-confirmed');
@@ -288,7 +288,7 @@ async function walk(page: Page, language: Language, width: number) {
   // 7. A request cancelled; its order offers to send it again.
   await press(words.orders.cancelRequest);
   await press(words.orders.cancelRequestConfirm.replace('{{number}}', waiting.number));
-  await expect(page.getByRole('alert')).toContainText(words.orders.requestCancelled);
+  await expect(page.getByRole('status')).toContainText(words.orders.requestCancelled);
   await page.getByRole('link', { name: words.orders.openOrder }).click();
   await expect(page.getByRole('heading', { level: 3, name: words.orders.sendAgain })).toBeVisible();
   await at('orders-7-cancelled');
@@ -368,7 +368,7 @@ async function walk(page: Page, language: Language, width: number) {
 
   // 14. The draft saved again: the moved line repriced, and a new total.
   await press(words.orders.saveDraft);
-  await expect(page.getByRole('alert')).toContainText(words.orders.done.saved);
+  await expect(page.getByRole('status')).toContainText(words.orders.done.saved);
   await expect(moved).toHaveCount(0);
   await at('orders-14-repriced');
 

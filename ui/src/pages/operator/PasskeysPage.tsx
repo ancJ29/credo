@@ -1,5 +1,5 @@
 import { type Language, type PasskeyItem } from '@credo/shared';
-import { Alert, Button, Group, Stack, Table, Text, Title } from '@mantine/core';
+import { Button, Group, Stack, Table, Text, Title } from '@mantine/core';
 import { IconFingerprint } from '@tabler/icons-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -10,6 +10,7 @@ import { PasskeyAlreadyHere, PasskeyNotGiven, type Passkeys } from '../../passke
 import { refusal, useLoad } from '../../page';
 import { touch } from '../../touch';
 import { TYPE } from '../../design-system/tokens';
+import { FormMessage } from '../../components/molecules/FormMessage';
 
 type Props = { api: Api; passkeys: Passkeys; onSignedOut: () => void };
 
@@ -79,11 +80,7 @@ export function PasskeysPage({ api, passkeys, onSignedOut }: Props) {
         </Button>
       </Group>
       <Text c="dimmed">{t('passkey.intro')}</Text>
-      {notice && (
-        <Alert color="red" role="alert">
-          {t(NOTICE[notice])}
-        </Alert>
-      )}
+      {notice && <FormMessage kind="error">{t(NOTICE[notice])}</FormMessage>}
       <Loaded status={loaded.status} onRetry={loaded.reload}>
         <Table.ScrollContainer minWidth={480}>
           <Table>

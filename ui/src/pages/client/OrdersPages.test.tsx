@@ -545,7 +545,7 @@ describe('confirming an order', () => {
       day: addDays(DEMO_TODAY, 1),
     });
     const number = `GH-${String(DEMO_DELIVERIES.length + 1).padStart(5, '0')}`;
-    expect((await screen.findByRole('alert')).textContent).toBe(
+    expect((await screen.findByRole('status')).textContent).toBe(
       words.orders.done.confirmed.replace('{{number}}', number),
     );
     expect(screen.getByText(words.orders.state.confirmed)).toBeTruthy();
@@ -735,7 +735,7 @@ describe('cancelling and sending again', () => {
     expect(drawn.api.cancelOrder).toHaveBeenCalledExactlyOnceWith(sentToday.day, sentToday.id, {
       version: 'o1',
     });
-    expect((await screen.findByRole('alert')).textContent).toBe(words.orders.done.cancelled);
+    expect((await screen.findByRole('status')).textContent).toBe(words.orders.done.cancelled);
     expect(screen.getByText(words.orders.state.cancelled)).toBeTruthy();
     // its request was cancelled with it
     const request = await drawn.api.getDelivery(sentToday.request!.day, sentToday.request!.id);
@@ -776,7 +776,7 @@ describe('cancelling and sending again', () => {
 
     const number = `GH-${String(DEMO_DELIVERIES.length + 1).padStart(5, '0')}`;
     expect(drawn.api.sendOrder).toHaveBeenCalledOnce();
-    expect((await screen.findByRole('alert')).textContent).toBe(
+    expect((await screen.findByRole('status')).textContent).toBe(
       words.orders.done.sent.replace('{{number}}', number),
     );
     expect(screen.getByRole('link', { name: number })).toBeTruthy();

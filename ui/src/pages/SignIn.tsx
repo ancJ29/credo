@@ -1,6 +1,5 @@
 import type { Language } from '@credo/shared';
 import {
-  Alert,
   Box,
   Button,
   Flex,
@@ -22,6 +21,7 @@ import { LANGUAGE_NAMES } from '../i18n';
 import { BRAND_GRADIENT } from '../design-system/appTheme';
 import { waitWords } from './waitWords';
 import { SIZES, TYPE, WEIGHTS } from '../design-system/tokens';
+import { FormMessage } from '../components/molecules/FormMessage';
 
 /** The page's own ground behind a door's card, the grey the signed-in pages sit on. */
 const GROUND = 'light-dark(var(--credo-surface-sunken), var(--mantine-color-body))';
@@ -161,16 +161,8 @@ export function SignIn({
       languages={languages}
       onLanguage={onLanguage}
     >
-      {status === 'wait' && (
-        <Alert color="red" role="alert" mb="md">
-          {waitWords(t, waitSeconds)}
-        </Alert>
-      )}
-      {status === 'refused' && (
-        <Alert color="red" role="alert" mb="md">
-          {t('auth.refused')}
-        </Alert>
-      )}
+      {status === 'wait' && <FormMessage kind="error">{waitWords(t, waitSeconds)}</FormMessage>}
+      {status === 'refused' && <FormMessage kind="error">{t('auth.refused')}</FormMessage>}
       <form onSubmit={submit}>
         <Stack gap="lg">
           <TextInput
