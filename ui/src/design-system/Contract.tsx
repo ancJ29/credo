@@ -1,12 +1,13 @@
-import { Group, Stack, Table, Text } from '@mantine/core';
+import { Stack, Table, Text } from '@mantine/core';
 import type { ReactNode } from 'react';
 import { GUIDELINE, type Contract, type PartState } from './guideline';
 import { followedWords, heldWords } from './Charter';
 import classes from './Gallery.module.css';
 import { ActionButton } from '../components/atoms/ActionButton';
+import { ActionRow } from '../components/molecules/ActionRow';
 import { FormMessage } from '../components/molecules/FormMessage';
+import { TableScroll } from '../components/molecules/TableScroll';
 import { PageState } from '../components/organisms/PageState';
-import { SPACING, WIDTHS } from './tokens';
 
 /** The contract of a part, by the name of its entry. */
 export const contractOf = (part: string) =>
@@ -114,41 +115,45 @@ export const ActionButtonStates = platesOf('ActionButton', ({ name }) => (
   </ActionButton>
 ));
 
-/** A block's buttons in a row, from Mantine at the values the contract decides: one gap, at the end. */
+/** A block's buttons in a row, drawn by the part itself: one gap, at the end. */
 export const ActionRowStates = platesOf('ActionRow', ({ name }) => (
-  <Group gap={SPACING.sm} justify="flex-end" w={394} maw="100%">
-    {name === 'One' ? (
-      <ActionButton meaning="main">Save</ActionButton>
-    ) : (
-      <>
-        <ActionButton meaning="quiet">Cancel</ActionButton>
-        <ActionButton meaning="other">Save a draft</ActionButton>
-        <ActionButton meaning="main">Send</ActionButton>
-      </>
-    )}
-  </Group>
+  <Stack w={394} maw="100%">
+    <ActionRow>
+      {name === 'One' ? (
+        <ActionButton meaning="main">Save</ActionButton>
+      ) : (
+        <>
+          <ActionButton meaning="quiet">Cancel</ActionButton>
+          <ActionButton meaning="other">Save a draft</ActionButton>
+          <ActionButton meaning="main">Send</ActionButton>
+        </>
+      )}
+    </ActionRow>
+  </Stack>
 ));
 
-/** A table at its least width, from Mantine's scroll container: it scrolls sideways below it. */
+/** A table at its least width, drawn by the part itself: it scrolls sideways below it. */
 export const TableScrollStates = platesOf('TableScroll', () => (
-  <Table.ScrollContainer minWidth={WIDTHS.table} w={394} maw="100%">
-    <Table>
-      <Table.Thead>
-        <Table.Tr>
-          <Table.Th>Name</Table.Th>
-          <Table.Th>Phone</Table.Th>
-          <Table.Th>Address</Table.Th>
-          <Table.Th>Staff</Table.Th>
-        </Table.Tr>
-      </Table.Thead>
-      <Table.Tbody>
-        <Table.Tr>
-          <Table.Td>An Phat</Table.Td>
-          <Table.Td>0901 000 000</Table.Td>
-          <Table.Td>12 Le Loi</Table.Td>
-          <Table.Td>3</Table.Td>
-        </Table.Tr>
-      </Table.Tbody>
-    </Table>
-  </Table.ScrollContainer>
+  <Stack w={394} maw="100%">
+    <TableScroll>
+      <Table>
+        <Table.Thead>
+          <Table.Tr>
+            <Table.Th>Name</Table.Th>
+            <Table.Th>Phone</Table.Th>
+            <Table.Th>Address</Table.Th>
+            <Table.Th>Staff</Table.Th>
+          </Table.Tr>
+        </Table.Thead>
+        <Table.Tbody>
+          <Table.Tr>
+            <Table.Td>An Phat</Table.Td>
+            <Table.Td>0901 000 000</Table.Td>
+            <Table.Td>12 Le Loi</Table.Td>
+            <Table.Td>3</Table.Td>
+          </Table.Tr>
+        </Table.Tbody>
+      </Table>
+    </TableScroll>
+  </Stack>
 ));

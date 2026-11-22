@@ -1084,7 +1084,7 @@ describe('Gallery', () => {
     expect(about().getByText(/Built; the screens do not use it yet: open item 651/)).toBeDefined();
   });
 
-  it('222 case 19: the contracts of the page base’s new takes and its two parts to come are drawn, each take a content or a meaning', () => {
+  it('222 case 19: the contracts of the page base’s new takes and its two new parts are drawn, each take a content or a meaning', () => {
     const shell = GUIDELINE.contracts.find((contract) => contract.part === 'PageShell')!;
     expect(shell.takes.filter(({ prop }) => ['back', 'recordStatus'].includes(prop))).toEqual([
       expect.objectContaining({ prop: 'back', is: 'content' }),
@@ -1097,11 +1097,11 @@ describe('Gallery', () => {
         .getAllByRole('button')
         .map((button) => button.textContent),
     ).toEqual(['Cancel', 'Save a draft', 'Send']);
-    expect(about().getByText(/To come: open item 651 builds it\./)).toBeDefined();
+    expect(about().getByText(/Built; the screens do not use it yet: open item 651/)).toBeDefined();
     cleanup();
     open(`${BASE}/molecules/table-scroll`);
     expect(stateNames()).toEqual(['Default']);
-    expect(about().getByText(/To come: open item 653 builds it\./)).toBeDefined();
+    expect(about().getByText(/Built; the screens do not use it yet: open item 653/)).toBeDefined();
     const decided = GUIDELINE.contracts.find(
       (contract) => contract.part === 'TableScroll',
     )!.decides;

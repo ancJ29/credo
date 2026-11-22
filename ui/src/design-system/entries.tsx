@@ -314,9 +314,9 @@ export const ENTRIES: Entry[] = [
     name: 'PageShell',
     kind: 'Layout',
     description:
-      'The shell of a page: its heading with what acts on it beside, then its body, drawn only when its data is ready.',
+      'The shell of a page: a way back above, its heading with the record’s status chip and what acts on it beside, then its body, drawn only when its data is ready.',
     props:
-      'title: string · actions?: ReactNode · status: loading | failed | ready · onRetry · children',
+      "title: string · actions?: ReactNode · status: 'loading' | 'failed' | 'ready' · onRetry: () => void · back?: { href: string; children: string } · recordStatus?: Status · children: ReactNode",
     useWhen: ['A signed-in page loads its data and shows it under its title.'],
     dontUseWhen: [
       'A page before sign-in: that is DoorCard’s.',
@@ -495,9 +495,8 @@ export const ENTRIES: Entry[] = [
     group: 'Molecules',
     name: 'ActionRow',
     kind: 'Buttons',
-    toCome: true,
     description:
-      'A block’s buttons in one row, in the order they are read, at the end of the block, with one gap between them. Mantine’s Group, at the values it decides.',
+      'The buttons of a block in one row, in the order they are read, at the end of the block, with one gap between them. Mantine Group, at the values it decides.',
     props: 'children: ReactNode',
     useWhen: ['A block of a page ends in two or more buttons, or in one: give them to the row.'],
     dontUseWhen: [
@@ -511,9 +510,8 @@ export const ENTRIES: Entry[] = [
     group: 'Molecules',
     name: 'TableScroll',
     kind: 'Lists',
-    toCome: true,
     description:
-      'A table’s frame: below its least width the table scrolls sideways inside it and its columns keep their room, never the page. Mantine’s table scroll container, at the width it decides.',
+      'A frame for a table: below its least width the table scrolls sideways inside it and its columns keep their room, never the page. Mantine table scroll container, at the width it decides.',
     props: 'children: ReactNode',
     useWhen: ['A page draws a table of its own: wrap it, so it has the one least width.'],
     dontUseWhen: [

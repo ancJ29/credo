@@ -680,7 +680,7 @@ export const GUIDELINE: {
         'The header row’s order: the title first, what acts on the page beside it.',
         'Where the way back sits: above the title, drawn by `BackLink`; and the record’s status: beside the title, drawn by `StatusBadge`.',
         'Where a failed or loading state sits: in the place of the body, under the header row.',
-        'Not yet: the code takes no `back` and no `recordStatus`, a screen draws them itself; open item 651 builds them into the part.',
+        'Given no `back` and no `recordStatus`, it draws neither; the screens draw their own back links and chips until open item 651 moves them.',
       ],
       states: [
         { name: 'Ready', line: 'The data is here: the heading row, then the body.' },
@@ -836,7 +836,7 @@ export const GUIDELINE: {
       fixes: [
         'Their side: the end of the block, the right on a page read from the left.',
         'Their order: as given, the first at the start of the row.',
-        'Not yet built: the screens set each row’s gap and side themselves, 27 rows; open item 651 builds the part and moves them.',
+        'Built; the screens set each row’s gap and side themselves, 27 rows, until open item 651 moves them.',
       ],
       states: [
         { name: 'Two or more', line: 'The buttons in a row, in order, at the end of the block.' },
@@ -863,7 +863,7 @@ export const GUIDELINE: {
       ],
       fixes: [
         'Where it scrolls: the table alone, sideways, and never the page.',
-        'Not yet built: the screens write a least width of their own, 12 times (five numbers); open item 653 builds the part and moves them.',
+        'Built; the screens write a least width of their own, 12 times (five numbers), until open item 653 moves them.',
       ],
       states: [
         { name: 'Default', line: 'A table at its least width, scrolling sideways below it.' },
