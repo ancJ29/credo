@@ -556,7 +556,7 @@ export const ENTRIES: Entry[] = [
       "kind: 'error' | 'warning' | 'success' | 'info' | 'saved' · title?: string · standing?: boolean · children: ReactNode",
     useWhen: [
       'A form or an act tells the person what happened: it failed, it needs care, it worked.',
-      'The message of a save, once, under the buttons that saved.',
+      'The message of a save, once, in the column of the form it saved.',
     ],
     dontUseWhen: [
       'A page that cannot load, or has nothing: that is PageState’s.',
