@@ -10,6 +10,7 @@ import { PasskeyNotGiven, type Passkeys } from '../../passkeys';
 import { touch } from '../../touch';
 import { TYPE } from '../../design-system/tokens';
 import { FormMessage } from '../../components/molecules/FormMessage';
+import { ActionButton } from '../../components/atoms/ActionButton';
 
 type Props = { api: Api; passkeys: Passkeys; onSignedOut: () => void };
 
@@ -86,9 +87,9 @@ export function AddOperatorPage({ api, passkeys, onSignedOut }: Props) {
       </Paper>
       <Group>
         {back}
-        <Button variant="default" onClick={() => setMade(null)}>
+        <ActionButton meaning="other" onClick={() => setMade(null)}>
           {t('team.another')}
-        </Button>
+        </ActionButton>
       </Group>
     </Stack>
   ) : (
@@ -116,9 +117,9 @@ export function AddOperatorPage({ api, passkeys, onSignedOut }: Props) {
             />
             <Text {...TYPE.caption}>{t('team.touch')}</Text>
             <Group>
-              <Button type="submit" loading={busy}>
+              <ActionButton meaning="main" submit busy={busy}>
                 {t('team.make')}
-              </Button>
+              </ActionButton>
               {back}
             </Group>
           </Stack>

@@ -9,6 +9,7 @@ import { PasskeyNotGiven, type Passkeys } from '../../passkeys';
 import { touch } from '../../touch';
 import { TYPE } from '../../design-system/tokens';
 import { FormMessage } from '../../components/molecules/FormMessage';
+import { ActionButton } from '../../components/atoms/ActionButton';
 
 type Props = { api: Api; passkeys: Passkeys; onSignedOut: () => void };
 
@@ -74,9 +75,9 @@ export function DeleteOperatorPage({ api, passkeys, onSignedOut }: Props) {
             <Stack gap="lg">
               <Text {...TYPE.caption}>{t('team.deleteTouch')}</Text>
               <Group>
-                <Button color="red" loading={busy} onClick={() => void give()}>
+                <ActionButton meaning="danger" busy={busy} onClick={() => void give()}>
                   {t('team.deleteMake')}
-                </Button>
+                </ActionButton>
                 {back}
               </Group>
             </Stack>

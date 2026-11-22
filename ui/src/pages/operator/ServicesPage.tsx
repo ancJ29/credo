@@ -1,5 +1,5 @@
 import { type Language } from '@credo/shared';
-import { Badge, Button, Center, Group, Loader, Paper, Stack, Text, Title } from '@mantine/core';
+import { Badge, Center, Group, Loader, Paper, Stack, Text, Title } from '@mantine/core';
 import { IconRefresh } from '@tabler/icons-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -8,6 +8,7 @@ import { timeOf } from '../../day';
 import { refusal } from '../../page';
 import { TYPE } from '../../design-system/tokens';
 import { FormMessage } from '../../components/molecules/FormMessage';
+import { ActionButton } from '../../components/atoms/ActionButton';
 
 type Props = {
   api: Api;
@@ -93,14 +94,14 @@ export function ServicesPage({ api, build, onSignedOut }: Props) {
     <Stack gap="lg">
       <Group justify="space-between">
         <Title {...TYPE.pageTitle}>{t('nav.services')}</Title>
-        <Button
-          variant="default"
-          loading={busy}
-          leftSection={<IconRefresh size={18} />}
+        <ActionButton
+          meaning="other"
+          busy={busy}
+          icon={<IconRefresh size={18} />}
           onClick={() => void check()}
         >
           {t('services.checkNow')}
-        </Button>
+        </ActionButton>
       </Group>
       <Text c="dimmed">{t('services.intro')}</Text>
       {found === null ? (

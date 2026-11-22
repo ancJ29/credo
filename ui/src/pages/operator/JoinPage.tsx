@@ -12,6 +12,7 @@ import { SignInFrame } from '../SignIn';
 import { BRAND_GRADIENT } from '../../design-system/appTheme';
 import { TYPE } from '../../design-system/tokens';
 import { FormMessage } from '../../components/molecules/FormMessage';
+import { ActionButton } from '../../components/atoms/ActionButton';
 
 type Props = {
   api: Api;
@@ -93,14 +94,15 @@ export function JoinPage({ api, device, passkeys, languages, onLanguage }: Props
       {seen.phase === 'unavailable' && (
         <Stack>
           <FormMessage kind="error">{t('common.unavailable')}</FormMessage>
-          <Button
+          <ActionButton
+            meaning="main"
             onClick={() => {
               setSeen({ phase: 'loading' });
               setAttempt((n) => n + 1);
             }}
           >
             {t('common.retry')}
-          </Button>
+          </ActionButton>
         </Stack>
       )}
       {seen.phase === 'ready' && (

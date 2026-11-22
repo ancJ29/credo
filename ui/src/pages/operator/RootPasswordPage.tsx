@@ -11,6 +11,7 @@ import { PasskeyNotGiven, type Passkeys } from '../../passkeys';
 import { touch } from '../../touch';
 import { TYPE } from '../../design-system/tokens';
 import { FormMessage } from '../../components/molecules/FormMessage';
+import { ActionButton } from '../../components/atoms/ActionButton';
 
 type Props = { api: Api; passkeys: Passkeys; onSignedOut: () => void };
 
@@ -144,9 +145,9 @@ export function RootPasswordPage({ api, passkeys, onSignedOut }: Props) {
                   {t('operator.rootEmptyHint')} {t('operator.rootTouch')}
                 </Text>
                 <Group>
-                  <Button type="submit" loading={busy}>
+                  <ActionButton meaning="main" submit busy={busy}>
                     {t('operator.rootSet')}
-                  </Button>
+                  </ActionButton>
                   {back}
                 </Group>
               </Stack>

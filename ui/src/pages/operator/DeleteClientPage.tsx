@@ -10,6 +10,7 @@ import { PasskeyNotGiven, type Passkeys } from '../../passkeys';
 import { touch } from '../../touch';
 import { TYPE } from '../../design-system/tokens';
 import { FormMessage } from '../../components/molecules/FormMessage';
+import { ActionButton } from '../../components/atoms/ActionButton';
 
 type Props = { api: Api; passkeys: Passkeys; onSignedOut: () => void };
 
@@ -116,9 +117,9 @@ export function DeleteClientPage({ api, passkeys, onSignedOut }: Props) {
                   {t('operator.deleteClientLeft', { count: left })}
                 </FormMessage>
               )}
-              <Button color="red" variant="outline" loading={busy} onClick={() => void resume()}>
+              <ActionButton meaning="danger" busy={busy} onClick={() => void resume()}>
                 {t('operator.deleteClientResume')}
-              </Button>
+              </ActionButton>
             </>
           )}
           {back}
@@ -151,9 +152,9 @@ export function DeleteClientPage({ api, passkeys, onSignedOut }: Props) {
                 />
                 <Text {...TYPE.caption}>{t('operator.deleteClientTouch')}</Text>
                 <Group>
-                  <Button type="submit" color="red" loading={busy}>
+                  <ActionButton meaning="danger" submit busy={busy}>
                     {t('operator.deleteClientMake')}
-                  </Button>
+                  </ActionButton>
                   {back}
                 </Group>
               </Stack>

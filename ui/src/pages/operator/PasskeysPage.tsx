@@ -1,5 +1,5 @@
 import { type Language, type PasskeyItem } from '@credo/shared';
-import { Button, Group, Stack, Table, Text, Title } from '@mantine/core';
+import { Group, Stack, Table, Text, Title } from '@mantine/core';
 import { IconFingerprint } from '@tabler/icons-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -11,6 +11,7 @@ import { refusal, useLoad } from '../../page';
 import { touch } from '../../touch';
 import { TYPE } from '../../design-system/tokens';
 import { FormMessage } from '../../components/molecules/FormMessage';
+import { ActionButton } from '../../components/atoms/ActionButton';
 
 type Props = { api: Api; passkeys: Passkeys; onSignedOut: () => void };
 
@@ -71,13 +72,14 @@ export function PasskeysPage({ api, passkeys, onSignedOut }: Props) {
     <Stack gap="lg">
       <Group justify="space-between">
         <Title {...TYPE.pageTitle}>{t('passkey.title')}</Title>
-        <Button
-          loading={busy}
-          leftSection={<IconFingerprint size={18} />}
+        <ActionButton
+          meaning="main"
+          busy={busy}
+          icon={<IconFingerprint size={18} />}
           onClick={() => void add()}
         >
           {t('passkey.add')}
-        </Button>
+        </ActionButton>
       </Group>
       <Text c="dimmed">{t('passkey.intro')}</Text>
       {notice && <FormMessage kind="error">{t(NOTICE[notice])}</FormMessage>}
@@ -101,15 +103,14 @@ export function PasskeysPage({ api, passkeys, onSignedOut }: Props) {
                       : dayOf(passkey.lastUsedAt, language)}
                   </Table.Td>
                   <Table.Td ta="right">
-                    <Button
-                      variant="default"
-                      size="xs"
+                    <ActionButton
+                      meaning="other"
                       disabled={busy}
-                      aria-label={`${t('passkey.remove')}: ${dayOf(passkey.addedAt, language)}`}
+                      label={`${t('passkey.remove')}: ${dayOf(passkey.addedAt, language)}`}
                       onClick={() => void remove(passkey.id)}
                     >
                       {t('passkey.remove')}
-                    </Button>
+                    </ActionButton>
                   </Table.Td>
                 </Table.Tr>
               ))}

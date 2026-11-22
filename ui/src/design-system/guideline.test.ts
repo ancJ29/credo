@@ -78,6 +78,8 @@ const MAIN_MORE_THAN_ONCE: Record<string, number> = {
   'pages/client/MyDeliveryPage.tsx': 2,
   // The record's save, and the confirm of a lock or unlock that shows only while asked.
   'pages/client/PersonPage.tsx': 2,
+  // The move's go-on after a stop and after a failure, and its send: three steps of one move, one drawn at a time.
+  'pages/operator/MoveClientPage.tsx': 3,
 };
 
 /** The looks drawn that no meaning of `ActionButton` takes. */

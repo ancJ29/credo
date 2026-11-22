@@ -148,6 +148,21 @@ You should see a green line, spanning the width of the form, saying the settings
 
 **Question: is the saved line green, as wide as the form, and easy to read?** Say yes or no; with a no, name the line.
 
+### The buttons' card (landing 3 of the screens on the parts; the operator's pages, begun)
+
+Open the walks page (the link your orchestrator gives you after the walks run). You need a PC. Open these screens, each at its desktop width, and look only at the buttons:
+
+1. The operator's clients list ("op-5-dashboard"): the "add" button above the table is the one filled button; the three buttons in each row ("root password", "move", "delete") are the plain look, and the delete one is no longer red.
+2. The new client ("op-2-new-client") and the colleague's name page ("tm-2-name"): the make button is the one filled button, the back link beside it is plain.
+3. The delete-a-client page ("dc-1-page"): the delete is the only red button, and it is red and filled; nothing else on the page is red.
+4. The services page ("sv-1-all-well"): the check-now button is plain, not filled, since the page checks by itself every minute.
+5. A client's person page ("staff-4-person"): the record's save is the one filled button. In the live app, press lock on the same page: while its confirm shows, the page draws two filled buttons (the save and the confirm), the one page that does.
+6. Any other screen you wish: every button is one size, as wide as its words.
+
+You should see one filled button a page (red only at a delete's last step), all other buttons in the plain look, quiet ones as plain text, every button the same size.
+
+**Question: does each page show its next step as its one filled button?** Say yes or no; with a no, name the screen and the button.
+
 ## Next, in order
 
 What comes next, in the order the human's page on the orchestrator branch lists it (the evening's session refreshes this list from it):
