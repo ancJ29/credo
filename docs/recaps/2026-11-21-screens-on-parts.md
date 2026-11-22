@@ -10,14 +10,14 @@ flowchart LR
 ## What each landing gives you
 
 - **Landing 1, the dialog's title at 600**: the "sign-in ended" dialog of the passkeys screen now draws its title at the guideline's emphasis weight, 600, where it drew 550, a weight the guideline does not name. That is the only screen that moves, in English and Vietnamese at the three widths, six pictures. Item 647's last half is fixed.
-- **Landing 2, the messages**: every message in the app is now drawn by one part, in its kind's colour and spoken role, and a message spans its column. Seven screens' pictures moved: the two sign-in screens' spacing; the delete-client page's intro, from red to orange; the services page's two-builds line, from yellow to orange; the order's missing-photo line, from yellow to orange.
+- **Landing 2, the messages**: every message under a form or an act is now drawn by one part (landing 4 moves the three page states; the logo refusal stays), in its kind's colour and spoken role, and a message spans its column. Seven screens moved: the two sign-in screens' spacing; the delete-client page's intro, from red to orange; the services page's two-builds line, from yellow to orange; the order's missing-photo line, from yellow to orange.
 - **Landings 3 to 7**: <!-- FILL: each landing's change for a user, when it lands -->
 
 ## What was proved
 
 - **Landing 1**: the value was seen red on the old 550, then green, and the pinned styles file changed for that one screen alone. <!-- FILL: landing 1's check run, in words -->
 - Your first picture run of landing 1 wrote the six new pictures, committed alone, and your second picture run, with no flags, read every picture as committed.
-- **Landing 2**: your first picture run of landing 2 wrote the pictures, committed alone. Your write run over all twelve walks read green, its pictures committed alone; your second picture run, over the four walks that changed, read green. The whole check and the review are still to come.
+- **Landing 2**: your first picture run of landing 2, over all twelve walks, wrote the pictures and read green, committed alone; your second run, over the four walks that changed, read green. The whole check and the review are still to come.
 - **Landings 3 to 7**: <!-- FILL: each landing's checks, in words -->
 
 ## What is left

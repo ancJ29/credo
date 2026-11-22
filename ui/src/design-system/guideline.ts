@@ -432,14 +432,10 @@ export const GUIDELINE: {
           ],
         },
         { what: 'Its text, the theme’s body.', from: [{ table: 'TYPE', key: 'body' }] },
-        {
-          what: 'The gap between it and the buttons above it.',
-          from: [{ table: 'SPACING', key: 'xs' }],
-        },
       ],
       fixes: [
         'Its spoken role: alert for an error or a warning (a conflict is a warning), status for the rest, note for a standing one.',
-        'Its place: the whole width of the column it sits in, even a left-aligned one, no margin, under its buttons, one at a time.',
+        'Its place: the whole width of the column it sits in, even a left-aligned one, no margin; where it sits, and the gap above it, are its column’s.',
       ],
       states: [
         { name: 'Error', tone: 'danger', role: 'alert', line: 'Something failed.' },
