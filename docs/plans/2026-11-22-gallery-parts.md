@@ -298,10 +298,17 @@ part and its importers 14 (222's step 7), five entries 14 (213's step 10), a rec
       Case 12 red once each for the photo's choose button worded as its hint, the QR code's name
       worded as the link's, the phone link's address keeping its spaces and the dialog's press opening
       nothing, green with none, each file diffed against its backup; no screen moved. Item 507 closes.
-- [ ] **11. The recap, and the look.** The recap closed; the gallery's row and card in
+- [x] **11. The recap, and the look.** The recap closed; the gallery's row and card in
       `docs/products.md` name the samples' languages and the new parts; item 651 gains the new parts'
       site counts, item 515 the line below. Your points 1 to 3, together. _Done when:_ the citation
       test exits 0. **5 min**.
+      _Evidence:_ the recap holds landing 3 (steps 7 to 10) with a marker for landing 3's checks on
+      `pre-merge` and one for your look, neither yet known; the gallery's row and card in
+      `docs/products.md` name the samples' languages and the new parts, its state saying landing 3 is
+      on `gallery-parts`; item 651 gained the five parts' site counts, each with its grep beside it
+      (`<Table` 15 in 12, `<Paper` 33 in 23, `moreRow` 3 in 1, `<CopyText` 5 in 5, `<Badge` 5 in 4),
+      item 515 its line; no box is left unticked but this one, and the citation test exits 0 on this
+      tree.
 
 ## The cases
 
