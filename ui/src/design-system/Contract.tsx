@@ -1,4 +1,4 @@
-import { Anchor, Stack, Table, Text } from '@mantine/core';
+import { Anchor, Group, Stack, Table, Text } from '@mantine/core';
 import { Link } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import type { ReactNode } from 'react';
@@ -8,6 +8,7 @@ import classes from './Gallery.module.css';
 import { IconSettings, IconUsers } from '@tabler/icons-react';
 import { ActionButton } from '../components/atoms/ActionButton';
 import { MenuRow } from '../components/atoms/MenuRow';
+import { Tag } from '../components/atoms/Tag';
 import { ActionRow } from '../components/molecules/ActionRow';
 import { CopyText } from '../components/molecules/CopyText';
 import { DataTable } from '../components/molecules/DataTable';
@@ -326,3 +327,28 @@ function CopyTextSample({ state: { name } }: { state: PartState }) {
 
 /** A copy button alone, and one in its read-only field. */
 export const CopyTextStates = platesOf('CopyText', (state) => <CopyTextSample state={state} />);
+
+/** A tag at each of its states, drawn by the part itself: in the brand's tone, and in a meaning's. */
+function TagSample({ state: { name } }: { state: PartState }) {
+  const { t } = useTranslation();
+  return (
+    <Group>
+      {name === 'In the brand’s tone' ? (
+        <>
+          <Tag>{t('team.you')}</Tag>
+          <Tag>{t('permissions.custom')}</Tag>
+        </>
+      ) : (
+        <>
+          <Tag meaning="success">{t('services.answers')}</Tag>
+          <Tag meaning="danger">{t('services.silent')}</Tag>
+          <Tag meaning="info">{t('services.unseen')}</Tag>
+          <Tag meaning="warning">{t('services.differs')}</Tag>
+        </>
+      )}
+    </Group>
+  );
+}
+
+/** A tag in the brand's tone, and one in each meaning's. */
+export const TagStates = platesOf('Tag', (state) => <TagSample state={state} />);

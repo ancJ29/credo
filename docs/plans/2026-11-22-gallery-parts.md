@@ -261,10 +261,26 @@ part and its importers 14 (222's step 7), five entries 14 (213's step 10), a rec
       name losing what it copies, which reddens the four operator screens' own tests and `ClientMade`'s;
       green with none, each file diffed against its backup; the `ui` and `visual` gates, the citation,
       counts, words and fake tests exit 0 on this tree.
-- [ ] **9. The tag.** `Tag` in `components/atoms/`: takes words and a meaning (the brand's, or a tone
+- [x] **9. The tag.** `Tag` in `components/atoms/`: takes words and a meaning (the brand's, or a tone
       of `TONES`); decides the light look and the chip's size (`SIZES.chip`). Its entry (a colleague's
       "you", a permission's "custom", a build that differs, a service's state) and contract. Cases
       11, 13, 14. _Done when:_ the gates exit 0. **12 min**.
+      _Evidence:_ `components/atoms/Tag.tsx` takes `meaning` (`brand`, the default, or a tone of
+      `TONES`) and its words; it draws Mantine's light badge at `SIZES.chip`, no colour set for the
+      brand and `TONES[meaning]` for a meaning. Its entry sits among the atoms with two states, in
+      the brand's tone (a colleague's "you", a permission's "custom") and in a meaning's tone (a
+      service's healthy, unresponsive and unreachable, a build that differs), and its contract
+      (`followed` item 651, no screen draws it yet: the four light badges stay in their screens, case
+      15). Counts recounted on this tree as the plan names them: `TONES` four keys, `SIZES.chip` 12,
+      four light badges with no status in `OperatorsPage.tsx#L55`, `ServicesPage.tsx#L174` and
+      `#L186`, `PermissionEditor.tsx#L72`, as planned. The gallery now holds 33 entries and the parts
+      25; `StatusBadge`'s entry names `Tag` as its winner for a word that is no status, and `Tag`'s
+      names `StatusBadge`. Case 11 red once each for the badge filled, the size dropped, the brand
+      drawn in a tone, a meaning drawn in the wrong tone and a gallery sample in the wrong tone; case
+      13 red once each for an entry with no contract (whole suites failing), a take that is a style
+      and a contract with no entry; case 14 red once each for each entry's naming of the other left
+      out; green with none, each file diffed against its backup; the `ui` and `visual` gates, the
+      citation, words and fake tests and the pinned file's diff exit 0 on this tree (22:04 to 22:10).
 - [ ] **10. Photos and codes, links, the dialog.** A person's photo with its choose button, a
       delivery's proof, a company's logo, the sign-in QR code; a name link in a row, a phone link, a
       link in a sentence; a dialog a press opens, in the ended session's words. Item 507 closes. Case

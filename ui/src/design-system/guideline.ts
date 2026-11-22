@@ -991,6 +991,43 @@ export const GUIDELINE: {
       used: true,
     },
     {
+      part: 'Tag',
+      takes: [
+        {
+          prop: 'meaning',
+          is: 'meaning',
+          line: 'What the word says: the brand’s own, or a danger, a success, a warning or plain information; none is the brand’s.',
+        },
+        { prop: 'children', is: 'content', line: 'Its words.' },
+      ],
+      decides: [
+        { what: 'Its size: the chip’s.', from: [{ table: 'SIZES', key: 'chip' }] },
+        {
+          what: 'Its colour, from its meaning: red for a danger, green for a success, orange for a warning, gray for information.',
+          from: [
+            { table: 'TONES', key: 'danger' },
+            { table: 'TONES', key: 'success' },
+            { table: 'TONES', key: 'warning' },
+            { table: 'TONES', key: 'info' },
+          ],
+        },
+      ],
+      fixes: [
+        'Its look: Mantine’s light badge, in the client’s colour where it has no meaning.',
+        'Not yet drawn by a screen: four screens draw a light badge of their own until open item 651 moves them to this one.',
+      ],
+      states: [
+        { name: 'In the brand’s tone', line: 'A word that marks a person or a setting.' },
+        {
+          name: 'In a meaning’s tone',
+          line: 'A state of a thing that is no record’s status, in the tone of its meaning.',
+        },
+      ],
+      serves: 'A screen picks parts, never a style',
+      heldBy: { check: 'ui/src/components/atoms/Tag.test.tsx' },
+      followed: { item: 651 },
+    },
+    {
       part: 'ActionRow',
       takes: [
         {

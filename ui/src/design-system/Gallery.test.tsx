@@ -396,6 +396,26 @@ describe('Gallery', () => {
     expect(out).toBeDefined();
   });
 
+  it('231 case 11: Tag draws its words in the brand’s tone and in each meaning’s', () => {
+    open(`${BASE}/atoms/tag`);
+
+    expect(stateNames()).toEqual(['In the brand’s tone', 'In a meaning’s tone']);
+    const { vi: words } = DICTIONARIES;
+    const brand = within(part().getByRole('figure', { name: 'In the brand’s tone' }));
+    expect(brand.getByText(words.team.you)).toBeDefined();
+    expect(brand.getByText(words.permissions.custom)).toBeDefined();
+    const meant = within(part().getByRole('figure', { name: 'In a meaning’s tone' }));
+    for (const [word, tone] of [
+      [words.services.answers, TONES.success],
+      [words.services.silent, TONES.danger],
+      [words.services.unseen, TONES.info],
+      [words.services.differs, TONES.warning],
+    ])
+      expect(meant.getByText(word).closest('[style]')?.getAttribute('style'), word).toContain(
+        `--mantine-color-${tone}-`,
+      );
+  });
+
   it('231 case 10 and 16: CopyText draws a button alone and the button in its read-only field', async () => {
     open(`${BASE}/molecules/copy-text`);
 
@@ -1126,7 +1146,7 @@ describe('Gallery', () => {
   });
 
   it('213 case 1: every entry carries one to three use lines and one to three don’t-use lines', () => {
-    expect(ENTRIES).toHaveLength(32);
+    expect(ENTRIES).toHaveLength(33);
     for (const entry of ENTRIES) {
       for (const lines of [entry.useWhen, entry.dontUseWhen]) {
         expect(lines.length, entry.name).toBeGreaterThanOrEqual(1);
@@ -1454,7 +1474,7 @@ describe('Gallery', () => {
         entry.name !== 'The page base',
     );
     // A set that found nothing would quiet the loop.
-    expect(parts.length).toBe(24);
+    expect(parts.length).toBe(25);
     expect(GUIDELINE.contracts.map((contract) => contract.part).sort()).toEqual(
       parts.map((entry) => entry.name).sort(),
     );
@@ -1484,6 +1504,9 @@ describe('Gallery', () => {
     // The panel of ours and the card with a section title each name the other.
     expect(words('Panel')).toContain('SectionCard');
     expect(words('SectionCard')).toContain('Panel');
+    // The tag and the status badge each name the other.
+    expect(words('Tag')).toContain('StatusBadge');
+    expect(words('StatusBadge')).toContain('Tag');
     // The copy button names the button of ours it is made of.
     expect(words('CopyText')).toContain('ActionButton');
     // The frame’s menus of Mantine’s own and the page’s menu row name each other.

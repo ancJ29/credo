@@ -38,6 +38,7 @@ import {
   DataTableStates,
   FormMessageStates,
   MenuRowStates,
+  TagStates,
   PageStateStates,
   PanelStates,
   TableScrollStates,
@@ -593,9 +594,9 @@ export const ENTRIES: Entry[] = [
     useWhen: ['A record’s status is shown as a chip beside its name or in its row.'],
     dontUseWhen: [
       'A message to the person: that is FormMessage’s.',
-      'A status of no record, or a colour of the screen’s own choosing: ask, and the guideline gains a status.',
+      'A word that is no status of a record, as a colleague’s “you”: that is Tag’s.',
     ],
-    instead: 'FormMessage',
+    instead: 'Tag',
     states: [
       {
         name: 'An order',
@@ -607,6 +608,24 @@ export const ENTRIES: Entry[] = [
       },
       { name: 'A person', node: <StatusRow statuses={['active', 'inactive']} /> },
     ],
+  },
+  {
+    group: 'Atoms',
+    name: 'Tag',
+    kind: 'Marks',
+    description:
+      'A word beside a name or in a row, drawn light at the chip’s size: in the brand’s tone, or in the tone of its meaning (danger, success, warning or info).',
+    props: "meaning?: 'brand' | 'danger' | 'success' | 'warning' | 'info' · children: string",
+    useWhen: [
+      'A word marks a person or a setting, as a colleague’s “you” or a permission that is custom.',
+      'A state of a thing that is no record’s status, as a service’s health or a build that differs: give it its meaning.',
+    ],
+    dontUseWhen: [
+      'A record’s status, an order’s or a person’s: that is StatusBadge’s.',
+      'A message to the person: that is FormMessage’s.',
+    ],
+    instead: 'StatusBadge',
+    states: TagStates,
   },
   {
     group: 'Atoms',
