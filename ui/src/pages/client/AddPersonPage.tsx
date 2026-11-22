@@ -1,9 +1,9 @@
 import { can, type EmployeeDoc, employeeCodeIsValid, staffConfig } from '@credo/shared';
-import { Button, NativeSelect, Stack, Text, Textarea, TextInput, Title } from '@mantine/core';
+import { NativeSelect, Stack, Text, Textarea, TextInput, Title } from '@mantine/core';
 import { IconLogin, IconNote, IconPhone, IconUser } from '@tabler/icons-react';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate } from 'react-router';
+import { useNavigate } from 'react-router';
 import { DetailCard, FieldPair } from '../../parts/DetailCards';
 import { Loaded } from '../../frame/Loaded';
 import {
@@ -22,6 +22,7 @@ import {
 } from '../../parts/personalFields';
 import { type PageProps, refusal, useLoad } from '../../page';
 import { TYPE } from '../../design-system/tokens';
+import { ActionButton } from '../../components/atoms/ActionButton';
 import { FormMessage } from '../../components/molecules/FormMessage';
 
 const READ_ONLY = { input: { fontFamily: 'ui-monospace, monospace' } };
@@ -131,11 +132,11 @@ export function AddPersonPage(page: PageProps) {
           </FieldPair>
         </DetailCard>
         <Stack gap="xs" align="flex-start">
-          <Button component={Link} to={`/staff/${made.employee.employee.id}`}>
+          <ActionButton meaning="main" to={`/staff/${made.employee.employee.id}`}>
             {t('addPerson.open')}
-          </Button>
-          <Button
-            variant="default"
+          </ActionButton>
+          <ActionButton
+            meaning="other"
             onClick={() => {
               setMade(null);
               setForm(EMPTY);
@@ -145,7 +146,7 @@ export function AddPersonPage(page: PageProps) {
             }}
           >
             {t('addPerson.another')}
-          </Button>
+          </ActionButton>
         </Stack>
       </Stack>
     );
@@ -245,9 +246,9 @@ export function AddPersonPage(page: PageProps) {
                 />
               ))}
             </DetailCard>
-            <Button type="submit" loading={status === 'busy'} style={{ alignSelf: 'flex-start' }}>
+            <ActionButton meaning="main" submit busy={status === 'busy'}>
               {t('addPerson.submit')}
-            </Button>
+            </ActionButton>
           </Stack>
         </form>
       </Loaded>

@@ -7,17 +7,7 @@ import {
   type Language,
   TOTAL_MAX,
 } from '@credo/shared';
-import {
-  Anchor,
-  Button,
-  Group,
-  NumberInput,
-  Paper,
-  Stack,
-  Table,
-  Text,
-  Title,
-} from '@mantine/core';
+import { Anchor, Group, NumberInput, Paper, Stack, Table, Text, Title } from '@mantine/core';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router';
@@ -27,6 +17,7 @@ import { useMoney } from '../../parts/OrderParts';
 import { type PageProps, refusal, useLoad } from '../../page';
 import { useGapText } from '../../parts/ReconcileParts';
 import { TYPE } from '../../design-system/tokens';
+import { ActionButton } from '../../components/atoms/ActionButton';
 import { FormMessage } from '../../components/molecules/FormMessage';
 
 /** What the page says of its last try to close: nothing, a day closed, a failure that kept the
@@ -239,22 +230,26 @@ export function DriverDayPage(page: PageProps) {
                               : t('reconcile.closeWaiting', { count: figures.waiting.length })}
                           </Text>
                           <Group>
-                            <Button color="red" loading={busy} onClick={() => void close(handedIn)}>
+                            <ActionButton
+                              meaning="main"
+                              busy={busy}
+                              onClick={() => void close(handedIn)}
+                            >
                               {t('reconcile.closeConfirm')}
-                            </Button>
-                            <Button variant="default" onClick={() => setAsking(false)}>
+                            </ActionButton>
+                            <ActionButton meaning="other" onClick={() => setAsking(false)}>
                               {t('reconcile.keepOpen')}
-                            </Button>
+                            </ActionButton>
                           </Group>
                         </Stack>
                       ) : (
-                        <Button
-                          variant="default"
+                        <ActionButton
+                          meaning="other"
                           disabled={handedIn === null || figures.tooLarge}
                           onClick={() => setAsking(true)}
                         >
                           {t('reconcile.close')}
-                        </Button>
+                        </ActionButton>
                       )}
                     </Stack>
                   </Paper>

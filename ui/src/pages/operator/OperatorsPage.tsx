@@ -1,12 +1,12 @@
 import type { Language } from '@credo/shared';
-import { Badge, Button, Group, Stack, Table, Text, Title } from '@mantine/core';
+import { Badge, Group, Stack, Table, Text, Title } from '@mantine/core';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router';
 import type { Api } from '../../api';
 import { dayOf } from '../../day';
 import { Loaded } from '../../frame/Loaded';
 import { useLoad } from '../../page';
 import { TYPE } from '../../design-system/tokens';
+import { ActionButton } from '../../components/atoms/ActionButton';
 
 type Props = { api: Api; onSignedOut: () => void };
 
@@ -24,9 +24,9 @@ export function OperatorsPage({ api, onSignedOut }: Props) {
     <Stack gap="lg">
       <Group justify="space-between">
         <Title {...TYPE.pageTitle}>{t('nav.operators')}</Title>
-        <Button component={Link} to="/operator/operators/new">
+        <ActionButton meaning="main" to="/operator/operators/new">
           {t('team.add')}
-        </Button>
+        </ActionButton>
       </Group>
       <Text c="dimmed">{t('team.intro')}</Text>
       <Loaded status={loaded.status} onRetry={loaded.reload}>
@@ -64,25 +64,20 @@ export function OperatorsPage({ api, onSignedOut }: Props) {
                   <Table.Td ta="right">
                     {!one.you && (
                       <Group gap="xs" justify="flex-end" wrap="nowrap">
-                        <Button
-                          component={Link}
+                        <ActionButton
+                          meaning="other"
                           to={`/operator/operators/${one.id}/link`}
-                          variant="default"
-                          size="xs"
-                          aria-label={`${t('team.newLink')}: ${one.name}`}
+                          label={`${t('team.newLink')}: ${one.name}`}
                         >
                           {t('team.newLink')}
-                        </Button>
-                        <Button
-                          component={Link}
+                        </ActionButton>
+                        <ActionButton
+                          meaning="other"
                           to={`/operator/operators/${one.id}/delete`}
-                          variant="default"
-                          size="xs"
-                          color="red"
-                          aria-label={`${t('team.delete')}: ${one.name}`}
+                          label={`${t('team.delete')}: ${one.name}`}
                         >
                           {t('team.delete')}
-                        </Button>
+                        </ActionButton>
                       </Group>
                     )}
                   </Table.Td>

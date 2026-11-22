@@ -1,7 +1,6 @@
 import type { DeliveryRequest, OrderLine, RequestState, OrderState } from '@credo/shared';
 import {
   Badge,
-  Button,
   Group,
   Image,
   NativeSelect,
@@ -12,6 +11,7 @@ import {
   TextInput,
   Title,
 } from '@mantine/core';
+import { ActionButton } from '../components/atoms/ActionButton';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Loaded } from '../frame/Loaded';
@@ -131,17 +131,17 @@ export function CancelPanel({
         <Text c="dimmed">{text}</Text>
         {asking ? (
           <Group>
-            <Button color="red" loading={busy} onClick={onCancel}>
+            <ActionButton meaning="other" busy={busy} onClick={onCancel}>
               {confirm}
-            </Button>
-            <Button variant="default" onClick={() => setAsking(false)}>
+            </ActionButton>
+            <ActionButton meaning="other" onClick={() => setAsking(false)}>
               {t('orders.keep')}
-            </Button>
+            </ActionButton>
           </Group>
         ) : (
-          <Button variant="default" onClick={() => setAsking(true)}>
+          <ActionButton meaning="other" onClick={() => setAsking(true)}>
             {title}
-          </Button>
+          </ActionButton>
         )}
       </Stack>
     </Paper>
@@ -220,9 +220,9 @@ export function SendPanel({
                   onChange={(event) => setDay(event.currentTarget.value)}
                 />
                 {hint !== undefined && <Text {...TYPE.caption}>{hint}</Text>}
-                <Button type="submit" loading={busy} disabled={!ready}>
+                <ActionButton meaning="main" submit busy={busy} disabled={!ready}>
                   {submit}
-                </Button>
+                </ActionButton>
               </>
             )}
           </Stack>
@@ -250,13 +250,15 @@ export function OutcomeAlert<Doc>({
     return <FormMessage kind="error">{failed}</FormMessage>;
   }
   return (
-    <FormMessage kind="warning">
-      <Stack gap="xs" align="flex-start">
-        {conflict}
-        <Button variant="default" onClick={() => onTheirs(outcome.current)}>
+    <FormMessage
+      kind="warning"
+      act={
+        <ActionButton meaning="other" onClick={() => onTheirs(outcome.current)}>
           {t('orders.showTheirs')}
-        </Button>
-      </Stack>
+        </ActionButton>
+      }
+    >
+      {conflict}
     </FormMessage>
   );
 }

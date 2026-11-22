@@ -10,6 +10,7 @@ import { PasskeyNotGiven, type Passkeys } from '../../passkeys';
 import { touch } from '../../touch';
 import { TYPE } from '../../design-system/tokens';
 import { FormMessage } from '../../components/molecules/FormMessage';
+import { ActionButton } from '../../components/atoms/ActionButton';
 
 type Props = { api: Api; passkeys: Passkeys; onSignedOut: () => void };
 
@@ -103,9 +104,9 @@ export function OperatorLinkPage({ api, passkeys, onSignedOut }: Props) {
             <Stack gap="lg">
               <Text {...TYPE.caption}>{t('team.linkTouch')}</Text>
               <Group>
-                <Button loading={busy} onClick={() => void give()}>
+                <ActionButton meaning="main" busy={busy} onClick={() => void give()}>
                   {t('team.linkMake')}
-                </Button>
+                </ActionButton>
                 {back}
               </Group>
             </Stack>

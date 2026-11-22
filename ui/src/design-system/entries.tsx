@@ -469,16 +469,17 @@ export const ENTRIES: Entry[] = [
     group: 'Atoms',
     name: 'ActionButton',
     kind: 'Buttons',
-    toCome: true,
     description:
-      'The button a page offers an act with: its meaning (the main action, another, a quiet one or a danger) and its words and act, drawn at the look the meaning decides. Mantine’s Button, at the values it decides.',
-    props: 'meaning: main | other | quiet | danger · children: string · onClick',
+      'The button a page offers an act with: its meaning (the main action, another, a quiet one or a danger) decides its look, at one size and the width of its words; an address makes it a link, busy shows the loader and takes no second press.',
+    props:
+      "meaning: 'main' | 'other' | 'quiet' | 'danger' · children: string · onClick?: () => void · to?: string · submit?: boolean · busy?: boolean · disabled?: boolean · icon?: ReactNode · label?: string",
     useWhen: [
       'A page offers an act: one main action a page, the others as other or quiet.',
       'A delete’s last step, on the page that confirms it, is a danger.',
+      'A move to another page that is itself the act, an add or an open: give it an address and it is drawn as a link.',
     ],
     dontUseWhen: [
-      'A move to another page: that is a link, not an act.',
+      'A move back to where the person came from: that is BackLink’s.',
       'A second main action on one page: ask which is the main.',
     ],
     instead: 'BackLink',
@@ -553,7 +554,7 @@ export const ENTRIES: Entry[] = [
     description:
       'A message to the person, by its kind: its colour and spoken role follow the kind, and a standing note from the page load is spoken as a note.',
     props:
-      "kind: 'error' | 'warning' | 'success' | 'info' | 'saved' · title?: string · standing?: boolean · children: ReactNode",
+      "kind: 'error' | 'warning' | 'success' | 'info' | 'saved' · title?: string · standing?: boolean · act?: ReactNode · children: ReactNode",
     useWhen: [
       'A form or an act tells the person what happened: it failed, it needs care, it worked.',
       'The message of a save, once, in the column of the form it saved.',

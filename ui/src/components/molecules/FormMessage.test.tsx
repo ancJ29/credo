@@ -54,4 +54,19 @@ describe('FormMessage', () => {
     draw(<FormMessage kind="info">Plain.</FormMessage>);
     expect(screen.getByRole('status').querySelector('.mantine-Alert-title')).toBeNull();
   });
+
+  it('222 act: an act is laid out under the words, inside the message', () => {
+    draw(
+      <FormMessage kind="warning" act={<button type="button">Reload</button>}>
+        Someone else saved.
+      </FormMessage>,
+    );
+    const message = screen.getByRole('alert');
+    const act = screen.getByRole('button', { name: 'Reload' });
+    expect(message.contains(act)).toBe(true);
+    expect(
+      screen.getByText('Someone else saved.').compareDocumentPosition(act) &
+        Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
 });

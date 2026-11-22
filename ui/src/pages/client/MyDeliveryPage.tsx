@@ -1,5 +1,5 @@
 import { type DeliveryDoc, type Language, photoAddressRequestOf } from '@credo/shared';
-import { Anchor, Button, Group, Image, Paper, Stack, Text, Title } from '@mantine/core';
+import { Anchor, Group, Image, Paper, Stack, Text, Title } from '@mantine/core';
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router';
@@ -8,6 +8,7 @@ import { Loaded } from '../../frame/Loaded';
 import { LinesTable, ProofPhoto, StateBadge, useMoney } from '../../parts/OrderParts';
 import { type PageProps, refusal, useLoad } from '../../page';
 import { TYPE, WEIGHTS } from '../../design-system/tokens';
+import { ActionButton } from '../../components/atoms/ActionButton';
 import { FormMessage } from '../../components/molecules/FormMessage';
 
 /** The customer as the driver needs them: their name, their phone (a tap calls it) and their address. */
@@ -140,19 +141,19 @@ export function MyDeliveryPage(page: PageProps) {
                   <FormMessage kind="error">{t('myDeliveries.sendFailed')}</FormMessage>
                 )}
                 {photo === null ? (
-                  <Button size="lg" onClick={() => camera.current?.click()}>
+                  <ActionButton meaning="main" onClick={() => camera.current?.click()}>
                     {t('myDeliveries.deliver')}
-                  </Button>
+                  </ActionButton>
                 ) : (
                   <>
                     <Title order={3}>{t('myDeliveries.photoTitle')}</Title>
                     <Image src={photo} alt={t('myDeliveries.photoAlt')} radius="md" />
-                    <Button size="lg" loading={busy} onClick={() => void send(doc.version)}>
+                    <ActionButton meaning="main" busy={busy} onClick={() => void send(doc.version)}>
                       {t('myDeliveries.send')}
-                    </Button>
-                    <Button variant="default" onClick={() => camera.current?.click()}>
+                    </ActionButton>
+                    <ActionButton meaning="other" onClick={() => camera.current?.click()}>
                       {t('myDeliveries.again')}
-                    </Button>
+                    </ActionButton>
                   </>
                 )}
               </Stack>

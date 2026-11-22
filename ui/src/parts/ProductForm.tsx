@@ -8,7 +8,8 @@ import {
   type SaveProductRequest,
   unitSchema,
 } from '@credo/shared';
-import { Button, NumberInput, Stack, Switch, Textarea, TextInput } from '@mantine/core';
+import { NumberInput, Stack, Switch, Textarea, TextInput } from '@mantine/core';
+import { ActionButton } from '../components/atoms/ActionButton';
 import {
   IconAdjustmentsHorizontal,
   IconBuildingWarehouse,
@@ -194,9 +195,9 @@ export function ProductForm({
           }
         />
         {editable && (
-          <Button type="submit" loading={saving} style={{ alignSelf: 'flex-start' }}>
+          <ActionButton meaning="main" submit busy={saving}>
             {adding ? t('lists.products.create') : t('lists.products.save')}
-          </Button>
+          </ActionButton>
         )}
       </Stack>
     </form>

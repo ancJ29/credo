@@ -1,4 +1,5 @@
 import { Button, Group, Paper, Stack, TextInput, Title } from '@mantine/core';
+import { ActionButton } from '../components/atoms/ActionButton';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { CopyText } from './CopyText';
@@ -49,9 +50,9 @@ export function ClientMade({ link, rootName, password, onAnother }: Props) {
         <Button component={Link} to="/operator/clients">
           {t('operator.back')}
         </Button>
-        <Button variant="default" onClick={onAnother}>
+        <ActionButton meaning="other" onClick={onAnother}>
           {t('operator.another')}
-        </Button>
+        </ActionButton>
       </Group>
     </Stack>
   );

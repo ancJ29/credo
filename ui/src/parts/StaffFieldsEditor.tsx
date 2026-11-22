@@ -9,17 +9,8 @@ import {
   type StaffSetup,
   staffConfig,
 } from '@credo/shared';
-import {
-  Button,
-  Checkbox,
-  Group,
-  NativeSelect,
-  Paper,
-  Stack,
-  Text,
-  TextInput,
-  Title,
-} from '@mantine/core';
+import { Checkbox, Group, NativeSelect, Paper, Stack, Text, TextInput, Title } from '@mantine/core';
+import { ActionButton } from '../components/atoms/ActionButton';
 import { useTranslation } from 'react-i18next';
 import { TYPE, WEIGHTS } from '../design-system/tokens';
 
@@ -206,15 +197,15 @@ export function FieldsEditor({ draft, onChange, nextKey }: Props) {
                   value={field.id}
                   onChange={(event) => changeField(field.key, { id: event.currentTarget.value })}
                 />
-                <Button
-                  variant="default"
-                  aria-label={`${t('setup.remove')} ${field.id || t('setup.ownKey')}`}
+                <ActionButton
+                  meaning="other"
+                  label={`${t('setup.remove')} ${field.id || t('setup.ownKey')}`}
                   onClick={() =>
                     change({ own: draft.own.filter((other) => other.key !== field.key) })
                   }
                 >
                   {t('setup.remove')}
-                </Button>
+                </ActionButton>
               </Group>
               <TextInput
                 label={t('setup.ownNameVi')}
@@ -265,11 +256,9 @@ export function FieldsEditor({ draft, onChange, nextKey }: Props) {
                           value={option.en}
                           onChange={(event) => changeOption({ en: event.currentTarget.value })}
                         />
-                        <Button
-                          variant="subtle"
-                          color="gray"
-                          size="xs"
-                          aria-label={`${t('setup.ownOptionRemove')} ${option.value}`}
+                        <ActionButton
+                          meaning="quiet"
+                          label={`${t('setup.ownOptionRemove')} ${option.value}`}
                           onClick={() =>
                             changeField(field.key, {
                               options: field.options.filter((other) => other.key !== option.key),
@@ -277,14 +266,12 @@ export function FieldsEditor({ draft, onChange, nextKey }: Props) {
                           }
                         >
                           {t('setup.ownOptionRemove')}
-                        </Button>
+                        </ActionButton>
                       </Group>
                     );
                   })}
-                  <Button
-                    variant="default"
-                    size="xs"
-                    style={{ alignSelf: 'flex-start' }}
+                  <ActionButton
+                    meaning="other"
                     onClick={() =>
                       changeField(field.key, {
                         options: [...field.options, { key: nextKey(), value: '', vi: '', en: '' }],
@@ -292,7 +279,7 @@ export function FieldsEditor({ draft, onChange, nextKey }: Props) {
                     }
                   >
                     {t('setup.ownOptionAdd')}
-                  </Button>
+                  </ActionButton>
                 </Stack>
               )}
               <Checkbox
@@ -305,9 +292,8 @@ export function FieldsEditor({ draft, onChange, nextKey }: Props) {
             </Stack>
           </Paper>
         ))}
-        <Button
-          variant="default"
-          style={{ alignSelf: 'flex-start' }}
+        <ActionButton
+          meaning="other"
           onClick={() =>
             change({
               own: [
@@ -327,7 +313,7 @@ export function FieldsEditor({ draft, onChange, nextKey }: Props) {
           }
         >
           {t('setup.ownAdd')}
-        </Button>
+        </ActionButton>
       </Stack>
 
       <Stack gap="sm">

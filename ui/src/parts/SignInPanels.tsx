@@ -1,5 +1,6 @@
 import { emailSchema, type EmployeeDoc } from '@credo/shared';
-import { Button, Group, Stack, Text, TextInput } from '@mantine/core';
+import { Group, Stack, Text, TextInput } from '@mantine/core';
+import { ActionButton } from '../components/atoms/ActionButton';
 import { IconMail, IconQrcode } from '@tabler/icons-react';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -88,13 +89,13 @@ export function EmailPanel({
             onChange={(event) => setTyped(event.currentTarget.value)}
           />
           <Group>
-            <Button type="submit" variant="default">
+            <ActionButton meaning="other" submit>
               {t('person.emailSet')}
-            </Button>
+            </ActionButton>
             {email !== null && (
-              <Button variant="default" onClick={() => void change(null)}>
+              <ActionButton meaning="other" onClick={() => void change(null)}>
                 {t('person.emailRemove')}
-              </Button>
+              </ActionButton>
             )}
           </Group>
         </Stack>
@@ -133,9 +134,9 @@ export function QrPanel({ page, id }: { page: PageProps; id: string }) {
             <Text {...TYPE.caption}>{t('person.qrOnce')}</Text>
           </Stack>
         )}
-        <Button variant="default" onClick={() => void show()}>
+        <ActionButton meaning="other" onClick={() => void show()}>
           {link === null ? t('person.qrShow') : t('person.qrNew')}
-        </Button>
+        </ActionButton>
       </Stack>
     </DetailCard>
   );

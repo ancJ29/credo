@@ -10,6 +10,7 @@ import { type PageProps, refusal, useLoad } from '../../page';
 import { CustomerForm } from '../../parts/CustomerForm';
 import { ProductForm } from '../../parts/ProductForm';
 import { TYPE } from '../../design-system/tokens';
+import { ActionButton } from '../../components/atoms/ActionButton';
 import { FormMessage } from '../../components/molecules/FormMessage';
 
 type Outcome = 'saved' | 'failed' | 'forbidden' | 'refused' | 'conflict' | null;
@@ -157,12 +158,11 @@ function Record<D extends { version: string }, V>({
         </FormMessage>
       )}
       {doc && outcome === 'conflict' && (
-        <FormMessage kind="warning">
-          <Stack gap="xs" align="flex-start">
-            {t(`lists.${kind}.conflict`)}
-            <Button
-              variant="default"
-              size="xs"
+        <FormMessage
+          kind="warning"
+          act={
+            <ActionButton
+              meaning="other"
               onClick={() => {
                 setCurrent(null);
                 setOutcome(null);
@@ -171,8 +171,10 @@ function Record<D extends { version: string }, V>({
               }}
             >
               {t(`lists.${kind}.conflictReload`)}
-            </Button>
-          </Stack>
+            </ActionButton>
+          }
+        >
+          {t(`lists.${kind}.conflict`)}
         </FormMessage>
       )}
       {doc &&

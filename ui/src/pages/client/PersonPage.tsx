@@ -58,6 +58,7 @@ import {
 } from '../../parts/personalFields';
 import { noteOf, personalPhoneOf, phoneOf, unitName } from '../../staffNames';
 import { TYPE } from '../../design-system/tokens';
+import { ActionButton } from '../../components/atoms/ActionButton';
 import { FormMessage } from '../../components/molecules/FormMessage';
 
 const READ_ONLY = { input: { fontFamily: 'ui-monospace, monospace' } };
@@ -141,10 +142,12 @@ function PasswordPanel({
             onChange={(event) => setTyped({ ...typed, again: event.currentTarget.value })}
           />
           <Group>
-            <Button type="submit">{t('person.passwordSet')}</Button>
-            <Button variant="default" onClick={() => void give(null)}>
+            <ActionButton meaning="other" submit>
+              {t('person.passwordSet')}
+            </ActionButton>
+            <ActionButton meaning="other" onClick={() => void give(null)}>
               {t('person.passwordMake')}
-            </Button>
+            </ActionButton>
           </Group>
         </Stack>
       </form>
@@ -218,9 +221,9 @@ function CodePanel({
             value={typed}
             onChange={(event) => setTyped(event.currentTarget.value)}
           />
-          <Button type="submit" variant="default">
+          <ActionButton meaning="other" submit>
             {t('person.codeSet')}
-          </Button>
+          </ActionButton>
         </Stack>
       </form>
     </DetailCard>
@@ -264,17 +267,17 @@ function ArchivePanel({
         {failed && <FormMessage kind="error">{words.failed}</FormMessage>}
         {asking ? (
           <Group>
-            <Button color={back ? undefined : 'red'} onClick={onSwitch}>
+            <ActionButton meaning="main" onClick={onSwitch}>
               {words.confirm}
-            </Button>
-            <Button variant="default" onClick={() => setAsking(false)}>
+            </ActionButton>
+            <ActionButton meaning="other" onClick={() => setAsking(false)}>
               {words.cancel}
-            </Button>
+            </ActionButton>
           </Group>
         ) : (
-          <Button variant="default" onClick={() => setAsking(true)}>
+          <ActionButton meaning="other" onClick={() => setAsking(true)}>
             {words.title}
-          </Button>
+          </ActionButton>
         )}
       </Stack>
     </DetailCard>
@@ -420,13 +423,15 @@ function PersonForm({
         </FormMessage>
       )}
       {outcome === 'conflict' && (
-        <FormMessage kind="warning">
-          <Stack gap="xs" align="flex-start">
-            {t('person.conflict')}
-            <Button variant="default" size="xs" onClick={actions.onReload}>
+        <FormMessage
+          kind="warning"
+          act={
+            <ActionButton meaning="other" onClick={actions.onReload}>
               {t('person.conflictReload')}
-            </Button>
-          </Stack>
+            </ActionButton>
+          }
+        >
+          {t('person.conflict')}
         </FormMessage>
       )}
       <DetailColumns
@@ -539,9 +544,9 @@ function PersonForm({
                 </DetailCard>
               )}
               {editable && (
-                <Button type="submit" loading={saving} style={{ alignSelf: 'flex-start' }}>
+                <ActionButton meaning="main" submit busy={saving}>
                   {t('person.save')}
-                </Button>
+                </ActionButton>
               )}
             </Stack>
           </form>

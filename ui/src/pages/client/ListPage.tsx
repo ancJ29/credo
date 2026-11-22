@@ -1,11 +1,11 @@
 import { can, type Language } from '@credo/shared';
-import { Button, Group, Text } from '@mantine/core';
+import { Group, Text } from '@mantine/core';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router';
 import { LISTS, type ListKind } from '../../listSheet';
 import { type PageProps, useLoad } from '../../page';
 import { ListTable } from '../../parts/ListTable';
 import { PageShell } from '../../parts/PageShell';
+import { ActionButton } from '../../components/atoms/ActionButton';
 
 /**
  * The company's customers or products as the BFF lists them, in code order, with the root's way to
@@ -28,14 +28,14 @@ export function ListPage({ kind, ...page }: PageProps & { kind: ListKind }) {
       actions={
         <Group gap="xs">
           {page.user.root && (
-            <Button component={Link} to={`/${kind}/import`} variant="default">
+            <ActionButton meaning="other" to={`/${kind}/import`}>
               {t('lists.import')}
-            </Button>
+            </ActionButton>
           )}
           {can(page.user, 'orders.canEdit') && (
-            <Button component={Link} to={`/${kind}/new`}>
+            <ActionButton meaning="main" to={`/${kind}/new`}>
               {t(`lists.${kind}.newButton`)}
-            </Button>
+            </ActionButton>
           )}
         </Group>
       }

@@ -1,14 +1,14 @@
 import { clientAddress, HOME_BOX, type Language } from '@credo/shared';
-import { Button, Group, Stack, Table, Text, Title } from '@mantine/core';
+import { Group, Stack, Table, Text, Title } from '@mantine/core';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router';
 import type { Api } from '../../api';
 import { CopyText } from '../../parts/CopyText';
 import { dayOf } from '../../day';
 import { Loaded } from '../../frame/Loaded';
 import { useLoad } from '../../page';
 import { TYPE } from '../../design-system/tokens';
+import { ActionButton } from '../../components/atoms/ActionButton';
 
 type Props = { api: Api; onSignedOut: () => void };
 
@@ -36,9 +36,9 @@ export function ClientsPage({ api, onSignedOut }: Props) {
     <Stack gap="lg">
       <Group justify="space-between">
         <Title {...TYPE.pageTitle}>{t('nav.clients')}</Title>
-        <Button component={Link} to="/operator/clients/new">
+        <ActionButton meaning="main" to="/operator/clients/new">
           {t('operator.add')}
-        </Button>
+        </ActionButton>
       </Group>
       <Loaded status={loaded.status} onRetry={loaded.reload}>
         {clients.length === 0 ? (
@@ -72,36 +72,29 @@ export function ClientsPage({ api, onSignedOut }: Props) {
                     </Table.Td>
                     <Table.Td ta="right">
                       <Group gap="xs" justify="flex-end" wrap="nowrap">
-                        <Button
-                          component={Link}
+                        <ActionButton
+                          meaning="other"
                           to={`/operator/clients/${client.code}/root-password`}
-                          variant="default"
-                          size="xs"
-                          aria-label={`${t('operator.rootPassword')}: ${client.code}`}
+                          label={`${t('operator.rootPassword')}: ${client.code}`}
                         >
                           {t('operator.rootPassword')}
-                        </Button>
+                        </ActionButton>
                         {boxes > 1 && (
-                          <Button
-                            component={Link}
+                          <ActionButton
+                            meaning="other"
                             to={`/operator/clients/${client.code}/move`}
-                            variant="default"
-                            size="xs"
-                            aria-label={`${t('operator.moveClient')}: ${client.code}`}
+                            label={`${t('operator.moveClient')}: ${client.code}`}
                           >
                             {t('operator.moveClient')}
-                          </Button>
+                          </ActionButton>
                         )}
-                        <Button
-                          component={Link}
+                        <ActionButton
+                          meaning="other"
                           to={`/operator/clients/${client.code}/delete`}
-                          variant="outline"
-                          color="red"
-                          size="xs"
-                          aria-label={`${t('operator.deleteClient')}: ${client.code}`}
+                          label={`${t('operator.deleteClient')}: ${client.code}`}
                         >
                           {t('operator.deleteClient')}
-                        </Button>
+                        </ActionButton>
                       </Group>
                     </Table.Td>
                   </Table.Tr>

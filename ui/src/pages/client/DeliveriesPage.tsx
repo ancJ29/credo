@@ -1,5 +1,5 @@
 import { daySchema, type DeliveryRequest, driverDay } from '@credo/shared';
-import { Anchor, Button, Group, Paper, Stack, Table, Text, TextInput, Title } from '@mantine/core';
+import { Anchor, Group, Paper, Stack, Table, Text, TextInput, Title } from '@mantine/core';
 import { useTranslation } from 'react-i18next';
 import { Link, useSearchParams } from 'react-router';
 import { Loaded } from '../../frame/Loaded';
@@ -7,6 +7,7 @@ import { StateBadge, useMoney } from '../../parts/OrderParts';
 import { type PageProps, useLoad } from '../../page';
 import { useGapText } from '../../parts/ReconcileParts';
 import { TYPE } from '../../design-system/tokens';
+import { ActionButton } from '../../components/atoms/ActionButton';
 
 const addressOf = (request: DeliveryRequest) => {
   const address = request.customer.extra['address'];
@@ -78,14 +79,13 @@ export function DeliveriesPage(page: PageProps) {
                           : t('reconcile.dayOpen')}
                       </Text>
                     </Stack>
-                    <Button
-                      component={Link}
+                    <ActionButton
+                      meaning="other"
                       to={`/deliveries/${day}/drivers/${driver.id}`}
-                      variant="default"
-                      aria-label={t('reconcile.openFor', { name: driver.name })}
+                      label={t('reconcile.openFor', { name: driver.name })}
                     >
                       {t('reconcile.open')}
-                    </Button>
+                    </ActionButton>
                   </Group>
                   <Table.ScrollContainer minWidth={720}>
                     <Table highlightOnHover aria-label={driver.name}>

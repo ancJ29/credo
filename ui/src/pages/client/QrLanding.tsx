@@ -1,8 +1,9 @@
 import type { Language } from '@credo/shared';
-import { Button, Loader, Stack, Text } from '@mantine/core';
+import { Loader, Stack, Text } from '@mantine/core';
 import { useTranslation } from 'react-i18next';
 import type { Brand } from '../../brand';
 import { SignInFrame } from '../SignIn';
+import { ActionButton } from '../../components/atoms/ActionButton';
 
 type Props = {
   brand: Brand;
@@ -31,7 +32,9 @@ export function QrLanding({ brand, status, onPassword, languages, onLanguage }: 
         {refused ? (
           <>
             <Text c="dimmed">{t('qrSignIn.refusedText')}</Text>
-            <Button onClick={onPassword}>{t('qrSignIn.password')}</Button>
+            <ActionButton meaning="main" onClick={onPassword}>
+              {t('qrSignIn.password')}
+            </ActionButton>
           </>
         ) : (
           <>

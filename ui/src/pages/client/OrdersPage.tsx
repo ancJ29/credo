@@ -1,5 +1,5 @@
 import { addDays, can, type Language, ORDER_LIST_DAYS, type Order } from '@credo/shared';
-import { Anchor, Button, Group, Stack, Table, Text, Title } from '@mantine/core';
+import { Anchor, Group, Stack, Table, Text, Title } from '@mantine/core';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
@@ -8,6 +8,7 @@ import { Loaded } from '../../frame/Loaded';
 import { StateBadge, useMoney } from '../../parts/OrderParts';
 import { type PageProps, useLoad } from '../../page';
 import { TYPE } from '../../design-system/tokens';
+import { ActionButton } from '../../components/atoms/ActionButton';
 
 /** The last `weeks` weeks of orders ending today, newest first: each week is one call, since the
  * BFF answers at most seven days. */
@@ -36,9 +37,9 @@ export function OrdersPage(page: PageProps) {
       <Group justify="space-between">
         <Title {...TYPE.pageTitle}>{t('nav.orders')}</Title>
         {can(page.user, 'orders.canEdit') && (
-          <Button component={Link} to="/orders/new">
+          <ActionButton meaning="main" to="/orders/new">
             {t('orders.new')}
-          </Button>
+          </ActionButton>
         )}
       </Group>
       <Text c="dimmed">{t('orders.since', { day: shownDay(from, language) })}</Text>
@@ -81,9 +82,9 @@ export function OrdersPage(page: PageProps) {
         )}
       </Loaded>
       <Group>
-        <Button variant="default" onClick={() => setWeeks(weeks + 1)}>
+        <ActionButton meaning="other" onClick={() => setWeeks(weeks + 1)}>
           {t('orders.earlier')}
-        </Button>
+        </ActionButton>
       </Group>
     </Stack>
   );

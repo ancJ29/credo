@@ -25,6 +25,7 @@ import { INVALID } from '../../parts/ownFields';
 import { type PageProps, refusal, useLoad } from '../../page';
 import { saveAs } from '../../saveAs';
 import { TYPE } from '../../design-system/tokens';
+import { ActionButton } from '../../components/atoms/ActionButton';
 import { FormMessage } from '../../components/molecules/FormMessage';
 
 /** Why a file was not read, or read to nothing. */
@@ -220,9 +221,9 @@ function ImportForm({
         <Text>{t('import.doneSignIn')}</Text>
         <Group>
           {rest > 0 && (
-            <Button loading={status === 'busy'} onClick={() => void send()}>
+            <ActionButton meaning="main" busy={status === 'busy'} onClick={() => void send()}>
               {t('import.addRest', { count: rest })}
-            </Button>
+            </ActionButton>
           )}
           <Button component={Link} to="/staff" variant={rest > 0 ? 'default' : 'filled'}>
             {t('staff.back')}
@@ -285,25 +286,26 @@ function ImportForm({
             </Table>
           </Table.ScrollContainer>
           <Group>
-            <Button
+            <ActionButton
+              meaning="main"
               disabled={held.length === 0}
-              loading={status === 'busy'}
+              busy={status === 'busy'}
               onClick={() => void send()}
             >
               {t('import.add', { count: held.length })}
-            </Button>
-            <Button variant="default" disabled={status === 'busy'} onClick={chooseAgain}>
+            </ActionButton>
+            <ActionButton meaning="other" disabled={status === 'busy'} onClick={chooseAgain}>
               {t('import.another')}
-            </Button>
+            </ActionButton>
           </Group>
         </Stack>
       ) : (
         <Paper withBorder p="md">
           <Stack gap="lg">
             <Stack gap="xs" align="flex-start">
-              <Button variant="default" onClick={() => void template()}>
+              <ActionButton meaning="other" onClick={() => void template()}>
                 {t('import.template')}
-              </Button>
+              </ActionButton>
               <Text {...TYPE.caption}>{t('import.templateHint')}</Text>
             </Stack>
             <TextInput
@@ -324,9 +326,14 @@ function ImportForm({
                 })}
               </FormMessage>
             )}
-            <Button disabled={!file} loading={status === 'busy'} onClick={() => void read(file!)}>
+            <ActionButton
+              meaning="main"
+              disabled={!file}
+              busy={status === 'busy'}
+              onClick={() => void read(file!)}
+            >
               {t('import.read')}
-            </Button>
+            </ActionButton>
           </Stack>
         </Paper>
       )}

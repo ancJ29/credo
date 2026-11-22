@@ -1,5 +1,6 @@
 import type { PhotoReply } from '@credo/shared';
-import { Avatar, Button, FileButton, Group, Image, Stack, Text } from '@mantine/core';
+import { Avatar, FileButton, Group, Image, Stack, Text } from '@mantine/core';
+import { ActionButton } from '../components/atoms/ActionButton';
 import { IconPhoto } from '@tabler/icons-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -79,9 +80,9 @@ export function PhotoPanel({ page, id, name, held, onHeld, editable }: Props) {
         <Stack gap={4} align="flex-start">
           <FileButton accept="image/*" onChange={(file) => void choose(file)}>
             {(props) => (
-              <Button variant="default" {...props}>
+              <ActionButton meaning="other" onClick={props.onClick}>
                 {t('person.photoChoose')}
-              </Button>
+              </ActionButton>
             )}
           </FileButton>
           <Text size="xs" c="dimmed">

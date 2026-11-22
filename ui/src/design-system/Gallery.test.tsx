@@ -958,7 +958,7 @@ describe('Gallery', () => {
     ]);
     expect(looks[3].getAttribute('style')).toContain(`--mantine-color-${TONES.danger}-`);
     expect(looks[0].getAttribute('style') ?? '').not.toContain(`--mantine-color-${TONES.danger}-`);
-    expect(about().getByText(/To come: open item 655 builds it\./)).toBeDefined();
+    expect(about().getByText(/Built and in use; .* open item 655 moves them\./)).toBeDefined();
   });
 
   it('213 case 14: the entry of StatusBadge draws each status of the records in its word, a built part’s panel saying the screens do not use it yet', () => {

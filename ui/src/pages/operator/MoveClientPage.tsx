@@ -11,6 +11,7 @@ import { BoxChoice } from '../../parts/BoxChoice';
 import { touch } from '../../touch';
 import { TYPE } from '../../design-system/tokens';
 import { FormMessage } from '../../components/molecules/FormMessage';
+import { ActionButton } from '../../components/atoms/ActionButton';
 
 type Props = {
   api: Api;
@@ -176,35 +177,25 @@ export function MoveClientPage({ api, passkeys, onSignedOut, wait = sleep }: Pro
             <Stack align="flex-start">
               <Text>{t('operator.moveUnder', { box: client.move.box })}</Text>
               <Group>
-                <Button loading={busy} onClick={() => go({})}>
+                <ActionButton meaning="main" busy={busy} onClick={() => go({})}>
                   {t('operator.moveGoOn')}
-                </Button>
-                <Button
-                  variant="outline"
-                  color="red"
-                  disabled={busy}
-                  onClick={() => go({ stop: true })}
-                >
+                </ActionButton>
+                <ActionButton meaning="other" disabled={busy} onClick={() => go({ stop: true })}>
                   {t('operator.moveStop')}
-                </Button>
+                </ActionButton>
                 {back}
               </Group>
             </Stack>
           ) : reply !== null || sweepOn ? (
             problem === 'failed' && (
               <Group>
-                <Button loading={busy} onClick={() => go({})}>
+                <ActionButton meaning="main" busy={busy} onClick={() => go({})}>
                   {t('operator.moveGoOn')}
-                </Button>
+                </ActionButton>
                 {!after && (
-                  <Button
-                    variant="outline"
-                    color="red"
-                    disabled={busy}
-                    onClick={() => go({ stop: true })}
-                  >
+                  <ActionButton meaning="other" disabled={busy} onClick={() => go({ stop: true })}>
                     {t('operator.moveStop')}
-                  </Button>
+                  </ActionButton>
                 )}
               </Group>
             )
@@ -226,9 +217,9 @@ export function MoveClientPage({ api, passkeys, onSignedOut, wait = sleep }: Pro
                   />
                   <Text {...TYPE.caption}>{t('operator.moveTouch')}</Text>
                   <Group>
-                    <Button type="submit" loading={busy} disabled={picked === ''}>
+                    <ActionButton meaning="main" submit busy={busy} disabled={picked === ''}>
                       {t('operator.moveMake')}
-                    </Button>
+                    </ActionButton>
                     {back}
                   </Group>
                 </Stack>

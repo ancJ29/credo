@@ -1,5 +1,5 @@
 import type { PermissionLayer, SaveStaffSetupRequest, StaffSetup } from '@credo/shared';
-import { Button, Group, Paper, Stack, Text, TextInput, Title } from '@mantine/core';
+import { Group, Paper, Stack, Text, TextInput, Title } from '@mantine/core';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ApiError } from '../../api';
@@ -13,6 +13,7 @@ import {
   savedFrom,
 } from '../../parts/StaffFieldsEditor';
 import { TYPE } from '../../design-system/tokens';
+import { ActionButton } from '../../components/atoms/ActionButton';
 import { FormMessage } from '../../components/molecules/FormMessage';
 
 /** A unit being edited: `id` is absent until the BFF mints it, `key` tells the rows apart. */
@@ -76,13 +77,13 @@ function UnitList({ kind, drafts, onChange, nextKey }: ListProps) {
                 value={draft.name}
                 onChange={(event) => change(draft.key, { name: event.currentTarget.value })}
               />
-              <Button
-                variant="default"
+              <ActionButton
+                meaning="other"
                 onClick={() => onChange(drafts.filter((other) => other.key !== draft.key))}
-                aria-label={`${t('setup.remove')} ${draft.name}`}
+                label={`${t('setup.remove')} ${draft.name}`}
               >
                 {t('setup.remove')}
-              </Button>
+              </ActionButton>
             </Group>
             <PermissionEditor
               mode={kind === 'departments' ? 'allow' : 'each'}
@@ -93,15 +94,14 @@ function UnitList({ kind, drafts, onChange, nextKey }: ListProps) {
           </Stack>
         </Paper>
       ))}
-      <Button
-        variant="default"
-        style={{ alignSelf: 'flex-start' }}
+      <ActionButton
+        meaning="other"
         onClick={() =>
           onChange([...drafts, { key: nextKey(), name: '', permissions: {}, extra: {} }])
         }
       >
         {t(kind === 'departments' ? 'setup.add' : 'setup.addPosition')}
-      </Button>
+      </ActionButton>
     </Stack>
   );
 }
@@ -141,13 +141,15 @@ function SetupForm({ setup, saving, outcome, onSave, onRefused, onReload }: Form
         </FormMessage>
       )}
       {outcome === 'conflict' && (
-        <FormMessage kind="warning">
-          <Stack gap="xs" align="flex-start">
-            {t('setup.conflict')}
-            <Button variant="default" size="xs" onClick={onReload}>
+        <FormMessage
+          kind="warning"
+          act={
+            <ActionButton meaning="other" onClick={onReload}>
               {t('setup.conflictReload')}
-            </Button>
-          </Stack>
+            </ActionButton>
+          }
+        >
+          {t('setup.conflict')}
         </FormMessage>
       )}
       <UnitList
@@ -158,9 +160,9 @@ function SetupForm({ setup, saving, outcome, onSave, onRefused, onReload }: Form
       />
       <UnitList kind="positions" drafts={positions} onChange={setPositions} nextKey={nextKey} />
       <FieldsEditor draft={fields} onChange={setFields} nextKey={nextKey} />
-      <Button
-        loading={saving}
-        style={{ alignSelf: 'flex-start' }}
+      <ActionButton
+        meaning="main"
+        busy={saving}
         onClick={() => {
           const kept = savedFrom(fields);
           if ('refused' in kept) {
@@ -175,7 +177,7 @@ function SetupForm({ setup, saving, outcome, onSave, onRefused, onReload }: Form
         }}
       >
         {t('setup.save')}
-      </Button>
+      </ActionButton>
     </Stack>
   );
 }

@@ -3,6 +3,7 @@ import type { ReactNode } from 'react';
 import { GUIDELINE, type Contract, type PartState } from './guideline';
 import { followedWords, heldWords } from './Charter';
 import classes from './Gallery.module.css';
+import { ActionButton } from '../components/atoms/ActionButton';
 import { FormMessage } from '../components/molecules/FormMessage';
 import { TONES, TYPE } from './tokens';
 
@@ -114,12 +115,9 @@ function PageStateSample({ state: { name, role, tone } }: { state: PartState }) 
 /** Each state a page can be in instead of its body, at its contract's tone and role. */
 export const PageStateStates = platesOf('PageState', (state) => <PageStateSample state={state} />);
 
-/** A button at each meaning's look, Mantine's Button: the page's one main action first. */
-export const ActionButtonStates = platesOf('ActionButton', ({ name, look }) => (
-  <Button
-    variant={look === 'red' ? 'filled' : look}
-    color={look === 'red' ? TONES.danger : undefined}
-  >
+/** A button at each meaning, drawn by the part itself: the page's one main action first. */
+export const ActionButtonStates = platesOf('ActionButton', ({ name }) => (
+  <ActionButton meaning={name.toLowerCase() as 'main'}>
     {name === 'Danger' ? 'Delete the record' : `${name} action`}
-  </Button>
+  </ActionButton>
 ));

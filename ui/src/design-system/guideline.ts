@@ -416,9 +416,14 @@ export const GUIDELINE: {
           line: 'That it is a note the page read when it loaded, not the outcome of an act: spoken as a note.',
         },
         {
+          prop: 'act',
+          is: 'content',
+          line: 'The act the message offers beside its words, an `ActionButton`: the part lays it out under the words.',
+        },
+        {
           prop: 'children',
           is: 'content',
-          line: 'Its words, and an act beside them where the message offers one.',
+          line: 'Its words; one site still passes words and a read-only field (item 658).',
         },
       ],
       decides: [
@@ -517,6 +522,32 @@ export const GUIDELINE: {
         },
         { prop: 'children', is: 'content', line: 'Its words.' },
         { prop: 'onClick', is: 'content', line: 'The act it performs.' },
+        {
+          prop: 'to',
+          is: 'content',
+          line: 'The address it goes to, where the act is a move to another page: it is then drawn as a link.',
+        },
+        {
+          prop: 'submit',
+          is: 'meaning',
+          line: 'That it sends the form it sits in, instead of performing an act of its own.',
+        },
+        {
+          prop: 'busy',
+          is: 'meaning',
+          line: 'That its act is under way: it shows a loader and takes no second press.',
+        },
+        {
+          prop: 'disabled',
+          is: 'meaning',
+          line: 'That its act cannot be taken yet: it takes no press.',
+        },
+        { prop: 'icon', is: 'content', line: 'A small picture before its words.' },
+        {
+          prop: 'label',
+          is: 'content',
+          line: 'The name a screen reader says for it, where its words alone do not say which one it is (one in each row of a table).',
+        },
       ],
       decides: [
         {
@@ -531,7 +562,8 @@ export const GUIDELINE: {
       fixes: [
         'Its look from its meaning: the main action filled in the client’s colour, another the default look, a quiet one subtle, a danger red filled.',
         'Its size: Mantine’s small, one size for every button.',
-        'Its place: a page has one main action, and a danger is the last step of a delete, which a page of its own confirms.',
+        'Its width: its words’ own, even in a column that stretches (and its place in a row unmoved), so no screen needs a wrapper or an `alignSelf` for it.',
+        'Its place is its column’s, not its own: a page has one main action and a danger is only a delete’s last step, which the part cannot count; case 7 of the screens-on-parts plan holds one main a page file, and the rest, a danger’s place and a part drawn on a page, is the review’s, as the rule says.',
       ],
       states: [
         { name: 'Main', look: 'filled', line: 'The page’s one main action.' },
@@ -551,6 +583,7 @@ export const GUIDELINE: {
       serves: 'A page has one main action',
       heldBy: { check: 'ui/src/design-system/guideline.test.ts' },
       followed: { item: 655 },
+      used: true,
     },
     {
       part: 'StatusBadge',

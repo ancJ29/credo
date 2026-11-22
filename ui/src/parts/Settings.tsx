@@ -7,7 +7,6 @@ import {
   type TenantConfig,
 } from '@credo/shared';
 import {
-  Button,
   Checkbox,
   ColorInput,
   FileButton,
@@ -27,6 +26,7 @@ import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LANGUAGE_NAMES } from '../i18n';
 import { Loaded } from '../frame/Loaded';
+import { ActionButton } from '../components/atoms/ActionButton';
 import { FormMessage } from '../components/molecules/FormMessage';
 import { DetailCard } from './DetailCards';
 import { PALETTES, paletteOfColour } from '../design-system/palettes';
@@ -100,13 +100,15 @@ function SettingsForm({ config, outcome, saving, onSave, onReload, logoRefusal }
           <FormMessage kind="error">{t('settings.saveRefused')}</FormMessage>
         )}
         {outcome === 'conflict' && (
-          <FormMessage kind="warning">
-            <Stack gap="xs" align="flex-start">
-              {t('settings.conflict')}
-              <Button size="xs" variant="default" onClick={onReload}>
+          <FormMessage
+            kind="warning"
+            act={
+              <ActionButton meaning="other" onClick={onReload}>
                 {t('settings.conflictReload')}
-              </Button>
-            </Stack>
+              </ActionButton>
+            }
+          >
+            {t('settings.conflict')}
           </FormMessage>
         )}
         <DetailCard icon={<IconBuilding size={14} />} title={t('settings.basics')}>
@@ -130,20 +132,15 @@ function SettingsForm({ config, outcome, saving, onSave, onReload, logoRefusal }
                   )}
                   <FileButton accept="image/*" onChange={chooseLogo}>
                     {(props) => (
-                      <Button variant="default" size="xs" {...props}>
+                      <ActionButton meaning="other" onClick={props.onClick}>
                         {t('settings.logoChoose')}
-                      </Button>
+                      </ActionButton>
                     )}
                   </FileButton>
                   {draft.logo && (
-                    <Button
-                      variant="subtle"
-                      color="gray"
-                      size="xs"
-                      onClick={() => change({ logo: null })}
-                    >
+                    <ActionButton meaning="quiet" onClick={() => change({ logo: null })}>
                       {t('settings.logoRemove')}
-                    </Button>
+                    </ActionButton>
                   )}
                 </Group>
                 {logoRefused && (
@@ -232,11 +229,9 @@ function SettingsForm({ config, outcome, saving, onSave, onReload, logoRefusal }
             </SimpleGrid>
           </Stack>
         </DetailCard>
-        <Group>
-          <Button type="submit" loading={saving} disabled={!valid}>
-            {t('settings.save')}
-          </Button>
-        </Group>
+        <ActionButton meaning="main" submit busy={saving} disabled={!valid}>
+          {t('settings.save')}
+        </ActionButton>
       </Stack>
     </form>
   );

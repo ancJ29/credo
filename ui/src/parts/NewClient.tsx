@@ -4,7 +4,8 @@ import {
   HOME_BOX,
   normaliseClientCode,
 } from '@credo/shared';
-import { Button, Paper, Stack, Text, TextInput, Title } from '@mantine/core';
+import { Paper, Stack, Text, TextInput, Title } from '@mantine/core';
+import { ActionButton } from '../components/atoms/ActionButton';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BoxChoice } from './BoxChoice';
@@ -85,9 +86,9 @@ export function NewClient({ status, boxes = [], onSubmit }: Props) {
                 onChange={setBox}
               />
             )}
-            <Button type="submit" loading={status === 'busy'}>
+            <ActionButton meaning="main" submit busy={status === 'busy'}>
               {t('operator.make')}
-            </Button>
+            </ActionButton>
           </Stack>
         </Paper>
       </form>

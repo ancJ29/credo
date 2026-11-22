@@ -1,4 +1,5 @@
-import { Alert, Button, Center, Loader, Stack } from '@mantine/core';
+import { Alert, Center, Loader, Stack } from '@mantine/core';
+import { ActionButton } from '../components/atoms/ActionButton';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -24,9 +25,9 @@ export function Loaded({ status, onRetry, children }: Props) {
         <Alert color="red" role="alert" w="100%">
           {t('common.loadFailed')}
         </Alert>
-        <Button variant="default" onClick={onRetry}>
+        <ActionButton meaning="other" onClick={onRetry}>
           {t('common.retry')}
-        </Button>
+        </ActionButton>
       </Stack>
     );
   }
