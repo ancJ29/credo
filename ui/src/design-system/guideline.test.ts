@@ -273,10 +273,10 @@ describe('The guideline’s contracts', () => {
 describe('The guideline’s buttons', () => {
   it('213 case 15: every look a screen draws a Button in maps to one of ActionButton’s four meanings', () => {
     const looks = Object.values(SCREENS).flatMap(drawnButtons);
-    // A set that found nothing would quiet the check below: the plan counts 109 on its tree, the screens' moves leave 15 (12 back links, 3 doors).
+    // A set that found nothing would quiet the check below: the plan counts 109 on its tree, the screens' moves leave 3, the doors.
     expect(Object.keys(SCREENS).length).toBeGreaterThan(50);
-    expect(looks.length).toBeGreaterThan(10);
-    expect(new Set(looks).size).toBeGreaterThan(1);
+    expect(looks.length).toBeGreaterThan(2);
+    expect(new Set(looks).size).toBeGreaterThan(0);
     const map: Record<string, string> = GUIDELINE.buttons;
     expect(unmapped(looks, map)).toEqual([]);
     expect(new Set(Object.values(map))).toEqual(new Set(['main', 'other', 'quiet', 'danger']));

@@ -316,7 +316,7 @@ export const ENTRIES: Entry[] = [
     description:
       'The shell of a page: a way back above, its heading with the record’s status chip and what acts on it beside, then its body, drawn only when its data is ready.',
     props:
-      "title: string · actions?: ReactNode · status: 'loading' | 'failed' | 'ready' · onRetry: () => void · back?: { href: string; children: string } · recordStatus?: Status · children: ReactNode",
+      "title: string · actions?: ReactNode · status: 'loading' | 'failed' | 'ready' · onRetry?: () => void · back?: { href: string; children: string } · recordStatus?: Status · children: ReactNode",
     useWhen: ['A signed-in page loads its data and shows it under its title.'],
     dontUseWhen: [
       'A page before sign-in: that is DoorCard’s.',

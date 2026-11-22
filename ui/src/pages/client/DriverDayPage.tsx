@@ -18,6 +18,7 @@ import { type PageProps, refusal, useLoad } from '../../page';
 import { useGapText } from '../../parts/ReconcileParts';
 import { TYPE } from '../../design-system/tokens';
 import { ActionButton } from '../../components/atoms/ActionButton';
+import { PageShell } from '../../parts/PageShell';
 import { FormMessage } from '../../components/molecules/FormMessage';
 
 /** What the page says of its last try to close: nothing, a day closed, a failure that kept the
@@ -106,159 +107,154 @@ export function DriverDayPage(page: PageProps) {
   );
 
   return (
-    <Stack gap="lg">
-      <Loaded status={loaded.status} onRetry={loaded.reload}>
-        {driver === undefined ? (
-          <Text c="dimmed">{t('reconcile.noRequests')}</Text>
-        ) : (
-          <>
-            <Title {...TYPE.pageTitle}>{t('reconcile.title', { name: driver.name })}</Title>
-            <Text>{t('orders.forDay', { day: shownDay(day, language) })}</Text>
-            <Anchor component={Link} to={`/deliveries?day=${day}`}>
-              {t('reconcile.back')}
-            </Anchor>
-            {outcome === 'closed' && (
-              <FormMessage kind="success">{t('reconcile.closedNow')}</FormMessage>
-            )}
-            {outcome === 'failed' && (
-              <FormMessage kind="error">{t('reconcile.failed')}</FormMessage>
-            )}
-            {outcome === 'moved' && (
-              <FormMessage kind="warning">{t('reconcile.moved')}</FormMessage>
-            )}
+    <Loaded status={loaded.status} onRetry={loaded.reload}>
+      {driver === undefined ? (
+        <Text c="dimmed">{t('reconcile.noRequests')}</Text>
+      ) : (
+        <PageShell
+          title={t('reconcile.title', { name: driver.name })}
+          back={{ href: `/deliveries?day=${day}`, children: t('reconcile.back') }}
+          status="ready"
+          onRetry={loaded.reload}
+        >
+          <Text>{t('orders.forDay', { day: shownDay(day, language) })}</Text>
+          {outcome === 'closed' && (
+            <FormMessage kind="success">{t('reconcile.closedNow')}</FormMessage>
+          )}
+          {outcome === 'failed' && <FormMessage kind="error">{t('reconcile.failed')}</FormMessage>}
+          {outcome === 'moved' && <FormMessage kind="warning">{t('reconcile.moved')}</FormMessage>}
+          <Paper withBorder p="md">
+            <Stack gap="sm">
+              <Title order={3}>{t('reconcile.deliveredTitle')}</Title>
+              {figures.delivered.length === 0 ? (
+                <Text c="dimmed">{t('reconcile.noDelivered')}</Text>
+              ) : (
+                requestTable(figures.delivered, true)
+              )}
+            </Stack>
+          </Paper>
+          {figures.waiting.length > 0 && (
             <Paper withBorder p="md">
               <Stack gap="sm">
-                <Title order={3}>{t('reconcile.deliveredTitle')}</Title>
-                {figures.delivered.length === 0 ? (
-                  <Text c="dimmed">{t('reconcile.noDelivered')}</Text>
-                ) : (
-                  requestTable(figures.delivered, true)
-                )}
+                <Title order={3}>{t('reconcile.waitingTitle')}</Title>
+                <Text c="dimmed">{t('reconcile.waitingText')}</Text>
+                {requestTable(figures.waiting, false)}
               </Stack>
             </Paper>
-            {figures.waiting.length > 0 && (
-              <Paper withBorder p="md">
-                <Stack gap="sm">
-                  <Title order={3}>{t('reconcile.waitingTitle')}</Title>
-                  <Text c="dimmed">{t('reconcile.waitingText')}</Text>
-                  {requestTable(figures.waiting, false)}
-                </Stack>
-              </Paper>
-            )}
-            {closed ? (
-              <Paper withBorder p="md">
-                <Stack gap="sm">
-                  <Title order={3}>{t('reconcile.closedTitle')}</Title>
-                  <Table aria-label={t('reconcile.closedTitle')}>
-                    <Table.Tbody>
-                      <Table.Tr>
-                        <Table.Th scope="row">{t('reconcile.toCollect')}</Table.Th>
-                        <Table.Td ta="right">{money(closed.toCollect)}</Table.Td>
-                      </Table.Tr>
-                      <Table.Tr>
-                        <Table.Th scope="row">{t('reconcile.handedIn')}</Table.Th>
-                        <Table.Td ta="right">{money(closed.handedIn)}</Table.Td>
-                      </Table.Tr>
-                      <Table.Tr>
-                        <Table.Th scope="row">{t('reconcile.difference')}</Table.Th>
-                        <Table.Td ta="right">{gapText(closed.difference)}</Table.Td>
-                      </Table.Tr>
-                      <Table.Tr>
-                        <Table.Th scope="row">{t('reconcile.closedBy')}</Table.Th>
-                        <Table.Td ta="right">
-                          {closed.closedBy.code === null
-                            ? t('reconcile.byRoot', { name: closed.closedBy.name })
-                            : `${closed.closedBy.code} · ${closed.closedBy.name}`}
-                        </Table.Td>
-                      </Table.Tr>
-                    </Table.Tbody>
-                  </Table>
-                </Stack>
-              </Paper>
+          )}
+          {closed ? (
+            <Paper withBorder p="md">
+              <Stack gap="sm">
+                <Title order={3}>{t('reconcile.closedTitle')}</Title>
+                <Table aria-label={t('reconcile.closedTitle')}>
+                  <Table.Tbody>
+                    <Table.Tr>
+                      <Table.Th scope="row">{t('reconcile.toCollect')}</Table.Th>
+                      <Table.Td ta="right">{money(closed.toCollect)}</Table.Td>
+                    </Table.Tr>
+                    <Table.Tr>
+                      <Table.Th scope="row">{t('reconcile.handedIn')}</Table.Th>
+                      <Table.Td ta="right">{money(closed.handedIn)}</Table.Td>
+                    </Table.Tr>
+                    <Table.Tr>
+                      <Table.Th scope="row">{t('reconcile.difference')}</Table.Th>
+                      <Table.Td ta="right">{gapText(closed.difference)}</Table.Td>
+                    </Table.Tr>
+                    <Table.Tr>
+                      <Table.Th scope="row">{t('reconcile.closedBy')}</Table.Th>
+                      <Table.Td ta="right">
+                        {closed.closedBy.code === null
+                          ? t('reconcile.byRoot', { name: closed.closedBy.name })
+                          : `${closed.closedBy.code} · ${closed.closedBy.name}`}
+                      </Table.Td>
+                    </Table.Tr>
+                  </Table.Tbody>
+                </Table>
+              </Stack>
+            </Paper>
+          ) : (
+            can(page.user, 'orders.canEdit') &&
+            (day > page.today() ? (
+              <Text c="dimmed">{t('reconcile.notYet')}</Text>
             ) : (
-              can(page.user, 'orders.canEdit') &&
-              (day > page.today() ? (
-                <Text c="dimmed">{t('reconcile.notYet')}</Text>
-              ) : (
-                <>
-                  <Paper withBorder p="md">
-                    <Stack gap="sm">
-                      <Title order={3}>{t('reconcile.cashTitle')}</Title>
-                      <NumberInput
-                        label={t('reconcile.cash')}
-                        description={t('reconcile.wholeDong')}
-                        allowDecimal={false}
-                        allowNegative={false}
-                        thousandSeparator={language === 'vi' ? '.' : ','}
-                        decimalSeparator={language === 'vi' ? ',' : '.'}
-                        min={0}
-                        max={TOTAL_MAX}
-                        w="100%"
-                        maw={320}
-                        readOnly={asking}
-                        value={cash}
-                        onChange={(value) => setCash(typeof value === 'number' ? value : '')}
-                      />
-                      <Text role="status">
-                        {handedIn === null
-                          ? t('reconcile.typeCash')
-                          : gapText(gapOf(figures.toCollect, handedIn))}
-                      </Text>
-                    </Stack>
-                  </Paper>
-                  <Paper withBorder p="md">
-                    <Stack gap="sm" align="flex-start">
-                      <Title order={3}>{t('reconcile.close')}</Title>
-                      <Text c="dimmed">{t('reconcile.closeText')}</Text>
-                      {figures.tooLarge && (
-                        <FormMessage kind="warning">{t('reconcile.tooLarge')}</FormMessage>
-                      )}
-                      {asking && handedIn !== null ? (
-                        <Stack gap="xs" align="flex-start">
-                          <Text {...TYPE.bodyStrong}>
-                            {t('reconcile.closeAsk', { name: driver.name })}
-                          </Text>
-                          <Text>{t('reconcile.closeCash', { amount: money(handedIn) })}</Text>
-                          <Text>
-                            {t('reconcile.closeGap', {
-                              gap: gapText(gapOf(figures.toCollect, handedIn)),
-                            })}
-                          </Text>
-                          <Text>
-                            {figures.waiting.length === 0
-                              ? t('reconcile.closeNoWaiting')
-                              : t('reconcile.closeWaiting', { count: figures.waiting.length })}
-                          </Text>
-                          <Group>
-                            <ActionButton
-                              meaning="main"
-                              busy={busy}
-                              onClick={() => void close(handedIn)}
-                            >
-                              {t('reconcile.closeConfirm')}
-                            </ActionButton>
-                            <ActionButton meaning="other" onClick={() => setAsking(false)}>
-                              {t('reconcile.keepOpen')}
-                            </ActionButton>
-                          </Group>
-                        </Stack>
-                      ) : (
-                        <ActionButton
-                          meaning="other"
-                          disabled={handedIn === null || figures.tooLarge}
-                          onClick={() => setAsking(true)}
-                        >
-                          {t('reconcile.close')}
-                        </ActionButton>
-                      )}
-                    </Stack>
-                  </Paper>
-                </>
-              ))
-            )}
-          </>
-        )}
-      </Loaded>
-    </Stack>
+              <>
+                <Paper withBorder p="md">
+                  <Stack gap="sm">
+                    <Title order={3}>{t('reconcile.cashTitle')}</Title>
+                    <NumberInput
+                      label={t('reconcile.cash')}
+                      description={t('reconcile.wholeDong')}
+                      allowDecimal={false}
+                      allowNegative={false}
+                      thousandSeparator={language === 'vi' ? '.' : ','}
+                      decimalSeparator={language === 'vi' ? ',' : '.'}
+                      min={0}
+                      max={TOTAL_MAX}
+                      w="100%"
+                      maw={320}
+                      readOnly={asking}
+                      value={cash}
+                      onChange={(value) => setCash(typeof value === 'number' ? value : '')}
+                    />
+                    <Text role="status">
+                      {handedIn === null
+                        ? t('reconcile.typeCash')
+                        : gapText(gapOf(figures.toCollect, handedIn))}
+                    </Text>
+                  </Stack>
+                </Paper>
+                <Paper withBorder p="md">
+                  <Stack gap="sm" align="flex-start">
+                    <Title order={3}>{t('reconcile.close')}</Title>
+                    <Text c="dimmed">{t('reconcile.closeText')}</Text>
+                    {figures.tooLarge && (
+                      <FormMessage kind="warning">{t('reconcile.tooLarge')}</FormMessage>
+                    )}
+                    {asking && handedIn !== null ? (
+                      <Stack gap="xs" align="flex-start">
+                        <Text {...TYPE.bodyStrong}>
+                          {t('reconcile.closeAsk', { name: driver.name })}
+                        </Text>
+                        <Text>{t('reconcile.closeCash', { amount: money(handedIn) })}</Text>
+                        <Text>
+                          {t('reconcile.closeGap', {
+                            gap: gapText(gapOf(figures.toCollect, handedIn)),
+                          })}
+                        </Text>
+                        <Text>
+                          {figures.waiting.length === 0
+                            ? t('reconcile.closeNoWaiting')
+                            : t('reconcile.closeWaiting', { count: figures.waiting.length })}
+                        </Text>
+                        <Group>
+                          <ActionButton
+                            meaning="main"
+                            busy={busy}
+                            onClick={() => void close(handedIn)}
+                          >
+                            {t('reconcile.closeConfirm')}
+                          </ActionButton>
+                          <ActionButton meaning="other" onClick={() => setAsking(false)}>
+                            {t('reconcile.keepOpen')}
+                          </ActionButton>
+                        </Group>
+                      </Stack>
+                    ) : (
+                      <ActionButton
+                        meaning="other"
+                        disabled={handedIn === null || figures.tooLarge}
+                        onClick={() => setAsking(true)}
+                      >
+                        {t('reconcile.close')}
+                      </ActionButton>
+                    )}
+                  </Stack>
+                </Paper>
+              </>
+            ))
+          )}
+        </PageShell>
+      )}
+    </Loaded>
   );
 }

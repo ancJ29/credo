@@ -16,7 +16,6 @@ import {
   Table,
   Text,
   TextInput,
-  Title,
 } from '@mantine/core';
 import { IconListDetails, IconPackage, IconTruck } from '@tabler/icons-react';
 import { type ReactNode, useState } from 'react';
@@ -36,10 +35,10 @@ import {
   useMoney,
 } from '../../parts/OrderParts';
 import { type PageProps, refusal, useLoad } from '../../page';
-import { TYPE } from '../../design-system/tokens';
 import { ActionButton } from '../../components/atoms/ActionButton';
-import { StatusBadge } from '../../components/atoms/StatusBadge';
+import { PageShell } from '../../parts/PageShell';
 import { FormMessage } from '../../components/molecules/FormMessage';
+import { PageHeader } from '../../components/organisms/PageHeader';
 
 /** What the page tells after a step that went through. */
 type Done = 'saved' | 'confirmed' | 'sent' | 'cancelled';
@@ -431,7 +430,7 @@ export function NewOrderPage(page: PageProps) {
   const { t } = useTranslation();
   return (
     <Stack gap="lg">
-      <Title {...TYPE.pageTitle}>{t('orders.newTitle')}</Title>
+      <PageHeader title={t('orders.newTitle')} />
       <Editor page={page} existing={null} />
     </Stack>
   );
@@ -463,48 +462,45 @@ export function OrderPage(page: PageProps) {
   };
 
   return (
-    <Stack gap="lg">
-      <Loaded status={loaded.status} onRetry={loaded.reload}>
-        {doc && (
-          <>
-            <Group justify="space-between">
-              <Title {...TYPE.pageTitle}>
-                {t('orders.orderTitle', { number: doc.order.number })}
-              </Title>
-              <StatusBadge status={doc.order.state} />
-            </Group>
-            {done && (
-              <FormMessage kind="success">
-                {t(`orders.done.${done}`, { number: doc.order.request?.number })}
-              </FormMessage>
-            )}
-            {doc.order.state === 'draft' && editor ? (
-              <Editor
-                key={`${doc.order.id}:${resets}`}
-                page={page}
-                existing={{ doc, onDoc, onTheirs }}
-              />
-            ) : (
-              <OrderView
-                doc={doc}
-                steps={
-                  editor &&
-                  doc.order.state === 'confirmed' && (
-                    <OrderActions
-                      key={doc.version}
-                      page={page}
-                      doc={doc}
-                      unsaved={false}
-                      onDoc={onDoc}
-                      onTheirs={onTheirs}
-                    />
-                  )
-                }
-              />
-            )}
-          </>
-        )}
-      </Loaded>
-    </Stack>
+    <Loaded status={loaded.status} onRetry={loaded.reload}>
+      {doc && (
+        <PageShell
+          title={t('orders.orderTitle', { number: doc.order.number })}
+          recordStatus={doc.order.state}
+          status="ready"
+          onRetry={loaded.reload}
+        >
+          {done && (
+            <FormMessage kind="success">
+              {t(`orders.done.${done}`, { number: doc.order.request?.number })}
+            </FormMessage>
+          )}
+          {doc.order.state === 'draft' && editor ? (
+            <Editor
+              key={`${doc.order.id}:${resets}`}
+              page={page}
+              existing={{ doc, onDoc, onTheirs }}
+            />
+          ) : (
+            <OrderView
+              doc={doc}
+              steps={
+                editor &&
+                doc.order.state === 'confirmed' && (
+                  <OrderActions
+                    key={doc.version}
+                    page={page}
+                    doc={doc}
+                    unsaved={false}
+                    onDoc={onDoc}
+                    onTheirs={onTheirs}
+                  />
+                )
+              }
+            />
+          )}
+        </PageShell>
+      )}
+    </Loaded>
   );
 }

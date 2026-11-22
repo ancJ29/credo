@@ -1,5 +1,5 @@
 import type { DeliveryRequest, Language } from '@credo/shared';
-import { Group, Paper, Stack, Text, Title } from '@mantine/core';
+import { Group, Paper, Stack, Text } from '@mantine/core';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { shownDay } from '../../day';
@@ -8,6 +8,7 @@ import { useMoney } from '../../parts/OrderParts';
 import { StatusBadge } from '../../components/atoms/StatusBadge';
 import { type PageProps, useLoad } from '../../page';
 import { TYPE, WEIGHTS } from '../../design-system/tokens';
+import { PageHeader } from '../../components/organisms/PageHeader';
 
 const addressOf = (request: DeliveryRequest) => {
   const address = request.customer.extra['address'];
@@ -25,7 +26,7 @@ export function MyDeliveriesPage(page: PageProps) {
 
   return (
     <Stack gap="md">
-      <Title {...TYPE.pageTitle}>{t('nav.myDeliveries')}</Title>
+      <PageHeader title={t('nav.myDeliveries')} />
       <Text c="dimmed">
         {t('myDeliveries.forDay', { day: shownDay(day, i18n.language as Language) })}
       </Text>

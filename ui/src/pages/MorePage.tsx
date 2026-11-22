@@ -1,10 +1,10 @@
-import { Paper, Title, UnstyledButton } from '@mantine/core';
+import { Paper, Stack, UnstyledButton } from '@mantine/core';
 import { IconChevronRight } from '@tabler/icons-react';
 import { useContext } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import classes from '../frame/frame.module.css';
-import { TYPE } from '../design-system/tokens';
+import { PageHeader } from '../components/organisms/PageHeader';
 import { BAR_PAGES, FrameContext } from '../frame/Shell';
 
 /** The phone's More: the pages its bar leaves out, then the person's own links and sign-out. Drawn
@@ -17,12 +17,10 @@ export function MorePage() {
   const others = pages.slice(BAR_PAGES);
 
   return (
-    <>
-      <Title {...TYPE.pageTitle} mb="md">
-        {t('nav.more')}
-      </Title>
+    <Stack gap="md">
+      <PageHeader title={t('nav.more')} />
       {others.length > 0 && (
-        <Paper withBorder mb="md">
+        <Paper withBorder>
           {others.map(({ id, path, label, icon: Icon }) => (
             <UnstyledButton key={id} component={Link} to={path} className={classes.moreRow}>
               <Icon size={20} stroke={1.6} />
@@ -43,6 +41,6 @@ export function MorePage() {
           <span>{t('user.signOut')}</span>
         </UnstyledButton>
       </Paper>
-    </>
+    </Stack>
   );
 }

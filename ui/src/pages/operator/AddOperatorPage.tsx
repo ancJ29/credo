@@ -1,8 +1,7 @@
 import { operatorNameSchema } from '@credo/shared';
-import { Button, Group, Paper, Stack, Text, TextInput, Title } from '@mantine/core';
+import { Group, Paper, Stack, Text, TextInput } from '@mantine/core';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router';
 import type { Api } from '../../api';
 import { CopyText } from '../../parts/CopyText';
 import { refusal } from '../../page';
@@ -11,6 +10,7 @@ import { touch } from '../../touch';
 import { TYPE } from '../../design-system/tokens';
 import { FormMessage } from '../../components/molecules/FormMessage';
 import { ActionButton } from '../../components/atoms/ActionButton';
+import { PageHeader } from '../../components/organisms/PageHeader';
 
 type Props = { api: Api; passkeys: Passkeys; onSignedOut: () => void };
 
@@ -64,14 +64,14 @@ export function AddOperatorPage({ api, passkeys, onSignedOut }: Props) {
   };
 
   const back = (
-    <Button component={Link} to="/operator/operators" variant={made ? 'filled' : 'default'}>
+    <ActionButton meaning={made ? 'main' : 'other'} to="/operator/operators">
       {t('team.back')}
-    </Button>
+    </ActionButton>
   );
 
   return made ? (
     <Stack gap="lg">
-      <Title {...TYPE.pageTitle}>{t('team.addedTitle')}</Title>
+      <PageHeader title={t('team.addedTitle')} />
       <FormMessage kind="success">{t('team.addedIntro', { name: made.name })}</FormMessage>
       <Paper withBorder p="md">
         <TextInput
@@ -95,7 +95,7 @@ export function AddOperatorPage({ api, passkeys, onSignedOut }: Props) {
   ) : (
     <Stack gap="lg">
       <div>
-        <Title {...TYPE.pageTitle}>{t('team.newTitle')}</Title>
+        <PageHeader title={t('team.newTitle')} />
         <Text c="dimmed">{t('team.newIntro')}</Text>
       </div>
       {problem !== null && (

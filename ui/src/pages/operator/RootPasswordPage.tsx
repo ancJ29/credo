@@ -1,8 +1,8 @@
 import { normaliseClientCode, passwordIsValid } from '@credo/shared';
-import { Button, Group, Paper, PasswordInput, Stack, Text, TextInput, Title } from '@mantine/core';
+import { Group, Paper, PasswordInput, Stack, Text, TextInput } from '@mantine/core';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useParams } from 'react-router';
+import { useParams } from 'react-router';
 import type { Api } from '../../api';
 import { CopyText } from '../../parts/CopyText';
 import { Loaded } from '../../frame/Loaded';
@@ -12,6 +12,7 @@ import { touch } from '../../touch';
 import { TYPE } from '../../design-system/tokens';
 import { FormMessage } from '../../components/molecules/FormMessage';
 import { ActionButton } from '../../components/atoms/ActionButton';
+import { PageHeader } from '../../components/organisms/PageHeader';
 
 type Props = { api: Api; passkeys: Passkeys; onSignedOut: () => void };
 
@@ -69,9 +70,9 @@ export function RootPasswordPage({ api, passkeys, onSignedOut }: Props) {
   };
 
   const back = (
-    <Button component={Link} to="/operator/clients" variant="default">
+    <ActionButton meaning="other" to="/operator/clients">
       {t('operator.back')}
-    </Button>
+    </ActionButton>
   );
 
   return (
@@ -83,9 +84,9 @@ export function RootPasswordPage({ api, passkeys, onSignedOut }: Props) {
         </Stack>
       ) : done ? (
         <Stack gap="lg">
-          <Title {...TYPE.pageTitle}>
-            {t(done.made === null ? 'operator.rootDoneTitle' : 'operator.rootMadeTitle')}
-          </Title>
+          <PageHeader
+            title={t(done.made === null ? 'operator.rootDoneTitle' : 'operator.rootMadeTitle')}
+          />
           <FormMessage kind="success">
             {t(done.made === null ? 'operator.rootDoneIntro' : 'operator.rootMadeIntro')}
           </FormMessage>
@@ -112,7 +113,7 @@ export function RootPasswordPage({ api, passkeys, onSignedOut }: Props) {
       ) : (
         <Stack gap="lg">
           <div>
-            <Title {...TYPE.pageTitle}>{t('operator.rootTitle', { name: client.name })}</Title>
+            <PageHeader title={t('operator.rootTitle', { name: client.name })} />
             <Text c="dimmed">{t('operator.rootIntro', { name: client.name })}</Text>
           </div>
           {problem !== null && <FormMessage kind="error">{t(PROBLEM[problem])}</FormMessage>}

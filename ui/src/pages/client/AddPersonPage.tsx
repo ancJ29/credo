@@ -1,5 +1,5 @@
 import { can, type EmployeeDoc, employeeCodeIsValid, staffConfig } from '@credo/shared';
-import { NativeSelect, Stack, Text, Textarea, TextInput, Title } from '@mantine/core';
+import { NativeSelect, Stack, Text, Textarea, TextInput } from '@mantine/core';
 import { IconLogin, IconNote, IconPhone, IconUser } from '@tabler/icons-react';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -21,9 +21,9 @@ import {
   refusedPersonal,
 } from '../../parts/personalFields';
 import { type PageProps, refusal, useLoad } from '../../page';
-import { TYPE } from '../../design-system/tokens';
 import { ActionButton } from '../../components/atoms/ActionButton';
 import { FormMessage } from '../../components/molecules/FormMessage';
+import { PageHeader } from '../../components/organisms/PageHeader';
 
 const READ_ONLY = { input: { fontFamily: 'ui-monospace, monospace' } };
 const EMPTY = {
@@ -113,7 +113,7 @@ export function AddPersonPage(page: PageProps) {
   if (made) {
     return (
       <Stack gap="lg">
-        <Title {...TYPE.pageTitle}>{t('addPerson.madeTitle')}</Title>
+        <PageHeader title={t('addPerson.madeTitle')} />
         <FormMessage kind="success">{t('addPerson.madeIntro')}</FormMessage>
         <DetailCard icon={<IconLogin size={14} />} title={t('addPerson.madeCard')}>
           <FieldPair>
@@ -155,7 +155,7 @@ export function AddPersonPage(page: PageProps) {
   return (
     <Stack gap="lg">
       <div>
-        <Title {...TYPE.pageTitle}>{t('addPerson.title')}</Title>
+        <PageHeader title={t('addPerson.title')} />
         <Text c="dimmed">{t('addPerson.intro')}</Text>
       </div>
       {status === 'failed' && <FormMessage kind="error">{t('addPerson.failed')}</FormMessage>}

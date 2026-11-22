@@ -1,12 +1,12 @@
 import { passwordIsValid, type SessionReply } from '@credo/shared';
-import { Paper, PasswordInput, Stack, Text, Title } from '@mantine/core';
+import { Paper, PasswordInput, Stack, Text } from '@mantine/core';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { type PageProps, refusal } from '../../page';
 import { waitWords } from '../waitWords';
-import { TYPE } from '../../design-system/tokens';
 import { ActionButton } from '../../components/atoms/ActionButton';
 import { FormMessage } from '../../components/molecules/FormMessage';
+import { PageHeader } from '../../components/organisms/PageHeader';
 
 const OUTCOME_WORDS = {
   changed: 'ownPassword.changed',
@@ -52,7 +52,7 @@ export function OwnPasswordPage(props: Props) {
 
   return (
     <Stack gap="md" maw={560}>
-      <Title {...TYPE.pageTitle}>{t('ownPassword.title')}</Title>
+      <PageHeader title={t('ownPassword.title')} />
       <Text c="dimmed">{t('ownPassword.text')}</Text>
       {outcome !== null && (
         <FormMessage kind={outcome === 'changed' ? 'success' : 'error'}>

@@ -1,12 +1,12 @@
 import type { Language } from '@credo/shared';
-import { Badge, Group, Stack, Table, Text, Title } from '@mantine/core';
+import { Badge, Group, Stack, Table, Text } from '@mantine/core';
 import { useTranslation } from 'react-i18next';
 import type { Api } from '../../api';
 import { dayOf } from '../../day';
 import { Loaded } from '../../frame/Loaded';
 import { useLoad } from '../../page';
-import { TYPE } from '../../design-system/tokens';
 import { ActionButton } from '../../components/atoms/ActionButton';
+import { PageHeader } from '../../components/organisms/PageHeader';
 
 type Props = { api: Api; onSignedOut: () => void };
 
@@ -22,12 +22,14 @@ export function OperatorsPage({ api, onSignedOut }: Props) {
 
   return (
     <Stack gap="lg">
-      <Group justify="space-between">
-        <Title {...TYPE.pageTitle}>{t('nav.operators')}</Title>
-        <ActionButton meaning="main" to="/operator/operators/new">
-          {t('team.add')}
-        </ActionButton>
-      </Group>
+      <PageHeader
+        title={t('nav.operators')}
+        actions={
+          <ActionButton meaning="main" to="/operator/operators/new">
+            {t('team.add')}
+          </ActionButton>
+        }
+      />
       <Text c="dimmed">{t('team.intro')}</Text>
       <Loaded status={loaded.status} onRetry={loaded.reload}>
         <Table.ScrollContainer minWidth={760}>

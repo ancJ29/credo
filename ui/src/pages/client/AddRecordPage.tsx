@@ -4,16 +4,16 @@ import {
   type CustomerDoc,
   type ProductDoc,
 } from '@credo/shared';
-import { Button, Stack, Text, Title } from '@mantine/core';
+import { Text } from '@mantine/core';
 import { type ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate } from 'react-router';
+import { useNavigate } from 'react-router';
 import type { Api } from '../../api';
 import type { ListKind } from '../../listSheet';
 import { type PageProps, refusal } from '../../page';
 import { CustomerForm } from '../../parts/CustomerForm';
 import { ProductForm } from '../../parts/ProductForm';
-import { TYPE } from '../../design-system/tokens';
+import { PageShell } from '../../parts/PageShell';
 import { FormMessage } from '../../components/molecules/FormMessage';
 
 type Outcome = 'taken' | 'failed' | 'forbidden' | null;
@@ -113,14 +113,12 @@ function Add<V>({ kind, spec, page }: { kind: ListKind; spec: Spec<V>; page: Pag
   }
 
   return (
-    <Stack gap="lg">
-      <div>
-        <Title {...TYPE.pageTitle}>{t(`lists.${kind}.newTitle`)}</Title>
-        <Text c="dimmed">{t(`lists.${kind}.newIntro`)}</Text>
-      </div>
-      <Button component={Link} to={`/${kind}`} variant="subtle" style={{ alignSelf: 'flex-start' }}>
-        {t(`lists.${kind}.back`)}
-      </Button>
+    <PageShell
+      title={t(`lists.${kind}.newTitle`)}
+      back={{ href: `/${kind}`, children: t(`lists.${kind}.back`) }}
+      status="ready"
+    >
+      <Text c="dimmed">{t(`lists.${kind}.newIntro`)}</Text>
       {outcome === 'taken' && (
         <FormMessage kind="warning">{t(`lists.${kind}.codeTaken`)}</FormMessage>
       )}
@@ -134,6 +132,6 @@ function Add<V>({ kind, spec, page }: { kind: ListKind; spec: Spec<V>; page: Pag
         taken: outcome === 'taken',
         onSave: (values, code) => void add(values, code),
       })}
-    </Stack>
+    </PageShell>
   );
 }

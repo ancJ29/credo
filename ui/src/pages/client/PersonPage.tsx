@@ -12,7 +12,6 @@ import {
   staffConfig,
 } from '@credo/shared';
 import {
-  Button,
   Group,
   NativeSelect,
   PasswordInput,
@@ -20,7 +19,6 @@ import {
   Text,
   Textarea,
   TextInput,
-  Title,
 } from '@mantine/core';
 import {
   IconArchive,
@@ -33,7 +31,7 @@ import {
 } from '@tabler/icons-react';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useLocation, useParams } from 'react-router';
+import { useLocation, useParams } from 'react-router';
 import { DetailCard, DetailColumns, FieldPair } from '../../parts/DetailCards';
 import { Loaded } from '../../frame/Loaded';
 import {
@@ -58,8 +56,8 @@ import {
 import { noteOf, personalPhoneOf, phoneOf, unitName } from '../../staffNames';
 import { TYPE } from '../../design-system/tokens';
 import { ActionButton } from '../../components/atoms/ActionButton';
-import { StatusBadge } from '../../components/atoms/StatusBadge';
 import { FormMessage } from '../../components/molecules/FormMessage';
+import { PageShell } from '../../parts/PageShell';
 
 const READ_ONLY = { input: { fontFamily: 'ui-monospace, monospace' } };
 type SaveOutcome = 'saved' | 'failed' | 'forbidden' | 'conflict' | null;
@@ -395,22 +393,16 @@ function PersonForm({
   );
 
   return (
-    <Stack gap="lg">
-      <Group justify="space-between">
-        <Stack gap={0}>
-          <Title {...TYPE.pageTitle}>{employee.name}</Title>
-          <Text c="dimmed">{employee.code}</Text>
-        </Stack>
-        {employee.archived && <StatusBadge status="inactive" />}
-      </Group>
-      <Button
-        component={Link}
-        to={`/staff${typeof listed === 'string' ? listed : ''}`}
-        variant="subtle"
-        style={{ alignSelf: 'flex-start' }}
-      >
-        {t('staff.back')}
-      </Button>
+    <PageShell
+      title={employee.name}
+      back={{
+        href: `/staff${typeof listed === 'string' ? listed : ''}`,
+        children: t('staff.back'),
+      }}
+      recordStatus={employee.archived ? 'inactive' : undefined}
+      status="ready"
+    >
+      <Text c="dimmed">{employee.code}</Text>
       {employee.archived && (
         <FormMessage kind="info" standing>
           {t('person.archived')}
@@ -600,7 +592,7 @@ function PersonForm({
           </Stack>
         }
       />
-    </Stack>
+    </PageShell>
   );
 }
 

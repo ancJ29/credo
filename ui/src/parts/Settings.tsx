@@ -19,7 +19,6 @@ import {
   Switch,
   Text,
   TextInput,
-  Title,
 } from '@mantine/core';
 import { IconBuilding } from '@tabler/icons-react';
 import { type FormEvent, useState } from 'react';
@@ -31,6 +30,7 @@ import { FormMessage } from '../components/molecules/FormMessage';
 import { DetailCard } from './DetailCards';
 import { PALETTES, paletteOfColour } from '../design-system/palettes';
 import { TYPE, WEIGHTS } from '../design-system/tokens';
+import { PageHeader } from '../components/organisms/PageHeader';
 
 type Props = {
   status: 'loading' | 'failed' | 'ready';
@@ -243,7 +243,7 @@ export function Settings(props: Props) {
   return (
     <Stack gap="lg">
       <div>
-        <Title {...TYPE.pageTitle}>{t('settings.title')}</Title>
+        <PageHeader title={t('settings.title')} />
         <Text c="dimmed">{t('settings.intro')}</Text>
       </div>
       <Loaded status={props.status} onRetry={props.onRetry}>

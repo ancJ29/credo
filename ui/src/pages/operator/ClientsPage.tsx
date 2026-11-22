@@ -1,5 +1,5 @@
 import { clientAddress, HOME_BOX, type Language } from '@credo/shared';
-import { Group, Stack, Table, Title } from '@mantine/core';
+import { Group, Stack, Table } from '@mantine/core';
 import { PageState } from '../../components/organisms/PageState';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -8,8 +8,8 @@ import { CopyText } from '../../parts/CopyText';
 import { dayOf } from '../../day';
 import { Loaded } from '../../frame/Loaded';
 import { useLoad } from '../../page';
-import { TYPE } from '../../design-system/tokens';
 import { ActionButton } from '../../components/atoms/ActionButton';
+import { PageHeader } from '../../components/organisms/PageHeader';
 
 type Props = { api: Api; onSignedOut: () => void };
 
@@ -35,12 +35,14 @@ export function ClientsPage({ api, onSignedOut }: Props) {
 
   return (
     <Stack gap="lg">
-      <Group justify="space-between">
-        <Title {...TYPE.pageTitle}>{t('nav.clients')}</Title>
-        <ActionButton meaning="main" to="/operator/clients/new">
-          {t('operator.add')}
-        </ActionButton>
-      </Group>
+      <PageHeader
+        title={t('nav.clients')}
+        actions={
+          <ActionButton meaning="main" to="/operator/clients/new">
+            {t('operator.add')}
+          </ActionButton>
+        }
+      />
       <Loaded status={loaded.status} onRetry={loaded.reload}>
         {clients.length === 0 ? (
           <PageState state="empty">{t('operator.empty')}</PageState>

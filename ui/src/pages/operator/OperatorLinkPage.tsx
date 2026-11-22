@@ -1,7 +1,7 @@
-import { Button, Group, Paper, Stack, Text, TextInput, Title } from '@mantine/core';
+import { Group, Paper, Stack, Text, TextInput } from '@mantine/core';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useParams } from 'react-router';
+import { useParams } from 'react-router';
 import { ApiError, type Api } from '../../api';
 import { CopyText } from '../../parts/CopyText';
 import { Loaded } from '../../frame/Loaded';
@@ -11,6 +11,7 @@ import { touch } from '../../touch';
 import { TYPE } from '../../design-system/tokens';
 import { FormMessage } from '../../components/molecules/FormMessage';
 import { ActionButton } from '../../components/atoms/ActionButton';
+import { PageHeader } from '../../components/organisms/PageHeader';
 
 type Props = { api: Api; passkeys: Passkeys; onSignedOut: () => void };
 
@@ -57,9 +58,9 @@ export function OperatorLinkPage({ api, passkeys, onSignedOut }: Props) {
   }
 
   const back = (
-    <Button component={Link} to="/operator/operators" variant={made ? 'filled' : 'default'}>
+    <ActionButton meaning={made ? 'main' : 'other'} to="/operator/operators">
       {t('team.back')}
-    </Button>
+    </ActionButton>
   );
 
   return (
@@ -71,7 +72,7 @@ export function OperatorLinkPage({ api, passkeys, onSignedOut }: Props) {
         </Stack>
       ) : made ? (
         <Stack gap="lg">
-          <Title {...TYPE.pageTitle}>{t('team.linkMadeTitle')}</Title>
+          <PageHeader title={t('team.linkMadeTitle')} />
           <FormMessage kind="success">
             {t('team.linkMadeIntro', { name: colleague.name })}
           </FormMessage>
@@ -92,7 +93,7 @@ export function OperatorLinkPage({ api, passkeys, onSignedOut }: Props) {
       ) : (
         <Stack gap="lg">
           <div>
-            <Title {...TYPE.pageTitle}>{t('team.linkTitle', { name: colleague.name })}</Title>
+            <PageHeader title={t('team.linkTitle', { name: colleague.name })} />
             <Text c="dimmed">
               {t(colleague.state === 'active' ? 'team.linkIntroActive' : 'team.linkIntroInvited', {
                 name: colleague.name,

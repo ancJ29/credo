@@ -1,8 +1,8 @@
 import { normaliseClientCode } from '@credo/shared';
-import { Button, Group, Paper, Stack, Text, TextInput, Title } from '@mantine/core';
+import { Group, Paper, Stack, Text, TextInput } from '@mantine/core';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate, useParams } from 'react-router';
+import { useNavigate, useParams } from 'react-router';
 import { ApiError, type Api } from '../../api';
 import { Loaded } from '../../frame/Loaded';
 import { refusal, useLoad } from '../../page';
@@ -11,6 +11,7 @@ import { touch } from '../../touch';
 import { TYPE } from '../../design-system/tokens';
 import { FormMessage } from '../../components/molecules/FormMessage';
 import { ActionButton } from '../../components/atoms/ActionButton';
+import { PageHeader } from '../../components/organisms/PageHeader';
 
 type Props = { api: Api; passkeys: Passkeys; onSignedOut: () => void };
 
@@ -95,9 +96,9 @@ export function DeleteClientPage({ api, passkeys, onSignedOut }: Props) {
   };
 
   const back = (
-    <Button component={Link} to="/operator/clients" variant="default">
+    <ActionButton meaning="other" to="/operator/clients">
       {t('operator.back')}
-    </Button>
+    </ActionButton>
   );
 
   return (
@@ -127,9 +128,7 @@ export function DeleteClientPage({ api, passkeys, onSignedOut }: Props) {
       ) : (
         <Stack gap="lg">
           <div>
-            <Title {...TYPE.pageTitle}>
-              {t('operator.deleteClientTitle', { name: client.name })}
-            </Title>
+            <PageHeader title={t('operator.deleteClientTitle', { name: client.name })} />
           </div>
           <FormMessage kind="warning" standing title={client.code}>
             {t('operator.deleteClientIntro', { name: client.name })}

@@ -1,4 +1,5 @@
 import { screen } from '@testing-library/react';
+import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { draw } from '../../tests/render';
 import { PageShell } from './PageShell';
@@ -37,5 +38,16 @@ describe('PageShell', () => {
     expect(screen.queryByRole('link')).toBeNull();
     expect(document.querySelector('[data-status]')).toBeNull();
     expect(screen.getByRole('heading', { name: 'Staff' })).toBeDefined();
+  });
+
+  it('222 case 12: given no retry, a failed page still draws its retry and a press does nothing', async () => {
+    draw(
+      <PageShell title="Staff" status="failed">
+        <p>Body</p>
+      </PageShell>,
+    );
+    await userEvent.click(screen.getByRole('button'));
+    expect(screen.getByRole('heading', { name: 'Staff' })).toBeDefined();
+    expect(screen.queryByText('Body')).toBeNull();
   });
 });

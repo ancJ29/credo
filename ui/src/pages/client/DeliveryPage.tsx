@@ -1,5 +1,5 @@
 import { can, type DeliveryDoc, type Language } from '@credo/shared';
-import { Anchor, Group, Paper, Stack, Text, Title } from '@mantine/core';
+import { Anchor, Paper, Stack, Text } from '@mantine/core';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router';
@@ -17,7 +17,7 @@ import {
 import { type PageProps, refusal, useLoad } from '../../page';
 import { TYPE } from '../../design-system/tokens';
 import { ActionButton } from '../../components/atoms/ActionButton';
-import { StatusBadge } from '../../components/atoms/StatusBadge';
+import { PageShell } from '../../parts/PageShell';
 import { FormMessage } from '../../components/molecules/FormMessage';
 
 /** A delivery request opened to be read: its number, day and driver, the order it came from, the
@@ -60,72 +60,69 @@ export function DeliveryPage(page: PageProps) {
   }
 
   return (
-    <Stack gap="lg">
-      <Loaded status={loaded.status} onRetry={loaded.reload}>
-        {doc && (
-          <>
-            <Group justify="space-between">
-              <Title {...TYPE.pageTitle}>
-                {t('orders.requestTitle', { number: doc.request.number })}
-              </Title>
-              <StatusBadge status={doc.request.state} />
-            </Group>
-            {cancelled && (
-              <FormMessage
-                kind="success"
-                act={
-                  <ActionButton
-                    meaning="other"
-                    to={`/orders/${doc.request.order.day}/${doc.request.order.id}`}
-                  >
-                    {t('orders.openOrder')}
-                  </ActionButton>
-                }
-              >
-                {t('orders.requestCancelled')}
-              </FormMessage>
-            )}
-            <OutcomeAlert
-              outcome={outcome}
-              failed={t('orders.cancelFailed')}
-              conflict={t('orders.conflict')}
-              onTheirs={showTheirs}
+    <Loaded status={loaded.status} onRetry={loaded.reload}>
+      {doc && (
+        <PageShell
+          title={t('orders.requestTitle', { number: doc.request.number })}
+          recordStatus={doc.request.state}
+          status="ready"
+          onRetry={loaded.reload}
+        >
+          {cancelled && (
+            <FormMessage
+              kind="success"
+              act={
+                <ActionButton
+                  meaning="other"
+                  to={`/orders/${doc.request.order.day}/${doc.request.order.id}`}
+                >
+                  {t('orders.openOrder')}
+                </ActionButton>
+              }
+            >
+              {t('orders.requestCancelled')}
+            </FormMessage>
+          )}
+          <OutcomeAlert
+            outcome={outcome}
+            failed={t('orders.cancelFailed')}
+            conflict={t('orders.conflict')}
+            onTheirs={showTheirs}
+          />
+          <Paper withBorder p="md">
+            <Stack gap="sm">
+              <Text>{t('orders.forDay', { day: shownDay(doc.request.day, language) })}</Text>
+              <Text>{t('orders.byDriver', { name: doc.request.driver.name })}</Text>
+              <Text>
+                {t('orders.fromOrder')}{' '}
+                <Anchor
+                  component={Link}
+                  to={`/orders/${doc.request.order.day}/${doc.request.order.id}`}
+                >
+                  {doc.request.order.number}
+                </Anchor>
+              </Text>
+              <CustomerBlock customer={doc.request.customer} />
+            </Stack>
+          </Paper>
+          <LinesTable lines={doc.request.lines} total={doc.request.total} />
+          <Text {...TYPE.bodyStrong}>
+            {t('orders.collect', { total: money(doc.request.total) })}
+          </Text>
+          {doc.request.state === 'delivered' && (
+            <ProofPhoto page={page} day={doc.request.day} id={doc.request.id} />
+          )}
+          {doc.request.state === 'waiting' && can(page.user, 'orders.canEdit') && (
+            <CancelPanel
+              title={t('orders.cancelRequest')}
+              text={t('orders.cancelRequestText')}
+              confirm={t('orders.cancelRequestConfirm', { number: doc.request.number })}
+              busy={busy}
+              onCancel={() => void cancel(doc.version)}
             />
-            <Paper withBorder p="md">
-              <Stack gap="sm">
-                <Text>{t('orders.forDay', { day: shownDay(doc.request.day, language) })}</Text>
-                <Text>{t('orders.byDriver', { name: doc.request.driver.name })}</Text>
-                <Text>
-                  {t('orders.fromOrder')}{' '}
-                  <Anchor
-                    component={Link}
-                    to={`/orders/${doc.request.order.day}/${doc.request.order.id}`}
-                  >
-                    {doc.request.order.number}
-                  </Anchor>
-                </Text>
-                <CustomerBlock customer={doc.request.customer} />
-              </Stack>
-            </Paper>
-            <LinesTable lines={doc.request.lines} total={doc.request.total} />
-            <Text {...TYPE.bodyStrong}>
-              {t('orders.collect', { total: money(doc.request.total) })}
-            </Text>
-            {doc.request.state === 'delivered' && (
-              <ProofPhoto page={page} day={doc.request.day} id={doc.request.id} />
-            )}
-            {doc.request.state === 'waiting' && can(page.user, 'orders.canEdit') && (
-              <CancelPanel
-                title={t('orders.cancelRequest')}
-                text={t('orders.cancelRequestText')}
-                confirm={t('orders.cancelRequestConfirm', { number: doc.request.number })}
-                busy={busy}
-                onCancel={() => void cancel(doc.version)}
-              />
-            )}
-          </>
-        )}
-      </Loaded>
-    </Stack>
+          )}
+        </PageShell>
+      )}
+    </Loaded>
   );
 }

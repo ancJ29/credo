@@ -1,8 +1,8 @@
 import { HOME_BOX, type MoveClientReply, type MoveClientRequest } from '@credo/shared';
-import { Button, Group, Paper, Stack, Text, Title } from '@mantine/core';
+import { Group, Paper, Stack, Text } from '@mantine/core';
 import { type FormEvent, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate, useParams } from 'react-router';
+import { useNavigate, useParams } from 'react-router';
 import { type Api } from '../../api';
 import { Loaded } from '../../frame/Loaded';
 import { refusal, useLoad } from '../../page';
@@ -12,6 +12,7 @@ import { touch } from '../../touch';
 import { TYPE } from '../../design-system/tokens';
 import { FormMessage } from '../../components/molecules/FormMessage';
 import { ActionButton } from '../../components/atoms/ActionButton';
+import { PageHeader } from '../../components/organisms/PageHeader';
 
 type Props = {
   api: Api;
@@ -125,9 +126,9 @@ export function MoveClientPage({ api, passkeys, onSignedOut, wait = sleep }: Pro
   };
 
   const back = (
-    <Button component={Link} to="/operator/clients" variant="default">
+    <ActionButton meaning="other" to="/operator/clients">
       {t('operator.back')}
-    </Button>
+    </ActionButton>
   );
 
   const progress =
@@ -155,7 +156,7 @@ export function MoveClientPage({ api, passkeys, onSignedOut, wait = sleep }: Pro
       ) : (
         <Stack gap="lg">
           <div>
-            <Title {...TYPE.pageTitle}>{t('operator.moveTitle', { name: client.name })}</Title>
+            <PageHeader title={t('operator.moveTitle', { name: client.name })} />
             <Text c="dimmed">{t('operator.moveHere', { name: client.name, box: here })}</Text>
           </div>
           <FormMessage kind="warning" standing title={client.code}>

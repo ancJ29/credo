@@ -6,11 +6,10 @@ import {
   normaliseEmployeeCode,
   type StaffSetup,
 } from '@credo/shared';
-import { Button, Group, Paper, Stack, Table, Text, TextInput, Title } from '@mantine/core';
+import { Group, Paper, Stack, Table, Text, TextInput } from '@mantine/core';
 import { type TFunction } from 'i18next';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router';
 import { readFirstSheet, writeWorkbook } from '../../importFile';
 import {
   columnsOf,
@@ -20,13 +19,14 @@ import {
   readStaff,
   templateSheets,
 } from '../../importSheet';
-import { Loaded } from '../../frame/Loaded';
 import { INVALID } from '../../parts/ownFields';
 import { type PageProps, refusal, useLoad } from '../../page';
 import { saveAs } from '../../saveAs';
 import { TYPE } from '../../design-system/tokens';
 import { ActionButton } from '../../components/atoms/ActionButton';
+import { PageShell } from '../../parts/PageShell';
 import { FormMessage } from '../../components/molecules/FormMessage';
+import { PageHeader } from '../../components/organisms/PageHeader';
 
 /** Why a file was not read, or read to nothing. */
 type FileProblem = 'too-big' | 'unreadable' | 'too-many' | 'no-name' | 'no-rows';
@@ -85,12 +85,9 @@ export function ImportPage(page: PageProps) {
   );
   if (loaded.data) return <ImportForm page={page} {...loaded.data} />;
   return (
-    <Stack gap="lg">
-      <Title {...TYPE.pageTitle}>{t('import.title')}</Title>
-      <Loaded status={loaded.status} onRetry={loaded.reload}>
-        {null}
-      </Loaded>
-    </Stack>
+    <PageShell title={t('import.title')} status={loaded.status} onRetry={loaded.reload}>
+      {null}
+    </PageShell>
   );
 }
 
@@ -185,7 +182,7 @@ function ImportForm({
     const rest = held.filter((row) => !answered.some((one) => one.row === row)).length;
     return (
       <Stack gap="lg">
-        <Title {...TYPE.pageTitle}>{t('import.doneTitle')}</Title>
+        <PageHeader title={t('import.doneTitle')} />
         <FormMessage kind="success">{t('import.doneAdded', { count: added })}</FormMessage>
         {taken > 0 && (
           <FormMessage kind="warning">{t('import.doneRefused', { count: taken })}</FormMessage>
@@ -225,9 +222,9 @@ function ImportForm({
               {t('import.addRest', { count: rest })}
             </ActionButton>
           )}
-          <Button component={Link} to="/staff" variant={rest > 0 ? 'default' : 'filled'}>
+          <ActionButton meaning={rest > 0 ? 'other' : 'main'} to="/staff">
             {t('staff.back')}
-          </Button>
+          </ActionButton>
         </Group>
       </Stack>
     );
@@ -236,7 +233,7 @@ function ImportForm({
   return (
     <Stack gap="lg">
       <div>
-        <Title {...TYPE.pageTitle}>{t(rows ? 'import.previewTitle' : 'import.title')}</Title>
+        <PageHeader title={t(rows ? 'import.previewTitle' : 'import.title')} />
         {!rows && <Text c="dimmed">{t('import.intro')}</Text>}
       </div>
       {status === 'failed' && <FormMessage kind="error">{t('import.failed')}</FormMessage>}

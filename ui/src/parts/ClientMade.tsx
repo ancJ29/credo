@@ -1,10 +1,9 @@
-import { Button, Group, Paper, Stack, TextInput, Title } from '@mantine/core';
+import { Group, Paper, Stack, TextInput } from '@mantine/core';
 import { ActionButton } from '../components/atoms/ActionButton';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router';
 import { CopyText } from './CopyText';
-import { TYPE } from '../design-system/tokens';
 import { FormMessage } from '../components/molecules/FormMessage';
+import { PageHeader } from '../components/organisms/PageHeader';
 
 type Props = {
   /** The client's sign-in address: its own (`https://<code>.<domain>/login`) from the operator's address, else `…/login?client-code=<code>`. */
@@ -37,7 +36,7 @@ export function ClientMade({ link, rootName, password, onAnother }: Props) {
   const { t } = useTranslation();
   return (
     <Stack gap="lg">
-      <Title {...TYPE.pageTitle}>{t('operator.madeTitle')}</Title>
+      <PageHeader title={t('operator.madeTitle')} />
       <FormMessage kind="success">{t('operator.madeIntro')}</FormMessage>
       <Paper withBorder p="md">
         <Stack gap="lg">
@@ -47,9 +46,9 @@ export function ClientMade({ link, rootName, password, onAnother }: Props) {
         </Stack>
       </Paper>
       <Group>
-        <Button component={Link} to="/operator/clients">
+        <ActionButton meaning="main" to="/operator/clients">
           {t('operator.back')}
-        </Button>
+        </ActionButton>
         <ActionButton meaning="other" onClick={onAnother}>
           {t('operator.another')}
         </ActionButton>
