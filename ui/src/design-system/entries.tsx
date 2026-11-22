@@ -12,8 +12,7 @@ import {
   useMantineTheme,
 } from '@mantine/core';
 import type { ReactNode } from 'react';
-import { I18nextProvider } from 'react-i18next';
-import { createI18n } from '../i18n';
+import { useTranslation } from 'react-i18next';
 import { IconBuilding, IconKeyboard, IconLock, IconQrcode, IconUser } from '@tabler/icons-react';
 import { BackLink } from '../components/atoms/BackLink';
 import { DoorHeading } from '../components/atoms/DoorHeading';
@@ -27,6 +26,7 @@ import { DoorCard } from '../components/organisms/DoorCard';
 import { PageHeader } from '../components/organisms/PageHeader';
 import { SectionCard } from '../components/organisms/SectionCard';
 import { Charter } from './Charter';
+import { SAMPLES, useLanguage } from './samples';
 import { OnTheBrand, OnTheLinks } from './OnTheBrand';
 import {
   ActionButtonStates,
@@ -60,43 +60,42 @@ import {
 const SAMPLE_LOGO =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath d='M6 34 20 6l14 28z' fill='teal'/%3E%3C/svg%3E";
 
-/** Each status of a row, as the person reads it: the part draws its words, so the sample is given the dictionary. */
-const SAMPLE_WORDS = createI18n('en');
+/** Each status of a row, as the person reads it: the part draws its words from the stage's dictionary. */
 function StatusRow({ statuses }: { statuses: Status[] }) {
   return (
-    <I18nextProvider i18n={SAMPLE_WORDS}>
-      <Group>
-        {statuses.map((status) => (
-          <StatusBadge key={status} status={status} />
-        ))}
-      </Group>
-    </I18nextProvider>
+    <Group>
+      {statuses.map((status) => (
+        <StatusBadge key={status} status={status} />
+      ))}
+    </Group>
   );
 }
 
 /** The old app's sign-in page as the card holds it, in sentence case: the first of the door card's two states. */
 function SignInState() {
+  const { t } = useTranslation();
+  const words = SAMPLES[useLanguage()];
   return (
-    <DoorCard name="Công ty TNHH Acme" logo={SAMPLE_LOGO}>
+    <DoorCard name={words.shop} logo={SAMPLE_LOGO}>
       <Stack gap="md">
-        <DoorHeading title="Đăng nhập vào tài khoản của bạn" />
+        <DoorHeading title={t('auth.title')} />
         <TextInput
-          label="Tên đăng nhập"
-          placeholder="Nhập tên đăng nhập"
+          label={t('auth.username')}
+          placeholder={t('auth.usernamePlaceholder')}
           leftSection={<IconUser size={18} />}
         />
         <PasswordInput
-          label="Mật khẩu"
-          placeholder="Nhập mật khẩu"
+          label={t('auth.password')}
+          placeholder={t('auth.passwordPlaceholder')}
           leftSection={<IconLock size={18} />}
         />
-        <Checkbox defaultChecked label="Ghi nhớ đăng nhập" />
+        <Checkbox defaultChecked label={words.remember} />
         <Button variant="gradient" size="md" fullWidth>
-          Đăng nhập
+          {t('auth.submit')}
         </Button>
-        <Divider label="hoặc" />
+        <Divider label={words.or} />
         <Button variant="default" fullWidth leftSection={<IconQrcode size={18} />}>
-          Dùng liên kết đăng nhập
+          {words.useLink}
         </Button>
       </Stack>
     </DoorCard>
@@ -105,25 +104,124 @@ function SignInState() {
 
 /** The old app's login-link page as the card holds it: the second state. */
 function LinkState() {
+  const words = SAMPLES[useLanguage()];
   return (
-    <DoorCard name="Công ty TNHH Acme" logo={SAMPLE_LOGO}>
+    <DoorCard name={words.shop} logo={SAMPLE_LOGO}>
       <Stack gap="md" align="center">
         <Stack gap={0} w="100%">
-          <DoorHeading
-            title="Đăng nhập bằng liên kết"
-            subtitle="Quét mã QR hoặc nhập mã đăng nhập để đăng nhập"
-          />
+          <DoorHeading title={words.linkTitle} subtitle={words.linkSubtitle} />
         </Stack>
         <Button variant="gradient" size="md" fullWidth leftSection={<IconQrcode size={18} />}>
-          Quét mã QR
+          {words.scanQr}
         </Button>
-        <Divider label="hoặc" w="100%" />
+        <Divider label={words.or} w="100%" />
         <Button variant="default" fullWidth leftSection={<IconKeyboard size={18} />}>
-          Nhập mã thủ công
+          {words.enterCode}
         </Button>
-        <BackLink href="#">Quay lại đăng nhập</BackLink>
+        <BackLink href="#">{words.backToSignIn}</BackLink>
       </Stack>
     </DoorCard>
+  );
+}
+
+/** Mantine's own button, field, badge, gradient button, default button and labelled divider, worded in the picked language. */
+function MantineSample({ state }: { state: string }) {
+  const { t } = useTranslation();
+  const words = SAMPLES[useLanguage()];
+  if (state === 'Gradient button') {
+    return (
+      <Button variant="gradient" w={394} leftSection={<IconQrcode size={18} />}>
+        {words.scanQr}
+      </Button>
+    );
+  }
+  if (state === 'Default button') {
+    return (
+      <Button variant="default" w={394} leftSection={<IconKeyboard size={18} />}>
+        {words.enterCode}
+      </Button>
+    );
+  }
+  if (state === 'Labelled divider') return <Divider w={394} label={words.or} />;
+  return (
+    <Group align="flex-end">
+      <Button>{words.save}</Button>
+      <Button variant="default">{words.cancel}</Button>
+      <TextInput label={t('staff.colName')} placeholder={words.aField} />
+      <Badge>{words.aBadge}</Badge>
+    </Group>
+  );
+}
+
+/** A part's two or three plates of the sample kind that reads the stage's language, one component each. */
+function DoorHeadingSample({ withSubtitle }: { withSubtitle: boolean }) {
+  const { t } = useTranslation();
+  const words = SAMPLES[useLanguage()];
+  return (
+    <Stack w={394} gap={0}>
+      {withSubtitle ? (
+        <DoorHeading title={words.linkTitle} subtitle={words.linkSubtitle} />
+      ) : (
+        <DoorHeading title={t('auth.title')} />
+      )}
+    </Stack>
+  );
+}
+
+/** The back link, worded in the picked language. */
+function BackLinkSample() {
+  return <BackLink href="#">{SAMPLES[useLanguage()].backToSignIn}</BackLink>;
+}
+
+/** The field label, worded by the dictionary's phone column. */
+function FieldLabelSample() {
+  const { t } = useTranslation();
+  return <FieldLabel>{t('staff.colPhone')}</FieldLabel>;
+}
+
+/** The detail field with a value, and with none. */
+function DetailFieldSample() {
+  const { t } = useTranslation();
+  const words = SAMPLES[useLanguage()];
+  return (
+    <Group gap="xl">
+      <DetailField label={t('staff.colPhone')} value={words.phone} />
+      <DetailField label={words.email} />
+    </Group>
+  );
+}
+
+/** The section title, worded by the dictionary's basics line. */
+function SectionTitleSample() {
+  const { t } = useTranslation();
+  return <SectionTitle icon={<IconBuilding size={14} />} label={t('settings.basics')} />;
+}
+
+/** The section card, with a field in it. */
+function SectionCardSample() {
+  const { t } = useTranslation();
+  const words = SAMPLES[useLanguage()];
+  return (
+    <SectionCard icon={<IconBuilding size={14} />} title={t('settings.basics')}>
+      <DetailField label={t('staff.colName')} value={words.shop} />
+    </SectionCard>
+  );
+}
+
+/** The page header at each state, worded by the dictionary's staff line. */
+function PageHeaderSample({ state }: { state: string }) {
+  const { t } = useTranslation();
+  const words = SAMPLES[useLanguage()];
+  return (
+    <Stack w={640} maw="100%">
+      {state === 'With actions' ? (
+        <PageHeader title={t('nav.staff')} actions={<Button>{t('staff.add')}</Button>} />
+      ) : state === 'Title only' ? (
+        <PageHeader title={t('nav.staff')} />
+      ) : (
+        <PageHeader title={words.person} status="inactive" subtitle="NV-001" />
+      )}
+    </Stack>
   );
 }
 
@@ -258,36 +356,9 @@ export const ENTRIES: Entry[] = [
       'A part of ours already draws it: use that part.',
       'You want to choose a colour yourself: the theme gives them.',
     ],
-    states: [
-      {
-        name: 'Button, field, badge',
-        node: (
-          <Group align="flex-end">
-            <Button>Save</Button>
-            <Button variant="default">Cancel</Button>
-            <TextInput label="Name" placeholder="A field" />
-            <Badge>A badge</Badge>
-          </Group>
-        ),
-      },
-      {
-        name: 'Gradient button',
-        node: (
-          <Button variant="gradient" w={394} leftSection={<IconQrcode size={18} />}>
-            Quét mã QR
-          </Button>
-        ),
-      },
-      {
-        name: 'Default button',
-        node: (
-          <Button variant="default" w={394} leftSection={<IconKeyboard size={18} />}>
-            Nhập mã thủ công
-          </Button>
-        ),
-      },
-      { name: 'Labelled divider', node: <Divider w={394} label="hoặc" /> },
-    ],
+    states: ['Button, field, badge', 'Gradient button', 'Default button', 'Labelled divider'].map(
+      (name) => ({ name, node: <MantineSample state={name} /> }),
+    ),
   },
   {
     group: 'Pages',
@@ -375,7 +446,7 @@ export const ENTRIES: Entry[] = [
       "A page's title: that is PageHeader's.",
     ],
     instead: 'SectionTitle',
-    states: [{ name: 'Phone', node: <FieldLabel>Phone</FieldLabel> }],
+    states: [{ name: 'Phone', node: <FieldLabelSample /> }],
   },
   {
     group: 'Atoms',
@@ -391,25 +462,8 @@ export const ENTRIES: Entry[] = [
     ],
     instead: 'PageHeader',
     states: [
-      {
-        name: 'With subtitle',
-        node: (
-          <Stack w={394} gap={0}>
-            <DoorHeading
-              title="Đăng nhập bằng liên kết"
-              subtitle="Quét mã QR hoặc nhập mã đăng nhập để đăng nhập"
-            />
-          </Stack>
-        ),
-      },
-      {
-        name: 'Title only',
-        node: (
-          <Stack w={394} gap={0}>
-            <DoorHeading title="Đăng nhập vào tài khoản của bạn" />
-          </Stack>
-        ),
-      },
+      { name: 'With subtitle', node: <DoorHeadingSample withSubtitle /> },
+      { name: 'Title only', node: <DoorHeadingSample withSubtitle={false} /> },
     ],
   },
   {
@@ -421,7 +475,7 @@ export const ENTRIES: Entry[] = [
     props: 'href: string · children: string',
     useWhen: ['A page leads back to where it came from, as one line under its content.'],
     dontUseWhen: ['A button that does something: use a button.', 'A link inside running text.'],
-    states: [{ name: 'Default', node: <BackLink href="#">Quay lại đăng nhập</BackLink> }],
+    states: [{ name: 'Default', node: <BackLinkSample /> }],
   },
   {
     group: 'Atoms',
@@ -557,12 +611,7 @@ export const ENTRIES: Entry[] = [
     states: [
       {
         name: 'With a value, and with none',
-        node: (
-          <Group gap="xl">
-            <DetailField label="Phone" value="0901 234 567" />
-            <DetailField label="Email" />
-          </Group>
-        ),
+        node: <DetailFieldSample />,
       },
     ],
   },
@@ -578,9 +627,7 @@ export const ENTRIES: Entry[] = [
       "A label over one field: that is FieldLabel's.",
     ],
     instead: 'PageHeader',
-    states: [
-      { name: 'Default', node: <SectionTitle icon={<IconBuilding size={14} />} label="Basics" /> },
-    ],
+    states: [{ name: 'Default', node: <SectionTitleSample /> }],
   },
   {
     group: 'Molecules',
@@ -648,11 +695,7 @@ export const ENTRIES: Entry[] = [
     states: [
       {
         name: 'Default',
-        node: (
-          <SectionCard icon={<IconBuilding size={14} />} title="Basics">
-            <DetailField label="Name" value="A shop" />
-          </SectionCard>
-        ),
+        node: <SectionCardSample />,
       },
     ],
   },
@@ -672,27 +715,15 @@ export const ENTRIES: Entry[] = [
     states: [
       {
         name: 'With actions',
-        node: (
-          <Stack w={640} maw="100%">
-            <PageHeader title="Staff" actions={<Button>Add</Button>} />
-          </Stack>
-        ),
+        node: <PageHeaderSample state="With actions" />,
       },
       {
         name: 'Title only',
-        node: (
-          <Stack w={640} maw="100%">
-            <PageHeader title="Staff" />
-          </Stack>
-        ),
+        node: <PageHeaderSample state="Title only" />,
       },
       {
         name: 'With status and subtitle',
-        node: (
-          <Stack w={640} maw="100%">
-            <PageHeader title="Nguyen Van A" status="inactive" subtitle="NV-001" />
-          </Stack>
-        ),
+        node: <PageHeaderSample state="With status and subtitle" />,
       },
     ],
   },
