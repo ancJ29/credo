@@ -130,64 +130,67 @@ function Record<D extends { version: string }, V>({
 
   const back = { href: `/${kind}`, children: t(`lists.${kind}.back`) };
 
+  // Without the record (loading, failed or not found) the way back is drawn here, above the state; with it, the shell draws it.
+  if (!doc) {
+    return (
+      <Stack gap="lg">
+        <BackLink {...back} />
+        <Loaded status={loaded.status} onRetry={loaded.reload}>
+          <PageState state="notFound">{t(`lists.${kind}.notThere`)}</PageState>
+        </Loaded>
+      </Stack>
+    );
+  }
+
   return (
     <Loaded status={loaded.status} onRetry={loaded.reload}>
-      {doc ? (
-        <PageShell
-          title={spec.head(doc).name}
-          subtitle={spec.head(doc).code}
-          back={back}
-          status="ready"
-          onRetry={loaded.reload}
-        >
-          {outcome === 'saved' && (
-            <FormMessage kind="saved">{t(`lists.${kind}.saved`)}</FormMessage>
-          )}
-          {(outcome === 'failed' || outcome === 'forbidden' || outcome === 'refused') && (
-            <FormMessage kind="error">
-              {t(
-                outcome === 'failed'
-                  ? `lists.${kind}.saveFailed`
-                  : outcome === 'forbidden'
-                    ? `lists.${kind}.saveForbidden`
-                    : spec.refusedWords,
-              )}
-            </FormMessage>
-          )}
-          {outcome === 'conflict' && (
-            <FormMessage
-              kind="warning"
-              act={
-                <ActionButton
-                  meaning="other"
-                  onClick={() => {
-                    setCurrent(null);
-                    setOutcome(null);
-                    setFormKey((n) => n + 1);
-                    loaded.reload();
-                  }}
-                >
-                  {t(`lists.${kind}.conflictReload`)}
-                </ActionButton>
-              }
-            >
-              {t(`lists.${kind}.conflict`)}
-            </FormMessage>
-          )}
-          {spec.form({
-            formKey,
-            doc,
-            editable: can(user, 'orders.canEdit'),
-            saving,
-            onSave: (values) => void save(doc, values),
-          })}
-        </PageShell>
-      ) : (
-        <Stack gap="lg">
-          <PageState state="notFound">{t(`lists.${kind}.notThere`)}</PageState>
-          <BackLink {...back} />
-        </Stack>
-      )}
+      <PageShell
+        title={spec.head(doc).name}
+        subtitle={spec.head(doc).code}
+        back={back}
+        status="ready"
+        onRetry={loaded.reload}
+      >
+        {outcome === 'saved' && <FormMessage kind="saved">{t(`lists.${kind}.saved`)}</FormMessage>}
+        {(outcome === 'failed' || outcome === 'forbidden' || outcome === 'refused') && (
+          <FormMessage kind="error">
+            {t(
+              outcome === 'failed'
+                ? `lists.${kind}.saveFailed`
+                : outcome === 'forbidden'
+                  ? `lists.${kind}.saveForbidden`
+                  : spec.refusedWords,
+            )}
+          </FormMessage>
+        )}
+        {outcome === 'conflict' && (
+          <FormMessage
+            kind="warning"
+            act={
+              <ActionButton
+                meaning="other"
+                onClick={() => {
+                  setCurrent(null);
+                  setOutcome(null);
+                  setFormKey((n) => n + 1);
+                  loaded.reload();
+                }}
+              >
+                {t(`lists.${kind}.conflictReload`)}
+              </ActionButton>
+            }
+          >
+            {t(`lists.${kind}.conflict`)}
+          </FormMessage>
+        )}
+        {spec.form({
+          formKey,
+          doc,
+          editable: can(user, 'orders.canEdit'),
+          saving,
+          onSave: (values) => void save(doc, values),
+        })}
+      </PageShell>
     </Loaded>
   );
 }

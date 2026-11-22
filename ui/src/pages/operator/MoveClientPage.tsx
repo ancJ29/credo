@@ -12,6 +12,7 @@ import { BoxChoice } from '../../parts/BoxChoice';
 import { touch } from '../../touch';
 import { TYPE } from '../../design-system/tokens';
 import { FormMessage } from '../../components/molecules/FormMessage';
+import { PageState } from '../../components/organisms/PageState';
 import { ActionButton } from '../../components/atoms/ActionButton';
 import { PageHeader } from '../../components/organisms/PageHeader';
 
@@ -148,10 +149,8 @@ export function MoveClientPage({ api, passkeys, onSignedOut, wait = sleep }: Pro
   return (
     <Loaded status={loaded.status} onRetry={loaded.reload}>
       {!client ? (
-        <Stack align="flex-start">
-          <FormMessage kind="warning" standing>
-            {t('operator.rootUnknown')}
-          </FormMessage>
+        <Stack align="flex-start" gap="lg">
+          <PageState state="notFound">{t('operator.rootUnknown')}</PageState>
           {back}
         </Stack>
       ) : (

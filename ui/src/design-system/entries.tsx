@@ -500,7 +500,7 @@ export const ENTRIES: Entry[] = [
     props: 'children: ReactNode',
     useWhen: ['A block of a page ends in two or more buttons, or in one: give them to the row.'],
     dontUseWhen: [
-      'A button beside a page’s title: that is PageHeader’s actions.',
+      'A single button beside a page’s title: that is PageHeader’s actions; two or more go in a row there, an ActionRow handed to its actions.',
       'A button under a message: that is FormMessage’s act.',
     ],
     instead: 'PageHeader',

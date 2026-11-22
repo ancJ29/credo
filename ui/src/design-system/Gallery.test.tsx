@@ -1081,7 +1081,7 @@ describe('Gallery', () => {
     expect(about().getByText(/Built and in use; .* open item 651 moves them\./)).toBeDefined();
     cleanup();
     open(`${BASE}/atoms/back-link`);
-    expect(about().getByText(/Built; the screens do not use it yet: open item 651/)).toBeDefined();
+    expect(about().getByText(/Built and in use; .* open item 651 moves them\./)).toBeDefined();
   });
 
   it('222 case 19: the contracts of the page base’s new takes and its two new parts are drawn, each take a content or a meaning', () => {
@@ -1097,11 +1097,11 @@ describe('Gallery', () => {
         .getAllByRole('button')
         .map((button) => button.textContent),
     ).toEqual(['Cancel', 'Save a draft', 'Send']);
-    expect(about().getByText(/Built; the screens do not use it yet: open item 651/)).toBeDefined();
+    expect(about().getByText(/Built and in use; .* open item 651 moves them\./)).toBeDefined();
     cleanup();
     open(`${BASE}/molecules/table-scroll`);
     expect(stateNames()).toEqual(['Default']);
-    expect(about().getByText(/Built; the screens do not use it yet: open item 653/)).toBeDefined();
+    expect(about().getByText(/Built and in use; .* open item 653 moves them\./)).toBeDefined();
     const decided = GUIDELINE.contracts.find(
       (contract) => contract.part === 'TableScroll',
     )!.decides;

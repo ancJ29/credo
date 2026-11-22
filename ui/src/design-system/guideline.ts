@@ -384,7 +384,7 @@ export const GUIDELINE: {
       },
       {
         about: 'widths',
-        text: 'A width is named by its use, never a number. Not yet: the screens write the numbers: 440 px is written 3 times, 420 and 240 twice, 560 and 320 once, and three more are in no list: 140 (a quantity field), 155 (a filter) and 200 (the search field’s least). The most common width of all is also in no list: a table’s least width, set 12 times at 480 (once), 560 (3), 640 (2), 720 (4) and 760 (2), which the table part now decides, the design-system coder’s choice, as the `table` width of 640 (the part writes its own 640 still); open item 653 moves the screens’ own, and open item 651 the rest.',
+        text: 'A width is named by its use, never a number. Not yet: the screens write the numbers: 440 px is written 3 times, 420 and 240 twice, 560 and 320 once, and three more are in no list: 140 (a quantity field), 155 (a filter) and 200 (the search field’s least). The most common width of all, a table’s least, is in a list now: `TableScroll` writes the `table` width of 640, the design-system coder’s choice, and no screen writes one (open item 653 holds the closing); open item 651 moves the rest.',
       },
       {
         about: 'icons',
@@ -681,7 +681,7 @@ export const GUIDELINE: {
         'The heading: drawn by `PageHeader` on every page, the title first, what acts on the page beside it; the shell writes no title of its own.',
         'Where the way back sits: above the title, drawn by `BackLink`; the record’s status: beside the title, and the subtitle: under it, close, both drawn by `PageHeader`.',
         'Where a failed or loading state sits: in the place of the body, under the header row.',
-        'Given no `back` and no `recordStatus`, it draws neither; the screens draw their own back links and chips until open item 651 moves them.',
+        'Given no `back` and no `recordStatus`, it draws neither; five pages pass a `back` (the person, the record, the new record, the driver’s day and the driver’s delivery), and the operator’s and the import’s nine ways back stay `ActionButton`s until open item 651 moves them.',
       ],
       states: [
         { name: 'Ready', line: 'The data is here: the heading row, then the body.' },
@@ -815,12 +815,13 @@ export const GUIDELINE: {
       fixes: [
         'Its arrow, before the words, and the small gap between them.',
         'Its text size: Mantine’s small.',
-        'Not yet: no screen draws it; 14 places draw a back link by hand, as a button or a link, and open item 651 moves them to this one.',
+        'Drawn by `PageShell` for each page’s way back (five pages) and by the record page’s not-found line; not yet: the operator’s and the import’s nine ways back are `ActionButton`s, which open item 651 moves to this one.',
       ],
       states: [{ name: 'Default', line: 'An arrow, then its words.' }],
       serves: 'A screen picks parts, never a style',
       heldBy: { check: 'ui/src/design-system/guideline.test.ts' },
       followed: { item: 651 },
+      used: true,
     },
     {
       part: 'ListTable',
@@ -839,7 +840,7 @@ export const GUIDELINE: {
       fixes: [
         'The price column’s side: its figures at the right.',
         'Its rows under the pointer: the brand’s palest shade.',
-        'Not yet: the part writes its 640 itself, and the screens write five widths of their own, 12 times; open item 653 moves them.',
+        'Its table sits in `TableScroll`, which writes the least width; no screen writes one.',
       ],
       states: [{ name: 'Default', line: 'The headings, then a row for each record.' }],
       serves: 'A screen picks parts, never a style',
@@ -860,7 +861,8 @@ export const GUIDELINE: {
       fixes: [
         'Their side: the end of the block, the right on a page read from the left.',
         'Their order: as given, the first at the start of the row.',
-        'Built; the screens set each row’s gap and side themselves, 27 rows, until open item 651 moves them.',
+        'Its width: the whole block, whatever the stack around it keeps its children at, so the side holds in every block.',
+        'Drawn by the screens’ 26 button rows; the two `Group`s left in a table’s line (the clients list and the colleagues list) keep their own tighter gap and no wrap, since a table cell needs both.',
       ],
       states: [
         { name: 'Two or more', line: 'The buttons in a row, in order, at the end of the block.' },
@@ -869,6 +871,7 @@ export const GUIDELINE: {
       serves: 'A screen picks parts, never a style',
       heldBy: { check: 'ui/src/design-system/guideline.test.ts' },
       followed: { item: 651 },
+      used: true,
     },
     {
       part: 'TableScroll',
@@ -887,7 +890,7 @@ export const GUIDELINE: {
       ],
       fixes: [
         'Where it scrolls: the table alone, sideways, and never the page.',
-        'Built; the screens write a least width of their own, 12 times (five numbers), until open item 653 moves them.',
+        'Drawn by the 12 tables, `ListTable` among them; no screen writes a least width, and open item 653 holds the closing.',
       ],
       states: [
         { name: 'Default', line: 'A table at its least width, scrolling sideways below it.' },
@@ -895,6 +898,7 @@ export const GUIDELINE: {
       serves: 'A screen picks parts, never a style',
       heldBy: { check: 'ui/src/design-system/guideline.test.ts' },
       followed: { item: 653 },
+      used: true,
     },
     {
       part: 'FieldLabel',

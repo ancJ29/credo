@@ -1,4 +1,4 @@
-import { Group } from '@mantine/core';
+import { Group, Stack } from '@mantine/core';
 import { screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 import { draw } from '../../../tests/render';
@@ -42,5 +42,18 @@ describe('ActionRow', () => {
     expect(
       screen.getByRole('button', { name: 'Save' }).parentElement?.getAttribute('style'),
     ).toContain('--group-justify: flex-end');
+  });
+
+  it('222 fix 4: inside a block whose stack keeps its children at the start, the row still takes the block and so sits at its end', () => {
+    draw(
+      <Stack align="flex-start">
+        <ActionRow>
+          <ActionButton meaning="main">Save</ActionButton>
+        </ActionRow>
+      </Stack>,
+    );
+    const row = screen.getByRole('button', { name: 'Save' }).parentElement!;
+    // A flex-end row with no width of its own is only as wide as its buttons there, so it must stretch itself.
+    expect(row.getAttribute('style')).toContain('align-self: stretch');
   });
 });

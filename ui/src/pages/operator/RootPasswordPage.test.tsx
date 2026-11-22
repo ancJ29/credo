@@ -156,7 +156,7 @@ describe('a client’s root password set anew', () => {
   it('A code the list lacks shows the client unknown, with a way back', async () => {
     openApp('/operator/clients/nobody/root-password', { operator: true });
 
-    expect((await screen.findByRole('alert')).textContent).toBe(words.operator.rootUnknown);
+    expect((await screen.findByRole('status')).textContent).toBe(words.operator.rootUnknown);
     expect(screen.getByRole('link', { name: words.operator.back }).getAttribute('href')).toBe(
       '/operator/clients',
     );

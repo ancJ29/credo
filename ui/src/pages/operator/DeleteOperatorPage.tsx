@@ -10,6 +10,7 @@ import { PasskeyNotGiven, type Passkeys } from '../../passkeys';
 import { touch } from '../../touch';
 import { TYPE } from '../../design-system/tokens';
 import { FormMessage } from '../../components/molecules/FormMessage';
+import { PageState } from '../../components/organisms/PageState';
 import { ActionButton } from '../../components/atoms/ActionButton';
 import { PageHeader } from '../../components/organisms/PageHeader';
 
@@ -62,8 +63,8 @@ export function DeleteOperatorPage({ api, passkeys, onSignedOut }: Props) {
   return (
     <Loaded status={loaded.status} onRetry={loaded.reload}>
       {!colleague ? (
-        <Stack align="flex-start">
-          <FormMessage kind="warning">{t('team.unknown')}</FormMessage>
+        <Stack align="flex-start" gap="lg">
+          <PageState state="notFound">{t('team.unknown')}</PageState>
           {back}
         </Stack>
       ) : (

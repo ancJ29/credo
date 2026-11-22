@@ -434,6 +434,17 @@ describe('the customers and the products', () => {
     expect(screen.queryByRole('textbox')).toBeNull();
   });
 
+  it('The customer’s page has its way back while the record is still loading', async () => {
+    openApp(`/customers/${DEMO_CUSTOMERS[0].id}`, {
+      override: (spied) => {
+        spied.getCustomer.mockReturnValueOnce(new Promise(() => undefined));
+      },
+    });
+
+    expect(await screen.findByRole('link', { name: words.lists.customers.back })).toBeTruthy();
+    expect(screen.getByLabelText(words.common.loading)).toBeTruthy();
+  });
+
   it('The customer’s page says so, and offers another try, when the list cannot be read', async () => {
     const first = DEMO_CUSTOMERS[0];
     openApp(`/customers/${first.id}`, {
@@ -442,8 +453,12 @@ describe('the customers and the products', () => {
       },
     });
 
-    await userEvent.click(await screen.findByRole('button', { name: words.common.retry }));
+    // The way back is there when the record fails to load, not only once it is shown.
+    const retry = await screen.findByRole('button', { name: words.common.retry });
+    expect(screen.getByRole('link', { name: words.lists.customers.back })).toBeTruthy();
+    await userEvent.click(retry);
     expect(await screen.findByRole('heading', { level: 2, name: first.name })).toBeTruthy();
+    expect(screen.getByRole('link', { name: words.lists.customers.back })).toBeTruthy();
   });
 
   it('The product’s name in the list is a link that opens that product’s page, and the page’s link goes back to the list', async () => {
@@ -829,8 +844,12 @@ describe('the customers and the products', () => {
       },
     });
 
-    await userEvent.click(await screen.findByRole('button', { name: words.common.retry }));
+    // The way back is there when the record fails to load, not only once it is shown.
+    const retry = await screen.findByRole('button', { name: words.common.retry });
+    expect(screen.getByRole('link', { name: words.lists.products.back })).toBeTruthy();
+    await userEvent.click(retry);
     expect(await screen.findByRole('heading', { level: 2, name: first.name })).toBeTruthy();
+    expect(screen.getByRole('link', { name: words.lists.products.back })).toBeTruthy();
   });
 
   // Adding: the same record the import would put in, from the same two schemas (case-table 7 to 11)
