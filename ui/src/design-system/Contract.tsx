@@ -1,12 +1,16 @@
-import { Anchor, Stack, Table, Text } from '@mantine/core';
+import { Anchor, Group, Stack, Table, Text } from '@mantine/core';
 import { Link } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import type { ReactNode } from 'react';
 import { GUIDELINE, type Contract, type PartState } from './guideline';
 import { followedWords, heldWords } from './Charter';
 import classes from './Gallery.module.css';
+import { IconSettings, IconUsers } from '@tabler/icons-react';
 import { ActionButton } from '../components/atoms/ActionButton';
+import { MenuRow } from '../components/atoms/MenuRow';
+import { Tag } from '../components/atoms/Tag';
 import { ActionRow } from '../components/molecules/ActionRow';
+import { CopyText } from '../components/molecules/CopyText';
 import { DataTable } from '../components/molecules/DataTable';
 import { DetailField } from '../components/molecules/DetailField';
 import { FormMessage } from '../components/molecules/FormMessage';
@@ -273,3 +277,78 @@ function PanelSample({ state: { name } }: { state: PartState }) {
 
 /** A panel with a title, and one with none. */
 export const PanelStates = platesOf('Panel', (state) => <PanelSample state={state} />);
+
+/** A menu row at each of its states, drawn by the part itself: a way on to an address, and an act with no icon or arrow. */
+function MenuRowSample({ state: { name } }: { state: PartState }) {
+  const { t } = useTranslation();
+  return (
+    <Stack
+      w={394}
+      maw="100%"
+      gap={0}
+      style={{ border: '1px solid var(--mantine-color-default-border)' }}
+    >
+      {name === 'A way on' ? (
+        <>
+          <MenuRow icon={IconSettings} to="/48b74d079/gallery/atoms/menu-row">
+            {t('nav.settings')}
+          </MenuRow>
+          <MenuRow icon={IconUsers} to="/48b74d079/gallery/atoms/menu-row">
+            {t('nav.staff')}
+          </MenuRow>
+        </>
+      ) : (
+        <MenuRow onClick={() => undefined}>{t('user.signOut')}</MenuRow>
+      )}
+    </Stack>
+  );
+}
+
+/** A row that opens an address, and one that acts. */
+export const MenuRowStates = platesOf('MenuRow', (state) => <MenuRowSample state={state} />);
+
+/** The sign-in link a copy button samples copy. */
+const SAMPLE_LINK = 'https://an-phat.example/login';
+
+/** A copy button at each of its states, drawn by the part itself: alone, and in a read-only field. */
+function CopyTextSample({ state: { name } }: { state: PartState }) {
+  const { t } = useTranslation();
+  return (
+    <Stack w={394} maw="100%">
+      <CopyText
+        value={SAMPLE_LINK}
+        label={t('operator.copy')}
+        about={t('operator.link')}
+        field={name === 'In its field' ? t('operator.link') : undefined}
+      />
+    </Stack>
+  );
+}
+
+/** A copy button alone, and one in its read-only field. */
+export const CopyTextStates = platesOf('CopyText', (state) => <CopyTextSample state={state} />);
+
+/** A tag at each of its states, drawn by the part itself: in the brand's tone, and in a meaning's. */
+function TagSample({ state: { name } }: { state: PartState }) {
+  const { t } = useTranslation();
+  return (
+    <Group>
+      {name === 'In the brand’s tone' ? (
+        <>
+          <Tag>{t('team.you')}</Tag>
+          <Tag>{t('permissions.custom')}</Tag>
+        </>
+      ) : (
+        <>
+          <Tag meaning="success">{t('services.answers')}</Tag>
+          <Tag meaning="danger">{t('services.silent')}</Tag>
+          <Tag meaning="info">{t('services.unseen')}</Tag>
+          <Tag meaning="warning">{t('services.differs')}</Tag>
+        </>
+      )}
+    </Group>
+  );
+}
+
+/** A tag in the brand's tone, and one in each meaning's. */
+export const TagStates = platesOf('Tag', (state) => <TagSample state={state} />);

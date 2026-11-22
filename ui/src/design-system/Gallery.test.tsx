@@ -1,4 +1,4 @@
-import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { CREDO_COLOUR } from '@credo/shared';
@@ -103,7 +103,7 @@ describe('Gallery', () => {
     ]);
     expect(found.length).toBeGreaterThan(0);
     expect(list().getByRole('region', { name: 'Start here' }).textContent).toContain('1');
-    expect(list().getByRole('region', { name: 'Foundations' }).textContent).toContain('5');
+    expect(list().getByRole('region', { name: 'Foundations' }).textContent).toContain('9');
     for (const [level, heading] of Object.entries(HEADINGS)) {
       // A part to come has its entry and no file yet.
       const coming = ENTRIES.filter((entry) => entry.toCome && entry.group === heading);
@@ -376,6 +376,178 @@ describe('Gallery', () => {
     for (const name of [vi.permissions.inherit, vi.permissions.allow, vi.permissions.refuse]) {
       expect(plate('Segmented pick').getByRole('radio', { name }), name).toBeDefined();
     }
+  });
+
+  it('231 case 9: MenuRow draws a way on with its icon, words and arrow, and an act with none', async () => {
+    open(`${BASE}/atoms/menu-row`);
+
+    expect(stateNames()).toEqual(['A way on', 'An act']);
+    const { vi: words } = DICTIONARIES;
+    const way = within(part().getByRole('figure', { name: 'A way on' }));
+    for (const name of [words.nav.settings, words.nav.staff]) {
+      const row = way.getByRole('link', { name });
+      expect(row.getAttribute('href')).toBe('/48b74d079/gallery/atoms/menu-row');
+      expect(row.querySelectorAll('svg')).toHaveLength(2);
+    }
+    const act = within(part().getByRole('figure', { name: 'An act' }));
+    const out = act.getByRole('button', { name: words.user.signOut });
+    expect(out.querySelector('svg')).toBeNull();
+    await userEvent.click(out);
+    expect(out).toBeDefined();
+  });
+
+  it('231 case 11: Tag draws its words in the brand’s tone and in each meaning’s', () => {
+    open(`${BASE}/atoms/tag`);
+
+    expect(stateNames()).toEqual(['In the brand’s tone', 'In a meaning’s tone']);
+    const { vi: words } = DICTIONARIES;
+    const brand = within(part().getByRole('figure', { name: 'In the brand’s tone' }));
+    expect(brand.getByText(words.team.you)).toBeDefined();
+    expect(brand.getByText(words.permissions.custom)).toBeDefined();
+    const meant = within(part().getByRole('figure', { name: 'In a meaning’s tone' }));
+    for (const [word, tone] of [
+      [words.services.answers, TONES.success],
+      [words.services.silent, TONES.danger],
+      [words.services.unseen, TONES.info],
+      [words.services.differs, TONES.warning],
+    ])
+      expect(meant.getByText(word).closest('[style]')?.getAttribute('style'), word).toContain(
+        `--mantine-color-${tone}-`,
+      );
+  });
+
+  it('231 case 10 and 16: CopyText draws a button alone and the button in its read-only field', async () => {
+    open(`${BASE}/molecules/copy-text`);
+
+    expect(stateNames()).toEqual(['Alone in a row', 'In its field']);
+    const { vi: words } = DICTIONARIES;
+    const alone = within(part().getByRole('figure', { name: 'Alone in a row' }));
+    expect(alone.queryByRole('textbox')).toBeNull();
+    expect(alone.getByRole('button', { name: `${words.operator.copy}: ${words.operator.link}` }));
+    const field = within(part().getByRole('figure', { name: 'In its field' }));
+    const input = field.getByRole<HTMLInputElement>('textbox', { name: words.operator.link });
+    expect(input.readOnly).toBe(true);
+    expect(input.value).toBe('https://an-phat.example/login');
+    await userEvent.click(
+      field.getByRole('button', { name: `${words.operator.copy}: ${words.operator.link}` }),
+    );
+    expect(
+      field.getByRole('button', { name: `${words.operator.copied}: ${words.operator.link}` }),
+    ).toBeDefined();
+  });
+
+  it('231 case 12: Menus draws the language menu and the person menu, each opened by a press', async () => {
+    open(`${BASE}/foundations/menus`);
+
+    expect(stateNames()).toEqual(['Language menu', 'Person menu']);
+    const { vi: words } = DICTIONARIES;
+    const language = within(part().getByRole('figure', { name: 'Language menu' }));
+    expect(language.queryByRole('menuitem')).toBeNull();
+    await userEvent.click(language.getByRole('button', { name: 'VI' }));
+    const picks = language.getAllByRole('menuitem');
+    expect(picks.map((item) => item.textContent)).toEqual([LANGUAGE_NAMES.en, LANGUAGE_NAMES.vi]);
+    expect(picks.map((item) => item.getAttribute('aria-current'))).toEqual(['false', 'true']);
+    expect(language.getByText(words.user.language, { selector: 'div' })).toBeDefined();
+
+    const person = within(part().getByRole('figure', { name: 'Person menu' }));
+    expect(person.queryByRole('menuitem')).toBeNull();
+    await userEvent.click(person.getByRole('button', { name: SAMPLES.vi.person }));
+    expect(person.getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
+      words.user.password,
+      words.user.signOut,
+    ]);
+  });
+
+  it('231 case 12: Photos and codes draws the photo and its choose button, the proof, the logo and the QR code', async () => {
+    open(`${BASE}/foundations/photos-and-codes`);
+
+    expect(stateNames()).toEqual([
+      'A person’s photo',
+      'A delivery’s proof',
+      'A company’s logo',
+      'The sign-in QR code',
+    ]);
+    const { vi: words } = DICTIONARIES;
+    const person = within(part().getByRole('figure', { name: 'A person’s photo' }));
+    expect(person.getByRole('img', { name: SAMPLES.vi.person }).getAttribute('src')).toContain(
+      'data:image/svg+xml',
+    );
+    expect(person.getByRole('button', { name: words.person.photoChoose })).toBeDefined();
+    // A file chosen on the device reaches the button's callback, and the sample keeps nothing.
+    const picture = new File(['x'], 'photo.png', { type: 'image/png' });
+    await userEvent.upload(
+      part()
+        .getByRole('figure', { name: 'A person’s photo' })
+        .querySelector<HTMLInputElement>('input[type=file]')!,
+      picture,
+    );
+    const proof = within(part().getByRole('figure', { name: 'A delivery’s proof' }));
+    expect(proof.getByRole('heading', { level: 3, name: words.orders.proofTitle })).toBeDefined();
+    expect(proof.getByRole('img', { name: words.orders.proofAlt })).toBeDefined();
+    const logo = within(part().getByRole('figure', { name: 'A company’s logo' }));
+    expect(logo.getByRole('button', { name: words.settings.logoChoose })).toBeDefined();
+    await userEvent.upload(
+      part()
+        .getByRole('figure', { name: 'A company’s logo' })
+        .querySelector<HTMLInputElement>('input[type=file]')!,
+      picture,
+    );
+    expect(
+      part()
+        .getByRole('figure', { name: 'A company’s logo' })
+        .querySelector('img')
+        ?.getAttribute('alt'),
+    ).toBe('');
+    const code = within(part().getByRole('figure', { name: 'The sign-in QR code' }));
+    expect(code.getByRole('img', { name: words.person.qrImage })).toBeDefined();
+  });
+
+  it('231 case 12: Links draws a name link in a row, a phone link and a link in a sentence', () => {
+    open(`${BASE}/foundations/links`);
+
+    expect(stateNames()).toEqual(['A name link in a row', 'A phone link', 'A link in a sentence']);
+    const { vi: words } = DICTIONARIES;
+    const name = within(part().getByRole('figure', { name: 'A name link in a row' }));
+    expect(name.getByRole('link', { name: SAMPLES.vi.person }).getAttribute('href')).toBe(
+      '/staff/1',
+    );
+    const phone = within(part().getByRole('figure', { name: 'A phone link' }));
+    const call = phone.getByRole('link', {
+      name: words.myDeliveries.call.replace('{{phone}}', SAMPLES.vi.phone),
+    });
+    expect(call.getAttribute('href')).toBe(`tel:${SAMPLES.vi.phone.replace(/\s/g, '')}`);
+    const sentence = within(part().getByRole('figure', { name: 'A link in a sentence' }));
+    expect(sentence.getByText(words.orders.fromOrder, { exact: false })).toBeDefined();
+    expect(sentence.getByRole('link', { name: 'DH-0001' }).getAttribute('href')).toBe(
+      '/orders/2026-11-22/1',
+    );
+  });
+
+  it('231 case 12: Dialog is closed until a press opens it, in the ended session’s words', async () => {
+    open(`${BASE}/foundations/dialog`);
+
+    expect(stateNames()).toEqual(['The ended session']);
+    const { vi: words } = DICTIONARIES;
+    const state = within(part().getByRole('figure', { name: 'The ended session' }));
+    expect(state.queryByRole('dialog')).toBeNull();
+    await userEvent.click(state.getByRole('button', { name: words.passkey.endedTitle }));
+    const dialog = within(await state.findByRole('dialog'));
+    expect(dialog.getByText(words.passkey.endedText)).toBeDefined();
+    expect(dialog.getByRole('button', { name: words.user.signOut })).toBeDefined();
+    await userEvent.click(dialog.getByRole('button', { name: words.passkey.endedButton }));
+    await waitFor(() => expect(state.queryByRole('dialog')).toBeNull());
+    // Each other way out closes it too: the sign-out and the escape key.
+    const press = () =>
+      userEvent.click(state.getByRole('button', { name: words.passkey.endedTitle }));
+    await press();
+    await userEvent.click(
+      within(await state.findByRole('dialog')).getByRole('button', { name: words.user.signOut }),
+    );
+    await waitFor(() => expect(state.queryByRole('dialog')).toBeNull());
+    await press();
+    await state.findByRole('dialog');
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => expect(state.queryByRole('dialog')).toBeNull());
   });
 
   it('11: draws the door card in two states, the sign-in and the link page, in sentence case', () => {
@@ -1066,7 +1238,7 @@ describe('Gallery', () => {
   });
 
   it('213 case 1: every entry carries one to three use lines and one to three don’t-use lines', () => {
-    expect(ENTRIES).toHaveLength(32);
+    expect(ENTRIES).toHaveLength(39);
     for (const entry of ENTRIES) {
       for (const lines of [entry.useWhen, entry.dontUseWhen]) {
         expect(lines.length, entry.name).toBeGreaterThanOrEqual(1);
@@ -1398,7 +1570,7 @@ describe('Gallery', () => {
         entry.kind !== KIND_OF_PAGE,
     );
     // A set that found nothing would quiet the loop.
-    expect(parts.length).toBe(22);
+    expect(parts.length).toBe(25);
     expect(GUIDELINE.contracts.map((contract) => contract.part).sort()).toEqual(
       parts.map((entry) => entry.name).sort(),
     );
@@ -1428,6 +1600,14 @@ describe('Gallery', () => {
     // The panel of ours and the card with a section title each name the other.
     expect(words('Panel')).toContain('SectionCard');
     expect(words('SectionCard')).toContain('Panel');
+    // The tag and the status badge each name the other.
+    expect(words('Tag')).toContain('StatusBadge');
+    expect(words('StatusBadge')).toContain('Tag');
+    // The copy button names the button of ours it is made of.
+    expect(words('CopyText')).toContain('ActionButton');
+    // The frame’s menus of Mantine’s own and the page’s menu row name each other.
+    expect(words('MenuRow')).toContain('Menus');
+    expect(words('Menus')).toContain('MenuRow');
   });
 
   const drawn = (entry: Entry, language: 'vi' | 'en' = 'en') =>

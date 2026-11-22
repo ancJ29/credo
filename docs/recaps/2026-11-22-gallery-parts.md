@@ -4,20 +4,23 @@ You asked for the gallery's samples in the staff's language first, then the part
 
 ```mermaid
 flowchart LR
-  a["1 picker and base"] --> b["2 every entry"] --> c["landing 2: what the pages draw"] --> d["landing 3: the rest"]
+  a["1 samples in Vietnamese"] --> b["2 what the pages draw"] --> c["3 menu row, copy button, tag, photos, links, dialog"] --> d["your look"]
 ```
 
 ## What each landing gives you
 
-- **1**: every sample in the gallery opens in Vietnamese, a "Sample language" picker beside the colour theme turns them English, and the gallery's own words (names, descriptions, use lines) stay English for the coder. A sample a screen says shows the screen's own word; the Formats state shows a price, a number's marks, a day and a time as the picked language writes them.
-- **2**: the gallery gains the parts the pages draw: Mantine's own Fields (text, password, number, long text and drop-down, each with a hint, an error and read-only, and the staff list's filter bar) and Choices (tick boxes, switches, a one-of-many list and the segmented pick, as the settings page and the permission editor draw them), and two parts of ours, the table and the framed panel, each with its entry and contract.
-- **3**: not built yet.
+- **1**: every sample opens in Vietnamese, a "Sample language" picker beside the colour theme turns them English, and the gallery's own words stay English for the coder. A sample a screen says shows the screen's own word; the Formats state shows a price, a number's marks, a day and a time as the picked language writes them.
+- **2**: Mantine's own Fields (with the staff list's filter bar) and Choices, and two parts of ours, the table and the framed panel, each with its entry and contract.
+- **3**: the menu row and the frame's menus; the copy button, moved to the molecules and taking a field; the small tag; photos and codes, links and the dialog, all Mantine's own. Foundations now counts 9, the gallery 36 entries and the parts 25. No screen moved.
 
 ## What was proved
 
-- **1**: its two steps are built; the evidence is below once the landing's check on `pre-merge` has read. _Not yet known:_ that check's result.
+- **1 and 2**: each landing's checks on `pre-merge` (22 November, 20:46 and 21:18) read green: `ui`'s and `visual`'s gates, the citation test and the two `scripts` tests (from the piece file).
+- **3**: every step's gate on its own tree read green, `visual`'s pinned file unchanged, and each new guard was seen red once. _Not yet known:_ <!-- FILL: landing 3's checks on `pre-merge`, their result and time -->
+- Three pairs name each other, so a coder finds the winner: `Panel` and `SectionCard`, `DataTable` and `ListTable`, `Tag` and `StatusBadge`.
+- Item 507 closes; item 651 gained the five parts' site counts and item 515 stays parked, the reason written in it.
 
 ## What is left
 
-- Your look at the samples in Vietnamese: not asked yet, it comes with the last step. _Not yet known:_ your answer.
-- Landings 2 and 3, and the items they close (507) or leave (651, 515, 555, 306, 307, 505): see the plan.
+- Your one look, three points together: the samples in Vietnamese, the five new parts, Mantine's own as the theme dresses them. A yes keeps them; a no names the entry and reopens its step. <!-- FILL: your answer to the look, not yet asked -->
+- The screens' move onto these parts is item 651's, a milestone behind the pages; items 555, 306, 307 and 505 stay as the plan says.

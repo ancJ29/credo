@@ -8,6 +8,7 @@ import {
   ROLES,
   SIZES,
   SPACING,
+  TOKENS,
   TONES,
   TYPE,
   WEIGHTS,
@@ -96,6 +97,7 @@ type Tables = {
   ICON_SIZES: typeof ICON_SIZES;
   RADII: typeof RADII;
   ROLES: typeof ROLES;
+  TOKENS: typeof TOKENS;
 };
 
 /** One key of one of the theme's tables: a key that is not there is a type error. */
@@ -920,6 +922,117 @@ export const GUIDELINE: {
       ],
       serves: 'A screen picks parts, never a style',
       heldBy: { check: 'ui/src/components/organisms/Panel.test.tsx' },
+      followed: { item: 651 },
+    },
+    {
+      part: 'MenuRow',
+      takes: [
+        { prop: 'icon', is: 'content', line: 'The icon before its words; none draws none.' },
+        { prop: 'to', is: 'content', line: 'The address it opens; none makes it an act.' },
+        {
+          prop: 'onClick',
+          is: 'content',
+          line: 'What it does when pressed, where it has no address.',
+        },
+        { prop: 'children', is: 'content', line: 'Its words.' },
+      ],
+      decides: [
+        {
+          what: 'Its padding and the gap between its icon, words and arrow.',
+          from: [
+            { table: 'SPACING', key: 'sm' },
+            { table: 'SPACING', key: 'md' },
+          ],
+        },
+        { what: 'Its arrow’s size.', from: [{ table: 'ICON_SIZES', key: 'field' }] },
+      ],
+      fixes: [
+        'Its text size: the frame’s menu size, `--credo-menu-size`.',
+        'The line between rows and the lit row under the pointer: the theme’s default border and hover colours.',
+        'Its arrow, at the end, drawn only where it opens an address.',
+        'Not yet drawn by a screen: `MorePage`’s `.moreRow` and `.go` in `frame.module.css` draw the same look until open item 651 moves them to this one.',
+      ],
+      states: [
+        { name: 'A way on', line: 'An icon, its words and an arrow, opening an address.' },
+        { name: 'An act', line: 'Its words alone, acting when pressed.' },
+      ],
+      serves: 'A screen picks parts, never a style',
+      heldBy: { check: 'ui/src/components/atoms/MenuRow.test.tsx' },
+      followed: { item: 651 },
+    },
+    {
+      part: 'CopyText',
+      takes: [
+        { prop: 'value', is: 'content', line: 'What lands on the clipboard.' },
+        { prop: 'label', is: 'content', line: 'The button’s words before it is pressed.' },
+        {
+          prop: 'about',
+          is: 'content',
+          line: 'What is copied, so the button’s name tells one copy button from the next.',
+        },
+        {
+          prop: 'field',
+          is: 'content',
+          line: 'The label of a read-only field that shows the value, the button at its right; none draws the button alone.',
+        },
+      ],
+      decides: [
+        {
+          what: 'The value’s face in its field: the code face.',
+          from: [{ table: 'TOKENS', key: 'codeFace' }],
+        },
+      ],
+      fixes: [
+        'Its button, an `ActionButton` of the other meaning, saying the copied word for a moment after a press.',
+        'Its field’s room for the button, at the right of the value.',
+      ],
+      states: [
+        { name: 'Alone in a row', line: 'The button alone, as a table row draws it.' },
+        {
+          name: 'In its field',
+          line: 'A read-only field with the value in the code face, the button at its right.',
+        },
+      ],
+      serves: 'A screen picks parts, never a style',
+      heldBy: { check: 'ui/src/components/molecules/CopyText.test.tsx' },
+      followed: { item: 651 },
+      used: true,
+    },
+    {
+      part: 'Tag',
+      takes: [
+        {
+          prop: 'meaning',
+          is: 'meaning',
+          line: 'What the word says: the brand’s own, or a danger, a success, a warning or plain information; none is the brand’s.',
+        },
+        { prop: 'children', is: 'content', line: 'Its words.' },
+      ],
+      decides: [
+        { what: 'Its size: the chip’s.', from: [{ table: 'SIZES', key: 'chip' }] },
+        {
+          what: 'Its colour, from its meaning: red for a danger, green for a success, orange for a warning, gray for information.',
+          from: [
+            { table: 'TONES', key: 'danger' },
+            { table: 'TONES', key: 'success' },
+            { table: 'TONES', key: 'warning' },
+            { table: 'TONES', key: 'info' },
+          ],
+        },
+      ],
+      fixes: [
+        'Its look: Mantine’s light badge, in the client’s colour where it has no meaning.',
+        'Not yet drawn by a screen: four screens draw a light badge of their own until open item 651 moves them to this one.',
+      ],
+      states: [
+        { name: 'In the brand’s tone', line: 'A word that marks a person or a setting.' },
+        {
+          name: 'In a meaning’s tone',
+          line: 'A state of a thing that is no record’s status, in the tone of its meaning.',
+        },
+      ],
+      serves: 'A screen picks parts, never a style',
+      heldBy: { check: 'ui/src/components/atoms/Tag.test.tsx' },
       followed: { item: 651 },
     },
     {

@@ -221,29 +221,94 @@ part and its importers 14 (222's step 7), five entries 14 (213's step 10), a rec
 
 **Landing 3: the rest.**
 
-- [ ] **7. The menu row, and menus.** `MenuRow` in `components/atoms/`: takes words, an icon and an
+- [x] **7. The menu row, and menus.** `MenuRow` in `components/atoms/`: takes words, an icon and an
       address or a press; decides its padding, gap and size, the line between rows and its hover, as
       `.moreRow` and `.go` draw them, which stay `MorePage`'s until the move. Menus: the frame's
       language and person menus, opened by a press. Cases 9, 12, 13. _Done when:_ the gates exit 0.
       **12 min**.
-- [ ] **8. The copy button.** `git mv ui/src/parts/CopyText.tsx ui/src/components/molecules/`, its
+      _Evidence:_ `components/atoms/MenuRow.tsx` takes an optional icon, an address or a press and its
+      words; it draws the icon at 20, the words and, only where it opens an address, an arrow at
+      `ICON_SIZES.field`, and its stylesheet `MenuRow.module.css` holds the gap and padding at
+      `SPACING.sm` and `SPACING.md`, the menu size, the line between rows and the lit row, as
+      `.moreRow` and `.go` draw them, which stay `MorePage`'s. Its entry sits among the atoms with
+      two states, a way on and an act, and its contract; the new entry Menus sits in Foundations
+      under "Mantine's own" with the frame's language menu and person menu, each closed until a press
+      opens it. Foundations now counts 6, the gallery 31 entries and the parts 23. Case 9 red once
+      each for the arrow's size, the icon's size, the address, the press, the gap, the line, the
+      hover and the arrow drawn on the wrong row; case 12 red once each for a menu open with no press,
+      the picked language's mark and the person menu's item; case 13 red once for an entry with
+      no contract and once for a take that is a style; the two entries naming each other red once;
+      all green with none, each file diffed against its backup; the `ui` gate exits 0 on this tree.
+- [x] **8. The copy button.** `git mv ui/src/parts/CopyText.tsx ui/src/components/molecules/`, its
       five imports with it; it takes `field` (content: the label of a read-only field that shows the
       value in the code face, the button at its right, as `ClientMade.tsx#L21`'s `Field` draws it), its
       code face one value of `tokens.ts`; its entry (alone in a row; in its field), contract (`used`)
       and test. Cases 10, 13, 16. _Done when:_ the gates exit 0 and `pnpm --filter @credo/scripts exec
       vitest run src/citations.test.ts src/counts.test.ts` exits 0. **14 min**.
-- [ ] **9. The tag.** `Tag` in `components/atoms/`: takes words and a meaning (the brand's, or a tone
+      _Evidence:_ `CopyText` moved by `git mv` from `ui/src/parts/` to `ui/src/components/molecules/`
+      (a rename in the commit); `git grep -nP "^import \{ CopyText \} from" -- ui/src` found five lines
+      before (four `'../../parts/CopyText'`, one `'./CopyText'`) and five after, all
+      `components/molecules/CopyText`, and no screen's markup moved. It takes `field` (content): given
+      one, it draws a read-only field of that label with the value in the code face, `TOKENS.codeFace`
+      (a new value of `tokens.ts`, which joins the tables a contract decides from), the button at its
+      right; none draws the button alone. Its entry sits among the molecules with two states, alone in
+      a row and in its field, and its contract (`used`, `followed` item 651); the entry names
+      `ActionButton` for a button that does more than copy. Foundations stays 6, the gallery now holds 32 entries and the parts 24.
+      Case 10 red once each for the read-only face dropped, the value copied wrong, the copied word
+      dropped, the code face another font, the field's label dropped, the button left out of the field
+      and the gallery's field state not drawn; case 13 red once each for an entry with no contract (the
+      two gallery suites failing whole) and a take that is a style; case 16 red once for the button's
+      name losing what it copies, which reddens the four operator screens' own tests and `ClientMade`'s;
+      green with none, each file diffed against its backup; the `ui` and `visual` gates, the citation,
+      counts, words and fake tests exit 0 on this tree.
+- [x] **9. The tag.** `Tag` in `components/atoms/`: takes words and a meaning (the brand's, or a tone
       of `TONES`); decides the light look and the chip's size (`SIZES.chip`). Its entry (a colleague's
       "you", a permission's "custom", a build that differs, a service's state) and contract. Cases
       11, 13, 14. _Done when:_ the gates exit 0. **12 min**.
-- [ ] **10. Photos and codes, links, the dialog.** A person's photo with its choose button, a
+      _Evidence:_ `components/atoms/Tag.tsx` takes `meaning` (`brand`, the default, or a tone of
+      `TONES`) and its words; it draws Mantine's light badge at `SIZES.chip`, no colour set for the
+      brand and `TONES[meaning]` for a meaning. Its entry sits among the atoms with two states, in
+      the brand's tone (a colleague's "you", a permission's "custom") and in a meaning's tone (a
+      service's healthy, unresponsive and unreachable, a build that differs), and its contract
+      (`followed` item 651, no screen draws it yet: the four light badges stay in their screens, case
+      15). Counts recounted on this tree as the plan names them: `TONES` four keys, `SIZES.chip` 12,
+      four light badges with no status in `OperatorsPage.tsx#L55`, `ServicesPage.tsx#L174` and
+      `#L186`, `PermissionEditor.tsx#L72`, as planned. The gallery now holds 33 entries and the parts
+      25; `StatusBadge`'s entry names `Tag` as its winner for a word that is no status, and `Tag`'s
+      names `StatusBadge`. Case 11 red once each for the badge filled, the size dropped, the brand
+      drawn in a tone, a meaning drawn in the wrong tone and a gallery sample in the wrong tone; case
+      13 red once each for an entry with no contract (whole suites failing), a take that is a style
+      and a contract with no entry; case 14 red once each for each entry's naming of the other left
+      out; green with none, each file diffed against its backup; the `ui` and `visual` gates, the
+      citation, words and fake tests and the pinned file's diff exit 0 on this tree (22:04 to 22:10).
+- [x] **10. Photos and codes, links, the dialog.** A person's photo with its choose button, a
       delivery's proof, a company's logo, the sign-in QR code; a name link in a row, a phone link, a
       link in a sentence; a dialog a press opens, in the ended session's words. Item 507 closes. Case
       12. _Done when:_ the gates exit 0 with Foundations at 9 and 25 parts. **14 min**.
-- [ ] **11. The recap, and the look.** The recap closed; the gallery's row and card in
+      _Evidence:_ three new entries sit in Foundations under "Mantine's own", no part of ours: Photos and
+      codes (`design-system/Photos.tsx`: a person's photo at 96 with its choose button and the avatar
+      where none is held, a delivery's proof under its title, a company's logo at 48 with its choose
+      button, the sign-in QR code, the words read by key), Links (`Links.tsx`: a name link in a row, a
+      phone link, a link in a sentence) and Dialog (`Dialog.tsx`: a button that opens the ended
+      session's dialog, in its title, text and two ways on, each of which closes it). Foundations now
+      counts 9, the gallery 36 entries and the parts stay 25. Counts recounted on this tree: `<Image` 5,
+      `<FileButton` 2, `<QrCode` 1, `<PhotoPanel` 1, `<ProofPhoto` 2 and `<Modal` 1 as planned; `<Anchor`
+      is 11 in 9 files outside the gallery (not 9 in 8: `BackLink` writes two and the staff list two),
+      and the sites the samples copy are `ListTable`, `MyDeliveryPage#L25` and `DeliveryPage#L98`.
+      Case 12 red once each for the photo's choose button worded as its hint, the QR code's name
+      worded as the link's, the phone link's address keeping its spaces and the dialog's press opening
+      nothing, green with none, each file diffed against its backup; no screen moved. Item 507 closes.
+- [x] **11. The recap, and the look.** The recap closed; the gallery's row and card in
       `docs/products.md` name the samples' languages and the new parts; item 651 gains the new parts'
       site counts, item 515 the line below. Your points 1 to 3, together. _Done when:_ the citation
       test exits 0. **5 min**.
+      _Evidence:_ the recap holds landing 3 (steps 7 to 10) with a marker for landing 3's checks on
+      `pre-merge` and one for your look, neither yet known; the gallery's row and card in
+      `docs/products.md` name the samples' languages and the new parts, its state saying landing 3 is
+      on `gallery-parts`; item 651 gained the five parts' site counts, each with its grep beside it
+      (`<Table` 15 in 12, `<Paper` 33 in 23, `moreRow` 3 in 1, `<CopyText` 5 in 5, `<Badge` 5 in 4),
+      item 515 its line; no box is left unticked but this one, and the citation test exits 0 on this
+      tree.
 
 ## The cases
 

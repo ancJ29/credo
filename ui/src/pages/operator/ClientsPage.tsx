@@ -5,7 +5,7 @@ import { PageState } from '../../components/organisms/PageState';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Api } from '../../api';
-import { CopyText } from '../../parts/CopyText';
+import { CopyText } from '../../components/molecules/CopyText';
 import { dayOf } from '../../day';
 import { Loaded } from '../../frame/Loaded';
 import { useLoad } from '../../page';

@@ -4,7 +4,7 @@ import { ActionRow } from '../../components/molecules/ActionRow';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Api } from '../../api';
-import { CopyText } from '../../parts/CopyText';
+import { CopyText } from '../../components/molecules/CopyText';
 import { refusal } from '../../page';
 import { PasskeyNotGiven, type Passkeys } from '../../passkeys';
 import { touch } from '../../touch';

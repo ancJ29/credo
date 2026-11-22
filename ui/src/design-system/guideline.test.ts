@@ -2,7 +2,18 @@ import { existsSync, readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { ENTRIES } from './entries';
 import { GUIDELINE, type Contract, type Rule } from './guideline';
-import { ICON_SIZES, RADII, ROLES, SIZES, SPACING, TONES, TYPE, WEIGHTS, WIDTHS } from './tokens';
+import {
+  ICON_SIZES,
+  RADII,
+  ROLES,
+  SIZES,
+  SPACING,
+  TOKENS,
+  TONES,
+  TYPE,
+  WEIGHTS,
+  WIDTHS,
+} from './tokens';
 
 /** The repository's root, from this file's folder. */
 const ROOT = `${import.meta.dirname}/../../..`;
@@ -100,6 +111,7 @@ const TABLES: Record<string, object> = {
   ICON_SIZES,
   RADII,
   ROLES,
+  TOKENS,
 };
 
 /** A prop that is a style a screen would choose: a colour, size, gap, weight, width, variant or corner. */

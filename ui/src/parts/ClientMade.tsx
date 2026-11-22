@@ -2,7 +2,7 @@ import { Paper, Stack, TextInput } from '@mantine/core';
 import { ActionRow } from '../components/molecules/ActionRow';
 import { ActionButton } from '../components/atoms/ActionButton';
 import { useTranslation } from 'react-i18next';
-import { CopyText } from './CopyText';
+import { CopyText } from '../components/molecules/CopyText';
 import { FormMessage } from '../components/molecules/FormMessage';
 import { PageHeader } from '../components/organisms/PageHeader';
 
