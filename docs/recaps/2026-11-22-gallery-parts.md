@@ -10,7 +10,8 @@ flowchart LR
 ## What each landing gives you
 
 - **1**: every sample in the gallery opens in Vietnamese, a "Sample language" picker beside the colour theme turns them English, and the gallery's own words (names, descriptions, use lines) stay English for the coder. A sample a screen says shows the screen's own word; the Formats state shows a price, a number's marks, a day and a time as the picked language writes them.
-- **2, 3**: not built yet.
+- **2**: the gallery gains the parts the pages draw: Mantine's own Fields (text, password, number, long text and drop-down, each with a hint, an error and read-only, and the staff list's filter bar) and Choices (tick boxes, switches, a one-of-many list and the segmented pick, as the settings page and the permission editor draw them), and two parts of ours, the table and the framed panel, each with its entry and contract.
+- **3**: not built yet.
 
 ## What was proved
 

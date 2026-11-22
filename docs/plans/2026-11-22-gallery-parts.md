@@ -165,23 +165,59 @@ part and its importers 14 (222's step 7), five entries 14 (213's step 10), a rec
 
 **Landing 2: what the pages draw.**
 
-- [ ] **3. Fields.** The kind "Mantine's own"; Fields: text, password, number, long text and
+- [x] **3. Fields.** The kind "Mantine's own"; Fields: text, password, number, long text and
       drop-down, each with a label, a hint, an error and read-only, and the staff list's filter bar.
       Case 5. _Done when:_ the gates exit 0. **9 min**.
-- [ ] **4. The table.** `DataTable` in `components/molecules/`: takes columns (each a heading, and
+      _Evidence:_ the new entry Fields sits in Foundations under the kind "Mantine's own", which "Mantine,
+      in the theme" joins at its address; its six states draw text, password, number, long text and
+      drop-down each as a label with a hint, with an error and read-only, and the staff list's filter bar
+      of a search and three drop-downs, the words read from the dictionary by key where a screen says
+      them and from `samples.ts` where none does. Case 5 red once each for the read-only face dropped,
+      the error dropped and the filter bar's position drop-down dropped, green with none; the `ui` gate
+      exits 0 on this tree.
+- [x] **4. The table.** `DataTable` in `components/molecules/`: takes columns (each a heading, and
       whether it holds a number: a meaning), rows and a total (content); decides a number's side, the
       total line at `WEIGHTS.emphasis`, every row lit under the pointer at the theme's colour, drawn
       in `TableScroll`. Its entry (an order's lines with a total; a list whose name opens a page) and
       contract. Cases 6, 13, 14. _Done when:_ the gates exit 0. **12 min**.
-- [ ] **5. The panel.** `Panel` in `components/organisms/`: takes a title and what it holds (content);
+      _Evidence:_ `components/molecules/DataTable.tsx` takes columns (a heading, and whether it holds a
+      number), rows (a cell for each column, a name that opens a page being a link) and a total; it sets
+      a number column's heading, cells and total at the right, the total line at `WEIGHTS.emphasis`,
+      every row lit under the pointer at the theme's colour, all in `TableScroll`. Its entry
+      sits among the molecules with two states, an order's lines with a total and a list whose names
+      open a page, its words read by key where a screen says them and from `samples.ts` where none does;
+      its contract's takes are a meaning and two contents, and `DataTable` and `ListTable` name each
+      other. Case 6 red once each for the heading's side, the body cells' side, the total cells' side,
+      the total's weight, the rows' lighting and the frame, a link cell's navigation red once; case 13
+      red once each for an entry without its contract and a take that is a style; case 14 red once each
+      for either entry not naming the other, green with none; the `ui` gate exits 0 on this tree.
+- [x] **5. The panel.** `Panel` in `components/organisms/`: takes a title and what it holds (content);
       decides its edge (`ROLES.border`), its padding and gap (`SPACING.md`), the title a level-3
       heading, none where none is given. Its entry and contract; `SectionCard`'s "Content with no
       title" line (`entries.tsx#L645`) names `Panel`. Cases 7, 13, 14. _Done when:_ the gates exit
       0. **12 min**.
-- [ ] **6. Choices, and landing 2.** Choices: a tick box and a list of them, a switch, a one-of-many
+      _Evidence:_ `components/organisms/Panel.tsx` takes an optional title and what it holds; it draws a
+      bordered block at `ROLES.border`, its padding and the gap under its title at `SPACING.md`, the
+      title a level-3 heading and no heading where none is given. Its entry sits among the organisms
+      with two states, a titled panel and an untitled one, its words read by key where a screen says
+      them and from `samples.ts` where none does; its contract's takes are two contents, and `Panel`
+      and `SectionCard` name each other (`SectionCard`'s "Content with no title" line now names
+      `Panel`). Case 7 red once each for the edge, the padding, the gap, the title's level, a heading
+      drawn with no title and the title under its content; case 13 red once each for an entry
+      without its contract and a take that is a style; case 14 red once each for either entry not
+      naming the other, green with none; the `ui` gate exits 0 on this tree.
+- [x] **6. Choices, and landing 2.** Choices: a tick box and a list of them, a switch, a one-of-many
       list and the segmented pick, as the settings page and the permission editor draw them; the
       recap's line. Case 8. _Done when:_ the gates exit 0 with Foundations at 5 and 22 parts. **9
       min**.
+      _Evidence:_ the new entry Choices sits in Foundations under the kind "Mantine's own" with four
+      states: a list of tick boxes (the settings page's languages) and a permission's tick box with its
+      "needs" line, the three switches, the six-palette one-of-many list and the permission editor's
+      segmented pick, the words read by key. Foundations now counts 5 and the gallery 29 entries, and
+      the parts stay 22 (Choices is Mantine's own, no part of ours). Case 8 red once each for the
+      first switch drawn off, the languages' tick dropped, the palette's pick dropped, the segmented
+      pick on another value, the "needs" line dropped and a sixth palette missing, green with none; the
+      recap's landing 2 line is written; the `ui` gate exits 0 on this tree.
 
 **Landing 3: the rest.**
 

@@ -103,7 +103,7 @@ describe('Gallery', () => {
     ]);
     expect(found.length).toBeGreaterThan(0);
     expect(list().getByRole('region', { name: 'Start here' }).textContent).toContain('1');
-    expect(list().getByRole('region', { name: 'Foundations' }).textContent).toContain('3');
+    expect(list().getByRole('region', { name: 'Foundations' }).textContent).toContain('5');
     for (const [level, heading] of Object.entries(HEADINGS)) {
       // A part to come has its entry and no file yet.
       const coming = ENTRIES.filter((entry) => entry.toCome && entry.group === heading);
@@ -265,6 +265,117 @@ describe('Gallery', () => {
     expect(part().getByText('hoặc')).toBeDefined();
     expect(part().getByRole('button', { name: SAMPLES.vi.save })).toBeDefined();
     expect(part().getByRole('textbox', { name: DICTIONARIES.vi.staff.colName })).toBeDefined();
+  });
+
+  it('231 case 5: Fields draws the five kinds each with a label and a hint, an error and read-only, and the staff list’s filter bar', () => {
+    open(`${BASE}/foundations/fields`);
+
+    expect(stateNames()).toEqual([
+      'Text',
+      'Password',
+      'Number',
+      'Long text',
+      'Drop-down',
+      'Filter bar',
+    ]);
+    const { vi } = DICTIONARIES;
+    const kinds = [
+      ['Text', vi.addPerson.code, vi.addPerson.codeHint, vi.addPerson.codeInvalid],
+      ['Password', vi.auth.password, SAMPLES.vi.passwordHint, vi.auth.refused],
+      ['Number', vi.lists.columns.price, vi.lists.write.price, vi.lists.products.priceInvalid],
+      ['Long text', vi.lists.columns.note, vi.import.writeNote, vi.lists.products.noteTooLong],
+      ['Drop-down', vi.addPerson.department, SAMPLES.vi.departmentHint, SAMPLES.vi.departmentError],
+    ];
+    for (const [name, label, hint, error] of kinds) {
+      const plate = within(part().getByRole('figure', { name }));
+      expect(plate.getAllByText(label), name).toHaveLength(3);
+      expect(plate.getByText(hint), name).toBeDefined();
+      expect(plate.getByText(error), name).toBeDefined();
+      const figure = part().getByRole('figure', { name });
+      expect(figure.querySelectorAll('[readonly]'), name).toHaveLength(1);
+      expect(figure.querySelectorAll('[data-error]').length, name).toBeGreaterThan(0);
+    }
+    const bar = within(part().getByRole('figure', { name: 'Filter bar' }));
+    expect(bar.getByRole('textbox', { name: vi.staff.search })).toBeDefined();
+    for (const name of [vi.staff.status, vi.staff.filterDepartment, vi.staff.filterPosition]) {
+      expect(bar.getByRole('combobox', { name }), name).toBeDefined();
+    }
+  });
+
+  it('231 case 6: DataTable draws an order’s lines under a bold total and a list whose names are links, in the picked language', () => {
+    open(`${BASE}/molecules/data-table`);
+
+    expect(stateNames()).toEqual(['Order lines', 'A list']);
+    const { vi } = DICTIONARIES;
+    const lines = within(part().getByRole('figure', { name: 'Order lines' }));
+    for (const heading of [vi.orders.product, vi.orders.quantity, vi.orders.amount]) {
+      expect(lines.getByRole('columnheader', { name: heading }), heading).toBeDefined();
+    }
+    const total = lines.getByRole('cell', { name: vi.orders.total }).closest('tr')!;
+    expect(total.closest('tfoot')).not.toBeNull();
+    expect(lines.getByRole('cell', { name: SAMPLES.vi.lines[0].name })).toBeDefined();
+    const list = within(part().getByRole('figure', { name: 'A list' }));
+    expect(list.getAllByRole('link').map((link) => link.textContent)).toEqual(
+      SAMPLES.vi.people.map((person) => person.name),
+    );
+    expect(list.queryByRole('cell', { name: vi.orders.total })).toBeNull();
+  });
+
+  it('231 case 7: Panel draws a titled panel and an untitled one, in the picked language', () => {
+    open(`${BASE}/organisms/panel`);
+
+    expect(stateNames()).toEqual(['With a title', 'No title']);
+    const { vi } = DICTIONARIES;
+    const titled = within(part().getByRole('figure', { name: 'With a title' }));
+    expect(titled.getByRole('heading', { level: 3, name: vi.settings.basics })).toBeDefined();
+    expect(titled.getByText(SAMPLES.vi.shop)).toBeDefined();
+    const plain = within(part().getByRole('figure', { name: 'No title' }));
+    expect(plain.queryByRole('heading')).toBeNull();
+    expect(plain.getByText(SAMPLES.vi.changesKept)).toBeDefined();
+  });
+
+  it('231 case 8: Choices draws the tick boxes, the switches, the one-of-many list and the segmented pick, each in the settings page’s and the permission editor’s words', () => {
+    open(`${BASE}/foundations/choices`);
+
+    expect(stateNames()).toEqual(['Tick boxes', 'Switches', 'One of many', 'Segmented pick']);
+    const { vi } = DICTIONARIES;
+    const plate = (name: string) => within(part().getByRole('figure', { name }));
+
+    const ticks = plate('Tick boxes');
+    const languages = ticks.getByRole('group', { name: vi.settings.languages });
+    expect(within(languages).getAllByRole('checkbox')).toHaveLength(2);
+    expect(
+      within(languages).getByRole<HTMLInputElement>('checkbox', { name: LANGUAGE_NAMES.vi })
+        .checked,
+    ).toBe(true);
+    expect(
+      within(languages).getByRole<HTMLInputElement>('checkbox', { name: LANGUAGE_NAMES.en })
+        .checked,
+    ).toBe(false);
+    expect(ticks.getByRole('checkbox', { name: vi.permissions.orders_canEdit })).toBeDefined();
+    expect(
+      ticks.getByText(vi.permissions.needs.replace('{{what}}', vi.permissions.orders_canView)),
+    ).toBeDefined();
+
+    const switches = plate('Switches').getAllByRole<HTMLInputElement>('switch');
+    expect(switches.map((box) => box.checked)).toEqual([true, false, false]);
+    for (const name of [vi.settings.whiteHeader, vi.settings.whiteMenu, vi.settings.menuIcons]) {
+      expect(plate('Switches').getByRole('switch', { name }), name).toBeDefined();
+    }
+
+    const palettes = plate('One of many').getAllByRole<HTMLInputElement>('radio');
+    expect(palettes).toHaveLength(PALETTES.length);
+    expect(palettes.filter((radio) => radio.checked)).toHaveLength(1);
+    expect(
+      plate('One of many').getByRole('radio', { name: vi.settings.palettes.steel }),
+    ).toBeDefined();
+
+    const pick = plate('Segmented pick').getAllByRole<HTMLInputElement>('radio');
+    expect(pick).toHaveLength(3);
+    expect(pick.filter((radio) => radio.checked).map((radio) => radio.value)).toEqual(['inherit']);
+    for (const name of [vi.permissions.inherit, vi.permissions.allow, vi.permissions.refuse]) {
+      expect(plate('Segmented pick').getByRole('radio', { name }), name).toBeDefined();
+    }
   });
 
   it('11: draws the door card in two states, the sign-in and the link page, in sentence case', () => {
@@ -955,7 +1066,7 @@ describe('Gallery', () => {
   });
 
   it('213 case 1: every entry carries one to three use lines and one to three don’t-use lines', () => {
-    expect(ENTRIES).toHaveLength(25);
+    expect(ENTRIES).toHaveLength(29);
     for (const entry of ENTRIES) {
       for (const lines of [entry.useWhen, entry.dontUseWhen]) {
         expect(lines.length, entry.name).toBeGreaterThanOrEqual(1);
@@ -1283,7 +1394,7 @@ describe('Gallery', () => {
         entry.name !== 'The page base',
     );
     // A set that found nothing would quiet the loop.
-    expect(parts.length).toBe(20);
+    expect(parts.length).toBe(22);
     expect(GUIDELINE.contracts.map((contract) => contract.part).sort()).toEqual(
       parts.map((entry) => entry.name).sort(),
     );
@@ -1307,5 +1418,11 @@ describe('Gallery', () => {
     expect(words('DoorCard')).toContain('SignInFrame');
     expect(words('DetailField')).toContain('FieldPair');
     expect(words('FieldPair')).toContain('DetailField');
+    // The table of ours and the kind's list each name the other.
+    expect(words('DataTable')).toContain('ListTable');
+    expect(words('ListTable')).toContain('DataTable');
+    // The panel of ours and the card with a section title each name the other.
+    expect(words('Panel')).toContain('SectionCard');
+    expect(words('SectionCard')).toContain('Panel');
   });
 });

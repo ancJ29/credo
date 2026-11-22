@@ -847,6 +847,74 @@ export const GUIDELINE: {
       followed: 'yes',
     },
     {
+      part: 'DataTable',
+      takes: [
+        {
+          prop: 'columns',
+          is: 'meaning',
+          line: 'Each column: its heading, and whether it holds a number.',
+        },
+        {
+          prop: 'rows',
+          is: 'content',
+          line: 'The rows, a cell for each column; a name that opens a page is a link.',
+        },
+        {
+          prop: 'total',
+          is: 'content',
+          line: 'The cells of a total line, one for each column; none draws no line.',
+        },
+      ],
+      decides: [
+        {
+          what: 'The total line’s weight.',
+          from: [{ table: 'WEIGHTS', key: 'emphasis' }],
+        },
+        {
+          what: 'Its least width, below which it scrolls sideways.',
+          from: [{ table: 'WIDTHS', key: 'table' }],
+        },
+      ],
+      fixes: [
+        'A number’s side: a column that holds a number has its heading, cells and total at the right.',
+        'Its rows under the pointer: every row lit, at the theme’s colour.',
+        'Its table sits in `TableScroll`, which writes the least width; no screen writes one.',
+      ],
+      states: [
+        {
+          name: 'Order lines',
+          line: 'An order’s lines, their numbers and a total line at the right.',
+        },
+        { name: 'A list', line: 'A list whose name opens a page.' },
+      ],
+      serves: 'A screen picks parts, never a style',
+      heldBy: { check: 'ui/src/components/molecules/DataTable.test.tsx' },
+      followed: { item: 651 },
+    },
+    {
+      part: 'Panel',
+      takes: [
+        { prop: 'title', is: 'content', line: 'The panel’s title; none draws no heading.' },
+        { prop: 'children', is: 'content', line: 'What the panel holds.' },
+      ],
+      decides: [
+        { what: 'Its edge.', from: [{ table: 'ROLES', key: 'border' }] },
+        { what: 'Its padding.', from: [{ table: 'SPACING', key: 'md' }] },
+        {
+          what: 'The gap between its title and what it holds.',
+          from: [{ table: 'SPACING', key: 'md' }],
+        },
+      ],
+      fixes: ['Its title: a level-3 heading, drawn only where a title is given.'],
+      states: [
+        { name: 'With a title', line: 'A level-3 title over what the panel holds.' },
+        { name: 'No title', line: 'What the panel holds, with no heading.' },
+      ],
+      serves: 'A screen picks parts, never a style',
+      heldBy: { check: 'ui/src/components/organisms/Panel.test.tsx' },
+      followed: { item: 651 },
+    },
+    {
       part: 'ActionRow',
       takes: [
         {

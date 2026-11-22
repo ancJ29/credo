@@ -26,13 +26,17 @@ import { DoorCard } from '../components/organisms/DoorCard';
 import { PageHeader } from '../components/organisms/PageHeader';
 import { SectionCard } from '../components/organisms/SectionCard';
 import { Charter } from './Charter';
+import { ChoiceStates } from './Choices';
+import { FieldStates } from './Fields';
 import { SAMPLES, useLanguage } from './samples';
 import { OnTheBrand, OnTheLinks } from './OnTheBrand';
 import {
   ActionButtonStates,
   ActionRowStates,
+  DataTableStates,
   FormMessageStates,
   PageStateStates,
+  PanelStates,
   TableScrollStates,
 } from './Contract';
 import {
@@ -345,6 +349,7 @@ export const ENTRIES: Entry[] = [
   {
     group: 'Foundations',
     name: 'Mantine, in the theme',
+    kind: 'Mantine’s own',
     description:
       "Mantine's own button, field and badge, as the theme dresses them; the gradient button, the default button and the labelled divider each have their own row.",
     props: 'Button · TextInput · Badge · Divider',
@@ -359,6 +364,45 @@ export const ENTRIES: Entry[] = [
     states: ['Button, field, badge', 'Gradient button', 'Default button', 'Labelled divider'].map(
       (name) => ({ name, node: <MantineSample state={name} /> }),
     ),
+  },
+  {
+    group: 'Foundations',
+    name: 'Fields',
+    kind: 'Mantine’s own',
+    description:
+      'Mantine’s own fields as the theme dresses them: text, password, number, long text and drop-down, each with a label and a hint, with an error and read-only, and the staff list’s filter bar of a search and three drop-downs.',
+    props:
+      'TextInput · PasswordInput · NumberInput · Textarea · NativeSelect · label · description · error · readOnly',
+    useWhen: [
+      'A person types or picks one value: a name, a password, an amount, a note or one of a list.',
+      'A list narrows by a search and drop-downs: the filter bar.',
+    ],
+    dontUseWhen: [
+      'A record’s value is only read: that is DetailField’s.',
+      'A choice of a few shown at once: a tick box or a switch.',
+    ],
+    instead: 'DetailField',
+    states: FieldStates,
+  },
+  {
+    group: 'Foundations',
+    name: 'Choices',
+    kind: 'Mantine’s own',
+    description:
+      'Mantine’s own choices as the theme dresses them: a tick box and a list of them, a switch, a one-of-many list and the segmented pick, as the settings page and the permission editor draw them.',
+    props:
+      'Checkbox · Checkbox.Group · Switch · Radio.Group · SegmentedControl · label · description',
+    useWhen: [
+      'A person ticks any of a few, shown all at once: a tick box in a list.',
+      'A setting is on or off and acts at once: a switch.',
+      'A person picks one of a few shown at once: a one-of-many list, or the segmented pick when the words are short.',
+    ],
+    dontUseWhen: [
+      'One value picked from a long list: a drop-down, under Fields.',
+      'A choice made on a button that acts: the button itself.',
+    ],
+    instead: 'Fields',
+    states: ChoiceStates,
   },
   {
     group: 'Pages',
@@ -429,7 +473,10 @@ export const ENTRIES: Entry[] = [
       'A kind’s records as a table: its headings, a row each, the name linking to the record, the price at the right.',
     props: 'kind: customers | products · shown: ColumnKey[] · rows: Shown[] · language',
     useWhen: ['A page lists the records of a kind, one row each.'],
-    dontUseWhen: ['A few facts about one record: that is DetailField’s.'],
+    dontUseWhen: [
+      'A few facts about one record: that is DetailField’s.',
+      'Any other table, with a total line or a column of numbers: that is DataTable’s.',
+    ],
     instead: 'DetailField',
     states: ListTableStates,
   },
@@ -576,6 +623,23 @@ export const ENTRIES: Entry[] = [
   },
   {
     group: 'Molecules',
+    name: 'DataTable',
+    kind: 'Lists',
+    description:
+      'A table of rows under headings, in a scrolling frame: numbers at the right, an optional total line in bold, every row lit under the pointer. It takes its words as props.',
+    props: 'columns: Column[] · rows: Row[] · total?: ReactNode[]',
+    useWhen: [
+      'A page draws a table of its own: an order’s lines with their total, or a list whose name opens a page.',
+    ],
+    dontUseWhen: [
+      'A kind’s list of customers or products: that is ListTable’s, which picks its own columns.',
+      'A few facts about one record: that is DetailField’s.',
+    ],
+    instead: 'ListTable',
+    states: DataTableStates,
+  },
+  {
+    group: 'Molecules',
     name: 'BrandBand',
     kind: 'Headings',
     description:
@@ -689,15 +753,30 @@ export const ENTRIES: Entry[] = [
     useWhen: ['A signed-in page groups its fields or details in a block with a title.'],
     dontUseWhen: [
       "A page before sign-in: that is DoorCard's.",
-      'Content with no title: no card, only the page.',
+      'Content with no section title: that is Panel’s.',
     ],
-    instead: 'DoorCard',
+    instead: 'Panel',
     states: [
       {
         name: 'Default',
         node: <SectionCardSample />,
       },
     ],
+  },
+  {
+    group: 'Organisms',
+    name: 'Panel',
+    kind: 'Cards',
+    description:
+      'A framed block: an optional level-3 title over what it holds, at the edge, padding and gap the design system decides.',
+    props: 'title?: string · children: ReactNode',
+    useWhen: ['A page frames a few lines or fields: with a title over them, or with none.'],
+    dontUseWhen: [
+      'A block with a section title and its icon: that is SectionCard’s.',
+      'A page before sign-in: that is DoorCard’s.',
+    ],
+    instead: 'SectionCard',
+    states: PanelStates,
   },
   {
     group: 'Organisms',
