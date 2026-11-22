@@ -71,16 +71,18 @@ export function DeliveryPage(page: PageProps) {
               <StateBadge state={doc.request.state} />
             </Group>
             {cancelled && (
-              <FormMessage kind="success">
-                <Stack gap="xs" align="flex-start">
-                  {t('orders.requestCancelled')}
+              <FormMessage
+                kind="success"
+                act={
                   <ActionButton
                     meaning="other"
                     to={`/orders/${doc.request.order.day}/${doc.request.order.id}`}
                   >
                     {t('orders.openOrder')}
                   </ActionButton>
-                </Stack>
+                }
+              >
+                {t('orders.requestCancelled')}
               </FormMessage>
             )}
             <OutcomeAlert
