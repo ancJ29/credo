@@ -159,8 +159,9 @@ of the same shape: a gallery-wide mechanism 16 (its step 1), a part's take with 
 - [x] **2. The phone page.** `Panel` takes `to` (content: the address the block opens); the six
       states in the phone's frame. Cases 4, 5, 13. _Done when:_ the gates exit 0. **11 min**.
       _Done 2026-11-22, the gates from 22:29:_ `Panel` takes `to` (one link over the block), its contract and entry say it; `Pages.tsx` draws the entry `The phone page` (kind "Kinds of page", 30 entries now) in six phone frames; cases 4, 5 and 13 each seen red by a mutation, case 3's guard red once on the entry; the three gates, the pinned file and the words and fake tests ran on this tree. Item 668 read: stays open, the entry draws the call as the screen does.
-- [ ] **3. The list page.** Six states, the last in the phone's frame, a `Panel` with `to` a row.
+- [x] **3. The list page.** Six states, the last in the phone's frame, a `Panel` with `to` a row.
       Case 6. _Done when:_ the gates exit 0. **10 min**.
+      _Done 2026-11-22, the gates from 22:50:_ `Pages.tsx` draws the entry `The list page` (kind "Kinds of page", 31 entries now) in six states: the customers' list in `ListTable` with its acts, the staff list filtered with `Fields`' filter bar and a `StatusBadge` column in `DataTable`, empty with `PageState`'s add, loading, failed, and at the phone's width a `Panel` with `to` a card a row, the name and its chip first; the cards' addresses lead out of the gallery as step 2's do; `FilterBar` is now exported from `Fields.tsx`; case 6 seen red by four mutations (the chip, the card's address, the add's main, the empty's add); the three gates, the pinned file and the words and fake tests ran on this tree. Item 667 read: stays open for the look at step 10.
 - [ ] **4. The form page.** Its four states. Case 7. _Done when:_ the gates exit 0. **10 min**.
 - [ ] **5. The day sheet.** Its three states. Case 8. _Done when:_ the gates exit 0. **10 min**.
 - [ ] **6. The import page, and landing 1.** Fields' file kind; its three states; the recap begun.

@@ -30,7 +30,7 @@ import { ChoiceStates } from './Choices';
 import { FieldStates } from './Fields';
 import { SAMPLES, useLanguage } from './samples';
 import { OnTheBrand, OnTheLinks } from './OnTheBrand';
-import { PhonePageStates } from './Pages';
+import { ListPageStates, PhonePageStates } from './Pages';
 import {
   ActionButtonStates,
   ActionRowStates,
@@ -486,6 +486,32 @@ export const ENTRIES: Entry[] = [
     ],
     instead: 'DetailField',
     states: ListTableStates,
+  },
+  {
+    group: 'Pages',
+    kind: KIND_OF_PAGE,
+    name: 'The list page',
+    description:
+      'A list of records, drawn from parts only: the title with its acts beside it, a kind’s records in a table, the staff list filtered by a status chip, empty with its add, loading, failed, and at a phone’s width a card each row.',
+    props:
+      'PageShell · ActionRow · ActionButton · ListTable · DataTable · StatusBadge · PageState · Panel',
+    useWhen: [
+      'You are about to build a page that lists records and opens each one.',
+      'You need a page whose add is the main act beside its title.',
+    ],
+    dontUseWhen: [
+      'A page that takes a form: that is the form page’s.',
+      'A page for a phone only: that is the phone page’s.',
+    ],
+    instead: 'The phone page',
+    mustHave: [
+      'The title with its acts beside it, the add the main.',
+      'A kind’s records in ListTable, any other table in DataTable.',
+      'A status as a StatusBadge column.',
+      'Empty said by PageState with its add.',
+      'At the phone’s width a card a row, the name and its chip first, the other columns as captions.',
+    ],
+    states: ListPageStates,
   },
   {
     group: 'Pages',

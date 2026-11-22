@@ -1066,7 +1066,7 @@ describe('Gallery', () => {
   });
 
   it('213 case 1: every entry carries one to three use lines and one to three don’t-use lines', () => {
-    expect(ENTRIES).toHaveLength(30);
+    expect(ENTRIES).toHaveLength(31);
     for (const entry of ENTRIES) {
       for (const lines of [entry.useWhen, entry.dontUseWhen]) {
         expect(lines.length, entry.name).toBeGreaterThanOrEqual(1);
@@ -1310,6 +1310,7 @@ describe('Gallery', () => {
       'DetailColumns',
       'FieldPair',
       'ListTable',
+      'The list page',
       'The phone page',
     ]);
     for (const name of SLOTS) {
@@ -1551,6 +1552,59 @@ describe('Gallery', () => {
     for (let index = 0; index < 6; index += 1) {
       for (const press of pressesOf(index)) expect(press.getAttribute('data-size')).toBe('sm');
     }
+  });
+
+  it('236 case 6: the list page draws its acts, table, status column, filter bar, empty, loading and failed, and a card a row at the phone width', () => {
+    const entry = ENTRIES.find((each) => each.name === 'The list page')!;
+    expect(entry.kind).toBe(KIND_OF_PAGE);
+    drawn(entry);
+    const figure = (name: string) => within(part().getByRole('figure', { name }));
+    // 1. A list: the acts beside the title, the add the main, the kind's records in a table.
+    const list = figure('A list');
+    expect(list.getByRole('heading', { name: 'Customers' }).textContent).toBe('Customers');
+    const acts = list.getAllByRole('link');
+    expect(acts.slice(0, 2).map((link) => link.textContent)).toEqual([
+      'Import from Excel',
+      'Add customer',
+    ]);
+    expect(acts[1].getAttribute('data-variant')).toBe('filled');
+    expect(list.getAllByRole('row')).toHaveLength(4);
+    expect(list.getByRole('columnheader', { name: 'Code' })).toBeDefined();
+    // 2. Filtered, with a status: the filter bar over a table whose last column is the chip.
+    const filtered = figure('Filtered, with a status');
+    expect(filtered.getByRole('textbox', { name: 'Search' })).toBeDefined();
+    expect(filtered.getByRole('combobox', { name: 'Status' })).toBeDefined();
+    const rows = filtered.getAllByRole('row');
+    expect(rows).toHaveLength(3);
+    expect(within(rows[1]).getAllByRole('cell').at(-1)!.textContent).toBe('Active');
+    // 3. Empty: said by the page state, with its add.
+    const empty = figure('Empty');
+    expect(empty.getByRole('status').textContent).toContain('No customers found');
+    expect(empty.getAllByRole('link', { name: 'Add customer' })).toHaveLength(1);
+    expect(empty.queryByRole('table')).toBeNull();
+    // 4. Loading, 5. failed: the body is the state.
+    expect(figure('Loading').getByLabelText('Loading...')).toBeDefined();
+    expect(figure('Loading').queryByRole('table')).toBeNull();
+    expect(figure('Failed').getByRole('alert').textContent).toContain('Unable to load page');
+    expect(figure('Failed').getByRole('button', { name: 'Try again' })).toBeDefined();
+    // 6. At the phone's width: a frame, a card a row, the name and its chip first, the rest captions.
+    const frame = part().getByTitle<HTMLIFrameElement>('At the phone, at the phone’s width');
+    act(() => {
+      fireEvent.load(frame);
+    });
+    expect(frame.getAttribute('width')).toBe('390');
+    const body = within(frame.contentDocument!.body);
+    expect(body.queryByRole('table')).toBeNull();
+    const cards = body
+      .getAllByRole('link')
+      .filter((link) => link.getAttribute('href')?.startsWith('/staff/s'));
+    expect(cards.map((card) => card.getAttribute('href'))).toEqual([
+      '/staff/s1',
+      '/staff/s2',
+      '/staff/s3',
+    ]);
+    expect(cards[0].textContent).toBe('An NguyenActiveNV-0010901 234 567');
+    expect(cards[2].textContent).toContain('Inactive');
   });
 
   it('236 case 13: Panel’s new take, the address its block opens, is a content in its contract and drawn on its entry', () => {

@@ -99,7 +99,7 @@ function DropDownField() {
 }
 
 /** The staff list's filter bar: the search and its three drop-downs, in the list's own words. */
-function FilterBar() {
+export function FilterBar() {
   const { t } = useTranslation();
   return (
     <Group align="flex-end" w={760} maw="100%">
