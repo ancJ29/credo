@@ -16,11 +16,11 @@ flowchart LR
 ## What was proved
 
 - **1 and 2**: each landing's checks on `pre-merge` (22 November, 20:46 and 21:18) read green: `ui`'s and `visual`'s gates, the citation test and the two `scripts` tests (from the piece file).
-- **3**: every step's gate on its own tree read green, `visual`'s pinned file unchanged, and each new guard was seen red once. _Not yet known:_ <!-- FILL: landing 3's checks on `pre-merge`, their result and time -->
+- **3**: every step's gate on its own tree read green, `visual`'s pinned file unchanged, and each new guard was seen red once. Landing 3's checks on `pre-merge` read green (22 November, 22:51 to 23:02).
 - Three pairs name each other, so a coder finds the winner: `Panel` and `SectionCard`, `DataTable` and `ListTable`, `Tag` and `StatusBadge`.
 - Item 507 closes; item 651 gained the five parts' site counts and item 515 stays parked, the reason written in it.
 
 ## What is left
 
-- Your one look, three points together: the samples in Vietnamese, the five new parts, Mantine's own as the theme dresses them. A yes keeps them; a no names the entry and reopens its step. <!-- FILL: your answer to the look, not yet asked -->
+- Your one look, three points together: the samples in Vietnamese, the five new parts, Mantine's own as the theme dresses them. A yes keeps them; a no names the entry and reopens its step. Answered yes, 23 November, 00:13; a partner's other idea reopens only its entry.
 - The screens' move onto these parts is item 651's, a milestone behind the pages; items 555, 306, 307 and 505 stay as the plan says.
