@@ -103,7 +103,7 @@ describe('Gallery', () => {
     ]);
     expect(found.length).toBeGreaterThan(0);
     expect(list().getByRole('region', { name: 'Start here' }).textContent).toContain('1');
-    expect(list().getByRole('region', { name: 'Foundations' }).textContent).toContain('3');
+    expect(list().getByRole('region', { name: 'Foundations' }).textContent).toContain('4');
     for (const [level, heading] of Object.entries(HEADINGS)) {
       // A part to come has its entry and no file yet.
       const coming = ENTRIES.filter((entry) => entry.toCome && entry.group === heading);
@@ -265,6 +265,41 @@ describe('Gallery', () => {
     expect(part().getByText('hoặc')).toBeDefined();
     expect(part().getByRole('button', { name: SAMPLES.vi.save })).toBeDefined();
     expect(part().getByRole('textbox', { name: DICTIONARIES.vi.staff.colName })).toBeDefined();
+  });
+
+  it('231 case 5: Fields draws the five kinds each with a label and a hint, an error and read-only, and the staff list’s filter bar', () => {
+    open(`${BASE}/foundations/fields`);
+
+    expect(stateNames()).toEqual([
+      'Text',
+      'Password',
+      'Number',
+      'Long text',
+      'Drop-down',
+      'Filter bar',
+    ]);
+    const { vi } = DICTIONARIES;
+    const kinds = [
+      ['Text', vi.addPerson.code, vi.addPerson.codeHint, vi.addPerson.codeInvalid],
+      ['Password', vi.auth.password, SAMPLES.vi.passwordHint, vi.auth.refused],
+      ['Number', vi.lists.columns.price, vi.lists.write.price, vi.lists.products.priceInvalid],
+      ['Long text', vi.lists.columns.note, vi.import.writeNote, vi.lists.products.noteTooLong],
+      ['Drop-down', vi.addPerson.department, SAMPLES.vi.departmentHint, SAMPLES.vi.departmentError],
+    ];
+    for (const [name, label, hint, error] of kinds) {
+      const plate = within(part().getByRole('figure', { name }));
+      expect(plate.getAllByText(label), name).toHaveLength(3);
+      expect(plate.getByText(hint), name).toBeDefined();
+      expect(plate.getByText(error), name).toBeDefined();
+      const figure = part().getByRole('figure', { name });
+      expect(figure.querySelectorAll('[readonly]'), name).toHaveLength(1);
+      expect(figure.querySelectorAll('[data-error]').length, name).toBeGreaterThan(0);
+    }
+    const bar = within(part().getByRole('figure', { name: 'Filter bar' }));
+    expect(bar.getByRole('textbox', { name: vi.staff.search })).toBeDefined();
+    for (const name of [vi.staff.status, vi.staff.filterDepartment, vi.staff.filterPosition]) {
+      expect(bar.getByRole('combobox', { name }), name).toBeDefined();
+    }
   });
 
   it('11: draws the door card in two states, the sign-in and the link page, in sentence case', () => {
@@ -955,7 +990,7 @@ describe('Gallery', () => {
   });
 
   it('213 case 1: every entry carries one to three use lines and one to three don’t-use lines', () => {
-    expect(ENTRIES).toHaveLength(25);
+    expect(ENTRIES).toHaveLength(26);
     for (const entry of ENTRIES) {
       for (const lines of [entry.useWhen, entry.dontUseWhen]) {
         expect(lines.length, entry.name).toBeGreaterThanOrEqual(1);

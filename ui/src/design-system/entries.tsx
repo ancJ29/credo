@@ -26,6 +26,7 @@ import { DoorCard } from '../components/organisms/DoorCard';
 import { PageHeader } from '../components/organisms/PageHeader';
 import { SectionCard } from '../components/organisms/SectionCard';
 import { Charter } from './Charter';
+import { FieldStates } from './Fields';
 import { SAMPLES, useLanguage } from './samples';
 import { OnTheBrand, OnTheLinks } from './OnTheBrand';
 import {
@@ -345,6 +346,7 @@ export const ENTRIES: Entry[] = [
   {
     group: 'Foundations',
     name: 'Mantine, in the theme',
+    kind: 'Mantine’s own',
     description:
       "Mantine's own button, field and badge, as the theme dresses them; the gradient button, the default button and the labelled divider each have their own row.",
     props: 'Button · TextInput · Badge · Divider',
@@ -359,6 +361,25 @@ export const ENTRIES: Entry[] = [
     states: ['Button, field, badge', 'Gradient button', 'Default button', 'Labelled divider'].map(
       (name) => ({ name, node: <MantineSample state={name} /> }),
     ),
+  },
+  {
+    group: 'Foundations',
+    name: 'Fields',
+    kind: 'Mantine’s own',
+    description:
+      'Mantine’s own fields as the theme dresses them: text, password, number, long text and drop-down, each with a label and a hint, with an error and read-only, and the staff list’s filter bar of a search and three drop-downs.',
+    props:
+      'TextInput · PasswordInput · NumberInput · Textarea · NativeSelect · label · description · error · readOnly',
+    useWhen: [
+      'A person types or picks one value: a name, a password, an amount, a note or one of a list.',
+      'A list narrows by a search and drop-downs: the filter bar.',
+    ],
+    dontUseWhen: [
+      'A record’s value is only read: that is DetailField’s.',
+      'A choice of a few shown at once: a tick box or a switch.',
+    ],
+    instead: 'DetailField',
+    states: FieldStates,
   },
   {
     group: 'Pages',

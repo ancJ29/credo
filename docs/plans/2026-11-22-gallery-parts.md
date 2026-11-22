@@ -165,9 +165,16 @@ part and its importers 14 (222's step 7), five entries 14 (213's step 10), a rec
 
 **Landing 2: what the pages draw.**
 
-- [ ] **3. Fields.** The kind "Mantine's own"; Fields: text, password, number, long text and
+- [x] **3. Fields.** The kind "Mantine's own"; Fields: text, password, number, long text and
       drop-down, each with a label, a hint, an error and read-only, and the staff list's filter bar.
       Case 5. _Done when:_ the gates exit 0. **9 min**.
+      _Evidence:_ the new entry Fields sits in Foundations under the kind "Mantine's own", which "Mantine,
+      in the theme" joins at its address; its six states draw text, password, number, long text and
+      drop-down each as a label with a hint, with an error and read-only, and the staff list's filter bar
+      of a search and three drop-downs, the words read from the dictionary by key where a screen says
+      them and from `samples.ts` where none does. Case 5 red once each for the read-only face dropped,
+      the error dropped and the filter bar's position drop-down dropped, green with none; the `ui` gate
+      exits 0 on this tree.
 - [ ] **4. The table.** `DataTable` in `components/molecules/`: takes columns (each a heading, and
       whether it holds a number: a meaning), rows and a total (content); decides a number's side, the
       total line at `WEIGHTS.emphasis`, every row lit under the pointer at the theme's colour, drawn

@@ -42,6 +42,12 @@ export const SAMPLES: Record<
     scanQr: string;
     enterCode: string;
     backToSignIn: string;
+    codeValue: string;
+    secretValue: string;
+    passwordHint: string;
+    departmentHint: string;
+    departmentError: string;
+    departmentValue: string;
     messages: Record<string, string>;
   }
 > = {
@@ -78,6 +84,12 @@ export const SAMPLES: Record<
     scanQr: 'Scan the QR code',
     enterCode: 'Enter the code by hand',
     backToSignIn: 'Back to sign-in',
+    codeValue: 'NV-001',
+    secretValue: 'a-long-secret',
+    passwordHint: 'At least eight characters.',
+    departmentHint: 'The department the person works in.',
+    departmentError: 'Pick a department first.',
+    departmentValue: 'Sales',
     messages: {
       Error: 'The name could not be saved.',
       Warning: 'Someone changed this record first.',
@@ -121,6 +133,12 @@ export const SAMPLES: Record<
     scanQr: 'Quét mã QR',
     enterCode: 'Nhập mã thủ công',
     backToSignIn: 'Quay lại đăng nhập',
+    codeValue: 'NV-001',
+    secretValue: 'mat-khau-dai',
+    passwordHint: 'Ít nhất tám ký tự.',
+    departmentHint: 'Phòng ban mà nhân viên làm việc.',
+    departmentError: 'Hãy chọn phòng ban trước.',
+    departmentValue: 'Kinh doanh',
     messages: {
       Error: 'Không thể lưu tên.',
       Warning: 'Người khác đã sửa bản ghi này trước.',
