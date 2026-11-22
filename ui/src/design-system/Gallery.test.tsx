@@ -103,7 +103,7 @@ describe('Gallery', () => {
     ]);
     expect(found.length).toBeGreaterThan(0);
     expect(list().getByRole('region', { name: 'Start here' }).textContent).toContain('1');
-    expect(list().getByRole('region', { name: 'Foundations' }).textContent).toContain('4');
+    expect(list().getByRole('region', { name: 'Foundations' }).textContent).toContain('5');
     for (const [level, heading] of Object.entries(HEADINGS)) {
       // A part to come has its entry and no file yet.
       const coming = ENTRIES.filter((entry) => entry.toCome && entry.group === heading);
@@ -332,6 +332,50 @@ describe('Gallery', () => {
     const plain = within(part().getByRole('figure', { name: 'No title' }));
     expect(plain.queryByRole('heading')).toBeNull();
     expect(plain.getByText(SAMPLES.vi.changesKept)).toBeDefined();
+  });
+
+  it('231 case 8: Choices draws the tick boxes, the switches, the one-of-many list and the segmented pick, each in the settings page’s and the permission editor’s words', () => {
+    open(`${BASE}/foundations/choices`);
+
+    expect(stateNames()).toEqual(['Tick boxes', 'Switches', 'One of many', 'Segmented pick']);
+    const { vi } = DICTIONARIES;
+    const plate = (name: string) => within(part().getByRole('figure', { name }));
+
+    const ticks = plate('Tick boxes');
+    const languages = ticks.getByRole('group', { name: vi.settings.languages });
+    expect(within(languages).getAllByRole('checkbox')).toHaveLength(2);
+    expect(
+      within(languages).getByRole<HTMLInputElement>('checkbox', { name: LANGUAGE_NAMES.vi })
+        .checked,
+    ).toBe(true);
+    expect(
+      within(languages).getByRole<HTMLInputElement>('checkbox', { name: LANGUAGE_NAMES.en })
+        .checked,
+    ).toBe(false);
+    expect(ticks.getByRole('checkbox', { name: vi.permissions.orders_canEdit })).toBeDefined();
+    expect(
+      ticks.getByText(vi.permissions.needs.replace('{{what}}', vi.permissions.orders_canView)),
+    ).toBeDefined();
+
+    const switches = plate('Switches').getAllByRole<HTMLInputElement>('switch');
+    expect(switches.map((box) => box.checked)).toEqual([true, false, false]);
+    for (const name of [vi.settings.whiteHeader, vi.settings.whiteMenu, vi.settings.menuIcons]) {
+      expect(plate('Switches').getByRole('switch', { name }), name).toBeDefined();
+    }
+
+    const palettes = plate('One of many').getAllByRole<HTMLInputElement>('radio');
+    expect(palettes).toHaveLength(PALETTES.length);
+    expect(palettes.filter((radio) => radio.checked)).toHaveLength(1);
+    expect(
+      plate('One of many').getByRole('radio', { name: vi.settings.palettes.steel }),
+    ).toBeDefined();
+
+    const pick = plate('Segmented pick').getAllByRole<HTMLInputElement>('radio');
+    expect(pick).toHaveLength(3);
+    expect(pick.filter((radio) => radio.checked).map((radio) => radio.value)).toEqual(['inherit']);
+    for (const name of [vi.permissions.inherit, vi.permissions.allow, vi.permissions.refuse]) {
+      expect(plate('Segmented pick').getByRole('radio', { name }), name).toBeDefined();
+    }
   });
 
   it('11: draws the door card in two states, the sign-in and the link page, in sentence case', () => {
@@ -1022,7 +1066,7 @@ describe('Gallery', () => {
   });
 
   it('213 case 1: every entry carries one to three use lines and one to three don’t-use lines', () => {
-    expect(ENTRIES).toHaveLength(28);
+    expect(ENTRIES).toHaveLength(29);
     for (const entry of ENTRIES) {
       for (const lines of [entry.useWhen, entry.dontUseWhen]) {
         expect(lines.length, entry.name).toBeGreaterThanOrEqual(1);

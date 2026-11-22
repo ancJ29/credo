@@ -206,10 +206,18 @@ part and its importers 14 (222's step 7), five entries 14 (213's step 10), a rec
       drawn with no title and the title under its content; case 13 red once each for an entry
       without its contract and a take that is a style; case 14 red once each for either entry not
       naming the other, green with none; the `ui` gate exits 0 on this tree.
-- [ ] **6. Choices, and landing 2.** Choices: a tick box and a list of them, a switch, a one-of-many
+- [x] **6. Choices, and landing 2.** Choices: a tick box and a list of them, a switch, a one-of-many
       list and the segmented pick, as the settings page and the permission editor draw them; the
       recap's line. Case 8. _Done when:_ the gates exit 0 with Foundations at 5 and 22 parts. **9
       min**.
+      _Evidence:_ the new entry Choices sits in Foundations under the kind "Mantine's own" with four
+      states: a list of tick boxes (the settings page's languages) and a permission's tick box with its
+      "needs" line, the three switches, the six-palette one-of-many list and the permission editor's
+      segmented pick, the words read by key. Foundations now counts 5 and the gallery 29 entries, and
+      the parts stay 22 (Choices is Mantine's own, no part of ours). Case 8 red once each for the
+      first switch drawn off, the languages' tick dropped, the palette's pick dropped, the segmented
+      pick on another value, the "needs" line dropped and a sixth palette missing, green with none; the
+      recap's landing 2 line is written; the `ui` gate exits 0 on this tree.
 
 **Landing 3: the rest.**
 

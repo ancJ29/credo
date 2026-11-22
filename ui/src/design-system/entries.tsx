@@ -26,6 +26,7 @@ import { DoorCard } from '../components/organisms/DoorCard';
 import { PageHeader } from '../components/organisms/PageHeader';
 import { SectionCard } from '../components/organisms/SectionCard';
 import { Charter } from './Charter';
+import { ChoiceStates } from './Choices';
 import { FieldStates } from './Fields';
 import { SAMPLES, useLanguage } from './samples';
 import { OnTheBrand, OnTheLinks } from './OnTheBrand';
@@ -382,6 +383,26 @@ export const ENTRIES: Entry[] = [
     ],
     instead: 'DetailField',
     states: FieldStates,
+  },
+  {
+    group: 'Foundations',
+    name: 'Choices',
+    kind: 'Mantine’s own',
+    description:
+      'Mantine’s own choices as the theme dresses them: a tick box and a list of them, a switch, a one-of-many list and the segmented pick, as the settings page and the permission editor draw them.',
+    props:
+      'Checkbox · Checkbox.Group · Switch · Radio.Group · SegmentedControl · label · description',
+    useWhen: [
+      'A person ticks any of a few, shown all at once: a tick box in a list.',
+      'A setting is on or off and acts at once: a switch.',
+      'A person picks one of a few shown at once: a one-of-many list, or the segmented pick when the words are short.',
+    ],
+    dontUseWhen: [
+      'One value picked from a long list: a drop-down, under Fields.',
+      'A choice made on a button that acts: the button itself.',
+    ],
+    instead: 'Fields',
+    states: ChoiceStates,
   },
   {
     group: 'Pages',
