@@ -9,6 +9,7 @@ import { IconSettings, IconUsers } from '@tabler/icons-react';
 import { ActionButton } from '../components/atoms/ActionButton';
 import { MenuRow } from '../components/atoms/MenuRow';
 import { ActionRow } from '../components/molecules/ActionRow';
+import { CopyText } from '../components/molecules/CopyText';
 import { DataTable } from '../components/molecules/DataTable';
 import { DetailField } from '../components/molecules/DetailField';
 import { FormMessage } from '../components/molecules/FormMessage';
@@ -304,3 +305,24 @@ function MenuRowSample({ state: { name } }: { state: PartState }) {
 
 /** A row that opens an address, and one that acts. */
 export const MenuRowStates = platesOf('MenuRow', (state) => <MenuRowSample state={state} />);
+
+/** The sign-in link a copy button samples copy. */
+const SAMPLE_LINK = 'https://an-phat.example/login';
+
+/** A copy button at each of its states, drawn by the part itself: alone, and in a read-only field. */
+function CopyTextSample({ state: { name } }: { state: PartState }) {
+  const { t } = useTranslation();
+  return (
+    <Stack w={394} maw="100%">
+      <CopyText
+        value={SAMPLE_LINK}
+        label={t('operator.copy')}
+        about={t('operator.link')}
+        field={name === 'In its field' ? t('operator.link') : undefined}
+      />
+    </Stack>
+  );
+}
+
+/** A copy button alone, and one in its read-only field. */
+export const CopyTextStates = platesOf('CopyText', (state) => <CopyTextSample state={state} />);

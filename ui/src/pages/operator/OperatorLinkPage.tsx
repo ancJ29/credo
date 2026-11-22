@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router';
 import { ApiError, type Api } from '../../api';
-import { CopyText } from '../../parts/CopyText';
+import { CopyText } from '../../components/molecules/CopyText';
 import { Loaded } from '../../frame/Loaded';
 import { refusal, useLoad } from '../../page';
 import { PasskeyNotGiven, type Passkeys } from '../../passkeys';

@@ -8,6 +8,7 @@ import {
   ROLES,
   SIZES,
   SPACING,
+  TOKENS,
   TONES,
   TYPE,
   WEIGHTS,
@@ -96,6 +97,7 @@ type Tables = {
   ICON_SIZES: typeof ICON_SIZES;
   RADII: typeof RADII;
   ROLES: typeof ROLES;
+  TOKENS: typeof TOKENS;
 };
 
 /** One key of one of the theme's tables: a key that is not there is a type error. */
@@ -949,6 +951,44 @@ export const GUIDELINE: {
       serves: 'A screen picks parts, never a style',
       heldBy: { check: 'ui/src/components/atoms/MenuRow.test.tsx' },
       followed: { item: 651 },
+    },
+    {
+      part: 'CopyText',
+      takes: [
+        { prop: 'value', is: 'content', line: 'What lands on the clipboard.' },
+        { prop: 'label', is: 'content', line: 'The button’s words before it is pressed.' },
+        {
+          prop: 'about',
+          is: 'content',
+          line: 'What is copied, so the button’s name tells one copy button from the next.',
+        },
+        {
+          prop: 'field',
+          is: 'content',
+          line: 'The label of a read-only field that shows the value, the button at its right; none draws the button alone.',
+        },
+      ],
+      decides: [
+        {
+          what: 'The value’s face in its field: the code face.',
+          from: [{ table: 'TOKENS', key: 'codeFace' }],
+        },
+      ],
+      fixes: [
+        'Its button, an `ActionButton` of the other meaning, saying the copied word for a moment after a press.',
+        'Its field’s room for the button, at the right of the value.',
+      ],
+      states: [
+        { name: 'Alone in a row', line: 'The button alone, as a table row draws it.' },
+        {
+          name: 'In its field',
+          line: 'A read-only field with the value in the code face, the button at its right.',
+        },
+      ],
+      serves: 'A screen picks parts, never a style',
+      heldBy: { check: 'ui/src/components/molecules/CopyText.test.tsx' },
+      followed: { item: 651 },
+      used: true,
     },
     {
       part: 'ActionRow',

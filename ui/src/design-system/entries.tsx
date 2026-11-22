@@ -34,6 +34,7 @@ import { OnTheBrand, OnTheLinks } from './OnTheBrand';
 import {
   ActionButtonStates,
   ActionRowStates,
+  CopyTextStates,
   DataTableStates,
   FormMessageStates,
   MenuRowStates,
@@ -672,6 +673,24 @@ export const ENTRIES: Entry[] = [
     ],
     instead: 'ListTable',
     states: DataTableStates,
+  },
+  {
+    group: 'Molecules',
+    name: 'CopyText',
+    kind: 'Buttons',
+    description:
+      'A button that copies a value and says the copied word for a moment after; given a field, it sits at the right of a read-only field that shows the value in the code face.',
+    props: 'value: string · label: string · about: string · field?: string',
+    useWhen: [
+      'A page shows a link or a password once, to be sent on: give the button the value and the field’s label.',
+      'A table row holds a link to copy: the button alone, its words naming what it copies.',
+    ],
+    dontUseWhen: [
+      'A value that is only read: that is DetailField’s.',
+      'A button that does anything but copy: that is ActionButton’s.',
+    ],
+    instead: 'ActionButton',
+    states: CopyTextStates,
   },
   {
     group: 'Molecules',

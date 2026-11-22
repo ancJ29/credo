@@ -239,12 +239,28 @@ part and its importers 14 (222's step 7), five entries 14 (213's step 10), a rec
       the picked language's mark and the person menu's item; case 13 red once for an entry with
       no contract and once for a take that is a style; the two entries naming each other red once;
       all green with none, each file diffed against its backup; the `ui` gate exits 0 on this tree.
-- [ ] **8. The copy button.** `git mv ui/src/parts/CopyText.tsx ui/src/components/molecules/`, its
+- [x] **8. The copy button.** `git mv ui/src/parts/CopyText.tsx ui/src/components/molecules/`, its
       five imports with it; it takes `field` (content: the label of a read-only field that shows the
       value in the code face, the button at its right, as `ClientMade.tsx#L21`'s `Field` draws it), its
       code face one value of `tokens.ts`; its entry (alone in a row; in its field), contract (`used`)
       and test. Cases 10, 13, 16. _Done when:_ the gates exit 0 and `pnpm --filter @credo/scripts exec
       vitest run src/citations.test.ts src/counts.test.ts` exits 0. **14 min**.
+      _Evidence:_ `CopyText` moved by `git mv` from `ui/src/parts/` to `ui/src/components/molecules/`
+      (a rename in the commit); `git grep -nP "^import \{ CopyText \} from" -- ui/src` found five lines
+      before (four `'../../parts/CopyText'`, one `'./CopyText'`) and five after, all
+      `components/molecules/CopyText`, and no screen's markup moved. It takes `field` (content): given
+      one, it draws a read-only field of that label with the value in the code face, `TOKENS.codeFace`
+      (a new value of `tokens.ts`, which joins the tables a contract decides from), the button at its
+      right; none draws the button alone. Its entry sits among the molecules with two states, alone in
+      a row and in its field, and its contract (`used`, `followed` item 651); the entry names
+      `ActionButton` for a button that does more than copy. Foundations stays 6, the gallery now holds 32 entries and the parts 24.
+      Case 10 red once each for the read-only face dropped, the value copied wrong, the copied word
+      dropped, the code face another font, the field's label dropped, the button left out of the field
+      and the gallery's field state not drawn; case 13 red once each for an entry with no contract (the
+      two gallery suites failing whole) and a take that is a style; case 16 red once for the button's
+      name losing what it copies, which reddens the four operator screens' own tests and `ClientMade`'s;
+      green with none, each file diffed against its backup; the `ui` and `visual` gates, the citation,
+      counts, words and fake tests exit 0 on this tree.
 - [ ] **9. The tag.** `Tag` in `components/atoms/`: takes words and a meaning (the brand's, or a tone
       of `TONES`); decides the light look and the chip's size (`SIZES.chip`). Its entry (a colleague's
       "you", a permission's "custom", a build that differs, a service's state) and contract. Cases

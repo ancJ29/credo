@@ -396,6 +396,26 @@ describe('Gallery', () => {
     expect(out).toBeDefined();
   });
 
+  it('231 case 10 and 16: CopyText draws a button alone and the button in its read-only field', async () => {
+    open(`${BASE}/molecules/copy-text`);
+
+    expect(stateNames()).toEqual(['Alone in a row', 'In its field']);
+    const { vi: words } = DICTIONARIES;
+    const alone = within(part().getByRole('figure', { name: 'Alone in a row' }));
+    expect(alone.queryByRole('textbox')).toBeNull();
+    expect(alone.getByRole('button', { name: `${words.operator.copy}: ${words.operator.link}` }));
+    const field = within(part().getByRole('figure', { name: 'In its field' }));
+    const input = field.getByRole<HTMLInputElement>('textbox', { name: words.operator.link });
+    expect(input.readOnly).toBe(true);
+    expect(input.value).toBe('https://an-phat.example/login');
+    await userEvent.click(
+      field.getByRole('button', { name: `${words.operator.copy}: ${words.operator.link}` }),
+    );
+    expect(
+      field.getByRole('button', { name: `${words.operator.copied}: ${words.operator.link}` }),
+    ).toBeDefined();
+  });
+
   it('231 case 12: Menus draws the language menu and the person menu, each opened by a press', async () => {
     open(`${BASE}/foundations/menus`);
 
@@ -1106,7 +1126,7 @@ describe('Gallery', () => {
   });
 
   it('213 case 1: every entry carries one to three use lines and one to three don’t-use lines', () => {
-    expect(ENTRIES).toHaveLength(31);
+    expect(ENTRIES).toHaveLength(32);
     for (const entry of ENTRIES) {
       for (const lines of [entry.useWhen, entry.dontUseWhen]) {
         expect(lines.length, entry.name).toBeGreaterThanOrEqual(1);
@@ -1434,7 +1454,7 @@ describe('Gallery', () => {
         entry.name !== 'The page base',
     );
     // A set that found nothing would quiet the loop.
-    expect(parts.length).toBe(23);
+    expect(parts.length).toBe(24);
     expect(GUIDELINE.contracts.map((contract) => contract.part).sort()).toEqual(
       parts.map((entry) => entry.name).sort(),
     );
@@ -1464,6 +1484,8 @@ describe('Gallery', () => {
     // The panel of ours and the card with a section title each name the other.
     expect(words('Panel')).toContain('SectionCard');
     expect(words('SectionCard')).toContain('Panel');
+    // The copy button names the button of ours it is made of.
+    expect(words('CopyText')).toContain('ActionButton');
     // The frame’s menus of Mantine’s own and the page’s menu row name each other.
     expect(words('MenuRow')).toContain('Menus');
     expect(words('Menus')).toContain('MenuRow');
