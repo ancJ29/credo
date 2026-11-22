@@ -28,6 +28,9 @@ import { SectionCard } from '../components/organisms/SectionCard';
 import { Charter } from './Charter';
 import { ChoiceStates } from './Choices';
 import { MenuStates } from './Menus';
+import { PhotoStates } from './Photos';
+import { LinkStates } from './Links';
+import { DialogStates } from './Dialog';
 import { FieldStates } from './Fields';
 import { SAMPLES, useLanguage } from './samples';
 import { OnTheBrand, OnTheLinks } from './OnTheBrand';
@@ -425,6 +428,58 @@ export const ENTRIES: Entry[] = [
     ],
     instead: 'MenuRow',
     states: MenuStates,
+  },
+  {
+    group: 'Foundations',
+    name: 'Photos and codes',
+    kind: 'Mantine’s own',
+    description:
+      'Mantine’s own picture as the theme dresses it, with the sign-in QR code beside it: a person’s photo and its choose button, a delivery’s proof, a company’s logo and the code a phone reads to sign in.',
+    props: 'Image · FileButton · Avatar · QrCode (value, label)',
+    useWhen: [
+      'A person’s or a company’s picture is shown, or chosen from a file on the device.',
+      'A delivery’s proof is shown under its title.',
+      'A sign-in link is shown as a code a phone reads.',
+    ],
+    dontUseWhen: [
+      'A small mark of the client’s beside a name: that is LogoTile’s.',
+      'A link to copy or follow as words: that is under Links.',
+    ],
+    instead: 'LogoTile',
+    states: PhotoStates,
+  },
+  {
+    group: 'Foundations',
+    name: 'Links',
+    kind: 'Mantine’s own',
+    description:
+      'Mantine’s own link as the theme dresses it, in the link colour: a name that opens its page in a row, a phone number a tap calls and a link inside a sentence.',
+    props: 'Anchor · component · to · href',
+    useWhen: [
+      'A name or a number in a row or a sentence opens a page or calls a phone.',
+      'The link is words inside text, not a button.',
+    ],
+    dontUseWhen: [
+      'A way back above a page: that is BackLink’s.',
+      'An act that changes something: a button, under ActionButton.',
+    ],
+    instead: 'BackLink',
+    states: LinkStates,
+  },
+  {
+    group: 'Foundations',
+    name: 'Dialog',
+    kind: 'Mantine’s own',
+    description:
+      'Mantine’s own dialog as the theme dresses it: a press opens it over the page, as the ended session’s dialog says its title, its text and the two ways on.',
+    props: 'Modal · opened · onClose · title · centered',
+    useWhen: ['The page waits on one answer and nothing beneath works until it comes.'],
+    dontUseWhen: [
+      'A message that needs no answer: that is FormMessage’s.',
+      'A list of choices behind a header button: that is under Menus.',
+    ],
+    instead: 'FormMessage',
+    states: DialogStates,
   },
   {
     group: 'Pages',

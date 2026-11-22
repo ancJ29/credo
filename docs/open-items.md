@@ -1817,13 +1817,15 @@ The rule of three is written at the `components/` note and again in the levels' 
 
 *Update 2026-11-21, the design skeleton's rework of landing 1:* `ui/CLAUDE.md` no longer states the rule of three; the design guideline's rule of three (`ui/src/design-system/guideline.ts`) states it once, with the folders (`ui/src/components/` at the third use, `ui/src/parts/` or the screen for the first two), the first six parts as the exception and "never to wrap a Mantine part alone". *Still open:* the `design-system/` note's sentence of C17.
 
-## 507. The theme drops the dialog header's padding, and the gallery draws no dialog or table (the same review, Low) — the machine; `[DEFERRED]`
+## 507. The theme drops the dialog header's padding, and the gallery draws no dialog or table (the same review, Low) — the machine; `[FIXED]` 2026-11-22 by the gallery parts piece's step 10: the entry Dialog draws the dialog a press opens, after step 4's table
 
 The dialog's entry (`Modal.extend`) in `ui/src/design-system/appTheme.ts` carries the dialog's centring and title but not the header's padding of the legacy's `theme/index.ts#L89-L91`, and the gallery shows neither a dialog nor a table row under the pointer, so the two entries of case 1 are held by the test alone and cannot be judged by eye. Add the padding with the first screen that opens a dialog, and a dialog and a table to the gallery.
 
 **Half done (design system, the fix pass of landing 3, 2026-11-17).** The dialog header's padding half is done at step 12: the legacy's `var(--mantine-spacing-sm) var(--mantine-spacing-md)` is `TOKENS.dialogHeader` in `ui/src/design-system/tokens.ts`, read by the dialog's entry in `ui/src/design-system/appTheme.ts` and held in `ui/src/design-system/appTheme.test.tsx`. The gallery half is still open: the gallery draws no dialog and no table row.
 
 **Table half done (gallery parts, step 4, 2026-11-22).** The gallery draws a table and its rows under the pointer: the entry `DataTable` (`ui/src/components/molecules/DataTable.tsx`), whose rows light at the theme's colour and whose test (`DataTable.test.tsx`) holds it. *Still open:* the dialog, which step 10 draws; the item closes there.
+
+**Closed (gallery parts, step 10, 2026-11-22).** The gallery draws the dialog: the entry `Dialog` (`ui/src/design-system/Dialog.tsx`), a button that opens the ended session's dialog in its own words, held by case 12 in `ui/src/design-system/Gallery.test.tsx`. Both halves are done; closed by the step's commit.
 
 ## 509. A company too large to be compared in one press cannot switch from the page — the machine; `[DEFERRED]` (the move's plan, 2026-11-16, Low)
 

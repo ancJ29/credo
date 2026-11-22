@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { CREDO_COLOUR } from '@credo/shared';
@@ -103,7 +103,7 @@ describe('Gallery', () => {
     ]);
     expect(found.length).toBeGreaterThan(0);
     expect(list().getByRole('region', { name: 'Start here' }).textContent).toContain('1');
-    expect(list().getByRole('region', { name: 'Foundations' }).textContent).toContain('6');
+    expect(list().getByRole('region', { name: 'Foundations' }).textContent).toContain('9');
     for (const [level, heading] of Object.entries(HEADINGS)) {
       // A part to come has its entry and no file yet.
       const coming = ENTRIES.filter((entry) => entry.toCome && entry.group === heading);
@@ -456,6 +456,98 @@ describe('Gallery', () => {
       words.user.password,
       words.user.signOut,
     ]);
+  });
+
+  it('231 case 12: Photos and codes draws the photo and its choose button, the proof, the logo and the QR code', async () => {
+    open(`${BASE}/foundations/photos-and-codes`);
+
+    expect(stateNames()).toEqual([
+      'A person’s photo',
+      'A delivery’s proof',
+      'A company’s logo',
+      'The sign-in QR code',
+    ]);
+    const { vi: words } = DICTIONARIES;
+    const person = within(part().getByRole('figure', { name: 'A person’s photo' }));
+    expect(person.getByRole('img', { name: SAMPLES.vi.person }).getAttribute('src')).toContain(
+      'data:image/svg+xml',
+    );
+    expect(person.getByRole('button', { name: words.person.photoChoose })).toBeDefined();
+    // A file chosen on the device reaches the button's callback, and the sample keeps nothing.
+    const picture = new File(['x'], 'photo.png', { type: 'image/png' });
+    await userEvent.upload(
+      part()
+        .getByRole('figure', { name: 'A person’s photo' })
+        .querySelector<HTMLInputElement>('input[type=file]')!,
+      picture,
+    );
+    const proof = within(part().getByRole('figure', { name: 'A delivery’s proof' }));
+    expect(proof.getByRole('heading', { level: 3, name: words.orders.proofTitle })).toBeDefined();
+    expect(proof.getByRole('img', { name: words.orders.proofAlt })).toBeDefined();
+    const logo = within(part().getByRole('figure', { name: 'A company’s logo' }));
+    expect(logo.getByRole('button', { name: words.settings.logoChoose })).toBeDefined();
+    await userEvent.upload(
+      part()
+        .getByRole('figure', { name: 'A company’s logo' })
+        .querySelector<HTMLInputElement>('input[type=file]')!,
+      picture,
+    );
+    expect(
+      part()
+        .getByRole('figure', { name: 'A company’s logo' })
+        .querySelector('img')
+        ?.getAttribute('alt'),
+    ).toBe('');
+    const code = within(part().getByRole('figure', { name: 'The sign-in QR code' }));
+    expect(code.getByRole('img', { name: words.person.qrImage })).toBeDefined();
+  });
+
+  it('231 case 12: Links draws a name link in a row, a phone link and a link in a sentence', () => {
+    open(`${BASE}/foundations/links`);
+
+    expect(stateNames()).toEqual(['A name link in a row', 'A phone link', 'A link in a sentence']);
+    const { vi: words } = DICTIONARIES;
+    const name = within(part().getByRole('figure', { name: 'A name link in a row' }));
+    expect(name.getByRole('link', { name: SAMPLES.vi.person }).getAttribute('href')).toBe(
+      '/staff/1',
+    );
+    const phone = within(part().getByRole('figure', { name: 'A phone link' }));
+    const call = phone.getByRole('link', {
+      name: words.myDeliveries.call.replace('{{phone}}', SAMPLES.vi.phone),
+    });
+    expect(call.getAttribute('href')).toBe(`tel:${SAMPLES.vi.phone.replace(/\s/g, '')}`);
+    const sentence = within(part().getByRole('figure', { name: 'A link in a sentence' }));
+    expect(sentence.getByText(words.orders.fromOrder, { exact: false })).toBeDefined();
+    expect(sentence.getByRole('link', { name: 'DH-0001' }).getAttribute('href')).toBe(
+      '/orders/2026-11-22/1',
+    );
+  });
+
+  it('231 case 12: Dialog is closed until a press opens it, in the ended session’s words', async () => {
+    open(`${BASE}/foundations/dialog`);
+
+    expect(stateNames()).toEqual(['The ended session']);
+    const { vi: words } = DICTIONARIES;
+    const state = within(part().getByRole('figure', { name: 'The ended session' }));
+    expect(state.queryByRole('dialog')).toBeNull();
+    await userEvent.click(state.getByRole('button', { name: words.passkey.endedTitle }));
+    const dialog = within(await state.findByRole('dialog'));
+    expect(dialog.getByText(words.passkey.endedText)).toBeDefined();
+    expect(dialog.getByRole('button', { name: words.user.signOut })).toBeDefined();
+    await userEvent.click(dialog.getByRole('button', { name: words.passkey.endedButton }));
+    await waitFor(() => expect(state.queryByRole('dialog')).toBeNull());
+    // Each other way out closes it too: the sign-out and the escape key.
+    const press = () =>
+      userEvent.click(state.getByRole('button', { name: words.passkey.endedTitle }));
+    await press();
+    await userEvent.click(
+      within(await state.findByRole('dialog')).getByRole('button', { name: words.user.signOut }),
+    );
+    await waitFor(() => expect(state.queryByRole('dialog')).toBeNull());
+    await press();
+    await state.findByRole('dialog');
+    await userEvent.keyboard('{Escape}');
+    await waitFor(() => expect(state.queryByRole('dialog')).toBeNull());
   });
 
   it('11: draws the door card in two states, the sign-in and the link page, in sentence case', () => {
@@ -1146,7 +1238,7 @@ describe('Gallery', () => {
   });
 
   it('213 case 1: every entry carries one to three use lines and one to three don’t-use lines', () => {
-    expect(ENTRIES).toHaveLength(33);
+    expect(ENTRIES).toHaveLength(36);
     for (const entry of ENTRIES) {
       for (const lines of [entry.useWhen, entry.dontUseWhen]) {
         expect(lines.length, entry.name).toBeGreaterThanOrEqual(1);

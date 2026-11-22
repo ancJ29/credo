@@ -281,10 +281,23 @@ part and its importers 14 (222's step 7), five entries 14 (213's step 10), a rec
       and a contract with no entry; case 14 red once each for each entry's naming of the other left
       out; green with none, each file diffed against its backup; the `ui` and `visual` gates, the
       citation, words and fake tests and the pinned file's diff exit 0 on this tree (22:04 to 22:10).
-- [ ] **10. Photos and codes, links, the dialog.** A person's photo with its choose button, a
+- [x] **10. Photos and codes, links, the dialog.** A person's photo with its choose button, a
       delivery's proof, a company's logo, the sign-in QR code; a name link in a row, a phone link, a
       link in a sentence; a dialog a press opens, in the ended session's words. Item 507 closes. Case
       12. _Done when:_ the gates exit 0 with Foundations at 9 and 25 parts. **14 min**.
+      _Evidence:_ three new entries sit in Foundations under "Mantine's own", no part of ours: Photos and
+      codes (`design-system/Photos.tsx`: a person's photo at 96 with its choose button and the avatar
+      where none is held, a delivery's proof under its title, a company's logo at 48 with its choose
+      button, the sign-in QR code, the words read by key), Links (`Links.tsx`: a name link in a row, a
+      phone link, a link in a sentence) and Dialog (`Dialog.tsx`: a button that opens the ended
+      session's dialog, in its title, text and two ways on, each of which closes it). Foundations now
+      counts 9, the gallery 36 entries and the parts stay 25. Counts recounted on this tree: `<Image` 5,
+      `<FileButton` 2, `<QrCode` 1, `<PhotoPanel` 1, `<ProofPhoto` 2 and `<Modal` 1 as planned; `<Anchor`
+      is 11 in 9 files outside the gallery (not 9 in 8: `BackLink` writes two and the staff list two),
+      and the sites the samples copy are `ListTable`, `MyDeliveryPage#L25` and `DeliveryPage#L98`.
+      Case 12 red once each for the photo's choose button worded as its hint, the QR code's name
+      worded as the link's, the phone link's address keeping its spaces and the dialog's press opening
+      nothing, green with none, each file diffed against its backup; no screen moved. Item 507 closes.
 - [ ] **11. The recap, and the look.** The recap closed; the gallery's row and card in
       `docs/products.md` name the samples' languages and the new parts; item 651 gains the new parts'
       site counts, item 515 the line below. Your points 1 to 3, together. _Done when:_ the citation
