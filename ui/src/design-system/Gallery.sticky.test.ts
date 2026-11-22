@@ -20,4 +20,9 @@ describe('232 step 2: the controls stay in view', () => {
     expect(controls).toMatch(/z-index:\s*1;/);
     expect(controls).toMatch(/border-bottom:\s*1px solid var\(--mantine-color-gray-3\)/);
   });
+
+  it('the controls block has no negative top margin, so the notes start 18px below its bottom line', () => {
+    expect(ruleOf('.controls')).not.toMatch(/margin:\s*-/);
+    expect(ruleOf('.controls')).toMatch(/margin:\s*0 0 18px;/);
+  });
 });
