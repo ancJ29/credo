@@ -136,6 +136,18 @@ You should see, on the phone or the tablet, the not-found screen ("Không tìm t
 
 **Question: could a coder pick each colour, style, gap, width, icon size and corner from these pages without asking, and is the phone or tablet turned away?** Say yes or no; with a no, name the line, or the step number where it went wrong.
 
+### The messages' card (landing 2 of the screens on the parts; the saved line, begun)
+
+Open the app's ridge address and sign in as a person who may edit settings. You need a PC.
+
+1. Press "Settings" in the menu.
+2. Press the save button at the foot of the form, with or without a change.
+3. Read the line that appears at the top of the form, above the cards.
+
+You should see a green line, spanning the width of the form, saying the settings were saved. A save that fails, or is refused, shows the same line in red.
+
+**Question: is the saved line green, as wide as the form, and easy to read?** Say yes or no; with a no, name the line.
+
 ## Next, in order
 
 What comes next, in the order the human's page on the orchestrator branch lists it (the evening's session refreshes this list from it):
