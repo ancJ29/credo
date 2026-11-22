@@ -12,7 +12,6 @@ import {
   staffConfig,
 } from '@credo/shared';
 import {
-  Badge,
   Button,
   Group,
   NativeSelect,
@@ -59,6 +58,7 @@ import {
 import { noteOf, personalPhoneOf, phoneOf, unitName } from '../../staffNames';
 import { TYPE } from '../../design-system/tokens';
 import { ActionButton } from '../../components/atoms/ActionButton';
+import { StatusBadge } from '../../components/atoms/StatusBadge';
 import { FormMessage } from '../../components/molecules/FormMessage';
 
 const READ_ONLY = { input: { fontFamily: 'ui-monospace, monospace' } };
@@ -401,7 +401,7 @@ function PersonForm({
           <Title {...TYPE.pageTitle}>{employee.name}</Title>
           <Text c="dimmed">{employee.code}</Text>
         </Stack>
-        {employee.archived && <Badge color="gray">{t('staff.left')}</Badge>}
+        {employee.archived && <StatusBadge status="inactive" />}
       </Group>
       <Button
         component={Link}

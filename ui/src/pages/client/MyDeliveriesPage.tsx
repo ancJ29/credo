@@ -4,7 +4,8 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { shownDay } from '../../day';
 import { Loaded } from '../../frame/Loaded';
-import { StateBadge, useMoney } from '../../parts/OrderParts';
+import { useMoney } from '../../parts/OrderParts';
+import { StatusBadge } from '../../components/atoms/StatusBadge';
 import { type PageProps, useLoad } from '../../page';
 import { TYPE, WEIGHTS } from '../../design-system/tokens';
 
@@ -45,7 +46,7 @@ export function MyDeliveriesPage(page: PageProps) {
               <Stack gap={4}>
                 <Group justify="space-between">
                   <Text fw={WEIGHTS.title}>{request.number}</Text>
-                  <StateBadge state={request.state} />
+                  <StatusBadge status={request.state} />
                 </Group>
                 <Text>{request.customer.name}</Text>
                 <Text {...TYPE.caption}>{addressOf(request)}</Text>

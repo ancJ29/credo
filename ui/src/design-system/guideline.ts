@@ -644,6 +644,7 @@ export const GUIDELINE: {
       serves: 'A screen picks parts, never a style',
       heldBy: { check: 'ui/src/components/atoms/StatusBadge.test.tsx' },
       followed: { item: 651 },
+      used: true,
     },
     {
       part: 'PageShell',

@@ -12,12 +12,12 @@ import {
   type Outcome,
   OutcomeAlert,
   ProofPhoto,
-  StateBadge,
   useMoney,
 } from '../../parts/OrderParts';
 import { type PageProps, refusal, useLoad } from '../../page';
 import { TYPE } from '../../design-system/tokens';
 import { ActionButton } from '../../components/atoms/ActionButton';
+import { StatusBadge } from '../../components/atoms/StatusBadge';
 import { FormMessage } from '../../components/molecules/FormMessage';
 
 /** A delivery request opened to be read: its number, day and driver, the order it came from, the
@@ -68,7 +68,7 @@ export function DeliveryPage(page: PageProps) {
               <Title {...TYPE.pageTitle}>
                 {t('orders.requestTitle', { number: doc.request.number })}
               </Title>
-              <StateBadge state={doc.request.state} />
+              <StatusBadge status={doc.request.state} />
             </Group>
             {cancelled && (
               <FormMessage

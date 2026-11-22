@@ -5,7 +5,8 @@ import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router';
 import { shownDay } from '../../day';
 import { Loaded } from '../../frame/Loaded';
-import { LinesTable, ProofPhoto, StateBadge, useMoney } from '../../parts/OrderParts';
+import { LinesTable, ProofPhoto, useMoney } from '../../parts/OrderParts';
+import { StatusBadge } from '../../components/atoms/StatusBadge';
 import { type PageProps, refusal, useLoad } from '../../page';
 import { TYPE, WEIGHTS } from '../../design-system/tokens';
 import { ActionButton } from '../../components/atoms/ActionButton';
@@ -96,7 +97,7 @@ export function MyDeliveryPage(page: PageProps) {
               <Title {...TYPE.pageTitle}>
                 {t('orders.requestTitle', { number: doc.request.number })}
               </Title>
-              <StateBadge state={doc.request.state} />
+              <StatusBadge status={doc.request.state} />
             </Group>
             {doc.request.state === 'cancelled' && (
               <FormMessage kind="error">{t('myDeliveries.cancelled')}</FormMessage>

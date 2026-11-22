@@ -394,7 +394,6 @@ export const en = {
     colStatus: 'Status',
     chipActive: 'Active',
     chipInactive: 'Inactive',
-    left: 'Resigned',
     back: 'Back to staff directory',
   },
   addPerson: {

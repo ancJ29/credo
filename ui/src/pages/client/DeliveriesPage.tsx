@@ -3,7 +3,8 @@ import { Anchor, Group, Paper, Stack, Table, Text, TextInput, Title } from '@man
 import { useTranslation } from 'react-i18next';
 import { Link, useSearchParams } from 'react-router';
 import { Loaded } from '../../frame/Loaded';
-import { StateBadge, useMoney } from '../../parts/OrderParts';
+import { useMoney } from '../../parts/OrderParts';
+import { StatusBadge } from '../../components/atoms/StatusBadge';
 import { type PageProps, useLoad } from '../../page';
 import { useGapText } from '../../parts/ReconcileParts';
 import { TYPE } from '../../design-system/tokens';
@@ -115,7 +116,7 @@ export function DeliveriesPage(page: PageProps) {
                             <Table.Td>{request.order.number}</Table.Td>
                             <Table.Td ta="right">{money(request.total)}</Table.Td>
                             <Table.Td>
-                              <StateBadge state={request.state} />
+                              <StatusBadge status={request.state} />
                             </Table.Td>
                           </Table.Tr>
                         ))}

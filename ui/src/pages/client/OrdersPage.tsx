@@ -6,7 +6,8 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { shownDay } from '../../day';
 import { Loaded } from '../../frame/Loaded';
-import { StateBadge, useMoney } from '../../parts/OrderParts';
+import { useMoney } from '../../parts/OrderParts';
+import { StatusBadge } from '../../components/atoms/StatusBadge';
 import { type PageProps, useLoad } from '../../page';
 import { TYPE } from '../../design-system/tokens';
 import { ActionButton } from '../../components/atoms/ActionButton';
@@ -72,7 +73,7 @@ export function OrdersPage(page: PageProps) {
                     <Table.Td>{order.customer.name}</Table.Td>
                     <Table.Td ta="right">{money(order.total)}</Table.Td>
                     <Table.Td>
-                      <StateBadge state={order.state} />
+                      <StatusBadge status={order.state} />
                     </Table.Td>
                     <Table.Td>{order.request?.driver.name ?? ''}</Table.Td>
                   </Table.Tr>

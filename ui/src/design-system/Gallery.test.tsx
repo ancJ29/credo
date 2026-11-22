@@ -967,7 +967,7 @@ describe('Gallery', () => {
     expect(about().getByText(/Built and in use; .* open item 655 moves them\./)).toBeDefined();
   });
 
-  it('213 case 14: the entry of StatusBadge draws each status of the records in its word, a built part’s panel saying the screens do not use it yet', () => {
+  it('213 case 14: the entry of StatusBadge draws each status of the records in its word, a built part’s panel saying it is in use', () => {
     open(`${BASE}/atoms/status-badge`);
     expect(stateNames()).toEqual(['An order', 'A delivery request', 'A person']);
     const chips = [...document.querySelectorAll('[data-status]')];
@@ -993,9 +993,7 @@ describe('Gallery', () => {
       'Active',
       'Inactive',
     ]);
-    expect(
-      about().getByText(/Built; the screens do not use it yet: open item 651 moves them\./),
-    ).toBeDefined();
+    expect(about().getByText(/Built and in use; .* open item 651 moves them\./)).toBeDefined();
   });
 
   it('213 case 13: a built part’s contract says the app follows it, and has no “to come”', () => {

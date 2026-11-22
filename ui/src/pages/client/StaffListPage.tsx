@@ -10,7 +10,6 @@ import {
 import {
   Anchor,
   Avatar,
-  Badge,
   Box,
   Card,
   Group,
@@ -39,6 +38,7 @@ import {
 } from '../../staffFilter';
 import { TYPE } from '../../design-system/tokens';
 import { ActionButton } from '../../components/atoms/ActionButton';
+import { StatusBadge } from '../../components/atoms/StatusBadge';
 
 /** A filter's name: shown above it on a phone, and from `sm` up only the accessible name, as the old
  * app's one-line filters show the value alone. */
@@ -139,12 +139,9 @@ export function StaffListPage(page: PageProps) {
     />
   );
 
-  const chip = (person: Employee) =>
-    person.archived ? (
-      <Badge color="gray">{t('staff.chipInactive')}</Badge>
-    ) : (
-      <Badge>{t('staff.chipActive')}</Badge>
-    );
+  const chip = (person: Employee) => (
+    <StatusBadge status={person.archived ? 'inactive' : 'active'} />
+  );
 
   const add = can(user, 'staff.canCreate') && (
     <ActionButton meaning="main" to="/staff/new">

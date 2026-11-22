@@ -1,6 +1,5 @@
-import type { DeliveryRequest, OrderLine, RequestState, OrderState } from '@credo/shared';
+import type { DeliveryRequest, OrderLine } from '@credo/shared';
 import {
-  Badge,
   Group,
   Image,
   NativeSelect,
@@ -24,25 +23,6 @@ export function useMoney() {
   const { t, i18n } = useTranslation();
   return (amount: number) =>
     t('orders.money', { amount: new Intl.NumberFormat(i18n.language).format(amount) });
-}
-
-const STATE_COLOUR: Record<OrderState | RequestState, string> = {
-  draft: 'gray',
-  confirmed: 'teal',
-  fulfilled: 'green',
-  cancelled: 'red',
-  waiting: 'blue',
-  delivered: 'green',
-};
-
-/** A state in words, in a badge. */
-export function StateBadge({ state }: { state: OrderState | RequestState }) {
-  const { t } = useTranslation();
-  return (
-    <Badge variant="light" color={STATE_COLOUR[state]}>
-      {t(`orders.state.${state}`)}
-    </Badge>
-  );
 }
 
 const textIn = (value: unknown) => (typeof value === 'string' ? value : '');
