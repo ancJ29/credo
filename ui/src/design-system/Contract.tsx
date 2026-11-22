@@ -5,7 +5,9 @@ import type { ReactNode } from 'react';
 import { GUIDELINE, type Contract, type PartState } from './guideline';
 import { followedWords, heldWords } from './Charter';
 import classes from './Gallery.module.css';
+import { IconSettings, IconUsers } from '@tabler/icons-react';
 import { ActionButton } from '../components/atoms/ActionButton';
+import { MenuRow } from '../components/atoms/MenuRow';
 import { ActionRow } from '../components/molecules/ActionRow';
 import { DataTable } from '../components/molecules/DataTable';
 import { DetailField } from '../components/molecules/DetailField';
@@ -273,3 +275,32 @@ function PanelSample({ state: { name } }: { state: PartState }) {
 
 /** A panel with a title, and one with none. */
 export const PanelStates = platesOf('Panel', (state) => <PanelSample state={state} />);
+
+/** A menu row at each of its states, drawn by the part itself: a way on to an address, and an act with no icon or arrow. */
+function MenuRowSample({ state: { name } }: { state: PartState }) {
+  const { t } = useTranslation();
+  return (
+    <Stack
+      w={394}
+      maw="100%"
+      gap={0}
+      style={{ border: '1px solid var(--mantine-color-default-border)' }}
+    >
+      {name === 'A way on' ? (
+        <>
+          <MenuRow icon={IconSettings} to="/48b74d079/gallery/atoms/menu-row">
+            {t('nav.settings')}
+          </MenuRow>
+          <MenuRow icon={IconUsers} to="/48b74d079/gallery/atoms/menu-row">
+            {t('nav.staff')}
+          </MenuRow>
+        </>
+      ) : (
+        <MenuRow onClick={() => undefined}>{t('user.signOut')}</MenuRow>
+      )}
+    </Stack>
+  );
+}
+
+/** A row that opens an address, and one that acts. */
+export const MenuRowStates = platesOf('MenuRow', (state) => <MenuRowSample state={state} />);

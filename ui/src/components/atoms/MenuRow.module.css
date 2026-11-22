@@ -1,0 +1,25 @@
+/* A menu row as the phone's More draws it: the line between rows and the lit row under the pointer. */
+.row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 12px 16px;
+  color: inherit;
+  font-size: var(--credo-menu-size);
+  text-align: left;
+  text-decoration: none;
+}
+
+.row + .row {
+  border-top: 1px solid var(--mantine-color-default-border);
+}
+
+.row:hover {
+  background: var(--mantine-color-default-hover);
+}
+
+.go {
+  margin-left: auto;
+  color: var(--mantine-color-dimmed);
+}

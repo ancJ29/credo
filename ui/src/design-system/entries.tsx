@@ -27,6 +27,7 @@ import { PageHeader } from '../components/organisms/PageHeader';
 import { SectionCard } from '../components/organisms/SectionCard';
 import { Charter } from './Charter';
 import { ChoiceStates } from './Choices';
+import { MenuStates } from './Menus';
 import { FieldStates } from './Fields';
 import { SAMPLES, useLanguage } from './samples';
 import { OnTheBrand, OnTheLinks } from './OnTheBrand';
@@ -35,6 +36,7 @@ import {
   ActionRowStates,
   DataTableStates,
   FormMessageStates,
+  MenuRowStates,
   PageStateStates,
   PanelStates,
   TableScrollStates,
@@ -405,6 +407,24 @@ export const ENTRIES: Entry[] = [
     states: ChoiceStates,
   },
   {
+    group: 'Foundations',
+    name: 'Menus',
+    kind: 'Mantine’s own',
+    description:
+      'Mantine’s own menus as the theme dresses them: the frame’s language menu and person menu, each a button that a press opens onto a list.',
+    props: 'Menu · Menu.Target · Menu.Dropdown · Menu.Label · Menu.Item',
+    useWhen: [
+      'A few choices or acts sit behind one button in the header: the language, the person.',
+      'The list is short and each item acts at once or opens a page.',
+    ],
+    dontUseWhen: [
+      'A page of rows on a phone: that is MenuRow’s.',
+      'One value picked from a long list in a form: a drop-down, under Fields.',
+    ],
+    instead: 'MenuRow',
+    states: MenuStates,
+  },
+  {
     group: 'Pages',
     name: 'The page base',
     description:
@@ -546,6 +566,21 @@ export const ENTRIES: Entry[] = [
         ),
       },
     ],
+  },
+  {
+    group: 'Atoms',
+    name: 'MenuRow',
+    kind: 'Lists',
+    description:
+      'A row of a menu page: an optional icon, its words and, where it opens an address, an arrow at the end; a line between rows and a lit row under the pointer.',
+    props: 'icon?: typeof IconChevronRight · to?: string · onClick?: () => void · children: string',
+    useWhen: ['A page lists ways on or acts as rows, as the phone’s More does.'],
+    dontUseWhen: [
+      'A list behind a header button: that is Menus, Mantine’s own.',
+      'A row of data with columns: that is DataTable’s.',
+    ],
+    instead: 'DataTable',
+    states: MenuRowStates,
   },
   {
     group: 'Atoms',

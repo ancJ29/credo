@@ -915,6 +915,42 @@ export const GUIDELINE: {
       followed: { item: 651 },
     },
     {
+      part: 'MenuRow',
+      takes: [
+        { prop: 'icon', is: 'content', line: 'The icon before its words; none draws none.' },
+        { prop: 'to', is: 'content', line: 'The address it opens; none makes it an act.' },
+        {
+          prop: 'onClick',
+          is: 'content',
+          line: 'What it does when pressed, where it has no address.',
+        },
+        { prop: 'children', is: 'content', line: 'Its words.' },
+      ],
+      decides: [
+        {
+          what: 'Its padding and the gap between its icon, words and arrow.',
+          from: [
+            { table: 'SPACING', key: 'sm' },
+            { table: 'SPACING', key: 'md' },
+          ],
+        },
+        { what: 'Its arrow’s size.', from: [{ table: 'ICON_SIZES', key: 'field' }] },
+      ],
+      fixes: [
+        'Its text size: the frame’s menu size, `--credo-menu-size`.',
+        'The line between rows and the lit row under the pointer: the theme’s default border and hover colours.',
+        'Its arrow, at the end, drawn only where it opens an address.',
+        'Not yet drawn by a screen: `MorePage`’s `.moreRow` and `.go` in `frame.module.css` draw the same look until open item 651 moves them to this one.',
+      ],
+      states: [
+        { name: 'A way on', line: 'An icon, its words and an arrow, opening an address.' },
+        { name: 'An act', line: 'Its words alone, acting when pressed.' },
+      ],
+      serves: 'A screen picks parts, never a style',
+      heldBy: { check: 'ui/src/components/atoms/MenuRow.test.tsx' },
+      followed: { item: 651 },
+    },
+    {
       part: 'ActionRow',
       takes: [
         {

@@ -103,7 +103,7 @@ describe('Gallery', () => {
     ]);
     expect(found.length).toBeGreaterThan(0);
     expect(list().getByRole('region', { name: 'Start here' }).textContent).toContain('1');
-    expect(list().getByRole('region', { name: 'Foundations' }).textContent).toContain('5');
+    expect(list().getByRole('region', { name: 'Foundations' }).textContent).toContain('6');
     for (const [level, heading] of Object.entries(HEADINGS)) {
       // A part to come has its entry and no file yet.
       const coming = ENTRIES.filter((entry) => entry.toCome && entry.group === heading);
@@ -376,6 +376,46 @@ describe('Gallery', () => {
     for (const name of [vi.permissions.inherit, vi.permissions.allow, vi.permissions.refuse]) {
       expect(plate('Segmented pick').getByRole('radio', { name }), name).toBeDefined();
     }
+  });
+
+  it('231 case 9: MenuRow draws a way on with its icon, words and arrow, and an act with none', async () => {
+    open(`${BASE}/atoms/menu-row`);
+
+    expect(stateNames()).toEqual(['A way on', 'An act']);
+    const { vi: words } = DICTIONARIES;
+    const way = within(part().getByRole('figure', { name: 'A way on' }));
+    for (const name of [words.nav.settings, words.nav.staff]) {
+      const row = way.getByRole('link', { name });
+      expect(row.getAttribute('href')).toBe('/48b74d079/gallery/atoms/menu-row');
+      expect(row.querySelectorAll('svg')).toHaveLength(2);
+    }
+    const act = within(part().getByRole('figure', { name: 'An act' }));
+    const out = act.getByRole('button', { name: words.user.signOut });
+    expect(out.querySelector('svg')).toBeNull();
+    await userEvent.click(out);
+    expect(out).toBeDefined();
+  });
+
+  it('231 case 12: Menus draws the language menu and the person menu, each opened by a press', async () => {
+    open(`${BASE}/foundations/menus`);
+
+    expect(stateNames()).toEqual(['Language menu', 'Person menu']);
+    const { vi: words } = DICTIONARIES;
+    const language = within(part().getByRole('figure', { name: 'Language menu' }));
+    expect(language.queryByRole('menuitem')).toBeNull();
+    await userEvent.click(language.getByRole('button', { name: 'VI' }));
+    const picks = language.getAllByRole('menuitem');
+    expect(picks.map((item) => item.textContent)).toEqual([LANGUAGE_NAMES.en, LANGUAGE_NAMES.vi]);
+    expect(picks.map((item) => item.getAttribute('aria-current'))).toEqual(['false', 'true']);
+    expect(language.getByText(words.user.language, { selector: 'div' })).toBeDefined();
+
+    const person = within(part().getByRole('figure', { name: 'Person menu' }));
+    expect(person.queryByRole('menuitem')).toBeNull();
+    await userEvent.click(person.getByRole('button', { name: SAMPLES.vi.person }));
+    expect(person.getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
+      words.user.password,
+      words.user.signOut,
+    ]);
   });
 
   it('11: draws the door card in two states, the sign-in and the link page, in sentence case', () => {
@@ -1066,7 +1106,7 @@ describe('Gallery', () => {
   });
 
   it('213 case 1: every entry carries one to three use lines and one to three don’t-use lines', () => {
-    expect(ENTRIES).toHaveLength(29);
+    expect(ENTRIES).toHaveLength(31);
     for (const entry of ENTRIES) {
       for (const lines of [entry.useWhen, entry.dontUseWhen]) {
         expect(lines.length, entry.name).toBeGreaterThanOrEqual(1);
@@ -1394,7 +1434,7 @@ describe('Gallery', () => {
         entry.name !== 'The page base',
     );
     // A set that found nothing would quiet the loop.
-    expect(parts.length).toBe(22);
+    expect(parts.length).toBe(23);
     expect(GUIDELINE.contracts.map((contract) => contract.part).sort()).toEqual(
       parts.map((entry) => entry.name).sort(),
     );
@@ -1424,5 +1464,8 @@ describe('Gallery', () => {
     // The panel of ours and the card with a section title each name the other.
     expect(words('Panel')).toContain('SectionCard');
     expect(words('SectionCard')).toContain('Panel');
+    // The frame’s menus of Mantine’s own and the page’s menu row name each other.
+    expect(words('MenuRow')).toContain('Menus');
+    expect(words('Menus')).toContain('MenuRow');
   });
 });

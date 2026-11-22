@@ -221,11 +221,24 @@ part and its importers 14 (222's step 7), five entries 14 (213's step 10), a rec
 
 **Landing 3: the rest.**
 
-- [ ] **7. The menu row, and menus.** `MenuRow` in `components/atoms/`: takes words, an icon and an
+- [x] **7. The menu row, and menus.** `MenuRow` in `components/atoms/`: takes words, an icon and an
       address or a press; decides its padding, gap and size, the line between rows and its hover, as
       `.moreRow` and `.go` draw them, which stay `MorePage`'s until the move. Menus: the frame's
       language and person menus, opened by a press. Cases 9, 12, 13. _Done when:_ the gates exit 0.
       **12 min**.
+      _Evidence:_ `components/atoms/MenuRow.tsx` takes an optional icon, an address or a press and its
+      words; it draws the icon at 20, the words and, only where it opens an address, an arrow at
+      `ICON_SIZES.field`, and its stylesheet `MenuRow.module.css` holds the gap and padding at
+      `SPACING.sm` and `SPACING.md`, the menu size, the line between rows and the lit row, as
+      `.moreRow` and `.go` draw them, which stay `MorePage`'s. Its entry sits among the atoms with
+      two states, a way on and an act, and its contract; the new entry Menus sits in Foundations
+      under "Mantine's own" with the frame's language menu and person menu, each closed until a press
+      opens it. Foundations now counts 6, the gallery 31 entries and the parts 23. Case 9 red once
+      each for the arrow's size, the icon's size, the address, the press, the gap, the line, the
+      hover and the arrow drawn on the wrong row; case 12 red once each for a menu open with no press,
+      the picked language's mark and the person menu's item; case 13 red once for an entry with
+      no contract and once for a take that is a style; the two entries naming each other red once;
+      all green with none, each file diffed against its backup; the `ui` gate exits 0 on this tree.
 - [ ] **8. The copy button.** `git mv ui/src/parts/CopyText.tsx ui/src/components/molecules/`, its
       five imports with it; it takes `field` (content: the label of a read-only field that shows the
       value in the code face, the button at its right, as `ClientMade.tsx#L21`'s `Field` draws it), its
