@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { CREDO_COLOUR } from '@credo/shared';
@@ -6,8 +6,8 @@ import { DEMO_CONFIG } from '@credo/shared/demo';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { openApp } from '../../tests/open';
 import { DICTIONARIES, LANGUAGE_NAMES } from '../i18n';
-import { Gallery } from './Gallery';
-import { ENTRIES, slugOf } from './entries';
+import { Gallery, Part } from './Gallery';
+import { ENTRIES, KIND_OF_PAGE, slugOf, type Entry } from './entries';
 import { followedWords, heldWords } from './Charter';
 import { GUIDELINE } from './guideline';
 import { ContractPanel, FormMessageStates, PageStateStates } from './Contract';
@@ -267,7 +267,7 @@ describe('Gallery', () => {
     expect(part().getByRole('textbox', { name: DICTIONARIES.vi.staff.colName })).toBeDefined();
   });
 
-  it('231 case 5: Fields draws the five kinds each with a label and a hint, an error and read-only, and the staff list’s filter bar', () => {
+  it('231 case 5: Fields draws the six kinds each with a label and a hint, an error and read-only, and the staff list’s filter bar', () => {
     open(`${BASE}/foundations/fields`);
 
     expect(stateNames()).toEqual([
@@ -276,6 +276,7 @@ describe('Gallery', () => {
       'Number',
       'Long text',
       'Drop-down',
+      'File',
       'Filter bar',
     ]);
     const { vi } = DICTIONARIES;
@@ -285,6 +286,7 @@ describe('Gallery', () => {
       ['Number', vi.lists.columns.price, vi.lists.write.price, vi.lists.products.priceInvalid],
       ['Long text', vi.lists.columns.note, vi.import.writeNote, vi.lists.products.noteTooLong],
       ['Drop-down', vi.addPerson.department, SAMPLES.vi.departmentHint, SAMPLES.vi.departmentError],
+      ['File', vi.import.file, vi.import.fileHint, vi.import.unreadable],
     ];
     for (const [name, label, hint, error] of kinds) {
       const plate = within(part().getByRole('figure', { name }));
@@ -1238,7 +1240,7 @@ describe('Gallery', () => {
   });
 
   it('213 case 1: every entry carries one to three use lines and one to three don’t-use lines', () => {
-    expect(ENTRIES).toHaveLength(36);
+    expect(ENTRIES).toHaveLength(41);
     for (const entry of ENTRIES) {
       for (const lines of [entry.useWhen, entry.dontUseWhen]) {
         expect(lines.length, entry.name).toBeGreaterThanOrEqual(1);
@@ -1482,6 +1484,11 @@ describe('Gallery', () => {
       'DetailColumns',
       'FieldPair',
       'ListTable',
+      'The list page',
+      'The form page',
+      'The phone page',
+      'The day sheet',
+      'The import page',
     ]);
     for (const name of SLOTS) {
       const entry = ENTRIES.find((each) => each.name === name);
@@ -1563,7 +1570,8 @@ describe('Gallery', () => {
     const parts = ENTRIES.filter(
       (entry) =>
         ['Atoms', 'Molecules', 'Organisms', 'Pages'].includes(entry.group) &&
-        entry.name !== 'The page base',
+        entry.name !== 'The page base' &&
+        entry.kind !== KIND_OF_PAGE,
     );
     // A set that found nothing would quiet the loop.
     expect(parts.length).toBe(25);
@@ -1604,5 +1612,329 @@ describe('Gallery', () => {
     // The frame’s menus of Mantine’s own and the page’s menu row name each other.
     expect(words('MenuRow')).toContain('Menus');
     expect(words('Menus')).toContain('MenuRow');
+  });
+
+  const drawn = (entry: Entry, language: 'vi' | 'en' = 'en') =>
+    render(
+      <MemoryRouter>
+        <CredoMantine colour={CREDO_COLOUR} test>
+          <Part entry={entry} picker={null} language={language} colour={CREDO_COLOUR} test />
+        </CredoMantine>
+      </MemoryRouter>,
+    );
+  const sample = (mustHave?: string[]): Entry => ({
+    group: 'Pages',
+    kind: KIND_OF_PAGE,
+    name: 'A sample page',
+    description: 'A page.',
+    props: '',
+    useWhen: ['When.'],
+    dontUseWhen: ['Not.'],
+    mustHave,
+    states: [
+      { name: 'At the phone', node: <p>drawn at the phone</p>, phone: true },
+      { name: 'On the computer', node: <p>drawn on the computer</p> },
+    ],
+  });
+
+  it('236 case 1: a phone plate draws its page in a frame 390 wide, in the gallery’s colour and language, and any other plate beside it', () => {
+    drawn(sample(), 'vi');
+
+    const frame = screen.getByTitle<HTMLIFrameElement>('At the phone, at the phone’s width');
+    act(() => {
+      fireEvent.load(frame);
+    });
+
+    expect(frame.getAttribute('width')).toBe('390');
+    expect(frame.contentDocument!.documentElement.lang).toBe('vi');
+    expect(frame.contentDocument!.body.textContent).toContain('drawn at the phone');
+    expect(part().queryByText('drawn at the phone')).toBeNull();
+    expect(part().getByText('drawn on the computer')).toBeDefined();
+    expect(part().getAllByTitle(/at the phone’s width/)).toHaveLength(1);
+  });
+
+  it('236 case 3: a kind of page’s entry draws its must-have lines under their heading, and a part with none draws no heading', () => {
+    drawn(sample(['The first line.', 'The second line.']));
+
+    const lines = within(
+      about()
+        .getByRole('heading', { level: 3, name: 'A new page of this kind must have' })
+        .closest('section')!,
+    );
+    expect(lines.getAllByRole('listitem').map((item) => item.textContent)).toEqual([
+      'The first line.',
+      'The second line.',
+    ]);
+    cleanup();
+
+    drawn(sample());
+
+    expect(about().queryByRole('heading', { name: /must have/ })).toBeNull();
+  });
+
+  it('236 case 3: every entry under the kind of page has one to a handful of must-have lines, and no other entry has any', () => {
+    for (const entry of ENTRIES) {
+      if (entry.kind === KIND_OF_PAGE) {
+        expect(entry.mustHave?.length, entry.name).toBeGreaterThanOrEqual(1);
+        for (const line of entry.mustHave ?? []) expect(line.trim(), entry.name).not.toBe('');
+      } else {
+        expect(entry.mustHave, entry.name).toBeUndefined();
+      }
+    }
+  });
+
+  it('236 case 5: the phone page draws the walk’s six screens at the phone’s width: the cards each opening its request, one main press a state, the photo’s send and take again, the proof', () => {
+    const entry = ENTRIES.find((each) => each.name === 'The phone page')!;
+    expect(entry.kind).toBe(KIND_OF_PAGE);
+    drawn(entry);
+    const frames = part().getAllByTitle<HTMLIFrameElement>(/at the phone’s width/);
+    expect(frames).toHaveLength(6);
+    for (const frame of frames) {
+      act(() => {
+        fireEvent.load(frame);
+      });
+      expect(frame.getAttribute('width')).toBe('390');
+    }
+    const at = (index: number) => within(frames[index].contentDocument!.body);
+    const pressesOf = (index: number) => at(index).queryAllByRole('button');
+
+    // 1. The day's requests: a card each, a link opening its request, no press.
+    const cards = at(0).getAllByRole('link');
+    expect(cards.map((card) => card.getAttribute('href'))).toEqual([
+      '/my-deliveries/2026-11-23/r1',
+      '/my-deliveries/2026-11-23/r2',
+    ]);
+    expect(cards[0].textContent).toContain('GH-0001');
+    expect(pressesOf(0)).toHaveLength(0);
+    // 2. One request: the customer's call, the goods, the money in bold under them, one main press.
+    expect(at(1).getByRole('link', { name: 'Call 0901 234 567' }).getAttribute('href')).toBe(
+      'tel:0901234567',
+    );
+    expect(at(1).getAllByRole('row')).toHaveLength(5);
+    const collect = at(1).getByText('Amount to collect: 945,000 VND');
+    expect(collect.style.fontWeight).toBe('700');
+    expect(
+      at(1).getByRole('table').compareDocumentPosition(collect) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(pressesOf(1).map((press) => press.textContent)).toEqual(['Mark as delivered']);
+    // 3. The photo taken: Submit the main, Retake the other under it.
+    expect(at(2).getByRole('img', { name: 'Captured delivery photo' })).toBeDefined();
+    expect(pressesOf(2).map((press) => press.textContent)).toEqual(['Submit', 'Retake photo']);
+    expect(pressesOf(2)[0].getAttribute('data-variant')).toBe('filled');
+    expect(pressesOf(2)[1].getAttribute('data-variant')).toBe('default');
+    // 4. Delivered: the proof, no press.
+    expect(at(3).getByRole('status').textContent).toBe('Delivered successfully. Thank you!');
+    expect(at(3).getByRole('img', { name: 'Delivery verification photo' })).toBeDefined();
+    expect(pressesOf(3)).toHaveLength(0);
+    // 5. A send that failed: the message, the photo kept, Submit again.
+    expect(at(4).getByRole('alert').textContent).toContain('Failed to submit photo');
+    expect(at(4).getByRole('img', { name: 'Captured delivery photo' })).toBeDefined();
+    expect(pressesOf(4).map((press) => press.textContent)).toEqual(['Submit', 'Retake photo']);
+    // 6. Cancelled by the office: told so, nothing to press.
+    expect(at(5).getByRole('alert').textContent).toContain('cancelled by the dispatch office');
+    expect(pressesOf(5)).toHaveLength(0);
+    // Every press is ActionButton's, at the one size that stands at least 36 px.
+    for (let index = 0; index < 6; index += 1) {
+      for (const press of pressesOf(index)) expect(press.getAttribute('data-size')).toBe('sm');
+    }
+  });
+
+  it('236 case 6: the list page draws its acts, table, status column, filter bar, empty, loading and failed, and a card a row at the phone width', () => {
+    const entry = ENTRIES.find((each) => each.name === 'The list page')!;
+    expect(entry.kind).toBe(KIND_OF_PAGE);
+    drawn(entry);
+    const figure = (name: string) => within(part().getByRole('figure', { name }));
+    // 1. A list: the acts beside the title, the add the main, the kind's records in a table.
+    const list = figure('A list');
+    expect(list.getByRole('heading', { name: 'Customers' }).textContent).toBe('Customers');
+    const acts = list.getAllByRole('link');
+    expect(acts.slice(0, 2).map((link) => link.textContent)).toEqual([
+      'Import from Excel',
+      'Add customer',
+    ]);
+    expect(acts[1].getAttribute('data-variant')).toBe('filled');
+    expect(list.getAllByRole('row')).toHaveLength(4);
+    expect(list.getByRole('columnheader', { name: 'Code' })).toBeDefined();
+    // 2. Filtered, with a status: the filter bar over a table whose last column is the chip.
+    const filtered = figure('Filtered, with a status');
+    expect(filtered.getByRole('textbox', { name: 'Search' })).toBeDefined();
+    expect(filtered.getByRole('combobox', { name: 'Status' })).toBeDefined();
+    const rows = filtered.getAllByRole('row');
+    expect(rows).toHaveLength(3);
+    expect(within(rows[1]).getAllByRole('cell').at(-1)!.textContent).toBe('Active');
+    // 3. Empty: said by the page state, with its add.
+    const empty = figure('Empty');
+    expect(empty.getByRole('status').textContent).toContain('No customers found');
+    expect(empty.getAllByRole('link', { name: 'Add customer' })).toHaveLength(1);
+    expect(empty.queryByRole('table')).toBeNull();
+    // 4. Loading, 5. failed: the body is the state.
+    expect(figure('Loading').getByLabelText('Loading...')).toBeDefined();
+    expect(figure('Loading').queryByRole('table')).toBeNull();
+    expect(figure('Failed').getByRole('alert').textContent).toContain('Unable to load page');
+    expect(figure('Failed').getByRole('button', { name: 'Try again' })).toBeDefined();
+    // 6. At the phone's width: a frame, a card a row, the name and its chip first, the rest captions.
+    const frame = part().getByTitle<HTMLIFrameElement>('At the phone, at the phone’s width');
+    act(() => {
+      fireEvent.load(frame);
+    });
+    expect(frame.getAttribute('width')).toBe('390');
+    const body = within(frame.contentDocument!.body);
+    expect(body.queryByRole('table')).toBeNull();
+    const cards = body
+      .getAllByRole('link')
+      .filter((link) => link.getAttribute('href')?.startsWith('/staff/s'));
+    expect(cards.map((card) => card.getAttribute('href'))).toEqual([
+      '/staff/s1',
+      '/staff/s2',
+      '/staff/s3',
+    ]);
+    expect(cards[0].textContent).toBe('An NguyenActiveNV-0010901 234 567');
+    expect(cards[2].textContent).toContain('Inactive');
+  });
+
+  it('236 case 7: the form page draws blocks of fields, a field’s refusal on the field and a whole form’s above, one main at the foot, the made state', () => {
+    const entry = ENTRIES.find((each) => each.name === 'The form page')!;
+    expect(entry.kind).toBe(KIND_OF_PAGE);
+    drawn(entry);
+    const figure = (name: string) => within(part().getByRole('figure', { name }));
+    // 1. A new record: the way back above the title, three titled blocks, one main at the foot.
+    const fresh = figure('A new record');
+    const back = fresh.getByRole('link', { name: 'Back to staff directory' });
+    const title = fresh.getByRole('heading', { name: 'Add staff member' });
+    expect(back.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(
+      fresh.getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent),
+    ).toEqual(['Basic information', 'Contact details', 'Internal notes']);
+    expect(fresh.getAllByRole('button')).toHaveLength(1);
+    expect(fresh.getByRole('button', { name: 'Add employee' }).getAttribute('data-variant')).toBe(
+      'filled',
+    );
+    expect(fresh.queryByRole('alert')).toBeNull();
+    expect(fresh.getByRole('textbox', { name: /Staff code/ }).hasAttribute('data-error')).toBe(
+      false,
+    );
+    // 2. Refused: the whole form's message above the blocks, the code's refusal on its field.
+    const refused = figure('Refused');
+    const message = refused.getByRole('alert');
+    expect(message.textContent).toContain('Failed to add employee');
+    const first = refused.getAllByRole('heading', { level: 3 })[0];
+    expect(message.compareDocumentPosition(first) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(refused.getByRole('textbox', { name: /Staff code/ }).hasAttribute('data-error')).toBe(
+      true,
+    );
+    expect(
+      refused.getByText('Code must be 2–20 alphanumeric characters or hyphens.'),
+    ).toBeDefined();
+    expect(refused.getAllByRole('button')).toHaveLength(1);
+    // 3. One block: its fields in one titled block, one main.
+    const one = figure('One block');
+    expect(one.getAllByRole('heading', { level: 3 })).toHaveLength(1);
+    const press = one.getByRole('button', { name: 'Update password' });
+    expect(press.getAttribute('data-variant')).toBe('filled');
+    expect(one.getAllByRole('button').filter((button) => button !== press)).toHaveLength(3);
+    // 4. Made: what was made, read-only, with the way on.
+    const made = figure('Made');
+    expect(made.getByRole('status').textContent).toContain('only displayed once');
+    expect(made.getByRole('textbox', { name: 'Login username' }).hasAttribute('readonly')).toBe(
+      true,
+    );
+    expect(made.getByRole('textbox', { name: 'Initial password' }).hasAttribute('readonly')).toBe(
+      true,
+    );
+    expect(made.getByRole('link', { name: 'View employee profile' })).toBeDefined();
+  });
+
+  it('236 case 8: the day sheet draws a panel a driver and a part of the day, totals at the right, the cash field and the close’s ask', () => {
+    const entry = ENTRIES.find((each) => each.name === 'The day sheet')!;
+    expect(entry.kind).toBe(KIND_OF_PAGE);
+    drawn(entry);
+    const figure = (name: string) => within(part().getByRole('figure', { name }));
+    // 1. The day's drivers: the day in its field, a titled panel a driver, no close asked.
+    const drivers = figure('The day’s drivers');
+    expect(drivers.getByLabelText('Delivery date').getAttribute('type')).toBe('date');
+    expect(
+      drivers.getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent),
+    ).toEqual(['An Nguyen', 'Binh Tran']);
+    expect(drivers.getByText('Reconciliation open')).toBeDefined();
+    expect(drivers.getByText('Reconciled · Balanced: exact match')).toBeDefined();
+    expect(drivers.getAllByRole('link', { name: /^Reconcile driver: / })).toHaveLength(2);
+    expect(drivers.queryByRole('button', { name: 'Yes, finalize day' })).toBeNull();
+    // 2. One driver's day: a panel a part, the total at the right, the cash field, the close asked once.
+    const one = figure('One driver’s day');
+    expect(one.getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent)).toEqual(
+      ['Delivered orders', 'Pending delivery', 'Actual cash received', 'Close and finalize day'],
+    );
+    const total = one.getByText('Total COD to collect').closest('tr')!;
+    const cells = total.querySelectorAll('td');
+    expect(cells[2].getAttribute('style') ?? '').toContain('right');
+    expect(cells[2].textContent).toBe('480,000 VND');
+    expect(one.getByRole('textbox', { name: /Remitted cash/ }).hasAttribute('readonly')).toBe(true);
+    expect(one.getAllByText(/^Finalize reconciliation for /)).toHaveLength(1);
+    const main = one.getByRole('button', { name: 'Yes, finalize day' });
+    expect(main.getAttribute('data-variant')).toBe('filled');
+    expect(one.getByRole('button', { name: 'Keep open' })).toBeDefined();
+    // 3. Closed: what it closed with, no ask and no cash field.
+    const closed = figure('Closed');
+    expect(closed.getByRole('status').textContent).toContain('Reconciliation finalized');
+    expect(closed.getByRole('heading', { level: 3, name: 'Reconciled & closed' })).toBeDefined();
+    expect(closed.queryByRole('button')).toBeNull();
+    expect(closed.queryByRole('textbox', { name: /Remitted cash/ })).toBeNull();
+  });
+
+  it('236 case 9: the import page draws choose, the preview with each row’s result by meaning, and done, one main each', () => {
+    const entry = ENTRIES.find((each) => each.name === 'The import page')!;
+    expect(entry.kind).toBe(KIND_OF_PAGE);
+    drawn(entry);
+    const figure = (name: string) => within(part().getByRole('figure', { name }));
+    const mains = (name: string) =>
+      [...part().getByRole('figure', { name }).querySelectorAll('[data-variant="filled"]')].map(
+        (one) => one.textContent,
+      );
+    // 1. Choose: the file field and its hint, the template, one main to read the file.
+    const choose = figure('Choose');
+    expect(choose.getByLabelText('Excel spreadsheet').getAttribute('type')).toBe('file');
+    expect(choose.getByText('.xlsx format, up to 2 MB and 500 rows.')).toBeDefined();
+    expect(choose.getByRole('button', { name: 'Download template' })).toBeDefined();
+    expect(mains('Choose')).toEqual(['Parse file']);
+    expect(choose.queryByRole('table')).toBeNull();
+    // 2. The preview: the count of what will be added, each row's result in its meaning's tone.
+    const preview = figure('The preview');
+    expect(preview.getByText('2 of 3 rows ready to import. 1 rows contain errors.')).toBeDefined();
+    const ready = preview.getAllByText('Ready to import');
+    expect(ready).toHaveLength(2);
+    for (const one of ready)
+      expect(one.getAttribute('style') ?? '').toContain(`--mantine-color-${TONES.success}-`);
+    const refused = preview.getByText('Department “Sales” does not exist.');
+    expect(refused.getAttribute('style') ?? '').toContain(`--mantine-color-${TONES.danger}-`);
+    expect(mains('The preview')).toEqual(['Import 2 people']);
+    expect(preview.queryByLabelText('Excel spreadsheet')).toBeNull();
+    // 3. Done: what was added and skipped, one main back to the list.
+    const done = figure('Done');
+    expect(done.getByText('Successfully imported 2 people.')).toBeDefined();
+    expect(done.getByText('1 rows skipped: codes were assigned concurrently.')).toBeDefined();
+    expect(mains('Done')).toEqual(['Back to staff directory']);
+    expect(done.queryByRole('table')).toBeNull();
+  });
+
+  it('236 case 13: Panel’s new take, the address its block opens, is a content in its contract and drawn on its entry', () => {
+    const panel = GUIDELINE.contracts.find((contract) => contract.part === 'Panel')!;
+    expect(panel.takes.find(({ prop }) => prop === 'to')?.is).toBe('content');
+    expect(ENTRIES.find((entry) => entry.name === 'Panel')!.props).toContain('to?: string');
+
+    open(`${BASE}/organisms/panel`);
+
+    const takes = about().getByRole('heading', { level: 3, name: 'Takes from a screen' });
+    expect(within(takes.closest('section')!).getByText('to')).toBeDefined();
+  });
+
+  it('236 case 13: Fields draws a file field, with its hint, its error and read-only', () => {
+    expect(ENTRIES.find((entry) => entry.name === 'Fields')!.props).toContain('type="file"');
+    open(`${BASE}/foundations/fields`);
+
+    const file = part().getByRole('figure', { name: 'File' });
+    const inputs = file.querySelectorAll('input[type="file"]');
+    expect(inputs).toHaveLength(3);
+    expect(file.querySelectorAll('[readonly]')).toHaveLength(1);
+    expect(file.querySelectorAll('[data-error]').length).toBeGreaterThan(0);
   });
 });

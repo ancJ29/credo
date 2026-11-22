@@ -35,6 +35,13 @@ import { FieldStates } from './Fields';
 import { SAMPLES, useLanguage } from './samples';
 import { OnTheBrand, OnTheLinks } from './OnTheBrand';
 import {
+  DaySheetStates,
+  FormPageStates,
+  ImportPageStates,
+  ListPageStates,
+  PhonePageStates,
+} from './Pages';
+import {
   ActionButtonStates,
   ActionRowStates,
   CopyTextStates,
@@ -263,8 +270,14 @@ export type Entry = {
   instead?: string;
   /** A part with a contract and no code yet: its entry is drawn from Mantine at the values it decides. */
   toCome?: true;
-  states: { name: string; node: ReactNode }[];
+  /** What a new page of this kind must have, one short line each: only a kind of page has them. */
+  mustHave?: string[];
+  /** A state drawn `phone` stands in a frame as wide as a phone, where the app's breakpoints answer to it. */
+  states: { name: string; node: ReactNode; phone?: true }[];
 };
+
+/** The kind a page of the app's own sits under in Pages: each entry in it carries `mustHave`. */
+export const KIND_OF_PAGE = 'Kinds of page';
 
 /** A part's address segment: its name in lower case, hyphenated. */
 export const slugOf = (name: string) =>
@@ -377,9 +390,9 @@ export const ENTRIES: Entry[] = [
     name: 'Fields',
     kind: 'Mantine’s own',
     description:
-      'Mantine’s own fields as the theme dresses them: text, password, number, long text and drop-down, each with a label and a hint, with an error and read-only, and the staff list’s filter bar of a search and three drop-downs.',
+      'Mantine’s own fields as the theme dresses them: text, password, number, long text, drop-down and file, each with a label and a hint, with an error and read-only, and the staff list’s filter bar of a search and three drop-downs.',
     props:
-      'TextInput · PasswordInput · NumberInput · Textarea · NativeSelect · label · description · error · readOnly',
+      'TextInput · PasswordInput · NumberInput · Textarea · NativeSelect · type="file" · label · description · error · readOnly',
     useWhen: [
       'A person types or picks one value: a name, a password, an amount, a note or one of a list.',
       'A list narrows by a search and drop-downs: the filter bar.',
@@ -556,6 +569,129 @@ export const ENTRIES: Entry[] = [
     ],
     instead: 'DetailField',
     states: ListTableStates,
+  },
+  {
+    group: 'Pages',
+    kind: KIND_OF_PAGE,
+    name: 'The list page',
+    description:
+      'A list of records, drawn from parts only: the title with its acts beside it, a kind’s records in a table, the staff list filtered by a status chip, empty with its add, loading, failed, and at a phone’s width a card each row.',
+    props:
+      'PageShell · ActionRow · ActionButton · ListTable · DataTable · StatusBadge · PageState · Panel',
+    useWhen: [
+      'You are about to build a page that lists records and opens each one.',
+      'You need a page whose add is the main act beside its title.',
+    ],
+    dontUseWhen: [
+      'A page that takes a form: that is the form page’s.',
+      'A page for a phone only: that is the phone page’s.',
+    ],
+    instead: 'The phone page',
+    mustHave: [
+      'The title with its acts beside it, the add the main.',
+      'A kind’s records in ListTable, any other table in DataTable.',
+      'A status as a StatusBadge column.',
+      'Empty said by PageState with its add.',
+      'At the phone’s width a card a row, the name and its chip first, the other columns as captions.',
+    ],
+    states: ListPageStates,
+  },
+  {
+    group: 'Pages',
+    kind: KIND_OF_PAGE,
+    name: 'The form page',
+    description:
+      'A form that adds a record, drawn from parts only: the way back above the title, fields in titled blocks two a row, a refusal on its field and a whole form’s above the blocks, one main at the foot, and what was made.',
+    props: 'PageShell · SectionCard · FieldPair · Fields · Choices · FormMessage · ActionButton',
+    useWhen: [
+      'You are about to build a page where someone fills in fields and saves one record.',
+      'You need a page that says what it made after the save.',
+    ],
+    dontUseWhen: [
+      'A page that lists records: that is the list page’s.',
+      'A page that asks before an act that cannot be undone: that is the confirm page’s.',
+    ],
+    instead: 'The list page',
+    mustHave: [
+      'The way back above the title.',
+      'Fields in titled blocks, two a row.',
+      'A field’s refusal on its field, a whole form’s above the blocks.',
+      'One main at the foot.',
+      'After a save, what was made.',
+    ],
+    states: FormPageStates,
+  },
+  {
+    group: 'Pages',
+    kind: KIND_OF_PAGE,
+    name: 'The phone page',
+    description:
+      'The driver’s phone page, drawn at a phone’s width from parts only: the day’s requests as cards that each open a request, then one request with its customer, goods and money to collect, the photo before it is sent, delivered, a send that failed and cancelled by the office.',
+    props: 'PageHeader · PageShell · Panel · DataTable · StatusBadge · FormMessage · ActionButton',
+    useWhen: [
+      'You are about to build a page a person reads on a phone, outdoors, with a thumb.',
+      'You need a page whose acts are one main press a state.',
+    ],
+    dontUseWhen: [
+      'A page the office reads at a desk: that is the page base’s.',
+      'A list of records with columns: that is ListTable’s.',
+    ],
+    instead: 'The page base',
+    mustHave: [
+      'The phone’s width: the page is drawn at 390 px, in a frame whose breakpoints are the phone’s.',
+      'One main press a state, under what it acts on, the other under it.',
+      'The money to collect in bold under the goods.',
+      'Every press at least 36 px tall, as ActionButton’s small size stands.',
+    ],
+    states: PhonePageStates,
+  },
+  {
+    group: 'Pages',
+    kind: KIND_OF_PAGE,
+    name: 'The day sheet',
+    description:
+      'The office’s day sheet, drawn from parts only: the day’s drivers each in a titled panel with what to bring back and the way into their day, one driver’s day with the cash field and the close asked once in its own block, and the closed day.',
+    props:
+      'PageHeader · PageShell · Panel · DataTable · StatusBadge · Fields · ActionRow · ActionButton · FormMessage',
+    useWhen: [
+      'You are about to build a page that gathers a day’s money by driver.',
+      'You need a page that asks once before it closes something for good.',
+    ],
+    dontUseWhen: [
+      'A page for the driver on a phone: that is the phone page’s.',
+      'A page that lists one kind of record: that is the list page’s.',
+    ],
+    instead: 'The list page',
+    mustHave: [
+      'The day under the title or in its field.',
+      'A titled Panel a block: a driver, or a part of the day.',
+      'Totals at the right, through DataTable.',
+      'The close asked once, in its own block.',
+    ],
+    states: DaySheetStates,
+  },
+  {
+    group: 'Pages',
+    kind: KIND_OF_PAGE,
+    name: 'The import page',
+    description:
+      'The page that adds many records from a spreadsheet, drawn from parts only and one step at a time: choose the file, the preview that counts what will be added and says each row’s result, and done.',
+    props: 'PageHeader · Panel · Fields · DataTable · ActionRow · ActionButton · FormMessage',
+    useWhen: [
+      'You are about to build a page that adds many records from one file.',
+      'You need a page that shows what a file will do before it does it.',
+    ],
+    dontUseWhen: [
+      'A page that adds one record: that is the form page’s.',
+      'A page that lists the records already held: that is the list page’s.',
+    ],
+    instead: 'The form page',
+    mustHave: [
+      'One step drawn at a time, one main each.',
+      'The preview counts what will be added.',
+      'A row’s result by its meaning, never a colour’s name.',
+    ],
+    states: ImportPageStates,
   },
   {
     group: 'Atoms',
@@ -896,8 +1032,8 @@ export const ENTRIES: Entry[] = [
     name: 'Panel',
     kind: 'Cards',
     description:
-      'A framed block: an optional level-3 title over what it holds, at the edge, padding and gap the design system decides.',
-    props: 'title?: string · children: ReactNode',
+      'A framed block: an optional level-3 title over what it holds, at the edge, padding and gap the design system decides; given an address, the whole block is one link to it, its words in their own colour.',
+    props: 'title?: string · to?: string · children: ReactNode',
     useWhen: ['A page frames a few lines or fields: with a title over them, or with none.'],
     dontUseWhen: [
       'A block with a section title and its icon: that is SectionCard’s.',

@@ -37,4 +37,33 @@ describe('Panel', () => {
     expect(screen.queryByRole('heading')).toBeNull();
     expect(screen.getByText('Inside')).toBeDefined();
   });
+
+  it('236 case 4: a panel given an address is one link over the block, its words in their colour', () => {
+    draw(
+      <Panel title="Delivery" to="/my-deliveries/2026-11-23/r1">
+        <p>Inside</p>
+      </Panel>,
+    );
+
+    const link = screen.getByRole('link');
+    expect(link.getAttribute('href')).toBe('/my-deliveries/2026-11-23/r1');
+    expect(link.getAttribute('data-with-border')).toBe('true');
+    expect(link.style.color).toBe('inherit');
+    expect(link.style.textDecoration).toBe('none');
+    expect(link.style.borderColor).toBe(ROLES.border);
+    expect(link.style.padding).toBe('calc(1rem * var(--mantine-scale))');
+    expect(link.contains(screen.getByRole('heading', { level: 3, name: 'Delivery' }))).toBe(true);
+    expect(link.contains(screen.getByText('Inside'))).toBe(true);
+    expect(screen.getAllByRole('link')).toHaveLength(1);
+  });
+
+  it('236 case 4: with no address it is no link', () => {
+    draw(
+      <Panel>
+        <p>Inside</p>
+      </Panel>,
+    );
+
+    expect(screen.queryByRole('link')).toBeNull();
+  });
 });
