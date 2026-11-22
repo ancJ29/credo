@@ -58,8 +58,8 @@ Where piece 230's detail differs, or the brief's premise does:
   the gallery's chunk with it, and refuses the data set's company there (`#L55`). So the samples go in
   neither the dictionary nor the data set.
 - Twelve finders in `ui/src/design-system/Gallery.test.tsx` read a sample's English word (`#L244`,
-  `#L245`, `#L260`, `#L261`, `#L929-L931`, `#L985-L995`, `#L1064`, `#L1065`, `#L1066`, `#L1070`,
-  `#L1078`, `#L1099`); nine read Vietnamese and hold under the default (`#L231-L232`, `#L257-L259`,
+  `#L245`, `#L260`, `#L261`, `#L951-L953`, `#L1007-L1017`, `#L1086`, `#L1087`, `#L1088`, `#L1092`,
+  `#L1100`, `#L1121`); nine read Vietnamese and hold under the default (`#L231-L232`, `#L257-L259`,
   `#L267-L270`). `ui/src/App.test.tsx`'s gallery cases find only the "Design system" heading.
 
 ## Each part, and the rule that decides it
@@ -122,7 +122,7 @@ page shape needs.
 | # | Files | Tests that follow | Pictures |
 | --- | --- | --- | --- |
 | 1 | `Gallery.tsx`, `entries.tsx`, `PageBase.tsx`, `Contract.tsx`, `Values.tsx`, a new `samples.ts`, all in `ui/src/design-system/` | the 21 sample finders above, read by key | none: the pinned file unchanged |
-| 2 | `entries.tsx`, `guideline.ts`, `components/molecules/DataTable.tsx`, `components/organisms/Panel.tsx`, their tests | `Gallery.test.tsx#L102` (Foundations 3, now 5) and `#L1120` (20 parts, now 22) | none |
+| 2 | `entries.tsx`, `guideline.ts`, `components/molecules/DataTable.tsx`, `components/organisms/Panel.tsx`, their tests | `Gallery.test.tsx#L102` (Foundations 3, now 5) and `#L1142` (20 parts, now 22) | none |
 | 3 | `components/atoms/MenuRow.tsx` and `Tag.tsx`, `CopyText.tsx` moved, five imports, `entries.tsx`, `guideline.ts` | the same two counts (9 and 25); `scripts/src/counts.test.ts`, as a file moves | none |
 
 ## The steps
