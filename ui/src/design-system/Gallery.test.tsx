@@ -321,6 +321,19 @@ describe('Gallery', () => {
     expect(list.queryByRole('cell', { name: vi.orders.total })).toBeNull();
   });
 
+  it('231 case 7: Panel draws a titled panel and an untitled one, in the picked language', () => {
+    open(`${BASE}/organisms/panel`);
+
+    expect(stateNames()).toEqual(['With a title', 'No title']);
+    const { vi } = DICTIONARIES;
+    const titled = within(part().getByRole('figure', { name: 'With a title' }));
+    expect(titled.getByRole('heading', { level: 3, name: vi.settings.basics })).toBeDefined();
+    expect(titled.getByText(SAMPLES.vi.shop)).toBeDefined();
+    const plain = within(part().getByRole('figure', { name: 'No title' }));
+    expect(plain.queryByRole('heading')).toBeNull();
+    expect(plain.getByText(SAMPLES.vi.changesKept)).toBeDefined();
+  });
+
   it('11: draws the door card in two states, the sign-in and the link page, in sentence case', () => {
     open(`${BASE}/organisms/door-card`);
 
@@ -1009,7 +1022,7 @@ describe('Gallery', () => {
   });
 
   it('213 case 1: every entry carries one to three use lines and one to three don’t-use lines', () => {
-    expect(ENTRIES).toHaveLength(27);
+    expect(ENTRIES).toHaveLength(28);
     for (const entry of ENTRIES) {
       for (const lines of [entry.useWhen, entry.dontUseWhen]) {
         expect(lines.length, entry.name).toBeGreaterThanOrEqual(1);
@@ -1337,7 +1350,7 @@ describe('Gallery', () => {
         entry.name !== 'The page base',
     );
     // A set that found nothing would quiet the loop.
-    expect(parts.length).toBe(21);
+    expect(parts.length).toBe(22);
     expect(GUIDELINE.contracts.map((contract) => contract.part).sort()).toEqual(
       parts.map((entry) => entry.name).sort(),
     );
@@ -1364,5 +1377,8 @@ describe('Gallery', () => {
     // The table of ours and the kind's list each name the other.
     expect(words('DataTable')).toContain('ListTable');
     expect(words('ListTable')).toContain('DataTable');
+    // The panel of ours and the card with a section title each name the other.
+    expect(words('Panel')).toContain('SectionCard');
+    expect(words('SectionCard')).toContain('Panel');
   });
 });

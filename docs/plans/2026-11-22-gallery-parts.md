@@ -191,11 +191,21 @@ part and its importers 14 (222's step 7), five entries 14 (213's step 10), a rec
       the total's weight, the rows' lighting and the frame, a link cell's navigation red once; case 13
       red once each for an entry without its contract and a take that is a style; case 14 red once each
       for either entry not naming the other, green with none; the `ui` gate exits 0 on this tree.
-- [ ] **5. The panel.** `Panel` in `components/organisms/`: takes a title and what it holds (content);
+- [x] **5. The panel.** `Panel` in `components/organisms/`: takes a title and what it holds (content);
       decides its edge (`ROLES.border`), its padding and gap (`SPACING.md`), the title a level-3
       heading, none where none is given. Its entry and contract; `SectionCard`'s "Content with no
       title" line (`entries.tsx#L645`) names `Panel`. Cases 7, 13, 14. _Done when:_ the gates exit
       0. **12 min**.
+      _Evidence:_ `components/organisms/Panel.tsx` takes an optional title and what it holds; it draws a
+      bordered block at `ROLES.border`, its padding and the gap under its title at `SPACING.md`, the
+      title a level-3 heading and no heading where none is given. Its entry sits among the organisms
+      with two states, a titled panel and an untitled one, its words read by key where a screen says
+      them and from `samples.ts` where none does; its contract's takes are two contents, and `Panel`
+      and `SectionCard` name each other (`SectionCard`'s "Content with no title" line now names
+      `Panel`). Case 7 red once each for the edge, the padding, the gap, the title's level, a heading
+      drawn with no title and the title under its content; case 13 red once each for an entry
+      without its contract and a take that is a style; case 14 red once each for either entry not
+      naming the other, green with none; the `ui` gate exits 0 on this tree.
 - [ ] **6. Choices, and landing 2.** Choices: a tick box and a list of them, a switch, a one-of-many
       list and the segmented pick, as the settings page and the permission editor draw them; the
       recap's line. Case 8. _Done when:_ the gates exit 0 with Foundations at 5 and 22 parts. **9

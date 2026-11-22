@@ -8,9 +8,11 @@ import classes from './Gallery.module.css';
 import { ActionButton } from '../components/atoms/ActionButton';
 import { ActionRow } from '../components/molecules/ActionRow';
 import { DataTable } from '../components/molecules/DataTable';
+import { DetailField } from '../components/molecules/DetailField';
 import { FormMessage } from '../components/molecules/FormMessage';
 import { TableScroll } from '../components/molecules/TableScroll';
 import { PageState } from '../components/organisms/PageState';
+import { Panel } from '../components/organisms/Panel';
 import { priceOf } from '../number';
 import { SAMPLES, useLanguage } from './samples';
 
@@ -249,3 +251,25 @@ function DataTableSample({ state: { name } }: { state: PartState }) {
 
 /** A table with a total line, and one whose name opens a page. */
 export const DataTableStates = platesOf('DataTable', (state) => <DataTableSample state={state} />);
+
+/** A panel at each of its states, drawn by the part itself: with a title over a field, and with no title over a line. */
+function PanelSample({ state: { name } }: { state: PartState }) {
+  const { t } = useTranslation();
+  const words = SAMPLES[useLanguage()];
+  return (
+    <Stack w={474} maw="100%">
+      {name === 'With a title' ? (
+        <Panel title={t('settings.basics')}>
+          <DetailField label={t('staff.colName')} value={words.shop} />
+        </Panel>
+      ) : (
+        <Panel>
+          <Text>{words.changesKept}</Text>
+        </Panel>
+      )}
+    </Stack>
+  );
+}
+
+/** A panel with a title, and one with none. */
+export const PanelStates = platesOf('Panel', (state) => <PanelSample state={state} />);

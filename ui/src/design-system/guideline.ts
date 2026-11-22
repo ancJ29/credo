@@ -892,6 +892,29 @@ export const GUIDELINE: {
       followed: { item: 651 },
     },
     {
+      part: 'Panel',
+      takes: [
+        { prop: 'title', is: 'content', line: 'The panel’s title; none draws no heading.' },
+        { prop: 'children', is: 'content', line: 'What the panel holds.' },
+      ],
+      decides: [
+        { what: 'Its edge.', from: [{ table: 'ROLES', key: 'border' }] },
+        { what: 'Its padding.', from: [{ table: 'SPACING', key: 'md' }] },
+        {
+          what: 'The gap between its title and what it holds.',
+          from: [{ table: 'SPACING', key: 'md' }],
+        },
+      ],
+      fixes: ['Its title: a level-3 heading, drawn only where a title is given.'],
+      states: [
+        { name: 'With a title', line: 'A level-3 title over what the panel holds.' },
+        { name: 'No title', line: 'What the panel holds, with no heading.' },
+      ],
+      serves: 'A screen picks parts, never a style',
+      heldBy: { check: 'ui/src/components/organisms/Panel.test.tsx' },
+      followed: { item: 651 },
+    },
+    {
       part: 'ActionRow',
       takes: [
         {

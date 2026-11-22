@@ -35,6 +35,7 @@ import {
   DataTableStates,
   FormMessageStates,
   PageStateStates,
+  PanelStates,
   TableScrollStates,
 } from './Contract';
 import {
@@ -731,15 +732,30 @@ export const ENTRIES: Entry[] = [
     useWhen: ['A signed-in page groups its fields or details in a block with a title.'],
     dontUseWhen: [
       "A page before sign-in: that is DoorCard's.",
-      'Content with no title: no card, only the page.',
+      'Content with no section title: that is Panel’s.',
     ],
-    instead: 'DoorCard',
+    instead: 'Panel',
     states: [
       {
         name: 'Default',
         node: <SectionCardSample />,
       },
     ],
+  },
+  {
+    group: 'Organisms',
+    name: 'Panel',
+    kind: 'Cards',
+    description:
+      'A framed block: an optional level-3 title over what it holds, at the edge, padding and gap the design system decides.',
+    props: 'title?: string · children: ReactNode',
+    useWhen: ['A page frames a few lines or fields: with a title over them, or with none.'],
+    dontUseWhen: [
+      'A block with a section title and its icon: that is SectionCard’s.',
+      'A page before sign-in: that is DoorCard’s.',
+    ],
+    instead: 'SectionCard',
+    states: PanelStates,
   },
   {
     group: 'Organisms',
