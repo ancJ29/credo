@@ -774,6 +774,28 @@ describe('Gallery', () => {
     expect(about().getByRole('button', { name: 'Login link' })).toBeDefined();
   });
 
+  it('232: the right column puts the controls (Show, the states, the theme picker) before the part’s notes', async () => {
+    const user = userEvent.setup();
+    open(`${BASE}/organisms/door-card`);
+    await user.click(about().getByRole('button', { name: 'One at a time' }));
+
+    const before = (first: HTMLElement, second: HTMLElement) =>
+      Boolean(first.compareDocumentPosition(second) & Node.DOCUMENT_POSITION_FOLLOWING);
+    const notes = [
+      about().getByRole('heading', { level: 2, name: 'DoorCard' }),
+      about().getByRole('heading', { level: 3, name: 'Props' }),
+    ];
+    const controls = [
+      about().getByRole('heading', { level: 3, name: 'Show' }),
+      about().getByRole('button', { name: 'Side by side' }),
+      about().getByRole('group', { name: 'States' }),
+      about().getByRole('combobox', { name: 'Colour theme' }),
+    ];
+    for (const control of controls) {
+      for (const note of notes) expect(before(control, note)).toBe(true);
+    }
+  });
+
   it('the workbench: each state is a plate on the stage with its name under it, outside the right column', () => {
     open(`${BASE}/organisms/door-card`);
 
