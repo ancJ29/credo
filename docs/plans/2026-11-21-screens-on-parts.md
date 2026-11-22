@@ -157,7 +157,7 @@ piece 203's step 8. Your runs: about 20 each for a few walks, longer for twelve.
 
 **Landing 7: the formats.**
 
-- [ ] **18. A number's place, and landing 7.** `ui/src/number.ts` beside `day.ts`: a number, a price,
+- [x] **18. A number's place, and landing 7.** `ui/src/number.ts` beside `day.ts`: a number, a price,
       a number's marks; `useMoney` and the four sites read it. Cases 16, 17. The recap closed; its run is
       the one set after this step, with the formats' walks `admin-lists office-orders
       driver-deliveries office-reconcile` among the twelve. _Done when:_ the pinned file unchanged.
@@ -169,7 +169,7 @@ piece 203's step 8. Your runs: about 20 each for a few walks, longer for twelve.
       the data set (case 16, `number.test.ts`, compares each value, both languages, with the hand-written expression; seen red once on a stub, then green). Case 17 in
       `literals.test.ts` refuses `Intl.` in every file outside `day.ts`, `number.ts`, the tests and the mock; seen red once on the five sites (and `guideline.ts`'s own note), then green. The guideline's
       formats note ("not yet") is gone, its money line names the three functions, and `Gallery.test.tsx` counts 4 notes. The pinned file is unchanged. The ui and visual gates and the citation test
-      exit 0 (13:27 to 13:32). Item 652's entry is left for the closing pass; the recap and the runs follow._
+      exit 0 (13:27 to 13:32). Item 652's entry is left for the closing pass; the recap and the runs follow._ _Recap part done 2026-11-22: the recap `docs/recaps/2026-11-21-screens-on-parts.md` holds landings 4 to 7 (what each gives, what the review before `main` and its one fix pass changed, the reread green), with the human's runs and look left as markers; items 652, 653 and 655 closed in `docs/open-items.md`, and `ListTable`'s and `TableScroll`'s gallery panels (and `ActionButton`'s) read followed._
 
 ## The cases
 

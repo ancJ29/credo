@@ -243,7 +243,7 @@ export const GUIDELINE: {
         says: 'A page has one main action, drawn as the filled button, and any other act is the other or the quiet one; a danger is red only at the last step of a delete, which a page of its own confirms (open item 306).',
         why: 'Two filled buttons ask the person to choose between equals, and a red button before the last step cries danger where there is none; the person finds the next step by its look.',
         heldBy: 'review',
-        followed: { item: 655 },
+        followed: 'yes',
       },
       {
         says: 'A part sits in a level and imports only from the levels below it: an atom holds no other part of ours, a molecule is a few atoms made one thing, an organism is a block of a page.',
@@ -384,7 +384,7 @@ export const GUIDELINE: {
       },
       {
         about: 'widths',
-        text: 'A width is named by its use, never a number. Not yet: the screens write the numbers: 440 px is written 3 times, 420 and 240 twice, 560 and 320 once, and three more are in no list: 140 (a quantity field), 155 (a filter) and 200 (the search field’s least). The most common width of all, a table’s least, is in a list now: `TableScroll` writes the `table` width of 640, the design-system coder’s choice, and no screen writes one (open item 653 holds the closing); open item 651 moves the rest.',
+        text: 'A width is named by its use, never a number. Not yet: the screens write the numbers: 440 px is written 3 times, 420 and 240 twice, 560 and 320 once, and three more are in no list: 140 (a quantity field), 155 (a filter) and 200 (the search field’s least). The most common width of all, a table’s least, is in a list now: `TableScroll` writes the `table` width of 640, the design-system coder’s choice, and no screen writes one; open item 651 moves the rest.',
       },
       {
         about: 'icons',
@@ -600,8 +600,7 @@ export const GUIDELINE: {
       ],
       serves: 'A page has one main action',
       heldBy: { check: 'ui/src/design-system/guideline.test.ts' },
-      followed: { item: 655 },
-      used: true,
+      followed: 'yes',
     },
     {
       part: 'StatusBadge',
@@ -845,8 +844,7 @@ export const GUIDELINE: {
       states: [{ name: 'Default', line: 'The headings, then a row for each record.' }],
       serves: 'A screen picks parts, never a style',
       heldBy: { check: 'ui/src/design-system/guideline.test.ts' },
-      followed: { item: 653 },
-      used: true,
+      followed: 'yes',
     },
     {
       part: 'ActionRow',
@@ -890,15 +888,14 @@ export const GUIDELINE: {
       ],
       fixes: [
         'Where it scrolls: the table alone, sideways, and never the page.',
-        'Drawn by the 12 tables, `ListTable` among them; no screen writes a least width, and open item 653 holds the closing.',
+        'Drawn by the 12 tables, `ListTable` among them; no screen writes a least width.',
       ],
       states: [
         { name: 'Default', line: 'A table at its least width, scrolling sideways below it.' },
       ],
       serves: 'A screen picks parts, never a style',
       heldBy: { check: 'ui/src/design-system/guideline.test.ts' },
-      followed: { item: 653 },
-      used: true,
+      followed: 'yes',
     },
     {
       part: 'FieldLabel',

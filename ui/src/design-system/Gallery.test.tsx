@@ -964,7 +964,7 @@ describe('Gallery', () => {
     ]);
     expect(looks[3].getAttribute('style')).toContain(`--mantine-color-${TONES.danger}-`);
     expect(looks[0].getAttribute('style') ?? '').not.toContain(`--mantine-color-${TONES.danger}-`);
-    expect(about().getByText(/Built and in use; .* open item 655 moves them\./)).toBeDefined();
+    expect(about().getByText(/The app follows it\./)).toBeDefined();
   });
 
   it('213 case 14: the entry of StatusBadge draws each status of the records in its word, a built part’s panel saying it is in use', () => {
@@ -1101,7 +1101,7 @@ describe('Gallery', () => {
     cleanup();
     open(`${BASE}/molecules/table-scroll`);
     expect(stateNames()).toEqual(['Default']);
-    expect(about().getByText(/Built and in use; .* open item 653 moves them\./)).toBeDefined();
+    expect(about().getByText(/The app follows it\./)).toBeDefined();
     const decided = GUIDELINE.contracts.find(
       (contract) => contract.part === 'TableScroll',
     )!.decides;
