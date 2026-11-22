@@ -19,12 +19,12 @@ flowchart LR
 
 ## What was proved
 
-- **1**: red, then green. <!-- FILL: landing 1's check run -->
+- **1**: red, then green. Its check run (2026-11-21, about 21:02 to 21:05, the passkeys walk) read green, its three comparisons with 0 pictures moved.
 - **2, 3**: your runs read green.
-- **4 to 7**: built back to back at your word ("code all at once, and check all at once"). The review before `main` read red on five blocks (wrong facts on cards, stale gallery lines, a missed whole check, button rows on the wrong side); one fix pass, and the reread reads green. Your write run over all twelve walks read green and its new pictures are committed alone. <!-- FILL: the check run -->
-- <!-- FILL: the landing on pre-merge and its whole check -->
+- **4 to 7**: built back to back at your word ("code all at once, and check all at once"). The review before `main` read red on five blocks (wrong facts on cards, stale gallery lines, a missed whole check, button rows on the wrong side); one fix pass, and the reread reads green. Your write run over all twelve walks read green and its new pictures are committed alone. Your check run for 4 to 7 (2026-11-22, about 16:55 to 17:15, all twelve walks) read green, 35 comparisons, no picture moved.
+- **4 to 7 on `pre-merge`**: landed together on 2026-11-22 at about 17:15; the whole check there read green at about 17:24 (typecheck, eslint, prettier, the tests of six packages, knip), and `main` then moved to that commit.
 
 ## What is left
 
-- <!-- FILL: your look at points 3 to 5, one yes or no each -->
+- Your look at points 3 to 5 (the page states, the status chips, the page base), 2026-11-22: yes to all three.
 - Items 652, 653, 655 closed; the doors' looks, dark mode and a confirm as a page stay out (items 651, 307, 306).
