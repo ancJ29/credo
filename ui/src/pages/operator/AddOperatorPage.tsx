@@ -1,5 +1,6 @@
 import { operatorNameSchema } from '@credo/shared';
-import { Group, Paper, Stack, Text, TextInput } from '@mantine/core';
+import { Paper, Stack, Text, TextInput } from '@mantine/core';
+import { ActionRow } from '../../components/molecules/ActionRow';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Api } from '../../api';
@@ -85,12 +86,12 @@ export function AddOperatorPage({ api, passkeys, onSignedOut }: Props) {
           }
         />
       </Paper>
-      <Group>
+      <ActionRow>
         {back}
         <ActionButton meaning="other" onClick={() => setMade(null)}>
           {t('team.another')}
         </ActionButton>
-      </Group>
+      </ActionRow>
     </Stack>
   ) : (
     <Stack gap="lg">
@@ -116,12 +117,12 @@ export function AddOperatorPage({ api, passkeys, onSignedOut }: Props) {
               onChange={(event) => setName(event.currentTarget.value)}
             />
             <Text {...TYPE.caption}>{t('team.touch')}</Text>
-            <Group>
+            <ActionRow>
               <ActionButton meaning="main" submit busy={busy}>
                 {t('team.make')}
               </ActionButton>
               {back}
-            </Group>
+            </ActionRow>
           </Stack>
         </Paper>
       </form>

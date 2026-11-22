@@ -1,5 +1,6 @@
 import { normaliseClientCode, passwordIsValid } from '@credo/shared';
-import { Group, Paper, PasswordInput, Stack, Text, TextInput } from '@mantine/core';
+import { Paper, PasswordInput, Stack, Text, TextInput } from '@mantine/core';
+import { ActionRow } from '../../components/molecules/ActionRow';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router';
@@ -108,7 +109,7 @@ export function RootPasswordPage({ api, passkeys, onSignedOut }: Props) {
               />
             </Paper>
           )}
-          <Group>{back}</Group>
+          <ActionRow>{back}</ActionRow>
         </Stack>
       ) : (
         <Stack gap="lg">
@@ -145,12 +146,12 @@ export function RootPasswordPage({ api, passkeys, onSignedOut }: Props) {
                 <Text {...TYPE.caption}>
                   {t('operator.rootEmptyHint')} {t('operator.rootTouch')}
                 </Text>
-                <Group>
+                <ActionRow>
                   <ActionButton meaning="main" submit busy={busy}>
                     {t('operator.rootSet')}
                   </ActionButton>
                   {back}
-                </Group>
+                </ActionRow>
               </Stack>
             </Paper>
           </form>

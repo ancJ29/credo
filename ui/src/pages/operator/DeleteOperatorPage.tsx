@@ -1,4 +1,5 @@
-import { Group, Paper, Stack, Text } from '@mantine/core';
+import { Paper, Stack, Text } from '@mantine/core';
+import { ActionRow } from '../../components/molecules/ActionRow';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router';
@@ -75,12 +76,12 @@ export function DeleteOperatorPage({ api, passkeys, onSignedOut }: Props) {
           <Paper withBorder p="md">
             <Stack gap="lg">
               <Text {...TYPE.caption}>{t('team.deleteTouch')}</Text>
-              <Group>
+              <ActionRow>
                 <ActionButton meaning="danger" busy={busy} onClick={() => void give()}>
                   {t('team.deleteMake')}
                 </ActionButton>
                 {back}
-              </Group>
+              </ActionRow>
             </Stack>
           </Paper>
         </Stack>

@@ -1,5 +1,7 @@
 import { addDays, can, type Language, ORDER_LIST_DAYS, type Order } from '@credo/shared';
-import { Anchor, Group, Stack, Table, Text } from '@mantine/core';
+import { Anchor, Stack, Table, Text } from '@mantine/core';
+import { ActionRow } from '../../components/molecules/ActionRow';
+import { TableScroll } from '../../components/molecules/TableScroll';
 import { PageState } from '../../components/organisms/PageState';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -51,7 +53,7 @@ export function OrdersPage(page: PageProps) {
         {rows.length === 0 ? (
           <PageState state="empty">{t('orders.empty')}</PageState>
         ) : (
-          <Table.ScrollContainer minWidth={720}>
+          <TableScroll>
             <Table highlightOnHover>
               <Table.Thead>
                 <Table.Tr>
@@ -82,14 +84,14 @@ export function OrdersPage(page: PageProps) {
                 ))}
               </Table.Tbody>
             </Table>
-          </Table.ScrollContainer>
+          </TableScroll>
         )}
       </Loaded>
-      <Group>
+      <ActionRow>
         <ActionButton meaning="other" onClick={() => setWeeks(weeks + 1)}>
           {t('orders.earlier')}
         </ActionButton>
-      </Group>
+      </ActionRow>
     </Stack>
   );
 }

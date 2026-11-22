@@ -1,5 +1,6 @@
 import { HOME_BOX, type MoveClientReply, type MoveClientRequest } from '@credo/shared';
-import { Group, Paper, Stack, Text } from '@mantine/core';
+import { Paper, Stack, Text } from '@mantine/core';
+import { ActionRow } from '../../components/molecules/ActionRow';
 import { type FormEvent, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router';
@@ -177,7 +178,7 @@ export function MoveClientPage({ api, passkeys, onSignedOut, wait = sleep }: Pro
           {client.move?.form === 'copying' && reply === null ? (
             <Stack align="flex-start">
               <Text>{t('operator.moveUnder', { box: client.move.box })}</Text>
-              <Group>
+              <ActionRow>
                 <ActionButton meaning="main" busy={busy} onClick={() => go({})}>
                   {t('operator.moveGoOn')}
                 </ActionButton>
@@ -185,11 +186,11 @@ export function MoveClientPage({ api, passkeys, onSignedOut, wait = sleep }: Pro
                   {t('operator.moveStop')}
                 </ActionButton>
                 {back}
-              </Group>
+              </ActionRow>
             </Stack>
           ) : reply !== null || sweepOn ? (
             problem === 'failed' && (
-              <Group>
+              <ActionRow>
                 <ActionButton meaning="main" busy={busy} onClick={() => go({})}>
                   {t('operator.moveGoOn')}
                 </ActionButton>
@@ -198,7 +199,7 @@ export function MoveClientPage({ api, passkeys, onSignedOut, wait = sleep }: Pro
                     {t('operator.moveStop')}
                   </ActionButton>
                 )}
-              </Group>
+              </ActionRow>
             )
           ) : others.length === 0 ? (
             <Stack align="flex-start">
@@ -217,12 +218,12 @@ export function MoveClientPage({ api, passkeys, onSignedOut, wait = sleep }: Pro
                     onChange={setPicked}
                   />
                   <Text {...TYPE.caption}>{t('operator.moveTouch')}</Text>
-                  <Group>
+                  <ActionRow>
                     <ActionButton meaning="main" submit busy={busy} disabled={picked === ''}>
                       {t('operator.moveMake')}
                     </ActionButton>
                     {back}
-                  </Group>
+                  </ActionRow>
                 </Stack>
               </Paper>
             </form>

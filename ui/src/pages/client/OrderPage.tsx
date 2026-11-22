@@ -17,6 +17,8 @@ import {
   Text,
   TextInput,
 } from '@mantine/core';
+import { ActionRow } from '../../components/molecules/ActionRow';
+import { TableScroll } from '../../components/molecules/TableScroll';
 import { IconListDetails, IconPackage, IconTruck } from '@tabler/icons-react';
 import { type ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -196,7 +198,7 @@ function FormFields({
         {priced.length === 0 ? (
           <Text c="dimmed">{t('orders.noLines')}</Text>
         ) : (
-          <Table.ScrollContainer minWidth={560}>
+          <TableScroll>
             <Table>
               <Table.Thead>
                 <Table.Tr>
@@ -249,10 +251,10 @@ function FormFields({
                 </Table.Tr>
               </Table.Tfoot>
             </Table>
-          </Table.ScrollContainer>
+          </TableScroll>
         )}
       </DetailCard>
-      <Group>
+      <ActionRow>
         <ActionButton
           meaning="main"
           busy={saving}
@@ -261,7 +263,7 @@ function FormFields({
         >
           {t('orders.saveDraft')}
         </ActionButton>
-      </Group>
+      </ActionRow>
     </Stack>
   );
   return (

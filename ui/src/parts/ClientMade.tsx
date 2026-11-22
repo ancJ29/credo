@@ -1,4 +1,5 @@
-import { Group, Paper, Stack, TextInput } from '@mantine/core';
+import { Paper, Stack, TextInput } from '@mantine/core';
+import { ActionRow } from '../components/molecules/ActionRow';
 import { ActionButton } from '../components/atoms/ActionButton';
 import { useTranslation } from 'react-i18next';
 import { CopyText } from './CopyText';
@@ -45,14 +46,14 @@ export function ClientMade({ link, rootName, password, onAnother }: Props) {
           <Field label={t('operator.firstPassword')} value={password} />
         </Stack>
       </Paper>
-      <Group>
+      <ActionRow>
         <ActionButton meaning="main" to="/operator/clients">
           {t('operator.back')}
         </ActionButton>
         <ActionButton meaning="other" onClick={onAnother}>
           {t('operator.another')}
         </ActionButton>
-      </Group>
+      </ActionRow>
     </Stack>
   );
 }

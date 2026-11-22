@@ -19,6 +19,8 @@ import {
   Text,
   TextInput,
 } from '@mantine/core';
+import { ActionRow } from '../../components/molecules/ActionRow';
+import { TableScroll } from '../../components/molecules/TableScroll';
 import { PageState } from '../../components/organisms/PageState';
 import { IconSearch } from '@tabler/icons-react';
 import { useEffect, useRef, useState } from 'react';
@@ -157,12 +159,12 @@ export function StaffListPage(page: PageProps) {
       actions={
         user.root ? (
           // The root alone imports staff, as the import page's route checks (case-table row 4).
-          <Group>
+          <ActionRow>
             <ActionButton meaning="other" to="/staff/import">
               {t('staff.import')}
             </ActionButton>
             {add}
-          </Group>
+          </ActionRow>
         ) : (
           add
         )
@@ -270,7 +272,7 @@ export function StaffListPage(page: PageProps) {
             ))}
           </Stack>
           <Box visibleFrom="sm">
-            <Table.ScrollContainer minWidth={640}>
+            <TableScroll>
               <Table highlightOnHover>
                 <Table.Thead>
                   <Table.Tr>
@@ -316,7 +318,7 @@ export function StaffListPage(page: PageProps) {
                   ))}
                 </Table.Tbody>
               </Table>
-            </Table.ScrollContainer>
+            </TableScroll>
           </Box>
         </>
       )}

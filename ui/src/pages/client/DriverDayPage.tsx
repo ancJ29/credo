@@ -7,7 +7,9 @@ import {
   type Language,
   TOTAL_MAX,
 } from '@credo/shared';
-import { Anchor, Group, NumberInput, Paper, Stack, Table, Text, Title } from '@mantine/core';
+import { Anchor, NumberInput, Paper, Stack, Table, Text, Title } from '@mantine/core';
+import { ActionRow } from '../../components/molecules/ActionRow';
+import { TableScroll } from '../../components/molecules/TableScroll';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router';
@@ -68,7 +70,7 @@ export function DriverDayPage(page: PageProps) {
   }
 
   const requestTable = (rows: typeof requests, withTotal: boolean) => (
-    <Table.ScrollContainer minWidth={560}>
+    <TableScroll>
       <Table>
         <Table.Thead>
           <Table.Tr>
@@ -103,7 +105,7 @@ export function DriverDayPage(page: PageProps) {
           </Table.Tfoot>
         )}
       </Table>
-    </Table.ScrollContainer>
+    </TableScroll>
   );
 
   return (
@@ -226,7 +228,7 @@ export function DriverDayPage(page: PageProps) {
                             ? t('reconcile.closeNoWaiting')
                             : t('reconcile.closeWaiting', { count: figures.waiting.length })}
                         </Text>
-                        <Group>
+                        <ActionRow>
                           <ActionButton
                             meaning="main"
                             busy={busy}
@@ -237,7 +239,7 @@ export function DriverDayPage(page: PageProps) {
                           <ActionButton meaning="other" onClick={() => setAsking(false)}>
                             {t('reconcile.keepOpen')}
                           </ActionButton>
-                        </Group>
+                        </ActionRow>
                       </Stack>
                     ) : (
                       <ActionButton

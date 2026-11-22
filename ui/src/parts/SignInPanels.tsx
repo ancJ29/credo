@@ -1,5 +1,6 @@
 import { emailSchema, type EmployeeDoc } from '@credo/shared';
-import { Group, Stack, Text, TextInput } from '@mantine/core';
+import { Stack, Text, TextInput } from '@mantine/core';
+import { ActionRow } from '../components/molecules/ActionRow';
 import { ActionButton } from '../components/atoms/ActionButton';
 import { IconMail, IconQrcode } from '@tabler/icons-react';
 import { type FormEvent, useState } from 'react';
@@ -88,7 +89,7 @@ export function EmailPanel({
             value={typed}
             onChange={(event) => setTyped(event.currentTarget.value)}
           />
-          <Group>
+          <ActionRow>
             <ActionButton meaning="other" submit>
               {t('person.emailSet')}
             </ActionButton>
@@ -97,7 +98,7 @@ export function EmailPanel({
                 {t('person.emailRemove')}
               </ActionButton>
             )}
-          </Group>
+          </ActionRow>
         </Stack>
       </form>
     </DetailCard>

@@ -11,15 +11,8 @@ import {
   type StaffSetup,
   staffConfig,
 } from '@credo/shared';
-import {
-  Group,
-  NativeSelect,
-  PasswordInput,
-  Stack,
-  Text,
-  Textarea,
-  TextInput,
-} from '@mantine/core';
+import { NativeSelect, PasswordInput, Stack, Text, Textarea, TextInput } from '@mantine/core';
+import { ActionRow } from '../../components/molecules/ActionRow';
 import {
   IconArchive,
   IconKey,
@@ -139,14 +132,14 @@ function PasswordPanel({
             value={typed.again}
             onChange={(event) => setTyped({ ...typed, again: event.currentTarget.value })}
           />
-          <Group>
+          <ActionRow>
             <ActionButton meaning="other" submit>
               {t('person.passwordSet')}
             </ActionButton>
             <ActionButton meaning="other" onClick={() => void give(null)}>
               {t('person.passwordMake')}
             </ActionButton>
-          </Group>
+          </ActionRow>
         </Stack>
       </form>
     </DetailCard>
@@ -264,14 +257,14 @@ function ArchivePanel({
         <Text c="dimmed">{words.text}</Text>
         {failed && <FormMessage kind="error">{words.failed}</FormMessage>}
         {asking ? (
-          <Group>
+          <ActionRow>
             <ActionButton meaning="main" onClick={onSwitch}>
               {words.confirm}
             </ActionButton>
             <ActionButton meaning="other" onClick={() => setAsking(false)}>
               {words.cancel}
             </ActionButton>
-          </Group>
+          </ActionRow>
         ) : (
           <ActionButton meaning="other" onClick={() => setAsking(true)}>
             {words.title}

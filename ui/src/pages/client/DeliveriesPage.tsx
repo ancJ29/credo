@@ -1,5 +1,6 @@
 import { daySchema, type DeliveryRequest, driverDay } from '@credo/shared';
 import { Anchor, Group, Paper, Stack, Table, Text, TextInput, Title } from '@mantine/core';
+import { TableScroll } from '../../components/molecules/TableScroll';
 import { useTranslation } from 'react-i18next';
 import { Link, useSearchParams } from 'react-router';
 import { Loaded } from '../../frame/Loaded';
@@ -88,7 +89,7 @@ export function DeliveriesPage(page: PageProps) {
                       {t('reconcile.open')}
                     </ActionButton>
                   </Group>
-                  <Table.ScrollContainer minWidth={720}>
+                  <TableScroll>
                     <Table highlightOnHover aria-label={driver.name}>
                       <Table.Thead>
                         <Table.Tr>
@@ -122,7 +123,7 @@ export function DeliveriesPage(page: PageProps) {
                         ))}
                       </Table.Tbody>
                     </Table>
-                  </Table.ScrollContainer>
+                  </TableScroll>
                 </Stack>
               </Paper>
             );

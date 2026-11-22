@@ -1,5 +1,6 @@
 import type { Language } from '@credo/shared';
 import { Badge, Group, Stack, Table, Text } from '@mantine/core';
+import { TableScroll } from '../../components/molecules/TableScroll';
 import { useTranslation } from 'react-i18next';
 import type { Api } from '../../api';
 import { dayOf } from '../../day';
@@ -32,7 +33,7 @@ export function OperatorsPage({ api, onSignedOut }: Props) {
       />
       <Text c="dimmed">{t('team.intro')}</Text>
       <Loaded status={loaded.status} onRetry={loaded.reload}>
-        <Table.ScrollContainer minWidth={760}>
+        <TableScroll>
           <Table highlightOnHover>
             <Table.Thead>
               <Table.Tr>
@@ -87,7 +88,7 @@ export function OperatorsPage({ api, onSignedOut }: Props) {
               ))}
             </Table.Tbody>
           </Table>
-        </Table.ScrollContainer>
+        </TableScroll>
       </Loaded>
     </Stack>
   );

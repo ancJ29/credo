@@ -1,5 +1,6 @@
 import { can, type Language } from '@credo/shared';
-import { Group } from '@mantine/core';
+import {} from '@mantine/core';
+import { ActionRow } from '../../components/molecules/ActionRow';
 import { PageState } from '../../components/organisms/PageState';
 import { useTranslation } from 'react-i18next';
 import { LISTS, type ListKind } from '../../listSheet';
@@ -27,7 +28,7 @@ export function ListPage({ kind, ...page }: PageProps & { kind: ListKind }) {
       status={loaded.status}
       onRetry={loaded.reload}
       actions={
-        <Group gap="xs">
+        <ActionRow>
           {page.user.root && (
             <ActionButton meaning="other" to={`/${kind}/import`}>
               {t('lists.import')}
@@ -38,7 +39,7 @@ export function ListPage({ kind, ...page }: PageProps & { kind: ListKind }) {
               {t(`lists.${kind}.newButton`)}
             </ActionButton>
           )}
-        </Group>
+        </ActionRow>
       }
     >
       {rows.length === 0 ? (

@@ -1,4 +1,5 @@
-import { Group, Paper, Stack, Text, TextInput } from '@mantine/core';
+import { Paper, Stack, Text, TextInput } from '@mantine/core';
+import { ActionRow } from '../../components/molecules/ActionRow';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router';
@@ -88,7 +89,7 @@ export function OperatorLinkPage({ api, passkeys, onSignedOut }: Props) {
               }
             />
           </Paper>
-          <Group>{back}</Group>
+          <ActionRow>{back}</ActionRow>
         </Stack>
       ) : (
         <Stack gap="lg">
@@ -104,12 +105,12 @@ export function OperatorLinkPage({ api, passkeys, onSignedOut }: Props) {
           <Paper withBorder p="md">
             <Stack gap="lg">
               <Text {...TYPE.caption}>{t('team.linkTouch')}</Text>
-              <Group>
+              <ActionRow>
                 <ActionButton meaning="main" busy={busy} onClick={() => void give()}>
                   {t('team.linkMake')}
                 </ActionButton>
                 {back}
-              </Group>
+              </ActionRow>
             </Stack>
           </Paper>
         </Stack>

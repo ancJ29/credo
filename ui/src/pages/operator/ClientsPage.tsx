@@ -1,5 +1,6 @@
 import { clientAddress, HOME_BOX, type Language } from '@credo/shared';
 import { Group, Stack, Table } from '@mantine/core';
+import { TableScroll } from '../../components/molecules/TableScroll';
 import { PageState } from '../../components/organisms/PageState';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -47,7 +48,7 @@ export function ClientsPage({ api, onSignedOut }: Props) {
         {clients.length === 0 ? (
           <PageState state="empty">{t('operator.empty')}</PageState>
         ) : (
-          <Table.ScrollContainer minWidth={760}>
+          <TableScroll>
             <Table highlightOnHover>
               <Table.Thead>
                 <Table.Tr>
@@ -104,7 +105,7 @@ export function ClientsPage({ api, onSignedOut }: Props) {
                 ))}
               </Table.Tbody>
             </Table>
-          </Table.ScrollContainer>
+          </TableScroll>
         )}
       </Loaded>
     </Stack>

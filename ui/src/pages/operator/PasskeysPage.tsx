@@ -1,5 +1,6 @@
 import { type Language, type PasskeyItem } from '@credo/shared';
 import { Stack, Table, Text } from '@mantine/core';
+import { TableScroll } from '../../components/molecules/TableScroll';
 import { IconFingerprint } from '@tabler/icons-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -86,7 +87,7 @@ export function PasskeysPage({ api, passkeys, onSignedOut }: Props) {
       <Text c="dimmed">{t('passkey.intro')}</Text>
       {notice && <FormMessage kind="error">{t(NOTICE[notice])}</FormMessage>}
       <Loaded status={loaded.status} onRetry={loaded.reload}>
-        <Table.ScrollContainer minWidth={480}>
+        <TableScroll>
           <Table>
             <Table.Thead>
               <Table.Tr>
@@ -118,7 +119,7 @@ export function PasskeysPage({ api, passkeys, onSignedOut }: Props) {
               ))}
             </Table.Tbody>
           </Table>
-        </Table.ScrollContainer>
+        </TableScroll>
       </Loaded>
     </Stack>
   );

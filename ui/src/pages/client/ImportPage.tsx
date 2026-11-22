@@ -6,7 +6,9 @@ import {
   normaliseEmployeeCode,
   type StaffSetup,
 } from '@credo/shared';
-import { Group, Paper, Stack, Table, Text, TextInput } from '@mantine/core';
+import { Paper, Stack, Table, Text, TextInput } from '@mantine/core';
+import { ActionRow } from '../../components/molecules/ActionRow';
+import { TableScroll } from '../../components/molecules/TableScroll';
 import { type TFunction } from 'i18next';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -216,7 +218,7 @@ function ImportForm({
           <FormMessage kind="error">{t('import.failedPart')}</FormMessage>
         )}
         <Text>{t('import.doneSignIn')}</Text>
-        <Group>
+        <ActionRow>
           {rest > 0 && (
             <ActionButton meaning="main" busy={status === 'busy'} onClick={() => void send()}>
               {t('import.addRest', { count: rest })}
@@ -225,7 +227,7 @@ function ImportForm({
           <ActionButton meaning={rest > 0 ? 'other' : 'main'} to="/staff">
             {t('staff.back')}
           </ActionButton>
-        </Group>
+        </ActionRow>
       </Stack>
     );
   }
@@ -246,7 +248,7 @@ function ImportForm({
               refused: rows.length - held.length,
             })}
           </Text>
-          <Table.ScrollContainer minWidth={720}>
+          <TableScroll>
             <Table>
               <Table.Thead>
                 <Table.Tr>
@@ -281,8 +283,8 @@ function ImportForm({
                 ))}
               </Table.Tbody>
             </Table>
-          </Table.ScrollContainer>
-          <Group>
+          </TableScroll>
+          <ActionRow>
             <ActionButton
               meaning="main"
               disabled={held.length === 0}
@@ -294,7 +296,7 @@ function ImportForm({
             <ActionButton meaning="other" disabled={status === 'busy'} onClick={chooseAgain}>
               {t('import.another')}
             </ActionButton>
-          </Group>
+          </ActionRow>
         </Stack>
       ) : (
         <Paper withBorder p="md">

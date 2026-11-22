@@ -1,5 +1,6 @@
 import type { Language } from '@credo/shared';
 import { Anchor, Table } from '@mantine/core';
+import { TableScroll } from '../components/molecules/TableScroll';
 import { Link } from 'react-router';
 import { type ColumnKey, headingOf, type ListKind, type Shown } from '../listSheet';
 
@@ -37,7 +38,7 @@ export function ListTable({
   language: Language;
 }) {
   return (
-    <Table.ScrollContainer minWidth={640}>
+    <TableScroll>
       <Table highlightOnHover>
         <Table.Thead>
           <Table.Tr>
@@ -54,6 +55,6 @@ export function ListTable({
           ))}
         </Table.Tbody>
       </Table>
-    </Table.ScrollContainer>
+    </TableScroll>
   );
 }

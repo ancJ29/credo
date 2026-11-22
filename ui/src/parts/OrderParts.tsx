@@ -1,15 +1,7 @@
 import type { DeliveryRequest, OrderLine } from '@credo/shared';
-import {
-  Group,
-  Image,
-  NativeSelect,
-  Paper,
-  Stack,
-  Table,
-  Text,
-  TextInput,
-  Title,
-} from '@mantine/core';
+import { Image, NativeSelect, Paper, Stack, Table, Text, TextInput, Title } from '@mantine/core';
+import { ActionRow } from '../components/molecules/ActionRow';
+import { TableScroll } from '../components/molecules/TableScroll';
 import { ActionButton } from '../components/atoms/ActionButton';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -48,7 +40,7 @@ export function LinesTable({ lines, total }: { lines: readonly OrderLine[]; tota
   const money = useMoney();
   const number = new Intl.NumberFormat(i18n.language);
   return (
-    <Table.ScrollContainer minWidth={560}>
+    <TableScroll>
       <Table>
         <Table.Thead>
           <Table.Tr>
@@ -81,7 +73,7 @@ export function LinesTable({ lines, total }: { lines: readonly OrderLine[]; tota
           </Table.Tr>
         </Table.Tfoot>
       </Table>
-    </Table.ScrollContainer>
+    </TableScroll>
   );
 }
 
@@ -110,14 +102,14 @@ export function CancelPanel({
         <Title order={3}>{title}</Title>
         <Text c="dimmed">{text}</Text>
         {asking ? (
-          <Group>
+          <ActionRow>
             <ActionButton meaning="other" busy={busy} onClick={onCancel}>
               {confirm}
             </ActionButton>
             <ActionButton meaning="other" onClick={() => setAsking(false)}>
               {t('orders.keep')}
             </ActionButton>
-          </Group>
+          </ActionRow>
         ) : (
           <ActionButton meaning="other" onClick={() => setAsking(true)}>
             {title}

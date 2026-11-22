@@ -1,5 +1,6 @@
 import { normaliseClientCode } from '@credo/shared';
-import { Group, Paper, Stack, Text, TextInput } from '@mantine/core';
+import { Paper, Stack, Text, TextInput } from '@mantine/core';
+import { ActionRow } from '../../components/molecules/ActionRow';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router';
@@ -150,12 +151,12 @@ export function DeleteClientPage({ api, passkeys, onSignedOut }: Props) {
                   onChange={(event) => setTyped(event.currentTarget.value)}
                 />
                 <Text {...TYPE.caption}>{t('operator.deleteClientTouch')}</Text>
-                <Group>
+                <ActionRow>
                   <ActionButton meaning="danger" submit busy={busy}>
                     {t('operator.deleteClientMake')}
                   </ActionButton>
                   {back}
-                </Group>
+                </ActionRow>
               </Stack>
             </Paper>
           </form>
