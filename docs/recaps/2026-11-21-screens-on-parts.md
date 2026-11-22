@@ -9,8 +9,8 @@ flowchart LR
 
 ## What each landing gives you
 
-- **Landing 1, the dialog's title at 600**: the "sign-in ended" dialog of the passkeys screen draws its title at the guideline's emphasis weight, 600, not 550. Only that screen moves, six pictures. Item 647's last half is fixed.
-- **Landing 2, the messages**: every message under a form or an act is drawn by one part, in its kind's colour and spoken role, spanning its column (the three page states and the logo refusal stay). Seven screens moved, three lines from red or yellow to orange. You said yes to the seven messages.
+- **Landing 1, the dialog's title at 600**: the "sign-in ended" dialog of the passkeys screen draws its title at the guideline's emphasis weight, 600, not 550. Item 647's last half is fixed.
+- **Landing 2, the messages**: every message under a form or an act is drawn by one part, in its kind's colour and spoken role, spanning its column. Three lines moved from red or yellow to orange. You said yes to the seven messages.
 - **Landing 3, the buttons**: every button is drawn by its meaning, one size but the sign-in doors; a page's next step is its one filled button, red only at a delete's last step, and the rest plain or quiet. The person page, lock confirm open, and a draft order draw two main actions: we ask you whether that is right.
 - **Landings 4 to 7**: <!-- FILL: each landing's change for a user, when it lands -->
 
@@ -18,7 +18,7 @@ flowchart LR
 
 - **Landing 1**: the value was seen red on the old 550, then green. <!-- FILL: landing 1's check run, in words -->
 - **Landing 2**: your first picture run, over all twelve walks, wrote the pictures, committed alone; your second, over the four walks that changed, read green. The whole check and the review are still to come.
-- **Landing 3**: your write run over all twelve walks wrote the pictures, committed alone. Its check run, the landing and the review are still to come.
+- **Landing 3**: your write run over all twelve walks wrote the pictures, committed alone; the review asked three wording fixes, made; your second picture run, over the walks whose pictures changed, read green. The landing and its checks are still to come.
 - **Landings 4 to 7**: <!-- FILL: each landing's checks, in words -->
 
 ## What is left
