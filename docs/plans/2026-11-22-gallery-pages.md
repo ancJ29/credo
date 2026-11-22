@@ -183,10 +183,11 @@ of the same shape: a gallery-wide mechanism 16 (its step 1), a part's take with 
 - [x] **9. The settings page.** Fields' colour kind; its three states, the logo from landing 3's
       photos. Cases 12, 13. _Done when:_ the gates exit 0. **11 min**.
       _Done 2026-11-23, the gates from 00:40:_ Fields draws a colour field (`ColorInput`, 1 in 1 file by grep before, `Settings.tsx`) as its seventh state, `Colour`, with a hint, an error and read-only from `samples.ts`; `Pages.tsx` draws the entry `The settings page` (kind "Kinds of page", 44 entries now) in three states: the basics (one titled block of the name, the logo from the photos' picture with its choose and remove, the palette, the colour, the switches, the languages, one main save), saved (the message above, the form stays) and refused (the whole form's message above the block and the logo's under the logo, both through `FormMessage` as errors; item 662 stays open, the screen unmoved); case 12 seen red by three mutations (the logo's refusal not drawn, the saved message gone, the palette hidden), case 13's colour case by two (the field's kind, the entry's props); the three gates, the pinned file and the words and fake tests ran on this tree.
-- [ ] **10. The recap, and the look.** The recap closed; the gallery's row and card in
+- [x] **10. The recap, and the look.** The recap closed; the gallery's row and card in
       `docs/products.md` name the kinds of page; item 651 gains each kind's screens as the move's
       targets. Your points 1 and 2, together. _Done when:_ the citation test and
       `src/fake.test.ts` exit 0. **5 min**.
+      _Done 2026-11-23, the checks from 00:49:_ the recap `docs/recaps/2026-11-22-gallery-pages.md` holds landing 2 and landing 1's whole check, two markers left (landing 2's checks, the look); the gallery's row and card in `docs/products.md` name the kinds of page, the row's status cell says the landings as they stand; item 651 lists each kind's screens as the move's targets and stays open; the look at your points 1 and 2 is not yet asked.
 
 ## The cases
 
