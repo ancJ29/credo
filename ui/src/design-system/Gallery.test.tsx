@@ -31,6 +31,8 @@ import { credoVariables } from './cssVariables';
 import { PALETTES } from './palettes';
 import { shadesOf } from './appTheme';
 import { SAMPLES } from './samples';
+import { dayOf, timeOf } from '../day';
+import { marksOf, priceOf } from '../number';
 
 // Every component file of the three folders, by level and name: the list must hold each.
 const FILES = Object.keys(
@@ -243,8 +245,10 @@ describe('Gallery', () => {
 
   it('10: the page header draws its title alone beside the one with an action', () => {
     open(`${BASE}/organisms/page-header`);
-    expect(part().getAllByRole('heading', { level: 2, name: 'Staff' })).toHaveLength(2);
-    expect(part().getAllByRole('button', { name: 'Add' })).toHaveLength(1);
+    expect(
+      part().getAllByRole('heading', { level: 2, name: DICTIONARIES.vi.nav.staff }),
+    ).toHaveLength(2);
+    expect(part().getAllByRole('button', { name: DICTIONARIES.vi.staff.add })).toHaveLength(1);
   });
 
   it('11: draws the gradient button, the default button and the divider worded “hoặc” under their part', () => {
@@ -259,8 +263,8 @@ describe('Gallery', () => {
     expect(part().getByRole('button', { name: 'Quét mã QR' })).toBeDefined();
     expect(part().getByRole('button', { name: 'Nhập mã thủ công' })).toBeDefined();
     expect(part().getByText('hoặc')).toBeDefined();
-    expect(part().getByRole('button', { name: 'Save' })).toBeDefined();
-    expect(part().getByRole('textbox', { name: 'Name' })).toBeDefined();
+    expect(part().getByRole('button', { name: SAMPLES.vi.save })).toBeDefined();
+    expect(part().getByRole('textbox', { name: DICTIONARIES.vi.staff.colName })).toBeDefined();
   });
 
   it('11: draws the door card in two states, the sign-in and the link page, in sentence case', () => {
@@ -836,6 +840,44 @@ describe('Gallery', () => {
         part().getByRole('columnheader', { name: DICTIONARIES.en.lists.columns.phone }),
       ).toBeDefined();
     });
+
+    it('231 case 3: the gallery’s own words stay English whatever the pick, the plates’ words follow it', async () => {
+      open(`${BASE}/organisms/page-header`);
+      const entry = ENTRIES.find((each) => each.name === 'PageHeader')!;
+      for (const language of ['vi', 'en'] as const) {
+        if (language === 'en') await choose(LANGUAGE_NAMES.en);
+        expect(about().getByText(entry.description)).toBeDefined();
+        expect(about().getByText(entry.props)).toBeDefined();
+        expect(about().getByRole('heading', { level: 3, name: 'Use when' })).toBeDefined();
+        expect(stateNames()).toEqual(['With actions', 'Title only', 'With status and subtitle']);
+        expect(
+          part().getAllByRole('heading', { level: 2, name: DICTIONARIES[language].nav.staff }),
+        ).toHaveLength(2);
+        expect(
+          part().getByRole('button', { name: DICTIONARIES[language].staff.add }),
+        ).toBeDefined();
+      }
+    });
+
+    it('231 case 4: the Formats state draws a price, a number’s marks, a day and a time in the picked language', async () => {
+      const at = Date.UTC(2026, 10, 22, 13, 5, 9);
+      open(`${BASE}/foundations/values`);
+      const formats = () => within(part().getByRole('figure', { name: 'Formats' }));
+      for (const language of ['vi', 'en'] as const) {
+        if (language === 'en') await choose(LANGUAGE_NAMES.en);
+        const marks = marksOf(language);
+        expect(
+          formats().getByText(
+            DICTIONARIES[language].orders.money.replace('{{amount}}', priceOf(1250000, language)),
+          ),
+        ).toBeDefined();
+        expect(
+          formats().getByText(`1${marks.group}250${marks.group}000${marks.decimal}5`),
+        ).toBeDefined();
+        expect(formats().getByText(dayOf(at, language))).toBeDefined();
+        expect(formats().getByText(timeOf(at, language))).toBeDefined();
+      }
+    });
   });
 
   it('the workbench: the top bar carries the title and the part’s path, and neither a tagline nor the page’s address', () => {
@@ -1105,16 +1147,17 @@ describe('Gallery', () => {
       'active',
       'inactive',
     ]);
+    const { state } = DICTIONARIES.vi.orders;
     expect(chips.map((chip) => chip.textContent)).toEqual([
-      'Draft',
-      'Confirmed',
-      'Delivered',
-      'Cancelled',
-      'Pending delivery',
-      'Delivered',
-      'Cancelled',
-      'Active',
-      'Inactive',
+      state.draft,
+      state.confirmed,
+      state.fulfilled,
+      state.cancelled,
+      state.waiting,
+      state.delivered,
+      state.cancelled,
+      DICTIONARIES.vi.staff.chipActive,
+      DICTIONARIES.vi.staff.chipInactive,
     ]);
     expect(about().getByText(/Built and in use; .* open item 651 moves them\./)).toBeDefined();
   });
@@ -1219,7 +1262,7 @@ describe('Gallery', () => {
       within(part().getByRole('figure', { name: 'Two or more' }))
         .getAllByRole('button')
         .map((button) => button.textContent),
-    ).toEqual(['Cancel', 'Save a draft', 'Send']);
+    ).toEqual([SAMPLES.vi.cancel, SAMPLES.vi.saveDraft, SAMPLES.vi.send]);
     expect(about().getByText(/Built and in use; .* open item 651 moves them\./)).toBeDefined();
     cleanup();
     open(`${BASE}/molecules/table-scroll`);

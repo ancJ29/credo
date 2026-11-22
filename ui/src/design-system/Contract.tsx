@@ -1,4 +1,5 @@
 import { Stack, Table, Text } from '@mantine/core';
+import { useTranslation } from 'react-i18next';
 import type { ReactNode } from 'react';
 import { GUIDELINE, type Contract, type PartState } from './guideline';
 import { followedWords, heldWords } from './Charter';
@@ -8,6 +9,7 @@ import { ActionRow } from '../components/molecules/ActionRow';
 import { FormMessage } from '../components/molecules/FormMessage';
 import { TableScroll } from '../components/molecules/TableScroll';
 import { PageState } from '../components/organisms/PageState';
+import { SAMPLES, useLanguage } from './samples';
 
 /** The contract of a part, by the name of its entry. */
 export const contractOf = (part: string) =>
@@ -61,45 +63,62 @@ export function ContractPanel({ contract, built }: { contract: Contract; built?:
 const platesOf = (part: string, draw: (state: PartState) => ReactNode) =>
   contractOf(part)!.states.map((state) => ({ name: state.name, node: draw(state) }));
 
-/** The words each message kind and page state is drawn with. */
-const WORDS: Record<string, string> = {
-  Error: 'The name could not be saved.',
-  Warning: 'Someone changed this record first.',
-  Success: 'The order was sent.',
-  Info: 'Prices change on the first of the month.',
-  Saved: 'Saved.',
-  Forbidden: 'You may not open this page. Ask the person who runs the company.',
-  Nothing: 'No page is open to you yet.',
-  Empty: 'No staff yet. Add the first.',
-  Standing: 'This client has no staff yet, so nothing can move.',
-  'Not found': 'This address names no page.',
-};
+/** The words a message kind or a page state is drawn with, in the picked language: the dictionary's where a screen says them, else the samples'. */
+function useStateWords() {
+  const { t } = useTranslation();
+  const words = SAMPLES[useLanguage()];
+  return (name: string) => {
+    const read: Record<string, string> = {
+      Forbidden: t('forbidden.text'),
+      Nothing: t('nothing.text'),
+      Empty: t('staff.empty'),
+    };
+    return read[name] ?? words.messages[name] ?? '';
+  };
+}
 
 /** A form message at each kind, drawn by the part itself: the standing plate is a warning read at load, with a code above. */
-export const FormMessageStates = platesOf('FormMessage', ({ name }) => (
-  <Stack w={394} maw="100%">
-    {name === 'Standing' ? (
-      <FormMessage kind="warning" standing title="ACME-01">
-        {WORDS[name]}
-      </FormMessage>
-    ) : (
-      <FormMessage kind={name.toLowerCase() as 'error'}>{WORDS[name]}</FormMessage>
-    )}
-  </Stack>
+function FormMessageSample({ state: { name } }: { state: PartState }) {
+  const words = useStateWords();
+  return (
+    <Stack w={394} maw="100%">
+      {name === 'Standing' ? (
+        <FormMessage kind="warning" standing title="ACME-01">
+          {words(name)}
+        </FormMessage>
+      ) : (
+        <FormMessage kind={name.toLowerCase() as 'error'}>{words(name)}</FormMessage>
+      )}
+    </Stack>
+  );
+}
+
+export const FormMessageStates = platesOf('FormMessage', (state) => (
+  <FormMessageSample state={state} />
 ));
 
 /** A page state, drawn by the part itself: its title and words, its retry and its add. */
 function PageStateSample({ state: { name } }: { state: PartState }) {
+  const { t } = useTranslation();
+  const words = useStateWords();
   const state = name === 'Not found' ? 'notFound' : (name.toLowerCase() as 'loading');
+  const titles: Record<string, string> = {
+    Loading: t('common.loading'),
+    Failed: t('common.loadFailed'),
+    Forbidden: t('forbidden.title'),
+    Nothing: t('nothing.title'),
+    Empty: t('staff.title'),
+    'Not found': words('Not found'),
+  };
   return (
     <Stack w={394} maw="100%">
       <PageState
         state={state}
-        title={name}
+        title={titles[name]}
         onRetry={() => undefined}
-        add={<ActionButton meaning="other">Add</ActionButton>}
+        add={<ActionButton meaning="other">{t('staff.add')}</ActionButton>}
       >
-        {WORDS[name]}
+        {words(name)}
       </PageState>
     </Stack>
   );
@@ -109,51 +128,72 @@ function PageStateSample({ state: { name } }: { state: PartState }) {
 export const PageStateStates = platesOf('PageState', (state) => <PageStateSample state={state} />);
 
 /** A button at each meaning, drawn by the part itself: the page's one main action first. */
+function ActionButtonSample({ name }: { name: string }) {
+  const words = SAMPLES[useLanguage()];
+  const meaning = name.toLowerCase() as 'main';
+  const label = {
+    Main: words.mainAction,
+    Other: words.otherAction,
+    Quiet: words.quietAction,
+    Danger: words.deleteRecord,
+  }[name as 'Main'];
+  return <ActionButton meaning={meaning}>{label}</ActionButton>;
+}
+
 export const ActionButtonStates = platesOf('ActionButton', ({ name }) => (
-  <ActionButton meaning={name.toLowerCase() as 'main'}>
-    {name === 'Danger' ? 'Delete the record' : `${name} action`}
-  </ActionButton>
+  <ActionButtonSample name={name} />
 ));
 
 /** A block's buttons in a row, drawn by the part itself: one gap, at the end. */
-export const ActionRowStates = platesOf('ActionRow', ({ name }) => (
-  <Stack w={394} maw="100%">
-    <ActionRow>
-      {name === 'One' ? (
-        <ActionButton meaning="main">Save</ActionButton>
-      ) : (
-        <>
-          <ActionButton meaning="quiet">Cancel</ActionButton>
-          <ActionButton meaning="other">Save a draft</ActionButton>
-          <ActionButton meaning="main">Send</ActionButton>
-        </>
-      )}
-    </ActionRow>
-  </Stack>
-));
+function ActionRowSample({ name }: { name: string }) {
+  const words = SAMPLES[useLanguage()];
+  return (
+    <Stack w={394} maw="100%">
+      <ActionRow>
+        {name === 'One' ? (
+          <ActionButton meaning="main">{words.save}</ActionButton>
+        ) : (
+          <>
+            <ActionButton meaning="quiet">{words.cancel}</ActionButton>
+            <ActionButton meaning="other">{words.saveDraft}</ActionButton>
+            <ActionButton meaning="main">{words.send}</ActionButton>
+          </>
+        )}
+      </ActionRow>
+    </Stack>
+  );
+}
+
+export const ActionRowStates = platesOf('ActionRow', ({ name }) => <ActionRowSample name={name} />);
 
 /** A table at its least width, drawn by the part itself: it scrolls sideways below it. */
-export const TableScrollStates = platesOf('TableScroll', () => (
-  <Stack w={394} maw="100%">
-    <TableScroll>
-      <Table>
-        <Table.Thead>
-          <Table.Tr>
-            <Table.Th>Name</Table.Th>
-            <Table.Th>Phone</Table.Th>
-            <Table.Th>Address</Table.Th>
-            <Table.Th>Staff</Table.Th>
-          </Table.Tr>
-        </Table.Thead>
-        <Table.Tbody>
-          <Table.Tr>
-            <Table.Td>An Phat</Table.Td>
-            <Table.Td>0901 000 000</Table.Td>
-            <Table.Td>12 Le Loi</Table.Td>
-            <Table.Td>3</Table.Td>
-          </Table.Tr>
-        </Table.Tbody>
-      </Table>
-    </TableScroll>
-  </Stack>
-));
+function TableScrollSample() {
+  const { t } = useTranslation();
+  const words = SAMPLES[useLanguage()];
+  return (
+    <Stack w={394} maw="100%">
+      <TableScroll>
+        <Table>
+          <Table.Thead>
+            <Table.Tr>
+              <Table.Th>{t('staff.colName')}</Table.Th>
+              <Table.Th>{t('staff.colPhone')}</Table.Th>
+              <Table.Th>{words.address}</Table.Th>
+              <Table.Th>{t('nav.staff')}</Table.Th>
+            </Table.Tr>
+          </Table.Thead>
+          <Table.Tbody>
+            <Table.Tr>
+              <Table.Td>{words.shop}</Table.Td>
+              <Table.Td>0901 000 000</Table.Td>
+              <Table.Td>{words.shopAddress}</Table.Td>
+              <Table.Td>3</Table.Td>
+            </Table.Tr>
+          </Table.Tbody>
+        </Table>
+      </TableScroll>
+    </Stack>
+  );
+}
+
+export const TableScrollStates = platesOf('TableScroll', () => <TableScrollSample />);

@@ -9,7 +9,11 @@ import {
   type MantineSize,
   type MantineTheme,
 } from '@mantine/core';
+import { useTranslation } from 'react-i18next';
+import { dayOf, timeOf } from '../day';
+import { marksOf, priceOf } from '../number';
 import { credoVariables } from './cssVariables';
+import { useLanguage } from './samples';
 import {
   GUIDELINE,
   type FormatName,
@@ -284,13 +288,41 @@ export function Shapes() {
   );
 }
 
-/** What each kind of text is written by, and where it lives. */
+/** An instant the Formats state writes as a day and a time: a fixed one, so no sample holds today's. */
+const SAMPLE_INSTANT = Date.UTC(2026, 10, 22, 13, 5, 9);
+
+/** What each kind of text is written by and where it lives, each with what it writes now in the picked language: a price and a number's marks, a day, a time. */
 export function Formats() {
+  const { t } = useTranslation();
+  const language = useLanguage();
+  const marks = marksOf(language);
+  const written: Record<FormatName, string[]> = {
+    money: [
+      t('orders.money', { amount: priceOf(1250000, language) }),
+      `1${marks.group}250${marks.group}000${marks.decimal}5`,
+    ],
+    date: [dayOf(SAMPLE_INSTANT, language)],
+    time: [timeOf(SAMPLE_INSTANT, language)],
+  };
   return (
     <Stack gap={4}>
       <Notes about="formats" />
       {(Object.keys(GUIDELINE.values.formats) as FormatName[]).map((format) => (
-        <ValueRow key={format} name={format} value="" use={GUIDELINE.values.formats[format]} />
+        <ValueRow
+          key={format}
+          name={format}
+          value=""
+          sample={
+            <Group gap="xs" wrap="nowrap" style={{ flex: 'none' }}>
+              {written[format].map((text) => (
+                <Text key={text} size="sm" fw={WEIGHTS.emphasis}>
+                  {text}
+                </Text>
+              ))}
+            </Group>
+          }
+          use={GUIDELINE.values.formats[format]}
+        />
       ))}
     </Stack>
   );

@@ -146,11 +146,22 @@ part and its importers 14 (222's step 7), five entries 14 (213's step 10), a rec
       Case 1 red once each for the default, the kept pick and the fixed provider; case 2 red once each
       for the back link's key, the samples table and `ListTable`'s language, green with none; the
       `ui` gate and the two `scripts` tests (`words.test.ts`, `fake.test.ts`) exit 0 on this tree.
-- [ ] **2. Every entry, and landing 1.** The other entries' words by language, the Formats state's
+- [x] **2. Every entry, and landing 1.** The other entries' words by language, the Formats state's
       four values; the finders read by key; the recap begun. Cases 3, 4. _Done when:_ the gates exit
       0, `git grep -n -E "createI18n\(.en.\)|language=.en." -- ui/src/design-system` finds nothing,
       and `pnpm --filter @credo/scripts exec vitest run src/words.test.ts src/fake.test.ts` exits 0.
       **14 min**.
+      _Evidence:_ every entry whose plates hold words draws them by language: the sign-in and link
+      states, the door heading, back link, field label, detail field, section title and card, page
+      header, status chips, buttons and rows, messages, page states and the table's headings, each
+      reading the dictionary by key where a screen says it and `samples.ts` where none does, and
+      the Mantine entry's own button, field and badge; the stage's one provider replaces
+      `entries.tsx`'s English instance, and `useLanguage` moved to `samples.ts`. The Formats state
+      draws a price, a number's marks, a day and a time in the picked language. The 4 cases
+      whose English finders went red on the new words read by key; case 3 red once for
+      a heading that followed the pick, case 4 red once each for the day, the marks, the price and
+      the time written in the wrong language; the `ui` gate and the two `scripts` tests exit 0 on
+      this tree, and the grep finds nothing.
 
 **Landing 2: what the pages draw.**
 

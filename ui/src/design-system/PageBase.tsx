@@ -11,16 +11,11 @@ import type { Shown } from '../listSheet';
 import { DetailColumns, FieldPair } from '../parts/DetailCards';
 import { ListTable } from '../parts/ListTable';
 import { PageShell } from '../parts/PageShell';
-import { SAMPLES } from './samples';
+import { SAMPLES, useLanguage } from './samples';
 import { TONES, TYPE } from './tokens';
 
 /** A retry that asks nothing: the sample's data is no one's. */
 const NO_RETRY = () => undefined;
-
-/** The language the gallery's stage draws in: the one its provider was started with. */
-function useLanguage(): Language {
-  return useTranslation().i18n.language === 'en' ? 'en' : 'vi';
-}
 
 /** Three sample records, no real person's, named in the picked language. */
 function rowsOf(language: Language): Shown[] {
