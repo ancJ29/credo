@@ -26,6 +26,7 @@ import { Link, useNavigate, useParams } from 'react-router';
 import type { OrderResult } from '../../api';
 import { DetailCard, DetailColumns } from '../../parts/DetailCards';
 import { shownDay } from '../../day';
+import { numberOf, priceOf } from '../../number';
 import { Loaded } from '../../frame/Loaded';
 import {
   CancelPanel,
@@ -74,7 +75,6 @@ function FormFields({
   const { t, i18n } = useTranslation();
   const language = i18n.language as Language;
   const money = useMoney();
-  const number = new Intl.NumberFormat(language);
   const navigate = useNavigate();
   const day = doc?.order.day ?? page.today();
   const [customerId, setCustomerId] = useState(doc?.order.customer.id ?? '');
@@ -218,15 +218,15 @@ function FormFields({
                     </Table.Td>
                     <Table.Td>{product.unit}</Table.Td>
                     <Table.Td ta="right">
-                      {number.format(price)}
+                      {priceOf(price, language)}
                       {moved !== null && (
                         <Text size="xs" c="var(--credo-warning-text)">
-                          {t('orders.priceMoved', { price: number.format(moved) })}
+                          {t('orders.priceMoved', { price: priceOf(moved, language) })}
                         </Text>
                       )}
                     </Table.Td>
-                    <Table.Td ta="right">{number.format(count)}</Table.Td>
-                    <Table.Td ta="right">{number.format(amount)}</Table.Td>
+                    <Table.Td ta="right">{numberOf(count, language)}</Table.Td>
+                    <Table.Td ta="right">{priceOf(amount, language)}</Table.Td>
                     <Table.Td ta="right">
                       <ActionButton
                         meaning="quiet"

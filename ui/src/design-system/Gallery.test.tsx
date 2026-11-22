@@ -417,7 +417,7 @@ describe('Gallery', () => {
     open(`${BASE}/foundations/values`);
     const { notes } = GUIDELINE.values;
     // A guideline with a note short of a state would quiet the loop below.
-    expect(new Set(notes.map((note) => note.about)).size).toBe(5);
+    expect(new Set(notes.map((note) => note.about)).size).toBe(4);
     const states = {
       tones: 'Meanings',
       styles: 'Type',

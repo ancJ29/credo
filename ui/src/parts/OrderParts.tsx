@@ -9,12 +9,12 @@ import { Loaded } from '../frame/Loaded';
 import { type PageProps, useLoad } from '../page';
 import { TYPE } from '../design-system/tokens';
 import { FormMessage } from '../components/molecules/FormMessage';
+import { numberOf, priceOf } from '../number';
 
 /** An amount in đồng as the language writes a number. */
 export function useMoney() {
   const { t, i18n } = useTranslation();
-  return (amount: number) =>
-    t('orders.money', { amount: new Intl.NumberFormat(i18n.language).format(amount) });
+  return (amount: number) => t('orders.money', { amount: priceOf(amount, i18n.language) });
 }
 
 const textIn = (value: unknown) => (typeof value === 'string' ? value : '');
@@ -38,7 +38,6 @@ export function CustomerBlock({ customer }: { customer: DeliveryRequest['custome
 export function LinesTable({ lines, total }: { lines: readonly OrderLine[]; total: number }) {
   const { t, i18n } = useTranslation();
   const money = useMoney();
-  const number = new Intl.NumberFormat(i18n.language);
   return (
     <TableScroll>
       <Table>
@@ -58,9 +57,9 @@ export function LinesTable({ lines, total }: { lines: readonly OrderLine[]; tota
                 {line.code} · {line.name}
               </Table.Td>
               <Table.Td>{line.unit}</Table.Td>
-              <Table.Td ta="right">{number.format(line.price)}</Table.Td>
-              <Table.Td ta="right">{number.format(line.quantity)}</Table.Td>
-              <Table.Td ta="right">{number.format(line.amount)}</Table.Td>
+              <Table.Td ta="right">{priceOf(line.price, i18n.language)}</Table.Td>
+              <Table.Td ta="right">{numberOf(line.quantity, i18n.language)}</Table.Td>
+              <Table.Td ta="right">{priceOf(line.amount, i18n.language)}</Table.Td>
             </Table.Tr>
           ))}
         </Table.Tbody>

@@ -162,6 +162,14 @@ piece 203's step 8. Your runs: about 20 each for a few walks, longer for twelve.
       the one set after this step, with the formats' walks `admin-lists office-orders
       driver-deliveries office-reconcile` among the twelve. _Done when:_ the pinned file unchanged.
       **20 min** (14, and 6).
+      _Code part done 2026-11-22 (the recap step ticks it): recounted at `c5977de5` by grep, 5 `new Intl.NumberFormat` in 4 files outside `day.ts`, as item 652 has them,
+      and no other screen formats a number by hand (no `toLocaleString`, no `toFixed` in a screen; `OnTheBrand.tsx`'s two ratios are the design system's own): `useMoney` and the table of
+      `LinesTable` in `OrderParts.tsx` (two), `OrderPage.tsx`, `listSheet.ts` and `ProductForm.tsx`'s marks; after, 0 outside `day.ts` and `number.ts`. `ui/src/number.ts` holds `numberOf`,
+      `priceOf` (the price without its unit, which `useMoney` then speaks) and `marksOf`; the language's own code is the locale, as the screens wrote it, so no text differs for any value in
+      the data set (case 16, `number.test.ts`, compares each value, both languages, with the hand-written expression; seen red once on a stub, then green). Case 17 in
+      `literals.test.ts` refuses `Intl.` in every file outside `day.ts`, `number.ts`, the tests and the mock; seen red once on the five sites (and `guideline.ts`'s own note), then green. The guideline's
+      formats note ("not yet") is gone, its money line names the three functions, and `Gallery.test.tsx` counts 4 notes. The pinned file is unchanged. The ui and visual gates and the citation test
+      exit 0 (13:27 to 13:32). Item 652's entry is left for the closing pass; the recap and the runs follow._
 
 ## The cases
 

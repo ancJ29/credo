@@ -369,7 +369,7 @@ export const GUIDELINE: {
     },
     formats: {
       money:
-        'An amount in dong is written by `useMoney` (in `ui/src/parts/OrderParts.tsx`), never by a formatter in a screen.',
+        'An amount in dong is written by `useMoney` (in `ui/src/parts/OrderParts.tsx`), a price without its unit by `priceOf`, a plain number by `numberOf` and a number’s marks by `marksOf`, all in `ui/src/number.ts`, never by a formatter in a screen.',
       date: 'A day is written by `dayOf` for a saved time and `shownDay` for a day as `YYYY-MM-DD`, both in `ui/src/day.ts`, in the language shown.',
       time: 'A time of day is written by `timeOf` in `ui/src/day.ts`, to the second on 24 hours, in the language shown.',
     },
@@ -389,10 +389,6 @@ export const GUIDELINE: {
       {
         about: 'icons',
         text: 'An icon size is named by where the icon sits, never a number. Not yet: of 45 icons, 30 are written as 14 px, 7 as 18, 3 as 16, 2 as 36, 2 as 20 and 1 as 22 (the two 20 px icons, a fingerprint on a button, are the button’s 18); open item 651 moves them.',
-      },
-      {
-        about: 'formats',
-        text: 'A number, a day or a time is written by its one place, never by `new Intl` in a screen. Not yet: outside `ui/src/day.ts` five `new Intl.NumberFormat` stand in four files (one is `useMoney`’s own, the other four write a price, a quantity or the marks of a number by hand), and a number has no place of its own yet; open item 652 moves them.',
       },
     ],
   },

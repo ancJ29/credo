@@ -19,19 +19,9 @@ import {
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { textIn } from '../listSheet';
+import { marksOf } from '../number';
 import { DetailCard, DetailColumns, FieldPair } from './DetailCards';
 import { mergeExtra } from './ownFields';
-
-/** The thousands mark and the decimal mark the language writes a number with. */
-function marks(language: string) {
-  const parts = new Intl.NumberFormat(language).formatToParts(1000.5);
-  const mark = (type: string) =>
-    parts
-      .filter((part) => part.type === type)
-      .map((part) => part.value)
-      .join('');
-  return { group: mark('group'), decimal: mark('decimal') };
-}
 
 /**
  * The product's form. An add is this form with the code box open, as the add pages draw it:
@@ -62,7 +52,7 @@ export function ProductForm({
   const stored = textIn(product.extra['note']);
   const [note, setNote] = useState(stored);
   const [tried, setTried] = useState(false);
-  const { group, decimal } = marks(i18n.language);
+  const { group, decimal } = marksOf(i18n.language);
 
   // The rule lives in the shared schemas, the BFF's authority too: the form only asks them.
   const nameValue = nameSchema.safeParse(name);
