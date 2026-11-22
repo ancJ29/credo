@@ -1240,7 +1240,7 @@ describe('Gallery', () => {
   });
 
   it('213 case 1: every entry carries one to three use lines and one to three don’t-use lines', () => {
-    expect(ENTRIES).toHaveLength(41);
+    expect(ENTRIES).toHaveLength(42);
     for (const entry of ENTRIES) {
       for (const lines of [entry.useWhen, entry.dontUseWhen]) {
         expect(lines.length, entry.name).toBeGreaterThanOrEqual(1);
@@ -1489,6 +1489,7 @@ describe('Gallery', () => {
       'The phone page',
       'The day sheet',
       'The import page',
+      'The menu page',
     ]);
     for (const name of SLOTS) {
       const entry = ENTRIES.find((each) => each.name === name);
@@ -1914,6 +1915,48 @@ describe('Gallery', () => {
     expect(done.getByText('1 rows skipped: codes were assigned concurrently.')).toBeDefined();
     expect(mains('Done')).toEqual(['Back to staff directory']);
     expect(done.queryByRole('table')).toBeNull();
+  });
+
+  it('236 case 10: the menu page draws its rows in panels, sign-out last, at the phone width', () => {
+    const entry = ENTRIES.find((each) => each.name === 'The menu page')!;
+    expect(entry.kind).toBe(KIND_OF_PAGE);
+    expect(entry.states.map((state) => state.name)).toEqual([
+      'The company’s More',
+      'No other pages',
+    ]);
+    drawn(entry);
+    const rowsOf = (name: string) => {
+      const frame = part().getByTitle<HTMLIFrameElement>(`${name}, at the phone’s width`);
+      act(() => {
+        fireEvent.load(frame);
+      });
+      expect(frame.getAttribute('width')).toBe('390');
+      const body = frame.contentDocument!.body;
+      return {
+        body,
+        panels: [...body.querySelectorAll('.mantine-Paper-root')],
+        rows: [...body.querySelectorAll('a[href], button')].map((row) => ({
+          words: row.textContent,
+          href: row.getAttribute('href'),
+          arrow: row.querySelector('svg.tabler-icon-chevron-right') !== null,
+        })),
+      };
+    };
+    // 1. The company's More: the pages first, then the link and sign-out last, in two panels.
+    const more = rowsOf('The company’s More');
+    expect(within(more.body).getByRole('heading', { level: 2, name: 'More' })).toBeDefined();
+    expect(more.panels).toHaveLength(2);
+    expect(more.rows).toEqual([
+      { words: 'Customers', href: '/customers', arrow: true },
+      { words: 'Products', href: '/products', arrow: true },
+      { words: 'Change password', href: '/password', arrow: true },
+      { words: 'Sign out', href: null, arrow: false },
+    ]);
+    expect(more.panels[1].lastElementChild!.textContent).toContain('Sign out');
+    // 2. No other pages: the one panel of the person's link and sign-out.
+    const bare = rowsOf('No other pages');
+    expect(bare.panels).toHaveLength(1);
+    expect(bare.rows.map((row) => row.words)).toEqual(['Change password', 'Sign out']);
   });
 
   it('236 case 13: Panel’s new take, the address its block opens, is a content in its contract and drawn on its entry', () => {

@@ -174,8 +174,9 @@ of the same shape: a gallery-wide mechanism 16 (its step 1), a part's take with 
 
 **Landing 2: after piece 231's landing 3.**
 
-- [ ] **7. The menu page.** Its two states in the phone's frame, from `MenuRow`. Case 10. _Done when:_
+- [x] **7. The menu page.** Its two states in the phone's frame, from `MenuRow`. Case 10. _Done when:_
       the gates exit 0. **4 min**.
+      _Done 2026-11-23, the gates from 00:21:_ `Pages.tsx` draws the entry `The menu page` (kind "Kinds of page", 42 entries now) in two states at the phone's width: the company's More (the pages the bar leaves out in one panel, then the person's link and sign-out last in another, each a `MenuRow`) and More with no other pages; case 10 seen red by four mutations (sign-out not last, a page row without its address, a state out of the phone's frame, the two panels made one); the three gates, the pinned file and the words and fake tests ran on this tree.
 - [ ] **8. The confirm page.** Its three states, the made one with `CopyText` in its field. Case 11.
       _Done when:_ the gates exit 0. **10 min**.
 - [ ] **9. The settings page.** Fields' colour kind; its three states, the logo from landing 3's

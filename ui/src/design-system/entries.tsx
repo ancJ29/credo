@@ -39,6 +39,7 @@ import {
   FormPageStates,
   ImportPageStates,
   ListPageStates,
+  MenuPageStates,
   PhonePageStates,
 } from './Pages';
 import {
@@ -692,6 +693,29 @@ export const ENTRIES: Entry[] = [
       'A row’s result by its meaning, never a colour’s name.',
     ],
     states: ImportPageStates,
+  },
+  {
+    group: 'Pages',
+    kind: KIND_OF_PAGE,
+    name: 'The menu page',
+    description:
+      'The page of rows a phone opens from its bar’s last place, drawn from parts only at the phone’s width: the pages the bar leaves out first, then the person’s own links and sign-out last, each a row in a panel.',
+    props: 'PageHeader · Panel · MenuRow',
+    useWhen: [
+      'You are about to build the page a phone’s bar opens for what it has no room for.',
+      'You need a page whose whole content is a few places to go and one act.',
+    ],
+    dontUseWhen: [
+      'A page that lists the records already held: that is the list page’s.',
+      'The menu beside a wide page: that is the frame’s, not a page.',
+    ],
+    instead: 'The list page',
+    mustHave: [
+      'The phone’s width.',
+      'The pages first, the person’s links and sign-out last.',
+      'Each place or act a MenuRow.',
+    ],
+    states: MenuPageStates,
   },
   {
     group: 'Atoms',

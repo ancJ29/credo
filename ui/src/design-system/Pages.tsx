@@ -10,9 +10,18 @@ import {
   Textarea,
   TextInput,
 } from '@mantine/core';
-import { IconLock, IconLogin, IconNote, IconPhone, IconUser } from '@tabler/icons-react';
+import {
+  IconBuildingStore,
+  IconLock,
+  IconLogin,
+  IconNote,
+  IconPackage,
+  IconPhone,
+  IconUser,
+} from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { ActionButton } from '../components/atoms/ActionButton';
+import { MenuRow } from '../components/atoms/MenuRow';
 import { StatusBadge, type Status } from '../components/atoms/StatusBadge';
 import { ActionRow } from '../components/molecules/ActionRow';
 import { DataTable } from '../components/molecules/DataTable';
@@ -743,4 +752,38 @@ export const ImportPageStates = [
   { name: 'Choose', node: <Choose /> },
   { name: 'The preview', node: <Preview /> },
   { name: 'Done', node: <ImportDone /> },
+];
+
+/** The phone's More as the company's menu draws it: the pages its bar leaves out in one panel when there are any, then the person's own link and sign-out last in another, each a row. */
+function MenuPage({ others }: { others: boolean }) {
+  const { t } = useTranslation();
+  return (
+    <Stack p="md" gap="md">
+      <PageHeader title={t('nav.more')} />
+      {others && (
+        <Panel>
+          <Stack gap={0}>
+            <MenuRow icon={IconBuildingStore} to="/customers">
+              {t('nav.customers')}
+            </MenuRow>
+            <MenuRow icon={IconPackage} to="/products">
+              {t('nav.products')}
+            </MenuRow>
+          </Stack>
+        </Panel>
+      )}
+      <Panel>
+        <Stack gap={0}>
+          <MenuRow to="/password">{t('user.password')}</MenuRow>
+          <MenuRow>{t('user.signOut')}</MenuRow>
+        </Stack>
+      </Panel>
+    </Stack>
+  );
+}
+
+/** The menu page's two states, both at the phone's width: the company's More, and More with no other pages. */
+export const MenuPageStates = [
+  { name: 'The company’s More', node: <MenuPage others />, phone: true as const },
+  { name: 'No other pages', node: <MenuPage others={false} />, phone: true as const },
 ];
