@@ -1,33 +1,52 @@
 import {
   Anchor,
+  Checkbox,
+  ColorInput,
   Group,
   Image,
   NativeSelect,
   NumberInput,
   PasswordInput,
+  Radio,
   Stack,
+  Switch,
   Text,
   Textarea,
   TextInput,
 } from '@mantine/core';
-import { IconLock, IconLogin, IconNote, IconPhone, IconUser } from '@tabler/icons-react';
+import {
+  IconBuilding,
+  IconBuildingStore,
+  IconLock,
+  IconLogin,
+  IconNote,
+  IconPackage,
+  IconPhone,
+  IconUser,
+} from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { ActionButton } from '../components/atoms/ActionButton';
+import { MenuRow } from '../components/atoms/MenuRow';
 import { StatusBadge, type Status } from '../components/atoms/StatusBadge';
 import { ActionRow } from '../components/molecules/ActionRow';
+import { CopyText } from '../components/molecules/CopyText';
 import { DataTable } from '../components/molecules/DataTable';
 import { FormMessage } from '../components/molecules/FormMessage';
 import { PageHeader } from '../components/organisms/PageHeader';
 import { PageState } from '../components/organisms/PageState';
 import { Panel } from '../components/organisms/Panel';
 import { shownDay } from '../day';
+import { LANGUAGE_NAMES } from '../i18n';
 import { LISTS } from '../listSheet';
 import { numberOf, priceOf } from '../number';
 import { ListTable } from '../parts/ListTable';
 import { FieldPair } from '../parts/DetailCards';
 import { PageShell } from '../parts/PageShell';
 import { SectionCard } from '../components/organisms/SectionCard';
+import { MAX_LOGO_BYTES } from '@credo/shared';
 import { FilterBar } from './Fields';
+import { PALETTES } from './palettes';
+import { PICTURE } from './Photos';
 import { SAMPLES, useLanguage } from './samples';
 import { TONES, TYPE, WEIGHTS } from './tokens';
 
@@ -743,4 +762,200 @@ export const ImportPageStates = [
   { name: 'Choose', node: <Choose /> },
   { name: 'The preview', node: <Preview /> },
   { name: 'Done', node: <ImportDone /> },
+];
+
+/** The phone's More as the company's menu draws it: the pages its bar leaves out in one panel when there are any, then the person's own link and sign-out last in another, each a row. */
+function MenuPage({ others }: { others: boolean }) {
+  const { t } = useTranslation();
+  return (
+    <Stack p="md" gap="md">
+      <PageHeader title={t('nav.more')} />
+      {others && (
+        <Panel>
+          <Stack gap={0}>
+            <MenuRow icon={IconBuildingStore} to="/customers">
+              {t('nav.customers')}
+            </MenuRow>
+            <MenuRow icon={IconPackage} to="/products">
+              {t('nav.products')}
+            </MenuRow>
+          </Stack>
+        </Panel>
+      )}
+      <Panel>
+        <Stack gap={0}>
+          <MenuRow to="/password">{t('user.password')}</MenuRow>
+          <MenuRow>{t('user.signOut')}</MenuRow>
+        </Stack>
+      </Panel>
+    </Stack>
+  );
+}
+
+/** The menu page's two states, both at the phone's width: the company's More, and More with no other pages. */
+export const MenuPageStates = [
+  { name: 'The company’s More', node: <MenuPage others />, phone: true as const },
+  { name: 'No other pages', node: <MenuPage others={false} />, phone: true as const },
+];
+
+/** The company and its code the confirm page's samples name: the gallery's own, no real client's. */
+const CLIENT_CODE = 'sample-shop';
+/** A one-time password the made state shows once: made up for the sample. */
+const MADE_PASSWORD = 'k7Tq-92xv-Lm4d';
+
+/** The confirm page before the act: what will happen first, the standing warning at a delete, the code to type, then the last press and the way back. */
+function Confirm({ erase }: { erase: boolean }) {
+  const { t } = useTranslation();
+  const { shop } = SAMPLES[useLanguage()];
+  return (
+    <Stack p="md" gap="lg">
+      <div>
+        <PageHeader
+          title={t(erase ? 'operator.deleteClientTitle' : 'operator.rootTitle', { name: shop })}
+        />
+        {!erase && <Text c="dimmed">{t('operator.rootIntro', { name: shop })}</Text>}
+      </div>
+      {erase && (
+        <FormMessage kind="warning" standing title={CLIENT_CODE}>
+          {t('operator.deleteClientIntro', { name: shop })}
+        </FormMessage>
+      )}
+      <Panel>
+        <Stack gap="lg">
+          <TextInput
+            label={t(erase ? 'operator.deleteClientCodeLabel' : 'operator.rootCodeLabel')}
+            description={t(erase ? 'operator.deleteClientCodeHint' : 'operator.rootCodeHint', {
+              code: CLIENT_CODE,
+            })}
+            autoCapitalize="none"
+            autoComplete="off"
+            required
+          />
+          <Text {...TYPE.caption}>
+            {t(erase ? 'operator.deleteClientTouch' : 'operator.rootTouch')}
+          </Text>
+          <ActionRow>
+            <ActionButton meaning={erase ? 'danger' : 'main'} submit>
+              {t(erase ? 'operator.deleteClientMake' : 'operator.rootSet')}
+            </ActionButton>
+            <ActionButton meaning="other" to="/operator/clients">
+              {t('operator.back')}
+            </ActionButton>
+          </ActionRow>
+        </Stack>
+      </Panel>
+    </Stack>
+  );
+}
+
+/** The confirm page after the act: the success, the made value read-only in its field with the copy button at its right, and the way back. */
+function ConfirmMade() {
+  const { t } = useTranslation();
+  return (
+    <Stack p="md" gap="lg">
+      <PageHeader title={t('operator.rootMadeTitle')} />
+      <FormMessage kind="success">{t('operator.rootMadeIntro')}</FormMessage>
+      <Panel>
+        <CopyText
+          value={MADE_PASSWORD}
+          label={t('operator.copy')}
+          about={t('operator.rootMadePassword')}
+          field={t('operator.rootMadePassword')}
+        />
+      </Panel>
+      <ActionRow>
+        <ActionButton meaning="main" to="/operator/clients">
+          {t('operator.back')}
+        </ActionButton>
+      </ActionRow>
+    </Stack>
+  );
+}
+
+/** The confirm page's three states: a delete, a change, and made. */
+export const ConfirmPageStates = [
+  { name: 'A delete', node: <Confirm erase /> },
+  { name: 'A change', node: <Confirm erase={false} /> },
+  { name: 'Made', node: <ConfirmMade /> },
+];
+
+/** The settings page as the company's own draws it: titled blocks, the logo from the photos with its choose and remove, the colour from a palette, the languages; `saved` says so above the blocks, `refused` says why above them and under the logo. */
+function SettingsPage({ state }: { state: 'basics' | 'saved' | 'refused' }) {
+  const { t } = useTranslation();
+  const words = SAMPLES[useLanguage()];
+  return (
+    <Stack p="md" gap="lg">
+      <div>
+        <PageHeader title={t('settings.title')} />
+        <Text c="dimmed">{t('settings.intro')}</Text>
+      </div>
+      {state === 'saved' && <FormMessage kind="saved">{t('settings.saved')}</FormMessage>}
+      {state === 'refused' && <FormMessage kind="error">{t('settings.saveRefused')}</FormMessage>}
+      <SectionCard icon={<IconBuilding size={14} />} title={t('settings.basics')}>
+        <Stack gap="lg">
+          <FieldPair>
+            <TextInput label={t('settings.name')} required defaultValue={words.shop} />
+            <Stack gap={6}>
+              <Text size="sm" fw={WEIGHTS.label}>
+                {t('settings.logo')}
+              </Text>
+              <Group>
+                <Image src={PICTURE} alt="" h={48} w={48} fit="contain" />
+                <ActionButton meaning="other">{t('settings.logoChoose')}</ActionButton>
+                <ActionButton meaning="quiet">{t('settings.logoRemove')}</ActionButton>
+              </Group>
+              {state === 'refused' && (
+                <FormMessage kind="error">
+                  {t('settings.logoTooLarge', { max: MAX_LOGO_BYTES / 1024 })}
+                </FormMessage>
+              )}
+            </Stack>
+          </FieldPair>
+          <Radio.Group label={t('settings.palette')} defaultValue={PALETTES[0].name}>
+            <Group mt="xs" gap="lg">
+              {PALETTES.map((palette) => (
+                <Radio
+                  key={palette.name}
+                  value={palette.name}
+                  label={t(`settings.palettes.${palette.name}`)}
+                />
+              ))}
+            </Group>
+          </Radio.Group>
+          <FieldPair>
+            <Stack gap="md">
+              <ColorInput
+                label={t('settings.colour')}
+                format="hex"
+                withEyeDropper={false}
+                defaultValue={PALETTES[0].shades[7]}
+              />
+              <Switch label={t('settings.whiteHeader')} />
+              <Switch label={t('settings.menuIcons')} defaultChecked />
+            </Stack>
+            <Checkbox.Group label={t('settings.languages')} defaultValue={['vi', 'en']}>
+              <Group mt="xs">
+                <Checkbox value="vi" label={LANGUAGE_NAMES.vi} />
+                <Checkbox value="en" label={LANGUAGE_NAMES.en} />
+              </Group>
+            </Checkbox.Group>
+          </FieldPair>
+          <NativeSelect
+            label={t('settings.defaultLanguage')}
+            data={[LANGUAGE_NAMES.vi, LANGUAGE_NAMES.en]}
+          />
+        </Stack>
+      </SectionCard>
+      <ActionButton meaning="main" submit>
+        {t('settings.save')}
+      </ActionButton>
+    </Stack>
+  );
+}
+
+/** The settings page's three states: the basics, saved, and refused. */
+export const SettingsPageStates = [
+  { name: 'The basics', node: <SettingsPage state="basics" /> },
+  { name: 'Saved', node: <SettingsPage state="saved" /> },
+  { name: 'Refused', node: <SettingsPage state="refused" /> },
 ];

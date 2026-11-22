@@ -35,10 +35,13 @@ import { FieldStates } from './Fields';
 import { SAMPLES, useLanguage } from './samples';
 import { OnTheBrand, OnTheLinks } from './OnTheBrand';
 import {
+  ConfirmPageStates,
+  SettingsPageStates,
   DaySheetStates,
   FormPageStates,
   ImportPageStates,
   ListPageStates,
+  MenuPageStates,
   PhonePageStates,
 } from './Pages';
 import {
@@ -390,9 +393,9 @@ export const ENTRIES: Entry[] = [
     name: 'Fields',
     kind: 'Mantine’s own',
     description:
-      'Mantine’s own fields as the theme dresses them: text, password, number, long text, drop-down and file, each with a label and a hint, with an error and read-only, and the staff list’s filter bar of a search and three drop-downs.',
+      'Mantine’s own fields as the theme dresses them: text, password, number, long text, drop-down, file and colour, each with a label and a hint, with an error and read-only, and the staff list’s filter bar of a search and three drop-downs.',
     props:
-      'TextInput · PasswordInput · NumberInput · Textarea · NativeSelect · type="file" · label · description · error · readOnly',
+      'TextInput · PasswordInput · NumberInput · Textarea · NativeSelect · type="file" · ColorInput · label · description · error · readOnly',
     useWhen: [
       'A person types or picks one value: a name, a password, an amount, a note or one of a list.',
       'A list narrows by a search and drop-downs: the filter bar.',
@@ -692,6 +695,77 @@ export const ENTRIES: Entry[] = [
       'A row’s result by its meaning, never a colour’s name.',
     ],
     states: ImportPageStates,
+  },
+  {
+    group: 'Pages',
+    kind: KIND_OF_PAGE,
+    name: 'The menu page',
+    description:
+      'The page of rows a phone opens from its bar’s last place, drawn from parts only at the phone’s width: the pages the bar leaves out first, then the person’s own links and sign-out last, each a row in a panel.',
+    props: 'PageHeader · Panel · MenuRow',
+    useWhen: [
+      'You are about to build the page a phone’s bar opens for what it has no room for.',
+      'You need a page whose whole content is a few places to go and one act.',
+    ],
+    dontUseWhen: [
+      'A page that lists the records already held: that is the list page’s.',
+      'The menu beside a wide page: that is the frame’s, not a page.',
+    ],
+    instead: 'The list page',
+    mustHave: [
+      'The phone’s width.',
+      'The pages first, the person’s links and sign-out last.',
+      'Each place or act a MenuRow.',
+    ],
+    states: MenuPageStates,
+  },
+  {
+    group: 'Pages',
+    kind: KIND_OF_PAGE,
+    name: 'The confirm page',
+    description:
+      'The page that asks before an act that changes a company for good, drawn from parts only: what will happen first, a standing warning at a delete, the code to type, the last press, and once made, the new value read-only beside its copy button.',
+    props: 'PageHeader · FormMessage · Panel · TextInput · ActionRow · ActionButton · CopyText',
+    useWhen: [
+      'You are about to build the page that asks before a delete, a move or a new password.',
+      'You need a page that hands back a made value once and never again.',
+    ],
+    dontUseWhen: [
+      'A question that fits in a line over the page it came from: that is a dialog, which this app does not use for acts.',
+      'A form that only saves what was typed: that is the form page’s.',
+    ],
+    instead: 'The form page',
+    mustHave: [
+      'What will happen first, and a standing warning where it cannot be undone.',
+      'One thing to type where the act cannot be undone.',
+      'Red only on a delete’s last press.',
+      'A made value read-only beside its copy button.',
+    ],
+    states: ConfirmPageStates,
+  },
+  {
+    group: 'Pages',
+    kind: KIND_OF_PAGE,
+    name: 'The settings page',
+    description:
+      'The page where a company sets its name, logo, colour and languages, drawn from parts only: titled blocks of fields and choices, a save that stays on the page and says saved, and a refusal said through a message, the logo’s too.',
+    props:
+      'PageHeader · SectionCard · TextInput · ColorInput · Radio.Group · Switch · Checkbox.Group · NativeSelect · FormMessage · ActionButton',
+    useWhen: [
+      'You are about to build a page that edits one record in place and stays on it after the save.',
+      'You need a field that takes a picture, with its refusal under it.',
+    ],
+    dontUseWhen: [
+      'A form that makes a new record and then shows what was made: that is the form page’s.',
+      'A page that asks before an act that cannot be undone: that is the confirm page’s.',
+    ],
+    instead: 'The form page',
+    mustHave: [
+      'Fields in titled blocks.',
+      'The save stays on the page and says saved.',
+      'A refusal through a message, the logo’s too.',
+    ],
+    states: SettingsPageStates,
   },
   {
     group: 'Atoms',

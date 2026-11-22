@@ -1,4 +1,5 @@
 import {
+  ColorInput,
   Group,
   NativeSelect,
   NumberInput,
@@ -10,6 +11,7 @@ import {
 import { IconSearch } from '@tabler/icons-react';
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+import { PALETTES } from './palettes';
 import { SAMPLES, useLanguage } from './samples';
 
 /** One kind of field, drawn three ways under its label: with a hint, with an error, and read-only. */
@@ -27,7 +29,7 @@ function threeWays(
   );
 }
 
-/** The six kinds of field, worded by the dictionary where a screen says it, and the staff list's filter bar. */
+/** The seven kinds of field, worded by the dictionary where a screen says it, and the staff list's filter bar. */
 export const FieldStates: { name: string; node: ReactNode }[] = [
   { name: 'Text', node: <TextField /> },
   { name: 'Password', node: <PasswordField /> },
@@ -35,6 +37,7 @@ export const FieldStates: { name: string; node: ReactNode }[] = [
   { name: 'Long text', node: <LongTextField /> },
   { name: 'Drop-down', node: <DropDownField /> },
   { name: 'File', node: <FileField /> },
+  { name: 'Colour', node: <ColourField /> },
   { name: 'Filter bar', node: <FilterBar /> },
 ];
 
@@ -106,6 +109,25 @@ function FileField() {
     (extra) => <TextInput type="file" accept=".xlsx" label={t('import.file')} {...extra} />,
     t('import.fileHint'),
     t('import.unreadable'),
+  );
+}
+
+/** A colour field: the settings page's brand colour, a palette's shade as its value, its rule as the hint and its refusal as the error. */
+function ColourField() {
+  const { t } = useTranslation();
+  const words = SAMPLES[useLanguage()];
+  return threeWays(
+    (extra) => (
+      <ColorInput
+        label={t('settings.colour')}
+        format="hex"
+        withEyeDropper={false}
+        defaultValue={PALETTES[0].shades[7]}
+        {...extra}
+      />
+    ),
+    words.colourHint,
+    words.colourError,
   );
 }
 
