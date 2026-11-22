@@ -154,13 +154,14 @@ You should see a green line, spanning the width of the form, saying the settings
 Open the walks page (the link your orchestrator gives you after the walks run). You need a PC. Open these screens, each at its desktop width, and look only at the buttons:
 
 1. The operator's clients list ("op-5-dashboard"): the "add" button above the table is the one filled button; the three buttons in each row ("root password", "move", "delete") are the plain look, and the delete one is no longer red.
-2. The new client ("op-2-new-client") and the colleague's name page ("tm-2-name"): the make button is the one filled button, the back link beside it is plain.
+2. The new client ("op-2-new-client") and the colleague's name page ("tm-2-name"): the make button is the one filled button; on the colleague's page the back link beside it is plain (the new client's page has no back link).
 3. The delete-a-client page ("dc-1-page"): the delete is the only red button, and it is red and filled; nothing else on the page is red.
 4. The services page ("sv-1-all-well"): the check-now button is plain, not filled, since the page checks by itself every minute.
-5. A client's person page ("staff-4-person"): the record's save is the one filled button. In the live app, press lock on the same page: while its confirm shows, the page draws two filled buttons (the save and the confirm), the one page that does.
-6. Any other screen you wish: every button is one size, as wide as its words.
+5. A client's person page ("staff-4-person"): the record's save is the one filled button. Then "staff-7-archive", where the lock confirm is open: the page draws two filled buttons, the save ("Save changes") and the confirm ("Lock account for ..."). A saved draft order draws two as well ("orders-13-moved-price": its save is filled, and the confirm's send is filled too once a driver is picked, here grey only for want of one). Landing 3 is in no live app yet, so these pictures are the only place to see it.
+6. Any other screen you wish: every button is one size, as wide as its words, except the three sign-in doors ("op-1-sign-in" and the two other sign-in screens), which are larger and span their column (item 651).
+7. Acts whose look changed, for your yes to cover: the order's finalize-day confirm ("reconcile-4-check") and the lock confirm ("staff-7-archive") went from red to the filled main look; the order line's remove ("orders-13-moved-price") is no longer red; the order's and the request's cancel confirm ("Yes, cancel order") went from red to plain, and the move's stop is no longer red: both show only once asked, which no picture shows; the driver's two phone buttons ("driver-2-request", "driver-3-photo", at phone width) went from large to small.
 
-You should see one filled button a page (red only at a delete's last step), all other buttons in the plain look, quiet ones as plain text, every button the same size.
+You should see mostly one filled button a page (red only at a delete's last step, and two together in the cases above), all other buttons in the plain look, quiet ones as plain text, every button the same size (the sign-in doors apart).
 
 **Question: does each page show its next step as its one filled button?** Say yes or no; with a no, name the screen and the button.
 

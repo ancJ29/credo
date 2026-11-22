@@ -11,7 +11,7 @@ flowchart LR
 
 - **Landing 1, the dialog's title at 600**: the "sign-in ended" dialog of the passkeys screen draws its title at the guideline's emphasis weight, 600, not 550. Only that screen moves, six pictures. Item 647's last half is fixed.
 - **Landing 2, the messages**: every message under a form or an act is drawn by one part, in its kind's colour and spoken role, spanning its column (the three page states and the logo refusal stay). Seven screens moved, three lines from red or yellow to orange. You said yes to the seven messages.
-- **Landing 3, the buttons**: every button is drawn by its meaning, one size, as wide as its words; a page's next step is its one filled button, red only at a delete's last step, and the rest plain or quiet. The person page draws two main actions while its lock confirm is open: we ask you whether that is right.
+- **Landing 3, the buttons**: every button is drawn by its meaning, one size but the sign-in doors; a page's next step is its one filled button, red only at a delete's last step, and the rest plain or quiet. The person page, lock confirm open, and a draft order draw two main actions: we ask you whether that is right.
 - **Landings 4 to 7**: <!-- FILL: each landing's change for a user, when it lands -->
 
 ## What was proved

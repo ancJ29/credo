@@ -423,7 +423,7 @@ export const GUIDELINE: {
         {
           prop: 'children',
           is: 'content',
-          line: 'Its words, and until the other six sites that hold an act inside them move (item 658) an act beside them.',
+          line: 'Its words; one site still passes words and a read-only field (item 658).',
         },
       ],
       decides: [
@@ -563,7 +563,7 @@ export const GUIDELINE: {
         'Its look from its meaning: the main action filled in the client’s colour, another the default look, a quiet one subtle, a danger red filled.',
         'Its size: Mantine’s small, one size for every button.',
         'Its width: its words’ own, even in a column that stretches (and its place in a row unmoved), so no screen needs a wrapper or an `alignSelf` for it.',
-        'Its place is its column’s, not its own: a page has one main action and a danger is only a delete’s last step, which the part cannot count and the check that reads the screens (case 7 of the screens-on-parts plan) holds.',
+        'Its place is its column’s, not its own: a page has one main action and a danger is only a delete’s last step, which the part cannot count; case 7 of the screens-on-parts plan holds one main a page file, and the rest, a danger’s place and a part drawn on a page, is the review’s, as the rule says.',
       ],
       states: [
         { name: 'Main', look: 'filled', line: 'The page’s one main action.' },
