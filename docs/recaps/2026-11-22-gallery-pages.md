@@ -20,8 +20,8 @@ flowchart LR
 
 - Each step's gate on its own tree read green, `visual`'s pinned file unchanged, each new guard seen red once by a mutation.
 - Landing 1's whole check on `pre-merge`, run 2026-11-22 from 23:39 to 23:49, exited 0 and read green.
-- Landing 2's whole check on `pre-merge`, run 2026-11-23 from 00:51 to 00:56, exited 0 and read green: the `ui` and `visual` gates and the `scripts` tests, coverage at 100%.
-- Items 667 (lists scroll sideways) and 668 (the call link under 36 px) stay open for your look.
+- Landing 2's checks on `pre-merge`, run 2026-11-23 from 00:51 to 00:56, exited 0 and read green: the `ui` and `visual` gates and the `scripts` citation, counts, words and fake tests.
+- Item 667 (lists scroll sideways) stays open for the screens' move, now that cards are the rule. Item 668 (the call link under 36 px) stays open, deferred: its trigger, the next change to `MyDeliveryPage.tsx`, has not come, and the piece did not touch that file.
 
 ## What is left
 
