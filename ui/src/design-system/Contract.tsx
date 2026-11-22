@@ -1,4 +1,5 @@
-import { Stack, Table, Text } from '@mantine/core';
+import { Anchor, Stack, Table, Text } from '@mantine/core';
+import { Link } from 'react-router';
 import { useTranslation } from 'react-i18next';
 import type { ReactNode } from 'react';
 import { GUIDELINE, type Contract, type PartState } from './guideline';
@@ -6,9 +7,11 @@ import { followedWords, heldWords } from './Charter';
 import classes from './Gallery.module.css';
 import { ActionButton } from '../components/atoms/ActionButton';
 import { ActionRow } from '../components/molecules/ActionRow';
+import { DataTable } from '../components/molecules/DataTable';
 import { FormMessage } from '../components/molecules/FormMessage';
 import { TableScroll } from '../components/molecules/TableScroll';
 import { PageState } from '../components/organisms/PageState';
+import { priceOf } from '../number';
 import { SAMPLES, useLanguage } from './samples';
 
 /** The contract of a part, by the name of its entry. */
@@ -197,3 +200,52 @@ function TableScrollSample() {
 }
 
 export const TableScrollStates = platesOf('TableScroll', () => <TableScrollSample />);
+
+/** A table at each of its states, drawn by the part itself: an order's lines under their total, and a list whose name opens a page. */
+function DataTableSample({ state: { name } }: { state: PartState }) {
+  const { t } = useTranslation();
+  const words = SAMPLES[useLanguage()];
+  const language = useLanguage();
+  const lines = name === 'Order lines';
+  return (
+    <Stack w={640} maw="100%">
+      {lines ? (
+        <DataTable
+          columns={[
+            { heading: t('orders.product') },
+            { heading: t('orders.quantity'), number: true },
+            { heading: t('orders.amount'), number: true },
+          ]}
+          rows={words.lines.map((line) => ({
+            key: line.name,
+            cells: [line.name, line.quantity, priceOf(line.amount, language)],
+          }))}
+          total={[
+            t('orders.total'),
+            words.lines.reduce((sum, line) => sum + line.quantity, 0),
+            priceOf(
+              words.lines.reduce((sum, line) => sum + line.amount, 0),
+              language,
+            ),
+          ]}
+        />
+      ) : (
+        <DataTable
+          columns={[{ heading: t('staff.colName') }, { heading: t('staff.colPhone') }]}
+          rows={words.people.map((person, index) => ({
+            key: person.name,
+            cells: [
+              <Anchor key="name" component={Link} to={`/customers/${index + 1}`}>
+                {person.name}
+              </Anchor>,
+              person.phone,
+            ],
+          }))}
+        />
+      )}
+    </Stack>
+  );
+}
+
+/** A table with a total line, and one whose name opens a page. */
+export const DataTableStates = platesOf('DataTable', (state) => <DataTableSample state={state} />);

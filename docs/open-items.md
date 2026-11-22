@@ -1823,6 +1823,8 @@ The dialog's entry (`Modal.extend`) in `ui/src/design-system/appTheme.ts` carrie
 
 **Half done (design system, the fix pass of landing 3, 2026-11-17).** The dialog header's padding half is done at step 12: the legacy's `var(--mantine-spacing-sm) var(--mantine-spacing-md)` is `TOKENS.dialogHeader` in `ui/src/design-system/tokens.ts`, read by the dialog's entry in `ui/src/design-system/appTheme.ts` and held in `ui/src/design-system/appTheme.test.tsx`. The gallery half is still open: the gallery draws no dialog and no table row.
 
+**Table half done (gallery parts, step 4, 2026-11-22).** The gallery draws a table and its rows under the pointer: the entry `DataTable` (`ui/src/components/molecules/DataTable.tsx`), whose rows light at the theme's colour and whose test (`DataTable.test.tsx`) holds it. *Still open:* the dialog, which step 10 draws; the item closes there.
+
 ## 509. A company too large to be compared in one press cannot switch from the page — the machine; `[DEFERRED]` (the move's plan, 2026-11-16, Low)
 
 `compareCompany` (`bff/src/records/company-copy.ts`) walks the whole company on both boxes in one press, inside the function's 10 seconds (`bff/src/records/company-move.ts`'s `pressMove`). No copy rate was measured, so the size at which a compare passes the limit is unknown; past it every press ends in a failure after its copy is done and the move can only be stopped. Fix: a compare in presses, kept from a key on the line as the copy's is. *Trigger:* a move press near 10 seconds in the ridge sitting, or a company whose records pass the figure that sitting reads.

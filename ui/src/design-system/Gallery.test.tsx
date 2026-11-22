@@ -302,6 +302,25 @@ describe('Gallery', () => {
     }
   });
 
+  it('231 case 6: DataTable draws an order’s lines under a bold total and a list whose names are links, in the picked language', () => {
+    open(`${BASE}/molecules/data-table`);
+
+    expect(stateNames()).toEqual(['Order lines', 'A list']);
+    const { vi } = DICTIONARIES;
+    const lines = within(part().getByRole('figure', { name: 'Order lines' }));
+    for (const heading of [vi.orders.product, vi.orders.quantity, vi.orders.amount]) {
+      expect(lines.getByRole('columnheader', { name: heading }), heading).toBeDefined();
+    }
+    const total = lines.getByRole('cell', { name: vi.orders.total }).closest('tr')!;
+    expect(total.closest('tfoot')).not.toBeNull();
+    expect(lines.getByRole('cell', { name: SAMPLES.vi.lines[0].name })).toBeDefined();
+    const list = within(part().getByRole('figure', { name: 'A list' }));
+    expect(list.getAllByRole('link').map((link) => link.textContent)).toEqual(
+      SAMPLES.vi.people.map((person) => person.name),
+    );
+    expect(list.queryByRole('cell', { name: vi.orders.total })).toBeNull();
+  });
+
   it('11: draws the door card in two states, the sign-in and the link page, in sentence case', () => {
     open(`${BASE}/organisms/door-card`);
 
@@ -990,7 +1009,7 @@ describe('Gallery', () => {
   });
 
   it('213 case 1: every entry carries one to three use lines and one to three don’t-use lines', () => {
-    expect(ENTRIES).toHaveLength(26);
+    expect(ENTRIES).toHaveLength(27);
     for (const entry of ENTRIES) {
       for (const lines of [entry.useWhen, entry.dontUseWhen]) {
         expect(lines.length, entry.name).toBeGreaterThanOrEqual(1);
@@ -1318,7 +1337,7 @@ describe('Gallery', () => {
         entry.name !== 'The page base',
     );
     // A set that found nothing would quiet the loop.
-    expect(parts.length).toBe(20);
+    expect(parts.length).toBe(21);
     expect(GUIDELINE.contracts.map((contract) => contract.part).sort()).toEqual(
       parts.map((entry) => entry.name).sort(),
     );
@@ -1342,5 +1361,8 @@ describe('Gallery', () => {
     expect(words('DoorCard')).toContain('SignInFrame');
     expect(words('DetailField')).toContain('FieldPair');
     expect(words('FieldPair')).toContain('DetailField');
+    // The table of ours and the kind's list each name the other.
+    expect(words('DataTable')).toContain('ListTable');
+    expect(words('ListTable')).toContain('DataTable');
   });
 });

@@ -17,6 +17,7 @@ export const SAMPLES: Record<
     person: string;
     phone: string;
     people: readonly { name: string; phone: string }[];
+    lines: readonly { name: string; quantity: number; amount: number }[];
     staffMember: string;
     actions: string;
     changesKept: string;
@@ -58,6 +59,11 @@ export const SAMPLES: Record<
       { name: 'An Nguyen', phone: '0901 234 567' },
       { name: 'Binh Tran', phone: '0902 345 678' },
       { name: 'Chi Le', phone: '0903 456 789' },
+    ],
+    lines: [
+      { name: 'Sticky rice', quantity: 12, amount: 480000 },
+      { name: 'Fish sauce', quantity: 6, amount: 270000 },
+      { name: 'Jasmine tea', quantity: 3, amount: 195000 },
     ],
     staffMember: 'Staff member',
     actions: 'Actions',
@@ -107,6 +113,11 @@ export const SAMPLES: Record<
       { name: 'Nguyễn Văn An', phone: '0901 234 567' },
       { name: 'Trần Thị Bình', phone: '0902 345 678' },
       { name: 'Lê Minh Chi', phone: '0903 456 789' },
+    ],
+    lines: [
+      { name: 'Gạo nếp', quantity: 12, amount: 480000 },
+      { name: 'Nước mắm', quantity: 6, amount: 270000 },
+      { name: 'Trà nhài', quantity: 3, amount: 195000 },
     ],
     staffMember: 'Nhân viên',
     actions: 'Thao tác',

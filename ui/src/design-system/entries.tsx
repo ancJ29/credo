@@ -32,6 +32,7 @@ import { OnTheBrand, OnTheLinks } from './OnTheBrand';
 import {
   ActionButtonStates,
   ActionRowStates,
+  DataTableStates,
   FormMessageStates,
   PageStateStates,
   TableScrollStates,
@@ -450,7 +451,10 @@ export const ENTRIES: Entry[] = [
       'A kind’s records as a table: its headings, a row each, the name linking to the record, the price at the right.',
     props: 'kind: customers | products · shown: ColumnKey[] · rows: Shown[] · language',
     useWhen: ['A page lists the records of a kind, one row each.'],
-    dontUseWhen: ['A few facts about one record: that is DetailField’s.'],
+    dontUseWhen: [
+      'A few facts about one record: that is DetailField’s.',
+      'Any other table, with a total line or a column of numbers: that is DataTable’s.',
+    ],
     instead: 'DetailField',
     states: ListTableStates,
   },
@@ -594,6 +598,23 @@ export const ENTRIES: Entry[] = [
     ],
     instead: 'ListTable',
     states: TableScrollStates,
+  },
+  {
+    group: 'Molecules',
+    name: 'DataTable',
+    kind: 'Lists',
+    description:
+      'A table of rows under headings, in a scrolling frame: numbers at the right, an optional total line in bold, every row lit under the pointer. It takes its words as props.',
+    props: 'columns: Column[] · rows: Row[] · total?: ReactNode[]',
+    useWhen: [
+      'A page draws a table of its own: an order’s lines with their total, or a list whose name opens a page.',
+    ],
+    dontUseWhen: [
+      'A kind’s list of customers or products: that is ListTable’s, which picks its own columns.',
+      'A few facts about one record: that is DetailField’s.',
+    ],
+    instead: 'ListTable',
+    states: DataTableStates,
   },
   {
     group: 'Molecules',

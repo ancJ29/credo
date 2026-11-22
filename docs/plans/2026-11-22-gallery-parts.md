@@ -175,11 +175,22 @@ part and its importers 14 (222's step 7), five entries 14 (213's step 10), a rec
       them and from `samples.ts` where none does. Case 5 red once each for the read-only face dropped,
       the error dropped and the filter bar's position drop-down dropped, green with none; the `ui` gate
       exits 0 on this tree.
-- [ ] **4. The table.** `DataTable` in `components/molecules/`: takes columns (each a heading, and
+- [x] **4. The table.** `DataTable` in `components/molecules/`: takes columns (each a heading, and
       whether it holds a number: a meaning), rows and a total (content); decides a number's side, the
       total line at `WEIGHTS.emphasis`, every row lit under the pointer at the theme's colour, drawn
       in `TableScroll`. Its entry (an order's lines with a total; a list whose name opens a page) and
       contract. Cases 6, 13, 14. _Done when:_ the gates exit 0. **12 min**.
+      _Evidence:_ `components/molecules/DataTable.tsx` takes columns (a heading, and whether it holds a
+      number), rows (a cell for each column, a name that opens a page being a link) and a total; it sets
+      a number column's heading, cells and total at the right, the total line at `WEIGHTS.emphasis`,
+      every row lit under the pointer at the theme's colour, all in `TableScroll`. Its entry
+      sits among the molecules with two states, an order's lines with a total and a list whose names
+      open a page, its words read by key where a screen says them and from `samples.ts` where none does;
+      its contract's takes are a meaning and two contents, and `DataTable` and `ListTable` name each
+      other. Case 6 red once each for the heading's side, the body cells' side, the total cells' side,
+      the total's weight, the rows' lighting and the frame, a link cell's navigation red once; case 13
+      red once each for an entry without its contract and a take that is a style; case 14 red once each
+      for either entry not naming the other, green with none; the `ui` gate exits 0 on this tree.
 - [ ] **5. The panel.** `Panel` in `components/organisms/`: takes a title and what it holds (content);
       decides its edge (`ROLES.border`), its padding and gap (`SPACING.md`), the title a level-3
       heading, none where none is given. Its entry and contract; `SectionCard`'s "Content with no
