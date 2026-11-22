@@ -316,7 +316,7 @@ export const ENTRIES: Entry[] = [
     description:
       'The shell of a page: a way back above, its heading with the record’s status chip and what acts on it beside, then its body, drawn only when its data is ready.',
     props:
-      "title: string · actions?: ReactNode · status: 'loading' | 'failed' | 'ready' · onRetry?: () => void · back?: { href: string; children: string } · recordStatus?: Status · children: ReactNode",
+      "title: string · actions?: ReactNode · status: 'loading' | 'failed' | 'ready' · onRetry?: () => void · back?: { href: string; children: string } · recordStatus?: Status · subtitle?: string · children: ReactNode",
     useWhen: ['A signed-in page loads its data and shows it under its title.'],
     dontUseWhen: [
       'A page before sign-in: that is DoorCard’s.',
@@ -660,8 +660,9 @@ export const ENTRIES: Entry[] = [
     group: 'Organisms',
     name: 'PageHeader',
     kind: 'Headers',
-    description: "A page's heading, with what acts on the page beside it. No phone variant.",
-    props: 'title: string · actions?: ReactNode',
+    description:
+      "A page's heading, with what acts on the page beside it. A record's status is a chip beside the title, and a subtitle the line under it, dimmed and close to it. No phone variant.",
+    props: 'title: string · actions?: ReactNode · status?: Status · subtitle?: string',
     useWhen: ['A page opens with its title, and the actions that act on the whole page beside it.'],
     dontUseWhen: [
       "A section inside the page: that is SectionTitle's.",
@@ -682,6 +683,14 @@ export const ENTRIES: Entry[] = [
         node: (
           <Stack w={640} maw="100%">
             <PageHeader title="Staff" />
+          </Stack>
+        ),
+      },
+      {
+        name: 'With status and subtitle',
+        node: (
+          <Stack w={640} maw="100%">
+            <PageHeader title="Nguyen Van A" status="inactive" subtitle="NV-001" />
           </Stack>
         ),
       },

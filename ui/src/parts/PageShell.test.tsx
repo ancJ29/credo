@@ -29,6 +29,16 @@ describe('PageShell', () => {
     expect(screen.getByText('Body')).toBeDefined();
   });
 
+  it('222 case 12: a subtitle sits tight under the title, not a gap below it', () => {
+    draw(
+      <PageShell title="Staff member" subtitle="NV-001" status="ready" onRetry={NO_RETRY}>
+        <p>Body</p>
+      </PageShell>,
+    );
+    const title = screen.getByRole('heading', { name: 'Staff member' });
+    expect(screen.getByText('NV-001').parentElement).toBe(title.closest('div')!.parentElement);
+  });
+
   it('222 case 12: given neither, it draws neither', () => {
     draw(
       <PageShell title="Staff" status="ready" onRetry={NO_RETRY}>

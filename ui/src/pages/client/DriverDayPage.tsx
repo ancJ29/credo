@@ -113,11 +113,11 @@ export function DriverDayPage(page: PageProps) {
       ) : (
         <PageShell
           title={t('reconcile.title', { name: driver.name })}
+          subtitle={t('orders.forDay', { day: shownDay(day, language) })}
           back={{ href: `/deliveries?day=${day}`, children: t('reconcile.back') }}
           status="ready"
           onRetry={loaded.reload}
         >
-          <Text>{t('orders.forDay', { day: shownDay(day, language) })}</Text>
           {outcome === 'closed' && (
             <FormMessage kind="success">{t('reconcile.closedNow')}</FormMessage>
           )}

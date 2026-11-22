@@ -667,6 +667,11 @@ export const GUIDELINE: {
           is: 'meaning',
           line: 'The status of the record the page shows (an order’s, a request’s or a person’s); none draws none.',
         },
+        {
+          prop: 'subtitle',
+          is: 'content',
+          line: 'The line under the title (a code, a day, an intro); none draws none.',
+        },
         { prop: 'children', is: 'content', line: 'The page’s body, drawn when its data is ready.' },
       ],
       decides: [
@@ -677,8 +682,8 @@ export const GUIDELINE: {
         },
       ],
       fixes: [
-        'The header row’s order: the title first, what acts on the page beside it.',
-        'Where the way back sits: above the title, drawn by `BackLink`; and the record’s status: beside the title, drawn by `StatusBadge`.',
+        'The heading: drawn by `PageHeader` on every page, the title first, what acts on the page beside it; the shell writes no title of its own.',
+        'Where the way back sits: above the title, drawn by `BackLink`; the record’s status: beside the title, and the subtitle: under it, close, both drawn by `PageHeader`.',
         'Where a failed or loading state sits: in the place of the body, under the header row.',
         'Given no `back` and no `recordStatus`, it draws neither; the screens draw their own back links and chips until open item 651 moves them.',
       ],
@@ -700,12 +705,35 @@ export const GUIDELINE: {
       takes: [
         { prop: 'title', is: 'content', line: 'The page’s title.' },
         { prop: 'actions', is: 'content', line: 'What acts on the whole page, beside its title.' },
+        {
+          prop: 'status',
+          is: 'meaning',
+          line: 'The status of the record the page shows, a chip beside the title; none draws none.',
+        },
+        {
+          prop: 'subtitle',
+          is: 'content',
+          line: 'The line under the title (a code, a day, an intro), dimmed; none draws none.',
+        },
       ],
-      decides: [{ what: 'The title’s style.', from: [{ table: 'TYPE', key: 'pageTitle' }] }],
-      fixes: ['Its alignment: the title at the start, the actions at the end, on one line.'],
+      decides: [
+        { what: 'The title’s style.', from: [{ table: 'TYPE', key: 'pageTitle' }] },
+        {
+          what: 'The gap between the title and its subtitle, and between the title and its chip.',
+          from: [{ table: 'SPACING', key: 'xs' }],
+        },
+      ],
+      fixes: [
+        'Its alignment: the title at the start, the actions at the end, on one line.',
+        'The chip beside the title, drawn by `StatusBadge`, and the subtitle under it, dimmed: one way on every page.',
+      ],
       states: [
         { name: 'With actions', line: 'The title, and the page’s actions beside it.' },
         { name: 'Title only', line: 'The title alone.' },
+        {
+          name: 'With status and subtitle',
+          line: 'The title with the record’s chip, its line under it.',
+        },
       ],
       serves: 'A screen picks parts, never a style',
       heldBy: { check: 'ui/src/design-system/guideline.test.ts' },

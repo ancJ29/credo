@@ -1,5 +1,5 @@
 import { type CustomerDoc, can, type ProductDoc, type SaveProductRequest } from '@credo/shared';
-import { Stack, Text } from '@mantine/core';
+import { Stack } from '@mantine/core';
 import { PageState } from '../../components/organisms/PageState';
 import { type ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -133,8 +133,13 @@ function Record<D extends { version: string }, V>({
   return (
     <Loaded status={loaded.status} onRetry={loaded.reload}>
       {doc ? (
-        <PageShell title={spec.head(doc).name} back={back} status="ready" onRetry={loaded.reload}>
-          <Text c="dimmed">{spec.head(doc).code}</Text>
+        <PageShell
+          title={spec.head(doc).name}
+          subtitle={spec.head(doc).code}
+          back={back}
+          status="ready"
+          onRetry={loaded.reload}
+        >
           {outcome === 'saved' && (
             <FormMessage kind="saved">{t(`lists.${kind}.saved`)}</FormMessage>
           )}

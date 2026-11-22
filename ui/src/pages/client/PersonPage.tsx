@@ -400,9 +400,9 @@ function PersonForm({
         children: t('staff.back'),
       }}
       recordStatus={employee.archived ? 'inactive' : undefined}
+      subtitle={employee.code}
       status="ready"
     >
-      <Text c="dimmed">{employee.code}</Text>
       {employee.archived && (
         <FormMessage kind="info" standing>
           {t('person.archived')}

@@ -218,7 +218,7 @@ describe('Gallery', () => {
 
     await user.click(screen.getByRole('button', { name: 'One at a time' }));
     await user.click(list().getByRole('link', { name: 'PageHeader' }));
-    expect(stateNames()).toEqual(['With actions', 'Title only']);
+    expect(stateNames()).toEqual(['With actions', 'Title only', 'With status and subtitle']);
 
     await user.click(list().getByRole('link', { name: 'FieldLabel' }));
     expect(screen.queryByRole('button', { name: 'One at a time' })).toBeNull();

@@ -4,7 +4,6 @@ import {
   type CustomerDoc,
   type ProductDoc,
 } from '@credo/shared';
-import { Text } from '@mantine/core';
 import { type ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
@@ -116,9 +115,9 @@ function Add<V>({ kind, spec, page }: { kind: ListKind; spec: Spec<V>; page: Pag
     <PageShell
       title={t(`lists.${kind}.newTitle`)}
       back={{ href: `/${kind}`, children: t(`lists.${kind}.back`) }}
+      subtitle={t(`lists.${kind}.newIntro`)}
       status="ready"
     >
-      <Text c="dimmed">{t(`lists.${kind}.newIntro`)}</Text>
       {outcome === 'taken' && (
         <FormMessage kind="warning">{t(`lists.${kind}.codeTaken`)}</FormMessage>
       )}
