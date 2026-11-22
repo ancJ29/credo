@@ -70,6 +70,49 @@ function Part({ entry, picker }: { entry: Entry; picker: ReactNode }) {
         ))}
       </div>
       <aside className={classes.side} aria-label="About this part">
+        <div className={classes.controls}>
+          {entry.states.length > 1 && (
+            <section className={classes.sideSection}>
+              <h3 className={classes.sideHead}>Show</h3>
+              <Button.Group>
+                <Button
+                  size="xs"
+                  fullWidth
+                  variant={alone ? 'default' : 'filled'}
+                  aria-pressed={!alone}
+                  onClick={() => setAlone(false)}
+                >
+                  Side by side
+                </Button>
+                <Button
+                  size="xs"
+                  fullWidth
+                  variant={alone ? 'filled' : 'default'}
+                  aria-pressed={alone}
+                  onClick={() => setAlone(true)}
+                >
+                  One at a time
+                </Button>
+              </Button.Group>
+              {alone && (
+                <div className={classes.pick} role="group" aria-label="States">
+                  {entry.states.map((state, index) => (
+                    <button
+                      key={state.name}
+                      type="button"
+                      className={classes.pickOne}
+                      aria-pressed={index === at}
+                      onClick={() => setAt(index)}
+                    >
+                      {state.name}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
+          <section className={classes.sideSection}>{picker}</section>
+        </div>
         <Title order={2} fz={22} lh={1.2} mb={8}>
           {entry.name}
         </Title>
@@ -102,47 +145,6 @@ function Part({ entry, picker }: { entry: Entry; picker: ReactNode }) {
           <code className={classes.props}>{entry.props}</code>
         </section>
         {contract && <ContractPanel contract={contract} built={!entry.toCome} />}
-        {entry.states.length > 1 && (
-          <section className={classes.sideSection}>
-            <h3 className={classes.sideHead}>Show</h3>
-            <Button.Group>
-              <Button
-                size="xs"
-                fullWidth
-                variant={alone ? 'default' : 'filled'}
-                aria-pressed={!alone}
-                onClick={() => setAlone(false)}
-              >
-                Side by side
-              </Button>
-              <Button
-                size="xs"
-                fullWidth
-                variant={alone ? 'filled' : 'default'}
-                aria-pressed={alone}
-                onClick={() => setAlone(true)}
-              >
-                One at a time
-              </Button>
-            </Button.Group>
-            {alone && (
-              <div className={classes.pick} role="group" aria-label="States">
-                {entry.states.map((state, index) => (
-                  <button
-                    key={state.name}
-                    type="button"
-                    className={classes.pickOne}
-                    aria-pressed={index === at}
-                    onClick={() => setAt(index)}
-                  >
-                    {state.name}
-                  </button>
-                ))}
-              </div>
-            )}
-          </section>
-        )}
-        <section className={classes.sideSection}>{picker}</section>
       </aside>
     </article>
   );

@@ -162,6 +162,16 @@
   background: var(--mantine-color-white);
 }
 
+.controls {
+  margin-bottom: 18px;
+  border-bottom: 1px solid var(--mantine-color-gray-3);
+}
+
+.controls > :first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
 .sideSection {
   padding: 14px 0 16px;
   border-top: 1px solid var(--mantine-color-gray-3);
