@@ -96,7 +96,7 @@ describe('a new link for a colleague', () => {
     for (const id of [DEMO_OPERATOR_ID, '00000000-0000-4000-8000-000000000999']) {
       const { api, unmount } = open(id);
 
-      expect((await screen.findByRole('alert')).textContent).toBe(words.team.unknown);
+      expect((await screen.findByRole('status')).textContent).toBe(words.team.unknown);
       expect(screen.queryByRole('button', { name: words.team.linkMake })).toBeNull();
       expect(screen.getByRole('link', { name: words.team.back })).toBeTruthy();
       expect(api.newOperatorLink).not.toHaveBeenCalled();
@@ -123,7 +123,7 @@ describe('a new link for a colleague', () => {
     open(DEMO_COLLEAGUE_ID, { cue: 'newOperatorLink:404' });
     await userEvent.click(await makeButton());
 
-    expect((await screen.findByRole('alert')).textContent).toBe(words.team.unknown);
+    expect((await screen.findByRole('status')).textContent).toBe(words.team.unknown);
     expect(screen.queryByRole('button', { name: words.team.linkMake })).toBeNull();
   });
 

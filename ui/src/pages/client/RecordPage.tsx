@@ -1,17 +1,19 @@
 import { type CustomerDoc, can, type ProductDoc, type SaveProductRequest } from '@credo/shared';
-import { Alert, Button, Stack, Text, Title } from '@mantine/core';
+import { Stack } from '@mantine/core';
+import { PageState } from '../../components/organisms/PageState';
 import { type ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useParams } from 'react-router';
+import { useParams } from 'react-router';
 import { ApiError, type Api } from '../../api';
 import type { ListKind } from '../../listSheet';
 import { Loaded } from '../../frame/Loaded';
 import { type PageProps, refusal, useLoad } from '../../page';
 import { CustomerForm } from '../../parts/CustomerForm';
 import { ProductForm } from '../../parts/ProductForm';
-import { TYPE } from '../../design-system/tokens';
 import { ActionButton } from '../../components/atoms/ActionButton';
 import { FormMessage } from '../../components/molecules/FormMessage';
+import { BackLink } from '../../components/atoms/BackLink';
+import { PageShell } from '../../parts/PageShell';
 
 type Outcome = 'saved' | 'failed' | 'forbidden' | 'refused' | 'conflict' | null;
 
@@ -126,65 +128,69 @@ function Record<D extends { version: string }, V>({
     setSaving(false);
   }
 
+  const back = { href: `/${kind}`, children: t(`lists.${kind}.back`) };
+
+  // Without the record (loading, failed or not found) the way back is drawn here, above the state; with it, the shell draws it.
+  if (!doc) {
+    return (
+      <Stack gap="lg">
+        <BackLink {...back} />
+        <Loaded status={loaded.status} onRetry={loaded.reload}>
+          <PageState state="notFound">{t(`lists.${kind}.notThere`)}</PageState>
+        </Loaded>
+      </Stack>
+    );
+  }
+
   return (
-    <Stack gap="lg">
-      <Loaded status={loaded.status} onRetry={loaded.reload}>
-        {doc ? (
-          <Stack gap="xs">
-            <Title {...TYPE.pageTitle}>{spec.head(doc).name}</Title>
-            <Text c="dimmed">{spec.head(doc).code}</Text>
-          </Stack>
-        ) : (
-          <Alert color="gray" role="alert">
-            {t(`lists.${kind}.notThere`)}
-          </Alert>
+    <Loaded status={loaded.status} onRetry={loaded.reload}>
+      <PageShell
+        title={spec.head(doc).name}
+        subtitle={spec.head(doc).code}
+        back={back}
+        status="ready"
+        onRetry={loaded.reload}
+      >
+        {outcome === 'saved' && <FormMessage kind="saved">{t(`lists.${kind}.saved`)}</FormMessage>}
+        {(outcome === 'failed' || outcome === 'forbidden' || outcome === 'refused') && (
+          <FormMessage kind="error">
+            {t(
+              outcome === 'failed'
+                ? `lists.${kind}.saveFailed`
+                : outcome === 'forbidden'
+                  ? `lists.${kind}.saveForbidden`
+                  : spec.refusedWords,
+            )}
+          </FormMessage>
         )}
-      </Loaded>
-      <Button component={Link} to={`/${kind}`} variant="subtle" style={{ alignSelf: 'flex-start' }}>
-        {t(`lists.${kind}.back`)}
-      </Button>
-      {doc && outcome === 'saved' && (
-        <FormMessage kind="saved">{t(`lists.${kind}.saved`)}</FormMessage>
-      )}
-      {doc && (outcome === 'failed' || outcome === 'forbidden' || outcome === 'refused') && (
-        <FormMessage kind="error">
-          {t(
-            outcome === 'failed'
-              ? `lists.${kind}.saveFailed`
-              : outcome === 'forbidden'
-                ? `lists.${kind}.saveForbidden`
-                : spec.refusedWords,
-          )}
-        </FormMessage>
-      )}
-      {doc && outcome === 'conflict' && (
-        <FormMessage
-          kind="warning"
-          act={
-            <ActionButton
-              meaning="other"
-              onClick={() => {
-                setCurrent(null);
-                setOutcome(null);
-                setFormKey((n) => n + 1);
-                loaded.reload();
-              }}
-            >
-              {t(`lists.${kind}.conflictReload`)}
-            </ActionButton>
-          }
-        >
-          {t(`lists.${kind}.conflict`)}
-        </FormMessage>
-      )}
-      {doc &&
-        spec.form({
+        {outcome === 'conflict' && (
+          <FormMessage
+            kind="warning"
+            act={
+              <ActionButton
+                meaning="other"
+                onClick={() => {
+                  setCurrent(null);
+                  setOutcome(null);
+                  setFormKey((n) => n + 1);
+                  loaded.reload();
+                }}
+              >
+                {t(`lists.${kind}.conflictReload`)}
+              </ActionButton>
+            }
+          >
+            {t(`lists.${kind}.conflict`)}
+          </FormMessage>
+        )}
+        {spec.form({
           formKey,
           doc,
           editable: can(user, 'orders.canEdit'),
           saving,
           onSave: (values) => void save(doc, values),
         })}
-    </Stack>
+      </PageShell>
+    </Loaded>
   );
 }

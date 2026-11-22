@@ -1,8 +1,9 @@
 import { HOME_BOX, type MoveClientReply, type MoveClientRequest } from '@credo/shared';
-import { Button, Group, Paper, Stack, Text, Title } from '@mantine/core';
+import { Paper, Stack, Text } from '@mantine/core';
+import { ActionRow } from '../../components/molecules/ActionRow';
 import { type FormEvent, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate, useParams } from 'react-router';
+import { useNavigate, useParams } from 'react-router';
 import { type Api } from '../../api';
 import { Loaded } from '../../frame/Loaded';
 import { refusal, useLoad } from '../../page';
@@ -11,7 +12,9 @@ import { BoxChoice } from '../../parts/BoxChoice';
 import { touch } from '../../touch';
 import { TYPE } from '../../design-system/tokens';
 import { FormMessage } from '../../components/molecules/FormMessage';
+import { PageState } from '../../components/organisms/PageState';
 import { ActionButton } from '../../components/atoms/ActionButton';
+import { PageHeader } from '../../components/organisms/PageHeader';
 
 type Props = {
   api: Api;
@@ -125,9 +128,9 @@ export function MoveClientPage({ api, passkeys, onSignedOut, wait = sleep }: Pro
   };
 
   const back = (
-    <Button component={Link} to="/operator/clients" variant="default">
+    <ActionButton meaning="other" to="/operator/clients">
       {t('operator.back')}
-    </Button>
+    </ActionButton>
   );
 
   const progress =
@@ -146,16 +149,14 @@ export function MoveClientPage({ api, passkeys, onSignedOut, wait = sleep }: Pro
   return (
     <Loaded status={loaded.status} onRetry={loaded.reload}>
       {!client ? (
-        <Stack align="flex-start">
-          <FormMessage kind="warning" standing>
-            {t('operator.rootUnknown')}
-          </FormMessage>
+        <Stack align="flex-start" gap="lg">
+          <PageState state="notFound">{t('operator.rootUnknown')}</PageState>
           {back}
         </Stack>
       ) : (
         <Stack gap="lg">
           <div>
-            <Title {...TYPE.pageTitle}>{t('operator.moveTitle', { name: client.name })}</Title>
+            <PageHeader title={t('operator.moveTitle', { name: client.name })} />
             <Text c="dimmed">{t('operator.moveHere', { name: client.name, box: here })}</Text>
           </div>
           <FormMessage kind="warning" standing title={client.code}>
@@ -176,7 +177,7 @@ export function MoveClientPage({ api, passkeys, onSignedOut, wait = sleep }: Pro
           {client.move?.form === 'copying' && reply === null ? (
             <Stack align="flex-start">
               <Text>{t('operator.moveUnder', { box: client.move.box })}</Text>
-              <Group>
+              <ActionRow>
                 <ActionButton meaning="main" busy={busy} onClick={() => go({})}>
                   {t('operator.moveGoOn')}
                 </ActionButton>
@@ -184,11 +185,11 @@ export function MoveClientPage({ api, passkeys, onSignedOut, wait = sleep }: Pro
                   {t('operator.moveStop')}
                 </ActionButton>
                 {back}
-              </Group>
+              </ActionRow>
             </Stack>
           ) : reply !== null || sweepOn ? (
             problem === 'failed' && (
-              <Group>
+              <ActionRow>
                 <ActionButton meaning="main" busy={busy} onClick={() => go({})}>
                   {t('operator.moveGoOn')}
                 </ActionButton>
@@ -197,7 +198,7 @@ export function MoveClientPage({ api, passkeys, onSignedOut, wait = sleep }: Pro
                     {t('operator.moveStop')}
                   </ActionButton>
                 )}
-              </Group>
+              </ActionRow>
             )
           ) : others.length === 0 ? (
             <Stack align="flex-start">
@@ -216,12 +217,12 @@ export function MoveClientPage({ api, passkeys, onSignedOut, wait = sleep }: Pro
                     onChange={setPicked}
                   />
                   <Text {...TYPE.caption}>{t('operator.moveTouch')}</Text>
-                  <Group>
+                  <ActionRow>
                     <ActionButton meaning="main" submit busy={busy} disabled={picked === ''}>
                       {t('operator.moveMake')}
                     </ActionButton>
                     {back}
-                  </Group>
+                  </ActionRow>
                 </Stack>
               </Paper>
             </form>

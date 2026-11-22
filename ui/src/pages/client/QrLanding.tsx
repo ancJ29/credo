@@ -1,5 +1,6 @@
 import type { Language } from '@credo/shared';
-import { Loader, Stack, Text } from '@mantine/core';
+import { Stack, Text } from '@mantine/core';
+import { PageState } from '../../components/organisms/PageState';
 import { useTranslation } from 'react-i18next';
 import type { Brand } from '../../brand';
 import { SignInFrame } from '../SignIn';
@@ -38,7 +39,7 @@ export function QrLanding({ brand, status, onPassword, languages, onLanguage }: 
           </>
         ) : (
           <>
-            <Loader size="sm" />
+            <PageState state="loading" />
             <Text c="dimmed">{t('qrSignIn.busyText')}</Text>
           </>
         )}

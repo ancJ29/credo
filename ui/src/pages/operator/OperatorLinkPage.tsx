@@ -1,7 +1,8 @@
-import { Button, Group, Paper, Stack, Text, TextInput, Title } from '@mantine/core';
+import { Paper, Stack, Text, TextInput } from '@mantine/core';
+import { ActionRow } from '../../components/molecules/ActionRow';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useParams } from 'react-router';
+import { useParams } from 'react-router';
 import { ApiError, type Api } from '../../api';
 import { CopyText } from '../../parts/CopyText';
 import { Loaded } from '../../frame/Loaded';
@@ -10,7 +11,9 @@ import { PasskeyNotGiven, type Passkeys } from '../../passkeys';
 import { touch } from '../../touch';
 import { TYPE } from '../../design-system/tokens';
 import { FormMessage } from '../../components/molecules/FormMessage';
+import { PageState } from '../../components/organisms/PageState';
 import { ActionButton } from '../../components/atoms/ActionButton';
+import { PageHeader } from '../../components/organisms/PageHeader';
 
 type Props = { api: Api; passkeys: Passkeys; onSignedOut: () => void };
 
@@ -57,21 +60,21 @@ export function OperatorLinkPage({ api, passkeys, onSignedOut }: Props) {
   }
 
   const back = (
-    <Button component={Link} to="/operator/operators" variant={made ? 'filled' : 'default'}>
+    <ActionButton meaning={made ? 'main' : 'other'} to="/operator/operators">
       {t('team.back')}
-    </Button>
+    </ActionButton>
   );
 
   return (
     <Loaded status={loaded.status} onRetry={loaded.reload}>
       {!colleague || problem === 'gone' ? (
-        <Stack align="flex-start">
-          <FormMessage kind="warning">{t('team.unknown')}</FormMessage>
+        <Stack align="flex-start" gap="lg">
+          <PageState state="notFound">{t('team.unknown')}</PageState>
           {back}
         </Stack>
       ) : made ? (
         <Stack gap="lg">
-          <Title {...TYPE.pageTitle}>{t('team.linkMadeTitle')}</Title>
+          <PageHeader title={t('team.linkMadeTitle')} />
           <FormMessage kind="success">
             {t('team.linkMadeIntro', { name: colleague.name })}
           </FormMessage>
@@ -87,12 +90,12 @@ export function OperatorLinkPage({ api, passkeys, onSignedOut }: Props) {
               }
             />
           </Paper>
-          <Group>{back}</Group>
+          <ActionRow>{back}</ActionRow>
         </Stack>
       ) : (
         <Stack gap="lg">
           <div>
-            <Title {...TYPE.pageTitle}>{t('team.linkTitle', { name: colleague.name })}</Title>
+            <PageHeader title={t('team.linkTitle', { name: colleague.name })} />
             <Text c="dimmed">
               {t(colleague.state === 'active' ? 'team.linkIntroActive' : 'team.linkIntroInvited', {
                 name: colleague.name,
@@ -103,12 +106,12 @@ export function OperatorLinkPage({ api, passkeys, onSignedOut }: Props) {
           <Paper withBorder p="md">
             <Stack gap="lg">
               <Text {...TYPE.caption}>{t('team.linkTouch')}</Text>
-              <Group>
+              <ActionRow>
                 <ActionButton meaning="main" busy={busy} onClick={() => void give()}>
                   {t('team.linkMake')}
                 </ActionButton>
                 {back}
-              </Group>
+              </ActionRow>
             </Stack>
           </Paper>
         </Stack>

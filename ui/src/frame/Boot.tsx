@@ -1,5 +1,5 @@
-import { Alert, Box, Center, Loader, Stack, Title } from '@mantine/core';
-import { ActionButton } from '../components/atoms/ActionButton';
+import { Box, Center, Stack, Title } from '@mantine/core';
+import { PageState } from '../components/organisms/PageState';
 import { useTranslation } from 'react-i18next';
 import type { Hop } from '../api';
 
@@ -22,19 +22,16 @@ export function Boot({ status, hop, onRetry }: Props) {
   return (
     <Center mih="100vh" p="md">
       {status === 'loading' ? (
-        <Loader aria-label={t('common.loading')} />
+        <PageState state="loading" />
       ) : (
         <Box maw={440} w="100%">
           <Stack>
             <Title order={1} size="h4">
               {t('app.name')}
             </Title>
-            <Alert color="red" role="alert">
+            <PageState state="failed" onRetry={onRetry}>
               {t(hop ? HOP_WORDS[hop] : 'common.unavailable')}
-            </Alert>
-            <ActionButton meaning="main" onClick={onRetry}>
-              {t('common.retry')}
-            </ActionButton>
+            </PageState>
           </Stack>
         </Box>
       )}

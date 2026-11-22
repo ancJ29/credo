@@ -1,14 +1,18 @@
 import { addDays, can, type Language, ORDER_LIST_DAYS, type Order } from '@credo/shared';
-import { Anchor, Group, Stack, Table, Text, Title } from '@mantine/core';
+import { Anchor, Stack, Table, Text } from '@mantine/core';
+import { ActionRow } from '../../components/molecules/ActionRow';
+import { TableScroll } from '../../components/molecules/TableScroll';
+import { PageState } from '../../components/organisms/PageState';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
 import { shownDay } from '../../day';
 import { Loaded } from '../../frame/Loaded';
-import { StateBadge, useMoney } from '../../parts/OrderParts';
+import { useMoney } from '../../parts/OrderParts';
+import { StatusBadge } from '../../components/atoms/StatusBadge';
 import { type PageProps, useLoad } from '../../page';
-import { TYPE } from '../../design-system/tokens';
 import { ActionButton } from '../../components/atoms/ActionButton';
+import { PageHeader } from '../../components/organisms/PageHeader';
 
 /** The last `weeks` weeks of orders ending today, newest first: each week is one call, since the
  * BFF answers at most seven days. */
@@ -34,20 +38,22 @@ export function OrdersPage(page: PageProps) {
 
   return (
     <Stack gap="lg">
-      <Group justify="space-between">
-        <Title {...TYPE.pageTitle}>{t('nav.orders')}</Title>
-        {can(page.user, 'orders.canEdit') && (
-          <ActionButton meaning="main" to="/orders/new">
-            {t('orders.new')}
-          </ActionButton>
-        )}
-      </Group>
+      <PageHeader
+        title={t('nav.orders')}
+        actions={
+          can(page.user, 'orders.canEdit') && (
+            <ActionButton meaning="main" to="/orders/new">
+              {t('orders.new')}
+            </ActionButton>
+          )
+        }
+      />
       <Text c="dimmed">{t('orders.since', { day: shownDay(from, language) })}</Text>
       <Loaded status={loaded.status} onRetry={loaded.reload}>
         {rows.length === 0 ? (
-          <Text c="dimmed">{t('orders.empty')}</Text>
+          <PageState state="empty">{t('orders.empty')}</PageState>
         ) : (
-          <Table.ScrollContainer minWidth={720}>
+          <TableScroll>
             <Table highlightOnHover>
               <Table.Thead>
                 <Table.Tr>
@@ -71,21 +77,21 @@ export function OrdersPage(page: PageProps) {
                     <Table.Td>{order.customer.name}</Table.Td>
                     <Table.Td ta="right">{money(order.total)}</Table.Td>
                     <Table.Td>
-                      <StateBadge state={order.state} />
+                      <StatusBadge status={order.state} />
                     </Table.Td>
                     <Table.Td>{order.request?.driver.name ?? ''}</Table.Td>
                   </Table.Tr>
                 ))}
               </Table.Tbody>
             </Table>
-          </Table.ScrollContainer>
+          </TableScroll>
         )}
       </Loaded>
-      <Group>
+      <ActionRow>
         <ActionButton meaning="other" onClick={() => setWeeks(weeks + 1)}>
           {t('orders.earlier')}
         </ActionButton>
-      </Group>
+      </ActionRow>
     </Stack>
   );
 }

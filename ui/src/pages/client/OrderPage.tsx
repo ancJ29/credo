@@ -16,8 +16,9 @@ import {
   Table,
   Text,
   TextInput,
-  Title,
 } from '@mantine/core';
+import { ActionRow } from '../../components/molecules/ActionRow';
+import { TableScroll } from '../../components/molecules/TableScroll';
 import { IconListDetails, IconPackage, IconTruck } from '@tabler/icons-react';
 import { type ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -25,6 +26,7 @@ import { Link, useNavigate, useParams } from 'react-router';
 import type { OrderResult } from '../../api';
 import { DetailCard, DetailColumns } from '../../parts/DetailCards';
 import { shownDay } from '../../day';
+import { numberOf, priceOf } from '../../number';
 import { Loaded } from '../../frame/Loaded';
 import {
   CancelPanel,
@@ -33,13 +35,13 @@ import {
   type Outcome,
   OutcomeAlert,
   SendPanel,
-  StateBadge,
   useMoney,
 } from '../../parts/OrderParts';
 import { type PageProps, refusal, useLoad } from '../../page';
-import { TYPE } from '../../design-system/tokens';
 import { ActionButton } from '../../components/atoms/ActionButton';
+import { PageShell } from '../../parts/PageShell';
 import { FormMessage } from '../../components/molecules/FormMessage';
+import { PageHeader } from '../../components/organisms/PageHeader';
 
 /** What the page tells after a step that went through. */
 type Done = 'saved' | 'confirmed' | 'sent' | 'cancelled';
@@ -73,7 +75,6 @@ function FormFields({
   const { t, i18n } = useTranslation();
   const language = i18n.language as Language;
   const money = useMoney();
-  const number = new Intl.NumberFormat(language);
   const navigate = useNavigate();
   const day = doc?.order.day ?? page.today();
   const [customerId, setCustomerId] = useState(doc?.order.customer.id ?? '');
@@ -197,7 +198,7 @@ function FormFields({
         {priced.length === 0 ? (
           <Text c="dimmed">{t('orders.noLines')}</Text>
         ) : (
-          <Table.ScrollContainer minWidth={560}>
+          <TableScroll>
             <Table>
               <Table.Thead>
                 <Table.Tr>
@@ -217,15 +218,15 @@ function FormFields({
                     </Table.Td>
                     <Table.Td>{product.unit}</Table.Td>
                     <Table.Td ta="right">
-                      {number.format(price)}
+                      {priceOf(price, language)}
                       {moved !== null && (
                         <Text size="xs" c="var(--credo-warning-text)">
-                          {t('orders.priceMoved', { price: number.format(moved) })}
+                          {t('orders.priceMoved', { price: priceOf(moved, language) })}
                         </Text>
                       )}
                     </Table.Td>
-                    <Table.Td ta="right">{number.format(count)}</Table.Td>
-                    <Table.Td ta="right">{number.format(amount)}</Table.Td>
+                    <Table.Td ta="right">{numberOf(count, language)}</Table.Td>
+                    <Table.Td ta="right">{priceOf(amount, language)}</Table.Td>
                     <Table.Td ta="right">
                       <ActionButton
                         meaning="quiet"
@@ -250,10 +251,10 @@ function FormFields({
                 </Table.Tr>
               </Table.Tfoot>
             </Table>
-          </Table.ScrollContainer>
+          </TableScroll>
         )}
       </DetailCard>
-      <Group>
+      <ActionRow>
         <ActionButton
           meaning="main"
           busy={saving}
@@ -262,7 +263,7 @@ function FormFields({
         >
           {t('orders.saveDraft')}
         </ActionButton>
-      </Group>
+      </ActionRow>
     </Stack>
   );
   return (
@@ -431,7 +432,7 @@ export function NewOrderPage(page: PageProps) {
   const { t } = useTranslation();
   return (
     <Stack gap="lg">
-      <Title {...TYPE.pageTitle}>{t('orders.newTitle')}</Title>
+      <PageHeader title={t('orders.newTitle')} />
       <Editor page={page} existing={null} />
     </Stack>
   );
@@ -463,48 +464,45 @@ export function OrderPage(page: PageProps) {
   };
 
   return (
-    <Stack gap="lg">
-      <Loaded status={loaded.status} onRetry={loaded.reload}>
-        {doc && (
-          <>
-            <Group justify="space-between">
-              <Title {...TYPE.pageTitle}>
-                {t('orders.orderTitle', { number: doc.order.number })}
-              </Title>
-              <StateBadge state={doc.order.state} />
-            </Group>
-            {done && (
-              <FormMessage kind="success">
-                {t(`orders.done.${done}`, { number: doc.order.request?.number })}
-              </FormMessage>
-            )}
-            {doc.order.state === 'draft' && editor ? (
-              <Editor
-                key={`${doc.order.id}:${resets}`}
-                page={page}
-                existing={{ doc, onDoc, onTheirs }}
-              />
-            ) : (
-              <OrderView
-                doc={doc}
-                steps={
-                  editor &&
-                  doc.order.state === 'confirmed' && (
-                    <OrderActions
-                      key={doc.version}
-                      page={page}
-                      doc={doc}
-                      unsaved={false}
-                      onDoc={onDoc}
-                      onTheirs={onTheirs}
-                    />
-                  )
-                }
-              />
-            )}
-          </>
-        )}
-      </Loaded>
-    </Stack>
+    <Loaded status={loaded.status} onRetry={loaded.reload}>
+      {doc && (
+        <PageShell
+          title={t('orders.orderTitle', { number: doc.order.number })}
+          recordStatus={doc.order.state}
+          status="ready"
+          onRetry={loaded.reload}
+        >
+          {done && (
+            <FormMessage kind="success">
+              {t(`orders.done.${done}`, { number: doc.order.request?.number })}
+            </FormMessage>
+          )}
+          {doc.order.state === 'draft' && editor ? (
+            <Editor
+              key={`${doc.order.id}:${resets}`}
+              page={page}
+              existing={{ doc, onDoc, onTheirs }}
+            />
+          ) : (
+            <OrderView
+              doc={doc}
+              steps={
+                editor &&
+                doc.order.state === 'confirmed' && (
+                  <OrderActions
+                    key={doc.version}
+                    page={page}
+                    doc={doc}
+                    unsaved={false}
+                    onDoc={onDoc}
+                    onTheirs={onTheirs}
+                  />
+                )
+              }
+            />
+          )}
+        </PageShell>
+      )}
+    </Loaded>
   );
 }

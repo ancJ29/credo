@@ -227,7 +227,7 @@ describe('The guideline’s contracts', () => {
     expect(serving([{ part: 'X', serves: 'A rule nobody wrote' }], rulesOf())).toEqual(['X']);
     // A part to come has its contract, and its `followed` names the item that builds it.
     const coming = ENTRIES.filter((entry) => entry.toCome).map((entry) => entry.name);
-    expect(coming).toEqual(['PageState']);
+    expect(coming).toEqual([]);
     for (const part of coming)
       expect(contractsOf().find((c) => c.part === part)?.followed, part).toEqual({ item: 651 });
     const held = contractsOf().map(({ part, heldBy, followed }) => ({
@@ -273,10 +273,10 @@ describe('The guideline’s contracts', () => {
 describe('The guideline’s buttons', () => {
   it('213 case 15: every look a screen draws a Button in maps to one of ActionButton’s four meanings', () => {
     const looks = Object.values(SCREENS).flatMap(drawnButtons);
-    // A set that found nothing would quiet the check below: the plan counts 109 on its tree, the screens' moves leave 15 (12 back links, 3 doors).
+    // A set that found nothing would quiet the check below: the plan counts 109 on its tree, the screens' moves leave 3, the doors.
     expect(Object.keys(SCREENS).length).toBeGreaterThan(50);
-    expect(looks.length).toBeGreaterThan(10);
-    expect(new Set(looks).size).toBeGreaterThan(1);
+    expect(looks.length).toBeGreaterThan(2);
+    expect(new Set(looks).size).toBeGreaterThan(0);
     const map: Record<string, string> = GUIDELINE.buttons;
     expect(unmapped(looks, map)).toEqual([]);
     expect(new Set(Object.values(map))).toEqual(new Set(['main', 'other', 'quiet', 'danger']));
@@ -324,5 +324,60 @@ describe('The screens’ main actions', () => {
     expect(Object.keys(MAIN_MORE_THAN_ONCE).filter((file) => `../${file}` in SCREENS)).toEqual(
       Object.keys(MAIN_MORE_THAN_ONCE),
     );
+  });
+});
+
+/** The three door files, which draw their own looks until item 651: the one raw title, and the doors' raw buttons. */
+const DOOR_FILES = [
+  'pages/SignIn.tsx',
+  'pages/operator/JoinPage.tsx',
+  'pages/operator/OperatorSignIn.tsx',
+];
+
+/** What a source draws itself that a part decides: a page title, a table's least width, a `Button`. */
+function drawnRaw(source: string) {
+  const found: string[] = [];
+  if (/<Title \{\.\.\.TYPE\.pageTitle\}/.test(source)) found.push('a page title');
+  if (/minWidth=\{/.test(source)) found.push('a least width');
+  if (/<Button\b/.test(source)) found.push('a Button');
+  return found;
+}
+
+describe('The screens’ page base', () => {
+  it('222 case 15: no screen draws a page title, a least width or a Button, but the three door files', () => {
+    expect(drawnRaw('<Title {...TYPE.pageTitle}>x</Title>')).toEqual(['a page title']);
+    expect(drawnRaw('<Table.ScrollContainer minWidth={640}>')).toEqual(['a least width']);
+    expect(drawnRaw('<Button>x</Button>')).toEqual(['a Button']);
+    expect(
+      drawnRaw('<PageHeader title="x" /><ActionButton meaning="main">x</ActionButton>'),
+    ).toEqual([]);
+    const screens = Object.entries(SCREENS)
+      .map(([path, source]) => [path.replace('../', ''), source] as const)
+      .filter(([path]) => !path.startsWith('components/') && !path.startsWith('mock/'));
+    // A set that found nothing would quiet the check below.
+    expect(screens.length).toBeGreaterThan(50);
+    expect(screens.map(([path]) => path)).toEqual(expect.arrayContaining(DOOR_FILES));
+    const found = screens
+      .filter(([path]) => !DOOR_FILES.includes(path))
+      .flatMap(([path, source]) => drawnRaw(source).map((what) => `${path} draws ${what}`));
+    expect(found).toEqual([]);
+    const doors = screens
+      .filter(([path]) => DOOR_FILES.includes(path))
+      .flatMap(([, source]) => drawnRaw(source));
+    expect(doors.sort()).toEqual(['a Button', 'a Button', 'a Button', 'a page title']);
+  });
+});
+
+describe('The screens’ page states', () => {
+  it('222 case 10: no screen draws Mantine’s Alert or Loader; the parts and the mock draw them', () => {
+    const drawsOne = (source: string) => /<(Alert|Loader)\b/.test(source);
+    expect(drawsOne('<Alert color="red">A</Alert>')).toBe(true);
+    expect(drawsOne('<Loader size="sm" />')).toBe(true);
+    expect(drawsOne('<AlertBox /><LoaderBar />')).toBe(false);
+    const scanned = Object.keys(SCREENS).filter(
+      (path) => !path.startsWith('../components/') && !path.startsWith('../mock/'),
+    );
+    expect(scanned.length).toBeGreaterThan(50);
+    expect(scanned.filter((path) => drawsOne(SCREENS[path] ?? ''))).toEqual([]);
   });
 });

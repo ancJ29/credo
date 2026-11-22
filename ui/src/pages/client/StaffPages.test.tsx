@@ -70,12 +70,9 @@ describe('the staff list', () => {
       words.staff.statusAll,
     ]);
     expect(screen.queryByLabelText('Show people who left')).toBeNull();
-    // the chip is a filled badge in the theme's primary, with the design system's 4-px corners: no colour of its own
-    // but the rule's pick for this company's green, whose buttons move to shade 7 under white
+    // 222 case 11: the chip is the design system's StatusBadge, its status on it
     const chip = within(lan).getByText(words.staff.chipActive).closest('.mantine-Badge-root');
-    expect(chip?.getAttribute('style')).toBe(
-      '--badge-radius: calc(0.25rem * var(--mantine-scale)); --badge-bg: var(--mantine-color-brand-7); --badge-color: var(--mantine-color-white); --badge-bd: calc(0.0625rem * var(--mantine-scale)) solid transparent;',
-    );
+    expect(chip?.getAttribute('data-status')).toBe('active');
 
     await user.selectOptions(status, words.staff.statusInactive);
     const left = await rowOf('Hoàng Gia Huy');
@@ -84,8 +81,8 @@ describe('the staff list', () => {
       within(left)
         .getByText(words.staff.chipInactive)
         .closest('.mantine-Badge-root')
-        ?.getAttribute('style'),
-    ).toContain('--badge-bg: var(--mantine-color-gray-filled)');
+        ?.getAttribute('data-status'),
+    ).toBe('inactive');
     expect(screen.getAllByRole('row')).toHaveLength(2);
     expect(screen.queryByText('Nguyễn Thị Lan')).toBeNull();
 
@@ -855,10 +852,10 @@ describe('a person’s page', () => {
     expect((await screen.findByRole('alert')).textContent).toContain(words.person.conflict);
   });
 
-  it('Switched back on, a person who left is a working person again: no Left badge, the actions back, the record as it was', async () => {
+  it('Switched back on, a person who left is a working person again: no Inactive badge, the actions back, the record as it was', async () => {
     const { api } = open('EMP-0008', { as: 'EMP-0001' });
     await screen.findByRole('heading', { level: 2, name: 'Hoàng Gia Huy' });
-    expect(screen.getByText(words.staff.left)).toBeTruthy();
+    expect(screen.getByText(words.staff.chipInactive)).toBeTruthy();
     expect(screen.queryByRole('button', { name: words.person.save })).toBeNull();
 
     // the check first: nobody is unlocked until it is answered
@@ -874,7 +871,7 @@ describe('a person’s page', () => {
 
     expect(await screen.findByRole('button', { name: words.person.archive })).toBeTruthy();
     expect(api.restoreEmployee).toHaveBeenCalledOnce();
-    expect(screen.queryByText(words.staff.left)).toBeNull();
+    expect(screen.queryByText(words.staff.chipInactive)).toBeNull();
     expect(screen.queryByText(words.person.archived)).toBeNull();
     expect(screen.getByRole('button', { name: words.person.save })).toBeTruthy();
     expect(screen.queryByRole('button', { name: words.person.restore })).toBeNull();
@@ -893,7 +890,7 @@ describe('a person’s page', () => {
 
     const notAllowed = open('EMP-0008', { as: 'EMP-0004' });
     await screen.findByRole('heading', { level: 2, name: 'Hoàng Gia Huy' });
-    expect(screen.getByText(words.staff.left)).toBeTruthy();
+    expect(screen.getByText(words.staff.chipInactive)).toBeTruthy();
     expect(screen.queryByRole('button', { name: words.person.restore })).toBeNull();
     expect(screen.queryByRole('button', { name: words.person.archive })).toBeNull();
     notAllowed.unmount();
@@ -911,7 +908,7 @@ describe('a person’s page', () => {
     expect(
       (await screen.findAllByRole('alert')).map((alert) => alert.textContent).join(' '),
     ).toContain(words.person.restoreFailed);
-    expect(screen.getByText(words.staff.left)).toBeTruthy();
+    expect(screen.getByText(words.staff.chipInactive)).toBeTruthy();
     expect(screen.queryByRole('button', { name: words.person.save })).toBeNull();
     failing.unmount();
 
@@ -926,7 +923,7 @@ describe('a person’s page', () => {
     expect(
       (await screen.findAllByRole('alert')).map((alert) => alert.textContent).join(' '),
     ).toContain(words.person.conflict);
-    expect(screen.getByText(words.staff.left)).toBeTruthy();
+    expect(screen.getByText(words.staff.chipInactive)).toBeTruthy();
   });
 
   it('Both panels read in Vietnamese and in English', async () => {

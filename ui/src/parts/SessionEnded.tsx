@@ -1,4 +1,5 @@
-import { Group, Modal, Stack, Text } from '@mantine/core';
+import { Modal, Stack, Text } from '@mantine/core';
+import { ActionRow } from '../components/molecules/ActionRow';
 import { ActionButton } from '../components/atoms/ActionButton';
 import { useTranslation } from 'react-i18next';
 import { FormMessage } from '../components/molecules/FormMessage';
@@ -36,14 +37,14 @@ export function SessionEnded({ status, onContinue, onSignOut }: Props) {
       <Stack>
         <Text>{t('passkey.endedText')}</Text>
         {failed && <FormMessage kind="error">{t(failed)}</FormMessage>}
-        <Group justify="flex-end">
+        <ActionRow>
           <ActionButton meaning="other" onClick={onSignOut}>
             {t('user.signOut')}
           </ActionButton>
           <ActionButton meaning="main" busy={status === 'busy'} onClick={onContinue}>
             {t('passkey.endedButton')}
           </ActionButton>
-        </Group>
+        </ActionRow>
       </Stack>
     </Modal>
   );

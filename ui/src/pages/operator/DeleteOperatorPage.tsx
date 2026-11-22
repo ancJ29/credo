@@ -1,7 +1,8 @@
-import { Button, Group, Paper, Stack, Text, Title } from '@mantine/core';
+import { Paper, Stack, Text } from '@mantine/core';
+import { ActionRow } from '../../components/molecules/ActionRow';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate, useParams } from 'react-router';
+import { useNavigate, useParams } from 'react-router';
 import { ApiError, type Api } from '../../api';
 import { Loaded } from '../../frame/Loaded';
 import { refusal, useLoad } from '../../page';
@@ -9,7 +10,9 @@ import { PasskeyNotGiven, type Passkeys } from '../../passkeys';
 import { touch } from '../../touch';
 import { TYPE } from '../../design-system/tokens';
 import { FormMessage } from '../../components/molecules/FormMessage';
+import { PageState } from '../../components/organisms/PageState';
 import { ActionButton } from '../../components/atoms/ActionButton';
+import { PageHeader } from '../../components/organisms/PageHeader';
 
 type Props = { api: Api; passkeys: Passkeys; onSignedOut: () => void };
 
@@ -52,34 +55,34 @@ export function DeleteOperatorPage({ api, passkeys, onSignedOut }: Props) {
   }
 
   const back = (
-    <Button component={Link} to="/operator/operators" variant="default">
+    <ActionButton meaning="other" to="/operator/operators">
       {t('team.back')}
-    </Button>
+    </ActionButton>
   );
 
   return (
     <Loaded status={loaded.status} onRetry={loaded.reload}>
       {!colleague ? (
-        <Stack align="flex-start">
-          <FormMessage kind="warning">{t('team.unknown')}</FormMessage>
+        <Stack align="flex-start" gap="lg">
+          <PageState state="notFound">{t('team.unknown')}</PageState>
           {back}
         </Stack>
       ) : (
         <Stack gap="lg">
           <div>
-            <Title {...TYPE.pageTitle}>{t('team.deleteTitle', { name: colleague.name })}</Title>
+            <PageHeader title={t('team.deleteTitle', { name: colleague.name })} />
             <Text c="dimmed">{t('team.deleteIntro', { name: colleague.name })}</Text>
           </div>
           {problem !== null && <FormMessage kind="error">{t(PROBLEM[problem])}</FormMessage>}
           <Paper withBorder p="md">
             <Stack gap="lg">
               <Text {...TYPE.caption}>{t('team.deleteTouch')}</Text>
-              <Group>
+              <ActionRow>
                 <ActionButton meaning="danger" busy={busy} onClick={() => void give()}>
                   {t('team.deleteMake')}
                 </ActionButton>
                 {back}
-              </Group>
+              </ActionRow>
             </Stack>
           </Paper>
         </Stack>

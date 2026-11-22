@@ -42,7 +42,7 @@ describe('deleting a colleague', () => {
     for (const id of [DEMO_OPERATOR_ID, '00000000-0000-4000-8000-000000000999']) {
       const { api, unmount } = open(id);
 
-      expect((await screen.findByRole('alert')).textContent).toBe(words.team.unknown);
+      expect((await screen.findByRole('status')).textContent).toBe(words.team.unknown);
       expect(screen.queryByRole('button', { name: words.team.deleteMake })).toBeNull();
       expect(api.deleteOperator).not.toHaveBeenCalled();
       unmount();

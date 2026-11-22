@@ -243,7 +243,7 @@ export const GUIDELINE: {
         says: 'A page has one main action, drawn as the filled button, and any other act is the other or the quiet one; a danger is red only at the last step of a delete, which a page of its own confirms (open item 306).',
         why: 'Two filled buttons ask the person to choose between equals, and a red button before the last step cries danger where there is none; the person finds the next step by its look.',
         heldBy: 'review',
-        followed: { item: 655 },
+        followed: 'yes',
       },
       {
         says: 'A part sits in a level and imports only from the levels below it: an atom holds no other part of ours, a molecule is a few atoms made one thing, an organism is a block of a page.',
@@ -369,7 +369,7 @@ export const GUIDELINE: {
     },
     formats: {
       money:
-        'An amount in dong is written by `useMoney` (in `ui/src/parts/OrderParts.tsx`), never by a formatter in a screen.',
+        'An amount in dong is written by `useMoney` (in `ui/src/parts/OrderParts.tsx`), a price without its unit by `priceOf`, a plain number by `numberOf` and a number’s marks by `marksOf`, all in `ui/src/number.ts`, never by a formatter in a screen.',
       date: 'A day is written by `dayOf` for a saved time and `shownDay` for a day as `YYYY-MM-DD`, both in `ui/src/day.ts`, in the language shown.',
       time: 'A time of day is written by `timeOf` in `ui/src/day.ts`, to the second on 24 hours, in the language shown.',
     },
@@ -384,15 +384,11 @@ export const GUIDELINE: {
       },
       {
         about: 'widths',
-        text: 'A width is named by its use, never a number. Not yet: the screens write the numbers: 440 px is written 3 times, 420 and 240 twice, 560 and 320 once, and three more are in no list: 140 (a quantity field), 155 (a filter) and 200 (the search field’s least). The most common width of all is also in no list: a table’s least width, set 12 times at 480 (once), 560 (3), 640 (2), 720 (4) and 760 (2), which the table part now decides, the design-system coder’s choice, as the `table` width of 640 (the part writes its own 640 still); open item 653 moves the screens’ own, and open item 651 the rest.',
+        text: 'A width is named by its use, never a number. Not yet: the screens write the numbers: 440 px is written 3 times, 420 and 240 twice, 560 and 320 once, and three more are in no list: 140 (a quantity field), 155 (a filter) and 200 (the search field’s least). The most common width of all, a table’s least, is in a list now: `TableScroll` writes the `table` width of 640, the design-system coder’s choice, and no screen writes one; open item 651 moves the rest.',
       },
       {
         about: 'icons',
         text: 'An icon size is named by where the icon sits, never a number. Not yet: of 45 icons, 30 are written as 14 px, 7 as 18, 3 as 16, 2 as 36, 2 as 20 and 1 as 22 (the two 20 px icons, a fingerprint on a button, are the button’s 18); open item 651 moves them.',
-      },
-      {
-        about: 'formats',
-        text: 'A number, a day or a time is written by its one place, never by `new Intl` in a screen. Not yet: outside `ui/src/day.ts` five `new Intl.NumberFormat` stand in four files (one is `useMoney`’s own, the other four write a price, a quantity or the marks of a number by hand), and a number has no place of its own yet; open item 652 moves them.',
       },
     ],
   },
@@ -473,23 +469,44 @@ export const GUIDELINE: {
           is: 'meaning',
           line: 'Which state the page is in: loading, failed, forbidden, nothing, empty, or not found.',
         },
-        { prop: 'onRetry', is: 'content', line: 'The act of a failed load’s retry.' },
-        { prop: 'add', is: 'content', line: 'The act of an empty list’s add button.' },
-        { prop: 'children', is: 'content', line: 'Its words, where a state has any.' },
+        {
+          prop: 'title',
+          is: 'content',
+          line: 'The title of a state that has one: forbidden, nothing, empty or not found; a loading or a failed state draws none.',
+        },
+        {
+          prop: 'onRetry',
+          is: 'content',
+          line: 'The act of a failed load’s retry; with none given, no retry is drawn.',
+        },
+        {
+          prop: 'add',
+          is: 'content',
+          line: 'The act of an empty list’s add button, an `ActionButton` the screen passes, only where the page’s heading offers none; drawn in no other state.',
+        },
+        {
+          prop: 'children',
+          is: 'content',
+          line: 'Its words, as text and no more, where a state has any; a failed load, given none, says the dictionary’s own.',
+        },
       ],
       decides: [
         { what: 'The title’s style.', from: [{ table: 'TYPE', key: 'pageTitle' }] },
         { what: 'The message’s style.', from: [{ table: 'TYPE', key: 'caption' }] },
-        { what: 'The failed state’s colour.', from: [{ table: 'TONES', key: 'danger' }] },
         {
-          what: 'The gap between its title and its message.',
+          what: 'The failed state’s colour, as the error message draws it.',
+          from: [{ table: 'TONES', key: 'danger' }],
+        },
+        {
+          what: 'The gap between its title, its message and its add.',
           from: [{ table: 'SPACING', key: 'xs' }],
         },
       ],
       fixes: [
-        'Its loader and the loader’s spoken name, and its least height while it loads.',
-        'Its retry button: a default button under the failed message.',
-        'Its spoken role: alert for a failed load, status for the rest.',
+        'Its loader and the loader’s spoken name, the dictionary’s loading words, and its least height while it loads, 240.',
+        'Its failed message: an error message, the whole width of the column, over its retry.',
+        'Its retry button: a default button under the failed message, left-aligned, with the dictionary’s retry words.',
+        'Its spoken role: alert for a failed load, status for the rest, none while loading.',
       ],
       states: [
         { name: 'Loading', line: 'The page’s data is on its way.' },
@@ -511,6 +528,7 @@ export const GUIDELINE: {
       serves: 'A screen picks parts, never a style',
       heldBy: { check: 'ui/src/design-system/guideline.test.ts' },
       followed: { item: 651 },
+      used: true,
     },
     {
       part: 'ActionButton',
@@ -582,8 +600,7 @@ export const GUIDELINE: {
       ],
       serves: 'A page has one main action',
       heldBy: { check: 'ui/src/design-system/guideline.test.ts' },
-      followed: { item: 655 },
-      used: true,
+      followed: 'yes',
     },
     {
       part: 'StatusBadge',
@@ -622,6 +639,7 @@ export const GUIDELINE: {
       serves: 'A screen picks parts, never a style',
       heldBy: { check: 'ui/src/components/atoms/StatusBadge.test.tsx' },
       followed: { item: 651 },
+      used: true,
     },
     {
       part: 'PageShell',
@@ -634,6 +652,21 @@ export const GUIDELINE: {
           line: 'Whether the page’s data is loading, failed or ready.',
         },
         { prop: 'onRetry', is: 'content', line: 'The act of a failed load’s retry.' },
+        {
+          prop: 'back',
+          is: 'content',
+          line: 'The way back to where the person came from: its address and its words; none draws none.',
+        },
+        {
+          prop: 'recordStatus',
+          is: 'meaning',
+          line: 'The status of the record the page shows (an order’s, a request’s or a person’s); none draws none.',
+        },
+        {
+          prop: 'subtitle',
+          is: 'content',
+          line: 'The line under the title (a code, a day, an intro); none draws none.',
+        },
         { prop: 'children', is: 'content', line: 'The page’s body, drawn when its data is ready.' },
       ],
       decides: [
@@ -644,9 +677,10 @@ export const GUIDELINE: {
         },
       ],
       fixes: [
-        'The header row’s order: the title first, what acts on the page beside it.',
+        'The heading: drawn by `PageHeader` on every page, the title first, what acts on the page beside it; the shell writes no title of its own.',
+        'Where the way back sits: above the title, drawn by `BackLink`; the record’s status: beside the title, and the subtitle: under it, close, both drawn by `PageHeader`.',
         'Where a failed or loading state sits: in the place of the body, under the header row.',
-        'Not yet: it takes no back link and no record status, a screen draws them itself; open item 651 moves them into the part.',
+        'Given no `back` and no `recordStatus`, it draws neither; five pages pass a `back` (the person, the record, the new record, the driver’s day and the driver’s delivery), and the operator’s and the import’s nine ways back stay `ActionButton`s until open item 651 moves them.',
       ],
       states: [
         { name: 'Ready', line: 'The data is here: the heading row, then the body.' },
@@ -666,12 +700,35 @@ export const GUIDELINE: {
       takes: [
         { prop: 'title', is: 'content', line: 'The page’s title.' },
         { prop: 'actions', is: 'content', line: 'What acts on the whole page, beside its title.' },
+        {
+          prop: 'status',
+          is: 'meaning',
+          line: 'The status of the record the page shows, a chip beside the title; none draws none.',
+        },
+        {
+          prop: 'subtitle',
+          is: 'content',
+          line: 'The line under the title (a code, a day, an intro), dimmed; none draws none.',
+        },
       ],
-      decides: [{ what: 'The title’s style.', from: [{ table: 'TYPE', key: 'pageTitle' }] }],
-      fixes: ['Its alignment: the title at the start, the actions at the end, on one line.'],
+      decides: [
+        { what: 'The title’s style.', from: [{ table: 'TYPE', key: 'pageTitle' }] },
+        {
+          what: 'The gap between the title and its subtitle, and between the title and its chip.',
+          from: [{ table: 'SPACING', key: 'xs' }],
+        },
+      ],
+      fixes: [
+        'Its alignment: the title at the start, the actions at the end, on one line.',
+        'The chip beside the title, drawn by `StatusBadge`, and the subtitle under it, dimmed: one way on every page.',
+      ],
       states: [
         { name: 'With actions', line: 'The title, and the page’s actions beside it.' },
         { name: 'Title only', line: 'The title alone.' },
+        {
+          name: 'With status and subtitle',
+          line: 'The title with the record’s chip, its line under it.',
+        },
       ],
       serves: 'A screen picks parts, never a style',
       heldBy: { check: 'ui/src/design-system/guideline.test.ts' },
@@ -757,12 +814,13 @@ export const GUIDELINE: {
       fixes: [
         'Its arrow, before the words, and the small gap between them.',
         'Its text size: Mantine’s small.',
-        'Not yet: no screen draws it; 14 places draw a back link by hand, as a button or a link, and open item 651 moves them to this one.',
+        'Drawn by `PageShell` for each page’s way back (five pages) and by the record page’s not-found line; not yet: the operator’s and the import’s nine ways back are `ActionButton`s, which open item 651 moves to this one.',
       ],
       states: [{ name: 'Default', line: 'An arrow, then its words.' }],
       serves: 'A screen picks parts, never a style',
       heldBy: { check: 'ui/src/design-system/guideline.test.ts' },
       followed: { item: 651 },
+      used: true,
     },
     {
       part: 'ListTable',
@@ -781,13 +839,63 @@ export const GUIDELINE: {
       fixes: [
         'The price column’s side: its figures at the right.',
         'Its rows under the pointer: the brand’s palest shade.',
-        'Not yet: the part writes its 640 itself, and the screens write five widths of their own, 12 times; open item 653 moves them.',
+        'Its table sits in `TableScroll`, which writes the least width; no screen writes one.',
       ],
       states: [{ name: 'Default', line: 'The headings, then a row for each record.' }],
       serves: 'A screen picks parts, never a style',
       heldBy: { check: 'ui/src/design-system/guideline.test.ts' },
-      followed: { item: 653 },
+      followed: 'yes',
+    },
+    {
+      part: 'ActionRow',
+      takes: [
+        {
+          prop: 'children',
+          is: 'content',
+          line: 'The block’s buttons, `ActionButton`s, in the order they are read.',
+        },
+      ],
+      decides: [{ what: 'The gap between its buttons.', from: [{ table: 'SPACING', key: 'sm' }] }],
+      fixes: [
+        'Their side: the end of the block, the right on a page read from the left.',
+        'Their order: as given, the first at the start of the row.',
+        'Its width: the whole block, whatever the stack around it keeps its children at, so the side holds in every block.',
+        'Drawn by the screens’ 26 button rows; the two `Group`s left in a table’s line (the clients list and the colleagues list) keep their own tighter gap and no wrap, since a table cell needs both.',
+      ],
+      states: [
+        { name: 'Two or more', line: 'The buttons in a row, in order, at the end of the block.' },
+        { name: 'One', line: 'A single button, at the end of the block.' },
+      ],
+      serves: 'A screen picks parts, never a style',
+      heldBy: { check: 'ui/src/design-system/guideline.test.ts' },
+      followed: { item: 651 },
       used: true,
+    },
+    {
+      part: 'TableScroll',
+      takes: [
+        {
+          prop: 'children',
+          is: 'content',
+          line: 'The table, whose columns keep their room inside the part.',
+        },
+      ],
+      decides: [
+        {
+          what: 'The table’s least width, below which it scrolls sideways.',
+          from: [{ table: 'WIDTHS', key: 'table' }],
+        },
+      ],
+      fixes: [
+        'Where it scrolls: the table alone, sideways, and never the page.',
+        'Drawn by the 12 tables, `ListTable` among them; no screen writes a least width.',
+      ],
+      states: [
+        { name: 'Default', line: 'A table at its least width, scrolling sideways below it.' },
+      ],
+      serves: 'A screen picks parts, never a style',
+      heldBy: { check: 'ui/src/design-system/guideline.test.ts' },
+      followed: 'yes',
     },
     {
       part: 'FieldLabel',

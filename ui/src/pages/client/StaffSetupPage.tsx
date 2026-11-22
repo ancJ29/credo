@@ -15,6 +15,7 @@ import {
 import { TYPE } from '../../design-system/tokens';
 import { ActionButton } from '../../components/atoms/ActionButton';
 import { FormMessage } from '../../components/molecules/FormMessage';
+import { PageHeader } from '../../components/organisms/PageHeader';
 
 /** A unit being edited: `id` is absent until the BFF mints it, `key` tells the rows apart. */
 type Draft = {
@@ -129,7 +130,7 @@ function SetupForm({ setup, saving, outcome, onSave, onRefused, onReload }: Form
   return (
     <Stack gap="xl">
       <div>
-        <Title {...TYPE.pageTitle}>{t('setup.title')}</Title>
+        <PageHeader title={t('setup.title')} />
         <Text c="dimmed">{t('setup.intro')}</Text>
       </div>
       {outcome === 'saved' && <FormMessage kind="saved">{t('setup.saved')}</FormMessage>}

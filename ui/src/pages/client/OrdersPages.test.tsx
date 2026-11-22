@@ -83,6 +83,13 @@ describe('the orders list', () => {
         one.request?.driver.name ?? '',
       ]),
     );
+    // 222 case 11: each state is a StatusBadge, its status on the chip
+    expect(
+      screen
+        .getAllByRole('row')
+        .slice(1)
+        .map((row) => row.querySelector('[data-status]')?.getAttribute('data-status')),
+    ).toEqual(newest.map((one) => one.state));
     // the week asked for ends today and starts six days before
     expect(drawn.api.listOrders).toHaveBeenCalledExactlyOnceWith(
       addDays(DEMO_TODAY, -6),

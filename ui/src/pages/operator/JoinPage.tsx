@@ -1,5 +1,6 @@
 import { type JoinOptionsReply, type Language, tokenOfFragment } from '@credo/shared';
-import { Button, Center, Loader, Stack, Text } from '@mantine/core';
+import { Button, Stack, Text } from '@mantine/core';
+import { PageState } from '../../components/organisms/PageState';
 import { IconFingerprint } from '@tabler/icons-react';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -85,11 +86,7 @@ export function JoinPage({ api, device, passkeys, languages, onLanguage }: Props
       languages={languages}
       onLanguage={onLanguage}
     >
-      {seen.phase === 'loading' && (
-        <Center mih={120}>
-          <Loader aria-label={t('common.loading')} />
-        </Center>
-      )}
+      {seen.phase === 'loading' && <PageState state="loading" />}
       {seen.phase === 'dead' && <FormMessage kind="error">{t('passkey.dead')}</FormMessage>}
       {seen.phase === 'unavailable' && (
         <Stack>

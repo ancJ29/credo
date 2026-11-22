@@ -4,13 +4,13 @@ import {
   HOME_BOX,
   normaliseClientCode,
 } from '@credo/shared';
-import { Paper, Stack, Text, TextInput, Title } from '@mantine/core';
+import { Paper, Stack, Text, TextInput } from '@mantine/core';
 import { ActionButton } from '../components/atoms/ActionButton';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BoxChoice } from './BoxChoice';
-import { TYPE } from '../design-system/tokens';
 import { FormMessage } from '../components/molecules/FormMessage';
+import { PageHeader } from '../components/organisms/PageHeader';
 
 type Props = {
   /** Idle, waiting on the service, the last attempt failed, or the code was already taken. */
@@ -51,7 +51,7 @@ export function NewClient({ status, boxes = [], onSubmit }: Props) {
   return (
     <Stack gap="lg">
       <div>
-        <Title {...TYPE.pageTitle}>{t('operator.newTitle')}</Title>
+        <PageHeader title={t('operator.newTitle')} />
         <Text c="dimmed">{t('operator.newIntro')}</Text>
       </div>
       {status === 'failed' && <FormMessage kind="error">{t('operator.failed')}</FormMessage>}

@@ -28,7 +28,13 @@ import { PageHeader } from '../components/organisms/PageHeader';
 import { SectionCard } from '../components/organisms/SectionCard';
 import { Charter } from './Charter';
 import { OnTheBrand, OnTheLinks } from './OnTheBrand';
-import { ActionButtonStates, FormMessageStates, PageStateStates } from './Contract';
+import {
+  ActionButtonStates,
+  ActionRowStates,
+  FormMessageStates,
+  PageStateStates,
+  TableScrollStates,
+} from './Contract';
 import {
   DetailColumnsStates,
   FieldPairStates,
@@ -308,9 +314,9 @@ export const ENTRIES: Entry[] = [
     name: 'PageShell',
     kind: 'Layout',
     description:
-      'The shell of a page: its heading with what acts on it beside, then its body, drawn only when its data is ready.',
+      'The shell of a page: a way back above, its heading with the record’s status chip and what acts on it beside, then its body, drawn only when its data is ready.',
     props:
-      'title: string · actions?: ReactNode · status: loading | failed | ready · onRetry · children',
+      "title: string · actions?: ReactNode · status: 'loading' | 'failed' | 'ready' · onRetry?: () => void · back?: { href: string; children: string } · recordStatus?: Status · subtitle?: string · children: ReactNode",
     useWhen: ['A signed-in page loads its data and shows it under its title.'],
     dontUseWhen: [
       'A page before sign-in: that is DoorCard’s.',
@@ -487,6 +493,35 @@ export const ENTRIES: Entry[] = [
   },
   {
     group: 'Molecules',
+    name: 'ActionRow',
+    kind: 'Buttons',
+    description:
+      'The buttons of a block in one row, in the order they are read, at the end of the block, with one gap between them. Mantine Group, at the values it decides.',
+    props: 'children: ReactNode',
+    useWhen: ['A block of a page ends in two or more buttons, or in one: give them to the row.'],
+    dontUseWhen: [
+      'A single button beside a page’s title: that is PageHeader’s actions; two or more go in a row there, an ActionRow handed to its actions.',
+      'A button under a message: that is FormMessage’s act.',
+    ],
+    instead: 'PageHeader',
+    states: ActionRowStates,
+  },
+  {
+    group: 'Molecules',
+    name: 'TableScroll',
+    kind: 'Lists',
+    description:
+      'A frame for a table: below its least width the table scrolls sideways inside it and its columns keep their room, never the page. Mantine table scroll container, at the width it decides.',
+    props: 'children: ReactNode',
+    useWhen: ['A page draws a table of its own: wrap it, so it has the one least width.'],
+    dontUseWhen: [
+      'A kind’s list of customers or products: that is ListTable’s, which scrolls itself.',
+    ],
+    instead: 'ListTable',
+    states: TableScrollStates,
+  },
+  {
+    group: 'Molecules',
     name: 'BrandBand',
     kind: 'Headings',
     description:
@@ -625,8 +660,9 @@ export const ENTRIES: Entry[] = [
     group: 'Organisms',
     name: 'PageHeader',
     kind: 'Headers',
-    description: "A page's heading, with what acts on the page beside it. No phone variant.",
-    props: 'title: string · actions?: ReactNode',
+    description:
+      "A page's heading, with what acts on the page beside it. A record's status is a chip beside the title, and a subtitle the line under it, dimmed and close to it. No phone variant.",
+    props: 'title: string · actions?: ReactNode · status?: Status · subtitle?: string',
     useWhen: ['A page opens with its title, and the actions that act on the whole page beside it.'],
     dontUseWhen: [
       "A section inside the page: that is SectionTitle's.",
@@ -650,17 +686,24 @@ export const ENTRIES: Entry[] = [
           </Stack>
         ),
       },
+      {
+        name: 'With status and subtitle',
+        node: (
+          <Stack w={640} maw="100%">
+            <PageHeader title="Nguyen Van A" status="inactive" subtitle="NV-001" />
+          </Stack>
+        ),
+      },
     ],
   },
   {
     group: 'Organisms',
     name: 'PageState',
     kind: 'States',
-    toCome: true,
     description:
-      'What a whole page shows when its data is not a list or a record: loading, failed with a retry, forbidden, nothing, empty with an add, or not found. Mantine’s Loader, Alert and Title, at the values it decides.',
+      'What a whole page shows in the place of its body when its data is not a list or a record: loading, failed with a retry, forbidden, nothing, empty with an add, or not found. A failed load is an error message with a default-look retry under it, the rest a title over words, spoken as a status; the loader is named and with a least height.',
     props:
-      'state: loading | failed | forbidden | nothing | empty | not found · onRetry · add · children',
+      "state: 'loading' | 'failed' | 'forbidden' | 'nothing' | 'empty' | 'notFound' · title?: string · onRetry?: () => void · add?: ReactNode · children?: string",
     useWhen: [
       'A page’s data is loading, failed, forbidden, empty or missing, and the page says so in the place of its body.',
     ],

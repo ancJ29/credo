@@ -1,14 +1,15 @@
 import { type DeliveryDoc, type Language, photoAddressRequestOf } from '@credo/shared';
-import { Anchor, Group, Image, Paper, Stack, Text, Title } from '@mantine/core';
+import { Anchor, Image, Paper, Stack, Text, Title } from '@mantine/core';
 import { useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useParams } from 'react-router';
+import { useParams } from 'react-router';
 import { shownDay } from '../../day';
 import { Loaded } from '../../frame/Loaded';
-import { LinesTable, ProofPhoto, StateBadge, useMoney } from '../../parts/OrderParts';
+import { LinesTable, ProofPhoto, useMoney } from '../../parts/OrderParts';
 import { type PageProps, refusal, useLoad } from '../../page';
 import { TYPE, WEIGHTS } from '../../design-system/tokens';
 import { ActionButton } from '../../components/atoms/ActionButton';
+import { PageShell } from '../../parts/PageShell';
 import { FormMessage } from '../../components/molecules/FormMessage';
 
 /** The customer as the driver needs them: their name, their phone (a tap calls it) and their address. */
@@ -88,82 +89,77 @@ export function MyDeliveryPage(page: PageProps) {
   }
 
   return (
-    <Stack gap="lg">
-      <Loaded status={loaded.status} onRetry={loaded.reload}>
-        {doc && (
-          <>
-            <Group justify="space-between">
-              <Title {...TYPE.pageTitle}>
-                {t('orders.requestTitle', { number: doc.request.number })}
-              </Title>
-              <StateBadge state={doc.request.state} />
-            </Group>
-            {doc.request.state === 'cancelled' && (
-              <FormMessage kind="error">{t('myDeliveries.cancelled')}</FormMessage>
-            )}
-            {doc.request.state === 'delivered' && (
-              <FormMessage kind="success">{t('myDeliveries.done')}</FormMessage>
-            )}
-            <Paper withBorder p="md">
-              <Stack gap="sm">
-                <Text>
-                  {t('orders.forDay', {
-                    day: shownDay(doc.request.day, i18n.language as Language),
-                  })}
-                </Text>
-                <WhereTo customer={doc.request.customer} />
-              </Stack>
-            </Paper>
-            <LinesTable lines={doc.request.lines} total={doc.request.total} />
-            <Text fw={WEIGHTS.title} size="lg">
-              {t('orders.collect', { total: money(doc.request.total) })}
-            </Text>
-            {doc.request.state === 'delivered' && (
-              <ProofPhoto page={page} day={doc.request.day} id={doc.request.id} />
-            )}
-            {doc.request.state === 'waiting' && (
-              <Stack gap="sm">
-                {/* The camera, opened by the buttons below; the picture it gives is chosen here. */}
-                <input
-                  ref={camera}
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  aria-label={t('myDeliveries.photoField')}
-                  tabIndex={-1}
-                  style={{ position: 'absolute', width: 1, height: 1, opacity: 0 }}
-                  onChange={(event) => void choose(event.currentTarget.files?.[0])}
-                />
-                {problem === 'unusable' && (
-                  <FormMessage kind="error">{t('myDeliveries.unusable')}</FormMessage>
-                )}
-                {problem === 'failed' && (
-                  <FormMessage kind="error">{t('myDeliveries.sendFailed')}</FormMessage>
-                )}
-                {photo === null ? (
-                  <ActionButton meaning="main" onClick={() => camera.current?.click()}>
-                    {t('myDeliveries.deliver')}
+    <Loaded status={loaded.status} onRetry={loaded.reload}>
+      {doc && (
+        <PageShell
+          title={t('orders.requestTitle', { number: doc.request.number })}
+          back={{ href: '/my-deliveries', children: t('myDeliveries.back') }}
+          recordStatus={doc.request.state}
+          status="ready"
+          onRetry={loaded.reload}
+        >
+          {doc.request.state === 'cancelled' && (
+            <FormMessage kind="error">{t('myDeliveries.cancelled')}</FormMessage>
+          )}
+          {doc.request.state === 'delivered' && (
+            <FormMessage kind="success">{t('myDeliveries.done')}</FormMessage>
+          )}
+          <Paper withBorder p="md">
+            <Stack gap="sm">
+              <Text>
+                {t('orders.forDay', {
+                  day: shownDay(doc.request.day, i18n.language as Language),
+                })}
+              </Text>
+              <WhereTo customer={doc.request.customer} />
+            </Stack>
+          </Paper>
+          <LinesTable lines={doc.request.lines} total={doc.request.total} />
+          <Text fw={WEIGHTS.title} size="lg">
+            {t('orders.collect', { total: money(doc.request.total) })}
+          </Text>
+          {doc.request.state === 'delivered' && (
+            <ProofPhoto page={page} day={doc.request.day} id={doc.request.id} />
+          )}
+          {doc.request.state === 'waiting' && (
+            <Stack gap="sm">
+              {/* The camera, opened by the buttons below; the picture it gives is chosen here. */}
+              <input
+                ref={camera}
+                type="file"
+                accept="image/*"
+                capture="environment"
+                aria-label={t('myDeliveries.photoField')}
+                tabIndex={-1}
+                style={{ position: 'absolute', width: 1, height: 1, opacity: 0 }}
+                onChange={(event) => void choose(event.currentTarget.files?.[0])}
+              />
+              {problem === 'unusable' && (
+                <FormMessage kind="error">{t('myDeliveries.unusable')}</FormMessage>
+              )}
+              {problem === 'failed' && (
+                <FormMessage kind="error">{t('myDeliveries.sendFailed')}</FormMessage>
+              )}
+              {photo === null ? (
+                <ActionButton meaning="main" onClick={() => camera.current?.click()}>
+                  {t('myDeliveries.deliver')}
+                </ActionButton>
+              ) : (
+                <>
+                  <Title order={3}>{t('myDeliveries.photoTitle')}</Title>
+                  <Image src={photo} alt={t('myDeliveries.photoAlt')} radius="md" />
+                  <ActionButton meaning="main" busy={busy} onClick={() => void send(doc.version)}>
+                    {t('myDeliveries.send')}
                   </ActionButton>
-                ) : (
-                  <>
-                    <Title order={3}>{t('myDeliveries.photoTitle')}</Title>
-                    <Image src={photo} alt={t('myDeliveries.photoAlt')} radius="md" />
-                    <ActionButton meaning="main" busy={busy} onClick={() => void send(doc.version)}>
-                      {t('myDeliveries.send')}
-                    </ActionButton>
-                    <ActionButton meaning="other" onClick={() => camera.current?.click()}>
-                      {t('myDeliveries.again')}
-                    </ActionButton>
-                  </>
-                )}
-              </Stack>
-            )}
-            <Anchor component={Link} to="/my-deliveries">
-              {t('myDeliveries.back')}
-            </Anchor>
-          </>
-        )}
-      </Loaded>
-    </Stack>
+                  <ActionButton meaning="other" onClick={() => camera.current?.click()}>
+                    {t('myDeliveries.again')}
+                  </ActionButton>
+                </>
+              )}
+            </Stack>
+          )}
+        </PageShell>
+      )}
+    </Loaded>
   );
 }

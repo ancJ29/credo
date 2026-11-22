@@ -1,4 +1,4 @@
-import { cleanup, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { CREDO_COLOUR } from '@credo/shared';
@@ -218,7 +218,7 @@ describe('Gallery', () => {
 
     await user.click(screen.getByRole('button', { name: 'One at a time' }));
     await user.click(list().getByRole('link', { name: 'PageHeader' }));
-    expect(stateNames()).toEqual(['With actions', 'Title only']);
+    expect(stateNames()).toEqual(['With actions', 'Title only', 'With status and subtitle']);
 
     await user.click(list().getByRole('link', { name: 'FieldLabel' }));
     expect(screen.queryByRole('button', { name: 'One at a time' })).toBeNull();
@@ -417,7 +417,7 @@ describe('Gallery', () => {
     open(`${BASE}/foundations/values`);
     const { notes } = GUIDELINE.values;
     // A guideline with a note short of a state would quiet the loop below.
-    expect(new Set(notes.map((note) => note.about)).size).toBe(5);
+    expect(new Set(notes.map((note) => note.about)).size).toBe(4);
     const states = {
       tones: 'Meanings',
       styles: 'Type',
@@ -790,7 +790,7 @@ describe('Gallery', () => {
   });
 
   it('213 case 1: every entry carries one to three use lines and one to three don’t-use lines', () => {
-    expect(ENTRIES).toHaveLength(23);
+    expect(ENTRIES).toHaveLength(25);
     for (const entry of ENTRIES) {
       for (const lines of [entry.useWhen, entry.dontUseWhen]) {
         expect(lines.length, entry.name).toBeGreaterThanOrEqual(1);
@@ -921,8 +921,14 @@ describe('Gallery', () => {
     open(`${BASE}/organisms/page-state`);
     expect(part().getAllByRole('alert')).toHaveLength(1);
     expect(part().getAllByRole('status')).toHaveLength(4);
+    // The failed plate's sample retry acts without a page behind it: the press changes nothing.
+    fireEvent.click(within(part().getByRole('figure', { name: 'Failed' })).getByRole('button'));
+    expect(part().getAllByRole('alert')).toHaveLength(1);
+    // The loader is named by the dictionary's words; this draw loads none, so its key is the name.
     expect(
-      within(part().getByRole('figure', { name: 'Loading' })).getByLabelText('Loading'),
+      within(part().getByRole('figure', { name: 'Loading' })).getByLabelText(
+        /^(Loading\.\.\.|common\.loading)$/,
+      ),
     ).toBeDefined();
   });
 
@@ -958,10 +964,10 @@ describe('Gallery', () => {
     ]);
     expect(looks[3].getAttribute('style')).toContain(`--mantine-color-${TONES.danger}-`);
     expect(looks[0].getAttribute('style') ?? '').not.toContain(`--mantine-color-${TONES.danger}-`);
-    expect(about().getByText(/Built and in use; .* open item 655 moves them\./)).toBeDefined();
+    expect(about().getByText(/The app follows it\./)).toBeDefined();
   });
 
-  it('213 case 14: the entry of StatusBadge draws each status of the records in its word, a built part’s panel saying the screens do not use it yet', () => {
+  it('213 case 14: the entry of StatusBadge draws each status of the records in its word, a built part’s panel saying it is in use', () => {
     open(`${BASE}/atoms/status-badge`);
     expect(stateNames()).toEqual(['An order', 'A delivery request', 'A person']);
     const chips = [...document.querySelectorAll('[data-status]')];
@@ -987,9 +993,7 @@ describe('Gallery', () => {
       'Active',
       'Inactive',
     ]);
-    expect(
-      about().getByText(/Built; the screens do not use it yet: open item 651 moves them\./),
-    ).toBeDefined();
+    expect(about().getByText(/Built and in use; .* open item 651 moves them\./)).toBeDefined();
   });
 
   it('213 case 13: a built part’s contract says the app follows it, and has no “to come”', () => {
@@ -1000,6 +1004,15 @@ describe('Gallery', () => {
     );
     expect(screen.getByText(/The app follows it\./)).toBeDefined();
     expect(screen.queryByText(/To come/)).toBeNull();
+  });
+
+  it('213 case 13: a part not yet built has its panel say it is to come, and the item that builds it', () => {
+    render(
+      <CredoMantine colour={CREDO_COLOUR} test>
+        <ContractPanel contract={{ ...GUIDELINE.contracts[0], followed: { item: 651 } }} />
+      </CredoMantine>,
+    );
+    expect(screen.getByText(/To come: open item 651 builds it\./)).toBeDefined();
   });
 
   it('213 case 16: each slot of the page base is an entry with a contract, and the base draws a page from them', async () => {
@@ -1068,7 +1081,33 @@ describe('Gallery', () => {
     expect(about().getByText(/Built and in use; .* open item 651 moves them\./)).toBeDefined();
     cleanup();
     open(`${BASE}/atoms/back-link`);
-    expect(about().getByText(/Built; the screens do not use it yet: open item 651/)).toBeDefined();
+    expect(about().getByText(/Built and in use; .* open item 651 moves them\./)).toBeDefined();
+  });
+
+  it('222 case 19: the contracts of the page base’s new takes and its two new parts are drawn, each take a content or a meaning', () => {
+    const shell = GUIDELINE.contracts.find((contract) => contract.part === 'PageShell')!;
+    expect(shell.takes.filter(({ prop }) => ['back', 'recordStatus'].includes(prop))).toEqual([
+      expect.objectContaining({ prop: 'back', is: 'content' }),
+      expect.objectContaining({ prop: 'recordStatus', is: 'meaning' }),
+    ]);
+    open(`${BASE}/molecules/action-row`);
+    expect(stateNames()).toEqual(['Two or more', 'One']);
+    expect(
+      within(part().getByRole('figure', { name: 'Two or more' }))
+        .getAllByRole('button')
+        .map((button) => button.textContent),
+    ).toEqual(['Cancel', 'Save a draft', 'Send']);
+    expect(about().getByText(/Built and in use; .* open item 651 moves them\./)).toBeDefined();
+    cleanup();
+    open(`${BASE}/molecules/table-scroll`);
+    expect(stateNames()).toEqual(['Default']);
+    expect(about().getByText(/The app follows it\./)).toBeDefined();
+    const decided = GUIDELINE.contracts.find(
+      (contract) => contract.part === 'TableScroll',
+    )!.decides;
+    expect(decided.flatMap((decision) => decision.from)).toEqual([
+      { table: 'WIDTHS', key: 'table' },
+    ]);
   });
 
   it('213 case 17: every part’s entry draws its contract, and each duplicate’s winner is named on the other’s entry', () => {
@@ -1078,7 +1117,7 @@ describe('Gallery', () => {
         entry.name !== 'The page base',
     );
     // A set that found nothing would quiet the loop.
-    expect(parts.length).toBe(18);
+    expect(parts.length).toBe(20);
     expect(GUIDELINE.contracts.map((contract) => contract.part).sort()).toEqual(
       parts.map((entry) => entry.name).sort(),
     );

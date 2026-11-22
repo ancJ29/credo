@@ -1,16 +1,7 @@
-import type { DeliveryRequest, OrderLine, RequestState, OrderState } from '@credo/shared';
-import {
-  Badge,
-  Group,
-  Image,
-  NativeSelect,
-  Paper,
-  Stack,
-  Table,
-  Text,
-  TextInput,
-  Title,
-} from '@mantine/core';
+import type { DeliveryRequest, OrderLine } from '@credo/shared';
+import { Image, NativeSelect, Paper, Stack, Table, Text, TextInput, Title } from '@mantine/core';
+import { ActionRow } from '../components/molecules/ActionRow';
+import { TableScroll } from '../components/molecules/TableScroll';
 import { ActionButton } from '../components/atoms/ActionButton';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -18,31 +9,12 @@ import { Loaded } from '../frame/Loaded';
 import { type PageProps, useLoad } from '../page';
 import { TYPE } from '../design-system/tokens';
 import { FormMessage } from '../components/molecules/FormMessage';
+import { numberOf, priceOf } from '../number';
 
 /** An amount in đồng as the language writes a number. */
 export function useMoney() {
   const { t, i18n } = useTranslation();
-  return (amount: number) =>
-    t('orders.money', { amount: new Intl.NumberFormat(i18n.language).format(amount) });
-}
-
-const STATE_COLOUR: Record<OrderState | RequestState, string> = {
-  draft: 'gray',
-  confirmed: 'teal',
-  fulfilled: 'green',
-  cancelled: 'red',
-  waiting: 'blue',
-  delivered: 'green',
-};
-
-/** A state in words, in a badge. */
-export function StateBadge({ state }: { state: OrderState | RequestState }) {
-  const { t } = useTranslation();
-  return (
-    <Badge variant="light" color={STATE_COLOUR[state]}>
-      {t(`orders.state.${state}`)}
-    </Badge>
-  );
+  return (amount: number) => t('orders.money', { amount: priceOf(amount, i18n.language) });
 }
 
 const textIn = (value: unknown) => (typeof value === 'string' ? value : '');
@@ -66,9 +38,8 @@ export function CustomerBlock({ customer }: { customer: DeliveryRequest['custome
 export function LinesTable({ lines, total }: { lines: readonly OrderLine[]; total: number }) {
   const { t, i18n } = useTranslation();
   const money = useMoney();
-  const number = new Intl.NumberFormat(i18n.language);
   return (
-    <Table.ScrollContainer minWidth={560}>
+    <TableScroll>
       <Table>
         <Table.Thead>
           <Table.Tr>
@@ -86,9 +57,9 @@ export function LinesTable({ lines, total }: { lines: readonly OrderLine[]; tota
                 {line.code} · {line.name}
               </Table.Td>
               <Table.Td>{line.unit}</Table.Td>
-              <Table.Td ta="right">{number.format(line.price)}</Table.Td>
-              <Table.Td ta="right">{number.format(line.quantity)}</Table.Td>
-              <Table.Td ta="right">{number.format(line.amount)}</Table.Td>
+              <Table.Td ta="right">{priceOf(line.price, i18n.language)}</Table.Td>
+              <Table.Td ta="right">{numberOf(line.quantity, i18n.language)}</Table.Td>
+              <Table.Td ta="right">{priceOf(line.amount, i18n.language)}</Table.Td>
             </Table.Tr>
           ))}
         </Table.Tbody>
@@ -101,7 +72,7 @@ export function LinesTable({ lines, total }: { lines: readonly OrderLine[]; tota
           </Table.Tr>
         </Table.Tfoot>
       </Table>
-    </Table.ScrollContainer>
+    </TableScroll>
   );
 }
 
@@ -130,14 +101,14 @@ export function CancelPanel({
         <Title order={3}>{title}</Title>
         <Text c="dimmed">{text}</Text>
         {asking ? (
-          <Group>
+          <ActionRow>
             <ActionButton meaning="other" busy={busy} onClick={onCancel}>
               {confirm}
             </ActionButton>
             <ActionButton meaning="other" onClick={() => setAsking(false)}>
               {t('orders.keep')}
             </ActionButton>
-          </Group>
+          </ActionRow>
         ) : (
           <ActionButton meaning="other" onClick={() => setAsking(true)}>
             {title}

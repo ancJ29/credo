@@ -13,6 +13,7 @@ import {
 import { DICTIONARIES } from './i18n';
 import { plain, type Table, textOf } from './importSheet';
 import type { Api } from './api';
+import { priceOf } from './number';
 
 export type ColumnKey =
   'code' | 'name' | 'phone' | 'address' | 'unit' | 'price' | 'stocked' | 'note';
@@ -51,7 +52,7 @@ export const LISTS = {
         code,
         name,
         unit,
-        price: new Intl.NumberFormat(language).format(price),
+        price: priceOf(price, language),
         stocked: DICTIONARIES[language].lists[stocked ? 'yes' : 'no'],
       })),
     send: (api: Api, rows: ListRequest[]) => api.importProducts(rows as AddProductRequest[]),

@@ -10,7 +10,6 @@ import {
 import {
   Anchor,
   Avatar,
-  Badge,
   Box,
   Card,
   Group,
@@ -20,6 +19,9 @@ import {
   Text,
   TextInput,
 } from '@mantine/core';
+import { ActionRow } from '../../components/molecules/ActionRow';
+import { TableScroll } from '../../components/molecules/TableScroll';
+import { PageState } from '../../components/organisms/PageState';
 import { IconSearch } from '@tabler/icons-react';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -38,6 +40,7 @@ import {
 } from '../../staffFilter';
 import { TYPE } from '../../design-system/tokens';
 import { ActionButton } from '../../components/atoms/ActionButton';
+import { StatusBadge } from '../../components/atoms/StatusBadge';
 
 /** A filter's name: shown above it on a phone, and from `sm` up only the accessible name, as the old
  * app's one-line filters show the value alone. */
@@ -138,12 +141,9 @@ export function StaffListPage(page: PageProps) {
     />
   );
 
-  const chip = (person: Employee) =>
-    person.archived ? (
-      <Badge color="gray">{t('staff.chipInactive')}</Badge>
-    ) : (
-      <Badge>{t('staff.chipActive')}</Badge>
-    );
+  const chip = (person: Employee) => (
+    <StatusBadge status={person.archived ? 'inactive' : 'active'} />
+  );
 
   const add = can(user, 'staff.canCreate') && (
     <ActionButton meaning="main" to="/staff/new">
@@ -159,12 +159,12 @@ export function StaffListPage(page: PageProps) {
       actions={
         user.root ? (
           // The root alone imports staff, as the import page's route checks (case-table row 4).
-          <Group>
+          <ActionRow>
             <ActionButton meaning="other" to="/staff/import">
               {t('staff.import')}
             </ActionButton>
             {add}
-          </Group>
+          </ActionRow>
         ) : (
           add
         )
@@ -235,7 +235,9 @@ export function StaffListPage(page: PageProps) {
         ))}
       </div>
       {people.length === 0 ? (
-        <Text c="dimmed">{t(everyone.length === 0 ? 'staff.empty' : 'staff.noMatch')}</Text>
+        <PageState state="empty">
+          {t(everyone.length === 0 ? 'staff.empty' : 'staff.noMatch')}
+        </PageState>
       ) : (
         <>
           <Stack gap="xs" hiddenFrom="sm" data-testid="staff-cards">
@@ -270,7 +272,7 @@ export function StaffListPage(page: PageProps) {
             ))}
           </Stack>
           <Box visibleFrom="sm">
-            <Table.ScrollContainer minWidth={640}>
+            <TableScroll>
               <Table highlightOnHover>
                 <Table.Thead>
                   <Table.Tr>
@@ -316,7 +318,7 @@ export function StaffListPage(page: PageProps) {
                   ))}
                 </Table.Tbody>
               </Table>
-            </Table.ScrollContainer>
+            </TableScroll>
           </Box>
         </>
       )}

@@ -1,9 +1,10 @@
 import { IMPORT_CALL_ROWS, IMPORT_MAX_BYTES, type Language } from '@credo/shared';
-import { Button, Group, Paper, Stack, Table, Text, TextInput, Title } from '@mantine/core';
+import { Paper, Stack, Table, Text, TextInput } from '@mantine/core';
+import { ActionRow } from '../../components/molecules/ActionRow';
+import { TableScroll } from '../../components/molecules/TableScroll';
 import { type TFunction } from 'i18next';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link } from 'react-router';
 import { readFirstSheet, writeWorkbook } from '../../importFile';
 import {
   headingOf,
@@ -14,12 +15,13 @@ import {
   readList,
   templateSheets,
 } from '../../listSheet';
-import { Loaded } from '../../frame/Loaded';
 import { type PageProps, refusal, useLoad } from '../../page';
 import { saveAs } from '../../saveAs';
 import { TYPE } from '../../design-system/tokens';
 import { ActionButton } from '../../components/atoms/ActionButton';
+import { PageShell } from '../../parts/PageShell';
 import { FormMessage } from '../../components/molecules/FormMessage';
+import { PageHeader } from '../../components/organisms/PageHeader';
 
 /** Why a file was not read, or read to nothing. */
 type FileProblem = 'too-big' | 'unreadable' | 'too-many' | 'no-code' | 'no-name' | 'no-rows';
@@ -77,12 +79,13 @@ export function ListImportPage({ kind, ...page }: PageProps & { kind: ListKind }
   );
   if (loaded.data) return <ImportForm page={page} kind={kind} taken={loaded.data} />;
   return (
-    <Stack gap="lg">
-      <Title {...TYPE.pageTitle}>{t(`lists.${kind}.importTitle`)}</Title>
-      <Loaded status={loaded.status} onRetry={loaded.reload}>
-        {null}
-      </Loaded>
-    </Stack>
+    <PageShell
+      title={t(`lists.${kind}.importTitle`)}
+      status={loaded.status}
+      onRetry={loaded.reload}
+    >
+      {null}
+    </PageShell>
   );
 }
 
@@ -181,7 +184,7 @@ function ImportForm({
     const rest = held.filter((row) => !answered.some((one) => one.row === row)).length;
     return (
       <Stack gap="lg">
-        <Title {...TYPE.pageTitle}>{t(`lists.${kind}.doneTitle`)}</Title>
+        <PageHeader title={t(`lists.${kind}.doneTitle`)} />
         <FormMessage kind="success">{t(`lists.${kind}.doneAdded`, { count: added })}</FormMessage>
         {refusedTaken > 0 && (
           <FormMessage kind="warning">{t('lists.doneTaken', { count: refusedTaken })}</FormMessage>
@@ -214,16 +217,16 @@ function ImportForm({
         {rest > 0 && status === 'failed' && (
           <FormMessage kind="error">{t('lists.failedPart')}</FormMessage>
         )}
-        <Group>
+        <ActionRow>
           {rest > 0 && (
             <ActionButton meaning="main" busy={status === 'busy'} onClick={() => void send()}>
               {t('import.addRest', { count: rest })}
             </ActionButton>
           )}
-          <Button component={Link} to={`/${kind}`} variant={rest > 0 ? 'default' : 'filled'}>
+          <ActionButton meaning={rest > 0 ? 'other' : 'main'} to={`/${kind}`}>
             {t(`lists.${kind}.back`)}
-          </Button>
-        </Group>
+          </ActionButton>
+        </ActionRow>
       </Stack>
     );
   }
@@ -231,9 +234,7 @@ function ImportForm({
   return (
     <Stack gap="lg">
       <div>
-        <Title {...TYPE.pageTitle}>
-          {t(rows ? 'import.previewTitle' : `lists.${kind}.importTitle`)}
-        </Title>
+        <PageHeader title={t(rows ? 'import.previewTitle' : `lists.${kind}.importTitle`)} />
         {!rows && <Text c="dimmed">{t('lists.intro')}</Text>}
       </div>
       {status === 'failed' && <FormMessage kind="error">{t('lists.failed')}</FormMessage>}
@@ -246,7 +247,7 @@ function ImportForm({
               refused: rows.length - held.length,
             })}
           </Text>
-          <Table.ScrollContainer minWidth={720}>
+          <TableScroll>
             <Table>
               <Table.Thead>
                 <Table.Tr>
@@ -287,8 +288,8 @@ function ImportForm({
                 ))}
               </Table.Tbody>
             </Table>
-          </Table.ScrollContainer>
-          <Group>
+          </TableScroll>
+          <ActionRow>
             <ActionButton
               meaning="main"
               disabled={held.length === 0}
@@ -300,7 +301,7 @@ function ImportForm({
             <ActionButton meaning="other" disabled={status === 'busy'} onClick={chooseAgain}>
               {t('import.another')}
             </ActionButton>
-          </Group>
+          </ActionRow>
         </Stack>
       ) : (
         <Paper withBorder p="md">

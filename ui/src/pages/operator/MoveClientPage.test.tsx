@@ -252,7 +252,7 @@ describe('the page that moves a company to another box', () => {
   it('C14: A company not in the list has no form', async () => {
     page({ code: 'nobody' });
 
-    expect((await screen.findByRole('note')).textContent).toBe(words.rootUnknown);
+    expect((await screen.findByRole('status')).textContent).toBe(words.rootUnknown);
     expect(screen.queryByRole('radio')).toBeNull();
   });
 

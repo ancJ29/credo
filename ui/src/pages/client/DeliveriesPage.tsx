@@ -1,13 +1,15 @@
 import { daySchema, type DeliveryRequest, driverDay } from '@credo/shared';
 import { Anchor, Group, Paper, Stack, Table, Text, TextInput, Title } from '@mantine/core';
+import { TableScroll } from '../../components/molecules/TableScroll';
 import { useTranslation } from 'react-i18next';
 import { Link, useSearchParams } from 'react-router';
 import { Loaded } from '../../frame/Loaded';
-import { StateBadge, useMoney } from '../../parts/OrderParts';
+import { useMoney } from '../../parts/OrderParts';
+import { StatusBadge } from '../../components/atoms/StatusBadge';
 import { type PageProps, useLoad } from '../../page';
 import { useGapText } from '../../parts/ReconcileParts';
-import { TYPE } from '../../design-system/tokens';
 import { ActionButton } from '../../components/atoms/ActionButton';
+import { PageHeader } from '../../components/organisms/PageHeader';
 
 const addressOf = (request: DeliveryRequest) => {
   const address = request.customer.extra['address'];
@@ -34,7 +36,7 @@ export function DeliveriesPage(page: PageProps) {
 
   return (
     <Stack gap="lg">
-      <Title {...TYPE.pageTitle}>{t('nav.deliveries')}</Title>
+      <PageHeader title={t('nav.deliveries')} />
       <TextInput
         label={t('orders.sendDay')}
         type="date"
@@ -87,7 +89,7 @@ export function DeliveriesPage(page: PageProps) {
                       {t('reconcile.open')}
                     </ActionButton>
                   </Group>
-                  <Table.ScrollContainer minWidth={720}>
+                  <TableScroll>
                     <Table highlightOnHover aria-label={driver.name}>
                       <Table.Thead>
                         <Table.Tr>
@@ -115,13 +117,13 @@ export function DeliveriesPage(page: PageProps) {
                             <Table.Td>{request.order.number}</Table.Td>
                             <Table.Td ta="right">{money(request.total)}</Table.Td>
                             <Table.Td>
-                              <StateBadge state={request.state} />
+                              <StatusBadge status={request.state} />
                             </Table.Td>
                           </Table.Tr>
                         ))}
                       </Table.Tbody>
                     </Table>
-                  </Table.ScrollContainer>
+                  </TableScroll>
                 </Stack>
               </Paper>
             );

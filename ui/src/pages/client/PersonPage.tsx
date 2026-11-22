@@ -11,18 +11,8 @@ import {
   type StaffSetup,
   staffConfig,
 } from '@credo/shared';
-import {
-  Badge,
-  Button,
-  Group,
-  NativeSelect,
-  PasswordInput,
-  Stack,
-  Text,
-  Textarea,
-  TextInput,
-  Title,
-} from '@mantine/core';
+import { NativeSelect, PasswordInput, Stack, Text, Textarea, TextInput } from '@mantine/core';
+import { ActionRow } from '../../components/molecules/ActionRow';
 import {
   IconArchive,
   IconKey,
@@ -34,7 +24,7 @@ import {
 } from '@tabler/icons-react';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useLocation, useParams } from 'react-router';
+import { useLocation, useParams } from 'react-router';
 import { DetailCard, DetailColumns, FieldPair } from '../../parts/DetailCards';
 import { Loaded } from '../../frame/Loaded';
 import {
@@ -60,6 +50,7 @@ import { noteOf, personalPhoneOf, phoneOf, unitName } from '../../staffNames';
 import { TYPE } from '../../design-system/tokens';
 import { ActionButton } from '../../components/atoms/ActionButton';
 import { FormMessage } from '../../components/molecules/FormMessage';
+import { PageShell } from '../../parts/PageShell';
 
 const READ_ONLY = { input: { fontFamily: 'ui-monospace, monospace' } };
 type SaveOutcome = 'saved' | 'failed' | 'forbidden' | 'conflict' | null;
@@ -141,14 +132,14 @@ function PasswordPanel({
             value={typed.again}
             onChange={(event) => setTyped({ ...typed, again: event.currentTarget.value })}
           />
-          <Group>
+          <ActionRow>
             <ActionButton meaning="other" submit>
               {t('person.passwordSet')}
             </ActionButton>
             <ActionButton meaning="other" onClick={() => void give(null)}>
               {t('person.passwordMake')}
             </ActionButton>
-          </Group>
+          </ActionRow>
         </Stack>
       </form>
     </DetailCard>
@@ -266,14 +257,14 @@ function ArchivePanel({
         <Text c="dimmed">{words.text}</Text>
         {failed && <FormMessage kind="error">{words.failed}</FormMessage>}
         {asking ? (
-          <Group>
+          <ActionRow>
             <ActionButton meaning="main" onClick={onSwitch}>
               {words.confirm}
             </ActionButton>
             <ActionButton meaning="other" onClick={() => setAsking(false)}>
               {words.cancel}
             </ActionButton>
-          </Group>
+          </ActionRow>
         ) : (
           <ActionButton meaning="other" onClick={() => setAsking(true)}>
             {words.title}
@@ -395,22 +386,16 @@ function PersonForm({
   );
 
   return (
-    <Stack gap="lg">
-      <Group justify="space-between">
-        <Stack gap={0}>
-          <Title {...TYPE.pageTitle}>{employee.name}</Title>
-          <Text c="dimmed">{employee.code}</Text>
-        </Stack>
-        {employee.archived && <Badge color="gray">{t('staff.left')}</Badge>}
-      </Group>
-      <Button
-        component={Link}
-        to={`/staff${typeof listed === 'string' ? listed : ''}`}
-        variant="subtle"
-        style={{ alignSelf: 'flex-start' }}
-      >
-        {t('staff.back')}
-      </Button>
+    <PageShell
+      title={employee.name}
+      back={{
+        href: `/staff${typeof listed === 'string' ? listed : ''}`,
+        children: t('staff.back'),
+      }}
+      recordStatus={employee.archived ? 'inactive' : undefined}
+      subtitle={employee.code}
+      status="ready"
+    >
       {employee.archived && (
         <FormMessage kind="info" standing>
           {t('person.archived')}
@@ -600,7 +585,7 @@ function PersonForm({
           </Stack>
         }
       />
-    </Stack>
+    </PageShell>
   );
 }
 

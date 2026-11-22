@@ -1,5 +1,6 @@
 import { type Language, type PasskeyItem } from '@credo/shared';
-import { Group, Stack, Table, Text, Title } from '@mantine/core';
+import { Stack, Table, Text } from '@mantine/core';
+import { TableScroll } from '../../components/molecules/TableScroll';
 import { IconFingerprint } from '@tabler/icons-react';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -9,9 +10,9 @@ import { Loaded } from '../../frame/Loaded';
 import { PasskeyAlreadyHere, PasskeyNotGiven, type Passkeys } from '../../passkeys';
 import { refusal, useLoad } from '../../page';
 import { touch } from '../../touch';
-import { TYPE } from '../../design-system/tokens';
 import { FormMessage } from '../../components/molecules/FormMessage';
 import { ActionButton } from '../../components/atoms/ActionButton';
+import { PageHeader } from '../../components/organisms/PageHeader';
 
 type Props = { api: Api; passkeys: Passkeys; onSignedOut: () => void };
 
@@ -70,21 +71,23 @@ export function PasskeysPage({ api, passkeys, onSignedOut }: Props) {
 
   return (
     <Stack gap="lg">
-      <Group justify="space-between">
-        <Title {...TYPE.pageTitle}>{t('passkey.title')}</Title>
-        <ActionButton
-          meaning="main"
-          busy={busy}
-          icon={<IconFingerprint size={18} />}
-          onClick={() => void add()}
-        >
-          {t('passkey.add')}
-        </ActionButton>
-      </Group>
+      <PageHeader
+        title={t('passkey.title')}
+        actions={
+          <ActionButton
+            meaning="main"
+            busy={busy}
+            icon={<IconFingerprint size={18} />}
+            onClick={() => void add()}
+          >
+            {t('passkey.add')}
+          </ActionButton>
+        }
+      />
       <Text c="dimmed">{t('passkey.intro')}</Text>
       {notice && <FormMessage kind="error">{t(NOTICE[notice])}</FormMessage>}
       <Loaded status={loaded.status} onRetry={loaded.reload}>
-        <Table.ScrollContainer minWidth={480}>
+        <TableScroll>
           <Table>
             <Table.Thead>
               <Table.Tr>
@@ -116,7 +119,7 @@ export function PasskeysPage({ api, passkeys, onSignedOut }: Props) {
               ))}
             </Table.Tbody>
           </Table>
-        </Table.ScrollContainer>
+        </TableScroll>
       </Loaded>
     </Stack>
   );

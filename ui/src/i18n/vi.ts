@@ -397,7 +397,6 @@ export const vi: Dictionary = {
     colStatus: 'Trạng thái',
     chipActive: 'Đang hoạt động',
     chipInactive: 'Đã khóa',
-    left: 'Đã nghỉ việc',
     back: 'Quay lại danh sách nhân viên',
   },
   addPerson: {

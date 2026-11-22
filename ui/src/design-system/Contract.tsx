@@ -1,11 +1,13 @@
-import { Alert, Button, Center, Loader, Stack, Text, Title } from '@mantine/core';
+import { Stack, Table, Text } from '@mantine/core';
 import type { ReactNode } from 'react';
 import { GUIDELINE, type Contract, type PartState } from './guideline';
 import { followedWords, heldWords } from './Charter';
 import classes from './Gallery.module.css';
 import { ActionButton } from '../components/atoms/ActionButton';
+import { ActionRow } from '../components/molecules/ActionRow';
 import { FormMessage } from '../components/molecules/FormMessage';
-import { TONES, TYPE } from './tokens';
+import { TableScroll } from '../components/molecules/TableScroll';
+import { PageState } from '../components/organisms/PageState';
 
 /** The contract of a part, by the name of its entry. */
 export const contractOf = (part: string) =>
@@ -86,28 +88,19 @@ export const FormMessageStates = platesOf('FormMessage', ({ name }) => (
   </Stack>
 ));
 
-/** A page state: its title and message as the contract's styles draw them, its loader and retry button. */
-function PageStateSample({ state: { name, role, tone } }: { state: PartState }) {
-  if (name === 'Loading')
-    return (
-      <Center mih={240}>
-        <Loader aria-label="Loading" />
-      </Center>
-    );
-  if (tone)
-    return (
-      <Stack align="flex-start" w={394} maw="100%">
-        <Alert color={TONES[tone]} role={role} w="100%">
-          The page did not load.
-        </Alert>
-        <Button variant="default">Try again</Button>
-      </Stack>
-    );
+/** A page state, drawn by the part itself: its title and words, its retry and its add. */
+function PageStateSample({ state: { name } }: { state: PartState }) {
+  const state = name === 'Not found' ? 'notFound' : (name.toLowerCase() as 'loading');
   return (
-    <Stack gap="xs" role={role} w={394} maw="100%">
-      <Title {...TYPE.pageTitle}>{name}</Title>
-      <Text {...TYPE.caption}>{WORDS[name]}</Text>
-      {name === 'Empty' && <Button variant="default">Add</Button>}
+    <Stack w={394} maw="100%">
+      <PageState
+        state={state}
+        title={name}
+        onRetry={() => undefined}
+        add={<ActionButton meaning="other">Add</ActionButton>}
+      >
+        {WORDS[name]}
+      </PageState>
     </Stack>
   );
 }
@@ -120,4 +113,47 @@ export const ActionButtonStates = platesOf('ActionButton', ({ name }) => (
   <ActionButton meaning={name.toLowerCase() as 'main'}>
     {name === 'Danger' ? 'Delete the record' : `${name} action`}
   </ActionButton>
+));
+
+/** A block's buttons in a row, drawn by the part itself: one gap, at the end. */
+export const ActionRowStates = platesOf('ActionRow', ({ name }) => (
+  <Stack w={394} maw="100%">
+    <ActionRow>
+      {name === 'One' ? (
+        <ActionButton meaning="main">Save</ActionButton>
+      ) : (
+        <>
+          <ActionButton meaning="quiet">Cancel</ActionButton>
+          <ActionButton meaning="other">Save a draft</ActionButton>
+          <ActionButton meaning="main">Send</ActionButton>
+        </>
+      )}
+    </ActionRow>
+  </Stack>
+));
+
+/** A table at its least width, drawn by the part itself: it scrolls sideways below it. */
+export const TableScrollStates = platesOf('TableScroll', () => (
+  <Stack w={394} maw="100%">
+    <TableScroll>
+      <Table>
+        <Table.Thead>
+          <Table.Tr>
+            <Table.Th>Name</Table.Th>
+            <Table.Th>Phone</Table.Th>
+            <Table.Th>Address</Table.Th>
+            <Table.Th>Staff</Table.Th>
+          </Table.Tr>
+        </Table.Thead>
+        <Table.Tbody>
+          <Table.Tr>
+            <Table.Td>An Phat</Table.Td>
+            <Table.Td>0901 000 000</Table.Td>
+            <Table.Td>12 Le Loi</Table.Td>
+            <Table.Td>3</Table.Td>
+          </Table.Tr>
+        </Table.Tbody>
+      </Table>
+    </TableScroll>
+  </Stack>
 ));

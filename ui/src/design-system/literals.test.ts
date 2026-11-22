@@ -14,6 +14,12 @@ const TYPE_NUMBER =
 
 const SRC = `${import.meta.dirname}/..`;
 
+/** `Intl` written as a formatter: `new Intl.NumberFormat(...)`, or called without `new`. */
+const INTL = /\bIntl\.[A-Z]/;
+
+/** The two places that write a number, a day or a time by `Intl`. */
+const FORMAT_PLACES = ['day.ts', 'number.ts'];
+
 describe('The stylesheets', () => {
   it('7: No stylesheet outside the design system writes a colour of its own', () => {
     const all = globSync('**/*.module.css', { cwd: SRC });
@@ -81,5 +87,34 @@ describe('The weights and sizes', () => {
       '{ fontWeight: WEIGHTS.title }',
     ])
       expect(TYPE_NUMBER.test(form), form).toBe(false);
+  });
+});
+
+describe('The formats', () => {
+  it('17: No screen writes `new Intl`; a number, a day and a time are written by `number.ts` and `day.ts`', () => {
+    const all = globSync('**/*.{ts,tsx}', { cwd: SRC });
+    // A glob that found nothing, or a folder moved, would quiet the check below.
+    expect(all.some((path) => path.endsWith('.tsx'))).toBe(true);
+    expect(all).toContain('day.ts');
+    expect(all).toContain('number.ts');
+    const own = all.filter(
+      (path) =>
+        !path.startsWith('mock/') && !/\.test\.tsx?$/.test(path) && !FORMAT_PLACES.includes(path),
+    );
+    expect(own.length).toBeGreaterThanOrEqual(50);
+    const written = own.filter((path) => INTL.test(readFileSync(`${SRC}/${path}`, 'utf8')));
+    expect(written).toEqual([]);
+  });
+
+  it('17: the pattern refuses each form of `Intl`, and not a word that holds it', () => {
+    for (const form of [
+      'new Intl.NumberFormat(language)',
+      'new Intl.DateTimeFormat(locale, {})',
+      'new  Intl.PluralRules(language)',
+      'Intl.NumberFormat(language)',
+    ])
+      expect(INTL.test(form), form).toBe(true);
+    for (const form of ['Internal notes', 'an Intl-free word', 'const intl = 1'])
+      expect(INTL.test(form), form).toBe(false);
   });
 });
