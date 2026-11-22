@@ -1825,7 +1825,7 @@ The dialog's entry (`Modal.extend`) in `ui/src/design-system/appTheme.ts` carrie
 
 **Table half done (gallery parts, step 4, 2026-11-22).** The gallery draws a table and its rows under the pointer: the entry `DataTable` (`ui/src/components/molecules/DataTable.tsx`), whose rows light at the theme's colour and whose test (`DataTable.test.tsx`) holds it. *Still open:* the dialog, which step 10 draws; the item closes there.
 
-**Closed (gallery parts, step 10, 2026-11-22).** The gallery draws the dialog: the entry `Dialog` (`ui/src/design-system/Dialog.tsx`), a button that opens the ended session's dialog in its own words, held by case 12 in `ui/src/design-system/Gallery.test.tsx`. Both halves are done; closed by the step's commit.
+**Closed (gallery parts, step 10, 2026-11-22).** The gallery draws the dialog: the entry `Dialog` (`ui/src/design-system/Dialog.tsx`), a button that opens the ended session's dialog in its own words, held by case 12 in `ui/src/design-system/Gallery.test.tsx`. Both halves are done; closed by `b4433841`.
 
 ## 509. A company too large to be compared in one press cannot switch from the page — the machine; `[DEFERRED]` (the move's plan, 2026-11-16, Low)
 
