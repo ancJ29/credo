@@ -156,8 +156,9 @@ of the same shape: a gallery-wide mechanism 16 (its step 1), a part's take with 
       when:_ the gates exit 0 and `pnpm --filter @credo/scripts exec vitest run src/citations.test.ts
       src/counts.test.ts` exits 0 (`counts.ts` names `Frame.tsx` a site of the widths). **16 min**.
       _Done 2026-11-22, the gates from 21:55:_ `Viewport` is in `ui/src/mock/Frame.tsx`, `Frame` draws it round its router; `Entry` gains `mustHave` and a state `phone`, `KIND_OF_PAGE` names the kind; cases 1 to 3 each seen red by a mutation; the three gates, the pinned file and the words and fake tests ran on this tree. Items 667 and 668 filed.
-- [ ] **2. The phone page.** `Panel` takes `to` (content: the address the block opens); the six
+- [x] **2. The phone page.** `Panel` takes `to` (content: the address the block opens); the six
       states in the phone's frame. Cases 4, 5, 13. _Done when:_ the gates exit 0. **11 min**.
+      _Done 2026-11-22, the gates from 22:29:_ `Panel` takes `to` (one link over the block), its contract and entry say it; `Pages.tsx` draws the entry `The phone page` (kind "Kinds of page", 30 entries now) in six phone frames; cases 4, 5 and 13 each seen red by a mutation, case 3's guard red once on the entry; the three gates, the pinned file and the words and fake tests ran on this tree. Item 668 read: stays open, the entry draws the call as the screen does.
 - [ ] **3. The list page.** Six states, the last in the phone's frame, a `Panel` with `to` a row.
       Case 6. _Done when:_ the gates exit 0. **10 min**.
 - [ ] **4. The form page.** Its four states. Case 7. _Done when:_ the gates exit 0. **10 min**.

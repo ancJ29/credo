@@ -30,6 +30,7 @@ import { ChoiceStates } from './Choices';
 import { FieldStates } from './Fields';
 import { SAMPLES, useLanguage } from './samples';
 import { OnTheBrand, OnTheLinks } from './OnTheBrand';
+import { PhonePageStates } from './Pages';
 import {
   ActionButtonStates,
   ActionRowStates,
@@ -487,6 +488,30 @@ export const ENTRIES: Entry[] = [
     states: ListTableStates,
   },
   {
+    group: 'Pages',
+    kind: KIND_OF_PAGE,
+    name: 'The phone page',
+    description:
+      'The driver’s phone page, drawn at a phone’s width from parts only: the day’s requests as cards that each open a request, then one request with its customer, goods and money to collect, the photo before it is sent, delivered, a send that failed and cancelled by the office.',
+    props: 'PageHeader · PageShell · Panel · DataTable · StatusBadge · FormMessage · ActionButton',
+    useWhen: [
+      'You are about to build a page a person reads on a phone, outdoors, with a thumb.',
+      'You need a page whose acts are one main press a state.',
+    ],
+    dontUseWhen: [
+      'A page the office reads at a desk: that is the page base’s.',
+      'A list of records with columns: that is ListTable’s.',
+    ],
+    instead: 'The page base',
+    mustHave: [
+      'The phone’s width: the page is drawn at 390 px, in a frame whose breakpoints are the phone’s.',
+      'One main press a state, under what it acts on, the other under it.',
+      'The money to collect in bold under the goods.',
+      'Every press at least 36 px tall, as ActionButton’s small size stands.',
+    ],
+    states: PhonePageStates,
+  },
+  {
     group: 'Atoms',
     name: 'FieldLabel',
     kind: 'Text',
@@ -774,8 +799,8 @@ export const ENTRIES: Entry[] = [
     name: 'Panel',
     kind: 'Cards',
     description:
-      'A framed block: an optional level-3 title over what it holds, at the edge, padding and gap the design system decides.',
-    props: 'title?: string · children: ReactNode',
+      'A framed block: an optional level-3 title over what it holds, at the edge, padding and gap the design system decides; given an address, the whole block is one link to it, its words in their own colour.',
+    props: 'title?: string · to?: string · children: ReactNode',
     useWhen: ['A page frames a few lines or fields: with a title over them, or with none.'],
     dontUseWhen: [
       'A block with a section title and its icon: that is SectionCard’s.',

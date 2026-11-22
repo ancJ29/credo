@@ -1066,7 +1066,7 @@ describe('Gallery', () => {
   });
 
   it('213 case 1: every entry carries one to three use lines and one to three don’t-use lines', () => {
-    expect(ENTRIES).toHaveLength(29);
+    expect(ENTRIES).toHaveLength(30);
     for (const entry of ENTRIES) {
       for (const lines of [entry.useWhen, entry.dontUseWhen]) {
         expect(lines.length, entry.name).toBeGreaterThanOrEqual(1);
@@ -1310,6 +1310,7 @@ describe('Gallery', () => {
       'DetailColumns',
       'FieldPair',
       'ListTable',
+      'The phone page',
     ]);
     for (const name of SLOTS) {
       const entry = ENTRIES.find((each) => each.name === name);
@@ -1391,7 +1392,8 @@ describe('Gallery', () => {
     const parts = ENTRIES.filter(
       (entry) =>
         ['Atoms', 'Molecules', 'Organisms', 'Pages'].includes(entry.group) &&
-        entry.name !== 'The page base',
+        entry.name !== 'The page base' &&
+        entry.kind !== KIND_OF_PAGE,
     );
     // A set that found nothing would quiet the loop.
     expect(parts.length).toBe(22);
@@ -1493,5 +1495,72 @@ describe('Gallery', () => {
         expect(entry.mustHave, entry.name).toBeUndefined();
       }
     }
+  });
+
+  it('236 case 5: the phone page draws the walk’s six screens at the phone’s width: the cards each opening its request, one main press a state, the photo’s send and take again, the proof', () => {
+    const entry = ENTRIES.find((each) => each.name === 'The phone page')!;
+    expect(entry.kind).toBe(KIND_OF_PAGE);
+    drawn(entry);
+    const frames = part().getAllByTitle<HTMLIFrameElement>(/at the phone’s width/);
+    expect(frames).toHaveLength(6);
+    for (const frame of frames) {
+      act(() => {
+        fireEvent.load(frame);
+      });
+      expect(frame.getAttribute('width')).toBe('390');
+    }
+    const at = (index: number) => within(frames[index].contentDocument!.body);
+    const pressesOf = (index: number) => at(index).queryAllByRole('button');
+
+    // 1. The day's requests: a card each, a link opening its request, no press.
+    const cards = at(0).getAllByRole('link');
+    expect(cards.map((card) => card.getAttribute('href'))).toEqual([
+      '/my-deliveries/2026-11-23/r1',
+      '/my-deliveries/2026-11-23/r2',
+    ]);
+    expect(cards[0].textContent).toContain('GH-0001');
+    expect(pressesOf(0)).toHaveLength(0);
+    // 2. One request: the customer's call, the goods, the money in bold under them, one main press.
+    expect(at(1).getByRole('link', { name: 'Call 0901 234 567' }).getAttribute('href')).toBe(
+      'tel:0901234567',
+    );
+    expect(at(1).getAllByRole('row')).toHaveLength(5);
+    const collect = at(1).getByText('Amount to collect: 945,000 VND');
+    expect(collect.style.fontWeight).toBe('700');
+    expect(
+      at(1).getByRole('table').compareDocumentPosition(collect) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(pressesOf(1).map((press) => press.textContent)).toEqual(['Mark as delivered']);
+    // 3. The photo taken: Submit the main, Retake the other under it.
+    expect(at(2).getByRole('img', { name: 'Captured delivery photo' })).toBeDefined();
+    expect(pressesOf(2).map((press) => press.textContent)).toEqual(['Submit', 'Retake photo']);
+    expect(pressesOf(2)[0].getAttribute('data-variant')).toBe('filled');
+    expect(pressesOf(2)[1].getAttribute('data-variant')).toBe('default');
+    // 4. Delivered: the proof, no press.
+    expect(at(3).getByRole('status').textContent).toBe('Delivered successfully. Thank you!');
+    expect(at(3).getByRole('img', { name: 'Delivery verification photo' })).toBeDefined();
+    expect(pressesOf(3)).toHaveLength(0);
+    // 5. A send that failed: the message, the photo kept, Submit again.
+    expect(at(4).getByRole('alert').textContent).toContain('Failed to submit photo');
+    expect(at(4).getByRole('img', { name: 'Captured delivery photo' })).toBeDefined();
+    expect(pressesOf(4).map((press) => press.textContent)).toEqual(['Submit', 'Retake photo']);
+    // 6. Cancelled by the office: told so, nothing to press.
+    expect(at(5).getByRole('alert').textContent).toContain('cancelled by the dispatch office');
+    expect(pressesOf(5)).toHaveLength(0);
+    // Every press is ActionButton's, at the one size that stands at least 36 px.
+    for (let index = 0; index < 6; index += 1) {
+      for (const press of pressesOf(index)) expect(press.getAttribute('data-size')).toBe('sm');
+    }
+  });
+
+  it('236 case 13: Panel’s new take, the address its block opens, is a content in its contract and drawn on its entry', () => {
+    const panel = GUIDELINE.contracts.find((contract) => contract.part === 'Panel')!;
+    expect(panel.takes.find(({ prop }) => prop === 'to')?.is).toBe('content');
+    expect(ENTRIES.find((entry) => entry.name === 'Panel')!.props).toContain('to?: string');
+
+    open(`${BASE}/organisms/panel`);
+
+    const takes = about().getByRole('heading', { level: 3, name: 'Takes from a screen' });
+    expect(within(takes.closest('section')!).getByText('to')).toBeDefined();
   });
 });

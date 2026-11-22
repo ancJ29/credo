@@ -895,6 +895,11 @@ export const GUIDELINE: {
       part: 'Panel',
       takes: [
         { prop: 'title', is: 'content', line: 'The panel’s title; none draws no heading.' },
+        {
+          prop: 'to',
+          is: 'content',
+          line: 'The address the block opens: the whole block is then one link, its words in their own colour.',
+        },
         { prop: 'children', is: 'content', line: 'What the panel holds.' },
       ],
       decides: [
@@ -905,7 +910,10 @@ export const GUIDELINE: {
           from: [{ table: 'SPACING', key: 'md' }],
         },
       ],
-      fixes: ['Its title: a level-3 heading, drawn only where a title is given.'],
+      fixes: [
+        'Its title: a level-3 heading, drawn only where a title is given.',
+        'Its link: given an address, the block is one link over all of it, with no underline.',
+      ],
       states: [
         { name: 'With a title', line: 'A level-3 title over what the panel holds.' },
         { name: 'No title', line: 'What the panel holds, with no heading.' },
