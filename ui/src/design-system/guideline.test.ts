@@ -26,7 +26,12 @@ function problems(rules: Rule[], exists: (path: string) => boolean, items: numbe
 
 /** Every screen's source, the design system's own and the tests left out. */
 const SCREENS = import.meta.glob<string>(
-  ['../**/*.tsx', '!../**/*.test.tsx', '!../design-system/**'],
+  [
+    '../**/*.tsx',
+    '!../**/*.test.tsx',
+    '!../design-system/**',
+    '!../components/atoms/ActionButton.tsx',
+  ],
   { query: '?raw', import: 'default', eager: true },
 );
 
@@ -202,11 +207,9 @@ describe('The guideline’s contracts', () => {
     expect(serving([{ part: 'X', serves: 'A rule nobody wrote' }], rulesOf())).toEqual(['X']);
     // A part to come has its contract, and its `followed` names the item that builds it.
     const coming = ENTRIES.filter((entry) => entry.toCome).map((entry) => entry.name);
-    expect(coming).toEqual(['ActionButton', 'PageState']);
+    expect(coming).toEqual(['PageState']);
     for (const part of coming)
-      expect(contractsOf().find((c) => c.part === part)?.followed, part).toEqual({
-        item: part === 'ActionButton' ? 655 : 651,
-      });
+      expect(contractsOf().find((c) => c.part === part)?.followed, part).toEqual({ item: 651 });
     const held = contractsOf().map(({ part, heldBy, followed }) => ({
       says: part,
       why: '',

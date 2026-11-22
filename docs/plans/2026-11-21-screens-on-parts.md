@@ -108,10 +108,10 @@ piece 203's step 8. Your runs: about 20 each for a few walks, longer for twelve.
 
 **Landing 3: buttons.**
 
-- [ ] **7. The part and one page.** `ActionButton`'s contract gains an address (27 are links),
+- [x] **7. The part and one page.** `ActionButton`'s contract gains an address (27 are links),
       `submit` (16), `busy` (33 `loading`), `disabled` (15), an icon (4), and "its width its words'"
       (12 `alignSelf`, 3 on back links). The part in `components/atoms/`, its entry drawn from it; the
-      settings page moved. Cases 5, 6, 19. _Done when:_ the gates exit 0. **14 min**.
+      settings page moved. Cases 5, 6, 19. _Done when:_ the gates exit 0. **14 min**. _Done 2026-11-22: `ActionButton` built in `components/atoms/` (meaning, words, `onClick`, and the new `to`, `submit`, `busy`, `disabled`, `icon`), its entry drawn from it and no longer to come; the recounts on the `<Button` tags hold (109 buttons: 27 links, 16 `submit`, 33 `loading`, 15 `disabled`, 4 icons, 12 `alignSelf`, 3 of them on back links). Its width is its words' by `width: fit-content`, not `alignSelf`, so a button in a row keeps its place; its label weight is read from `WEIGHTS.emphasis`; its contract's place line now says the one-main-action rule is the screens' check, not the part's code, and the entry's use lines say a move that is itself the act takes an address. The settings page's four buttons moved (the conflict reload, the logo choice, its removal, the save, whose `Group` wrapper is gone); the reload sits in `FormMessage`'s new `act` take, which lays it out under the words (item 658's fix, begun: `children` stays a node until the six other sites move). Cases 5, 6 and 19 each seen red once on a stub, then green; the pinned diff is 8 screens, 10 colours each, all the settings page's: `admin-setup` 3-settings, 4-saved, 5-language-menu, 7-save-failed, 8-save-conflict, 10-saved-white, 11-menu-icons and `office-staff` office-5-settings; the gates and the citation test exit 0._
 - [ ] **8. The client's.** The 45 in `pages/client/` (5 back links left); a page drawing two main
       actions named in the tick. Case 7. _Done when:_ the gates exit 0. **20 min**.
 - [ ] **9. Parts and frame.** The 26 in `parts/` and `frame/` (`ClientMade.tsx`'s back link left).
