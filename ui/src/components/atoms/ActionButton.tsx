@@ -21,6 +21,7 @@ export function ActionButton({
   busy,
   disabled,
   icon,
+  label,
 }: {
   meaning: 'main' | 'other' | 'quiet' | 'danger';
   children: string;
@@ -30,6 +31,7 @@ export function ActionButton({
   busy?: boolean;
   disabled?: boolean;
   icon?: ReactNode;
+  label?: string;
 }) {
   const shared = {
     ...LOOKS[meaning],
@@ -39,6 +41,7 @@ export function ActionButton({
     loading: busy,
     disabled,
     leftSection: icon,
+    'aria-label': label,
   } as const;
   if (to !== undefined)
     return (

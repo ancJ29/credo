@@ -107,6 +107,16 @@ describe('ActionButton', () => {
       'busy:meaning',
       'disabled:meaning',
       'icon:content',
+      'label:content',
     ]);
+  });
+
+  it('222 step 8: a label is the name a screen reader says, where the words alone do not say which one', () => {
+    draw(
+      <ActionButton meaning="quiet" label="Remove Rice" onClick={() => {}}>
+        Remove
+      </ActionButton>,
+    );
+    expect(screen.getByRole('button', { name: 'Remove Rice' }).textContent).toBe('Remove');
   });
 });

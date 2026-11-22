@@ -12,7 +12,6 @@ import {
   Avatar,
   Badge,
   Box,
-  Button,
   Card,
   Group,
   NativeSelect,
@@ -38,6 +37,7 @@ import {
   type Status,
 } from '../../staffFilter';
 import { TYPE } from '../../design-system/tokens';
+import { ActionButton } from '../../components/atoms/ActionButton';
 
 /** A filter's name: shown above it on a phone, and from `sm` up only the accessible name, as the old
  * app's one-line filters show the value alone. */
@@ -146,9 +146,9 @@ export function StaffListPage(page: PageProps) {
     );
 
   const add = can(user, 'staff.canCreate') && (
-    <Button component={Link} to="/staff/new">
+    <ActionButton meaning="main" to="/staff/new">
       {t('staff.add')}
-    </Button>
+    </ActionButton>
   );
 
   return (
@@ -160,9 +160,9 @@ export function StaffListPage(page: PageProps) {
         user.root ? (
           // The root alone imports staff, as the import page's route checks (case-table row 4).
           <Group>
-            <Button component={Link} to="/staff/import" variant="default">
+            <ActionButton meaning="other" to="/staff/import">
               {t('staff.import')}
-            </Button>
+            </ActionButton>
             {add}
           </Group>
         ) : (

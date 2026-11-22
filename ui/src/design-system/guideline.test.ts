@@ -62,6 +62,24 @@ function drawnButtons(source: string) {
   return looks;
 }
 
+/** How many times a source names the main meaning outright; a meaning picked by a condition (`meaning={a ? 'main' : 'other'}`) is the condition's and not counted. */
+function namedMains(source: string): number {
+  return [...source.matchAll(/\bmeaning=(?:"main"|\{'main'\})/g)].length;
+}
+
+/** The page files that name the main meaning more than once, each with how many times and why: the acts sit in states a page never draws together, or in a form of their own. */
+const MAIN_MORE_THAN_ONCE: Record<string, number> = {
+  // The made state's open link, and the form's send: a person is added once, then the page shows what was made.
+  'pages/client/AddPersonPage.tsx': 2,
+  // The done state's rest, the preview's add, and the pick's read: three steps of one import, one drawn at a time.
+  'pages/client/ImportPage.tsx': 3,
+  'pages/client/ListImportPage.tsx': 3,
+  // The driver's take-a-photo, then the send of the photo taken: the photo decides which.
+  'pages/client/MyDeliveryPage.tsx': 2,
+  // The record's save, and the confirm of a lock or unlock that shows only while asked.
+  'pages/client/PersonPage.tsx': 2,
+};
+
 /** The looks drawn that no meaning of `ActionButton` takes. */
 const unmapped = (looks: string[], map: Record<string, string>) =>
   [...new Set(looks)].filter((look) => !(look in map));
@@ -253,10 +271,10 @@ describe('The guideline’s contracts', () => {
 describe('The guideline’s buttons', () => {
   it('213 case 15: every look a screen draws a Button in maps to one of ActionButton’s four meanings', () => {
     const looks = Object.values(SCREENS).flatMap(drawnButtons);
-    // A set that found nothing would quiet the check below: the plan counts 109 on its tree.
+    // A set that found nothing would quiet the check below: the plan counts 109 on its tree, the screens' moves leave 15 (12 back links, 3 doors).
     expect(Object.keys(SCREENS).length).toBeGreaterThan(50);
-    expect(looks.length).toBeGreaterThan(100);
-    expect(new Set(looks).size).toBeGreaterThan(4);
+    expect(looks.length).toBeGreaterThan(10);
+    expect(new Set(looks).size).toBeGreaterThan(1);
     const map: Record<string, string> = GUIDELINE.buttons;
     expect(unmapped(looks, map)).toEqual([]);
     expect(new Set(Object.values(map))).toEqual(new Set(['main', 'other', 'quiet', 'danger']));
@@ -283,5 +301,26 @@ describe('The guideline’s buttons', () => {
       'transparent',
     ]);
     expect(unmapped(drawnButtons('<Button variant={pick}>x</Button>'), map)).toEqual(['pick']);
+  });
+});
+
+describe('The screens’ main actions', () => {
+  it('222 case 7: no page file names the main meaning twice outside a condition, but those listed, by their count', () => {
+    expect(namedMains('<ActionButton meaning="main">A</ActionButton>')).toBe(1);
+    expect(
+      namedMains('<ActionButton meaning="main">A</ActionButton><ActionButton meaning="main">B'),
+    ).toBe(2);
+    expect(namedMains("<ActionButton meaning={rest > 0 ? 'other' : 'main'}>A")).toBe(0);
+    expect(namedMains('<ActionButton meaning="other">A</ActionButton>')).toBe(0);
+    const found: string[] = [];
+    for (const [path, source] of Object.entries(SCREENS)) {
+      const named = namedMains(source);
+      const allowed = MAIN_MORE_THAN_ONCE[path.replace('../', '')] ?? Math.min(named, 1);
+      if (named !== allowed) found.push(`${path} names it ${named} times, not ${allowed}`);
+    }
+    expect(found).toEqual([]);
+    expect(Object.keys(MAIN_MORE_THAN_ONCE).filter((file) => `../${file}` in SCREENS)).toEqual(
+      Object.keys(MAIN_MORE_THAN_ONCE),
+    );
   });
 });

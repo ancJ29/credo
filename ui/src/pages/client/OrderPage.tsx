@@ -9,7 +9,6 @@ import {
 } from '@credo/shared';
 import {
   Anchor,
-  Button,
   Group,
   NativeSelect,
   NumberInput,
@@ -39,6 +38,7 @@ import {
 } from '../../parts/OrderParts';
 import { type PageProps, refusal, useLoad } from '../../page';
 import { TYPE } from '../../design-system/tokens';
+import { ActionButton } from '../../components/atoms/ActionButton';
 import { FormMessage } from '../../components/molecules/FormMessage';
 
 /** What the page tells after a step that went through. */
@@ -190,9 +190,9 @@ function FormFields({
             value={quantity}
             onChange={(value) => setQuantity(typeof value === 'number' ? value : 1)}
           />
-          <Button variant="default" disabled={productId === ''} onClick={addLine}>
+          <ActionButton meaning="other" disabled={productId === ''} onClick={addLine}>
             {t('orders.addLine')}
-          </Button>
+          </ActionButton>
         </Group>
         {priced.length === 0 ? (
           <Text c="dimmed">{t('orders.noLines')}</Text>
@@ -227,17 +227,15 @@ function FormFields({
                     <Table.Td ta="right">{number.format(count)}</Table.Td>
                     <Table.Td ta="right">{number.format(amount)}</Table.Td>
                     <Table.Td ta="right">
-                      <Button
-                        variant="subtle"
-                        color="red"
-                        size="compact-sm"
-                        aria-label={t('orders.removeLine', { name: product.name })}
+                      <ActionButton
+                        meaning="quiet"
+                        label={t('orders.removeLine', { name: product.name })}
                         onClick={() =>
                           setLines(lines.filter((line) => line.productId !== product.id))
                         }
                       >
                         {t('orders.remove')}
-                      </Button>
+                      </ActionButton>
                     </Table.Td>
                   </Table.Tr>
                 ))}
@@ -256,13 +254,14 @@ function FormFields({
         )}
       </DetailCard>
       <Group>
-        <Button
-          loading={saving}
+        <ActionButton
+          meaning="main"
+          busy={saving}
           disabled={!complete || (doc !== null && !worthSaving)}
           onClick={() => void save()}
         >
           {t('orders.saveDraft')}
-        </Button>
+        </ActionButton>
       </Group>
     </Stack>
   );

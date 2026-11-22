@@ -543,6 +543,11 @@ export const GUIDELINE: {
           line: 'That its act cannot be taken yet: it takes no press.',
         },
         { prop: 'icon', is: 'content', line: 'A small picture before its words.' },
+        {
+          prop: 'label',
+          is: 'content',
+          line: 'The name a screen reader says for it, where its words alone do not say which one it is (one in each row of a table).',
+        },
       ],
       decides: [
         {

@@ -472,7 +472,7 @@ export const ENTRIES: Entry[] = [
     description:
       'The button a page offers an act with: its meaning (the main action, another, a quiet one or a danger) decides its look, at one size and the width of its words; an address makes it a link, busy shows the loader and takes no second press.',
     props:
-      "meaning: 'main' | 'other' | 'quiet' | 'danger' · children: string · onClick?: () => void · to?: string · submit?: boolean · busy?: boolean · disabled?: boolean · icon?: ReactNode",
+      "meaning: 'main' | 'other' | 'quiet' | 'danger' · children: string · onClick?: () => void · to?: string · submit?: boolean · busy?: boolean · disabled?: boolean · icon?: ReactNode · label?: string",
     useWhen: [
       'A page offers an act: one main action a page, the others as other or quiet.',
       'A delete’s last step, on the page that confirms it, is a danger.',
