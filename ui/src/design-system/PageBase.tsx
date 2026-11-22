@@ -1,39 +1,42 @@
 import { Alert, Button, Group, Paper, Stack, Text } from '@mantine/core';
 import { IconBuilding, IconList, IconUser } from '@tabler/icons-react';
+import type { Language } from '@credo/shared';
 import type { ReactNode } from 'react';
-import { I18nextProvider } from 'react-i18next';
+import { useTranslation } from 'react-i18next';
 import { BackLink } from '../components/atoms/BackLink';
 import { StatusBadge } from '../components/atoms/StatusBadge';
 import { DetailField } from '../components/molecules/DetailField';
 import { SectionCard } from '../components/organisms/SectionCard';
-import { createI18n } from '../i18n';
 import type { Shown } from '../listSheet';
 import { DetailColumns, FieldPair } from '../parts/DetailCards';
 import { ListTable } from '../parts/ListTable';
 import { PageShell } from '../parts/PageShell';
+import { SAMPLES } from './samples';
 import { TONES, TYPE } from './tokens';
-
-/** The words the parts draw themselves (a loader's name, a status's word), in English. */
-const SAMPLE_WORDS = createI18n('en');
 
 /** A retry that asks nothing: the sample's data is no one's. */
 const NO_RETRY = () => undefined;
 
-/** Three sample records, no real person's. */
-const ROWS: Shown[] = [
-  { id: '1', code: 'C001', name: 'An Nguyen', phone: '0901 234 567' },
-  { id: '2', code: 'C002', name: 'Binh Tran', phone: '0902 345 678' },
-  { id: '3', code: 'C003', name: 'Chi Le', phone: '0903 456 789' },
-];
+/** The language the gallery's stage draws in: the one its provider was started with. */
+function useLanguage(): Language {
+  return useTranslation().i18n.language === 'en' ? 'en' : 'vi';
+}
 
-/** What a part is drawn in: the sample's words for the parts that speak, and a column's room. */
+/** Three sample records, no real person's, named in the picked language. */
+function rowsOf(language: Language): Shown[] {
+  return SAMPLES[language].people.map((person, index) => ({
+    id: String(index + 1),
+    code: `C00${index + 1}`,
+    ...person,
+  }));
+}
+
+/** What a part is drawn in: a column's room, the words coming from the gallery's provider. */
 function Sample({ children, wide }: { children: ReactNode; wide?: boolean }) {
   return (
-    <I18nextProvider i18n={SAMPLE_WORDS}>
-      <Stack w={wide ? 960 : 640} maw="100%">
-        {children}
-      </Stack>
-    </I18nextProvider>
+    <Stack w={wide ? 960 : 640} maw="100%">
+      {children}
+    </Stack>
   );
 }
 
@@ -80,39 +83,42 @@ export function PageFrame() {
 
 /** A page drawn from parts only, slot by slot: every look in it is a part's. */
 export function PageSample() {
+  const { t } = useTranslation();
+  const language = useLanguage();
+  const words = SAMPLES[language];
   return (
     <Sample wide>
-      <BackLink href="#">Back to staff</BackLink>
+      <BackLink href="#">{t('staff.back')}</BackLink>
       <PageShell
-        title="Staff member"
-        actions={<Button>Save</Button>}
+        title={words.staffMember}
+        actions={<Button>{t('person.save')}</Button>}
         status="ready"
         onRetry={NO_RETRY}
       >
         <DetailColumns
           main={
             <Stack gap="lg">
-              <SectionCard icon={<IconUser size={14} />} title="Basics">
+              <SectionCard icon={<IconUser size={14} />} title={t('person.basic')}>
                 <FieldPair>
-                  <DetailField label="Name" value="An Nguyen" />
-                  <DetailField label="Phone" value="0901 234 567" />
+                  <DetailField label={t('person.name')} value={words.person} />
+                  <DetailField label={t('person.phone')} value={words.phone} />
                 </FieldPair>
                 <StatusBadge status="active" />
               </SectionCard>
-              <SectionCard icon={<IconList size={14} />} title="Customers">
+              <SectionCard icon={<IconList size={14} />} title={t('nav.customers')}>
                 <ListTable
                   kind="customers"
                   shown={['code', 'name', 'phone']}
-                  rows={ROWS}
-                  language="en"
+                  rows={rowsOf(language)}
+                  language={language}
                 />
               </SectionCard>
             </Stack>
           }
           side={
-            <SectionCard icon={<IconBuilding size={14} />} title="Actions">
+            <SectionCard icon={<IconBuilding size={14} />} title={words.actions}>
               <Alert color={TONES.info} role="status">
-                Changes are kept when you save.
+                {words.changesKept}
               </Alert>
             </SectionCard>
           }
@@ -183,14 +189,20 @@ export const FieldPairStates = [
   },
 ];
 
+/** A list as its table, its headings and names in the picked language. */
+function ListTableSample() {
+  const language = useLanguage();
+  return (
+    <Sample>
+      <ListTable
+        kind="customers"
+        shown={['code', 'name', 'phone']}
+        rows={rowsOf(language)}
+        language={language}
+      />
+    </Sample>
+  );
+}
+
 /** A list as its table. */
-export const ListTableStates = [
-  {
-    name: 'Default',
-    node: (
-      <Sample>
-        <ListTable kind="customers" shown={['code', 'name', 'phone']} rows={ROWS} language="en" />
-      </Sample>
-    ),
-  },
-];
+export const ListTableStates = [{ name: 'Default', node: <ListTableSample /> }];

@@ -135,10 +135,17 @@ part and its importers 14 (222's step 7), five entries 14 (213's step 10), a rec
 
 **Landing 1: the samples in Vietnamese.**
 
-- [ ] **1. The switch and the base.** The picker and its remembered pick, the stage in the picked
+- [x] **1. The switch and the base.** The picker and its remembered pick, the stage in the picked
       language's provider, `samples.ts`; the page base's two states and `ListTable` drawn by
       language. Cases 1, 2. _Done when:_ the gates exit 0 and `git grep -n "createI18n('en')" --
       ui/src/design-system/PageBase.tsx` finds nothing. **13 min**.
+      _Evidence:_ `Gallery.tsx` holds the "Sample language" picker beside the colour theme (Vietnamese
+      first, remembered under `credo-gallery-language`, an unknown value opening on Vietnamese) and the
+      stage in one `createI18n(language)` provider; `samples.ts` holds the words no screen says;
+      `PageBase.tsx` keeps no `createI18n('en')` and draws its two states and `ListTable` by language.
+      Case 1 red once each for the default, the kept pick and the fixed provider; case 2 red once each
+      for the back link's key, the samples table and `ListTable`'s language, green with none; the
+      `ui` gate and the two `scripts` tests (`words.test.ts`, `fake.test.ts`) exit 0 on this tree.
 - [ ] **2. Every entry, and landing 1.** The other entries' words by language, the Formats state's
       four values; the finders read by key; the recap begun. Cases 3, 4. _Done when:_ the gates exit
       0, `git grep -n -E "createI18n\(.en.\)|language=.en." -- ui/src/design-system` finds nothing,

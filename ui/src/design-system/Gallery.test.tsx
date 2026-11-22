@@ -5,6 +5,7 @@ import { CREDO_COLOUR } from '@credo/shared';
 import { DEMO_CONFIG } from '@credo/shared/demo';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { openApp } from '../../tests/open';
+import { DICTIONARIES, LANGUAGE_NAMES } from '../i18n';
 import { Gallery } from './Gallery';
 import { ENTRIES, slugOf } from './entries';
 import { followedWords, heldWords } from './Charter';
@@ -29,6 +30,7 @@ import {
 import { credoVariables } from './cssVariables';
 import { PALETTES } from './palettes';
 import { shadesOf } from './appTheme';
+import { SAMPLES } from './samples';
 
 // Every component file of the three folders, by level and name: the list must hold each.
 const FILES = Object.keys(
@@ -737,6 +739,105 @@ describe('Gallery', () => {
     });
   });
 
+  describe('the sample language', () => {
+    afterEach(() => {
+      window.localStorage.clear();
+      vi.restoreAllMocks();
+    });
+
+    const picker = () =>
+      screen.getByRole<HTMLInputElement>('combobox', { name: 'Sample language' });
+    const choose = async (name: string) => {
+      const user = userEvent.setup();
+      await user.click(picker());
+      await user.click(within(await screen.findByRole('listbox')).getByRole('option', { name }));
+    };
+    const page = () => within(part().getByRole('figure', { name: 'A page, from parts' }));
+
+    it('231 case 1: the samples are Vietnamese first, English once picked, the pick is kept, and an unknown one opens on Vietnamese', async () => {
+      open(`${BASE}/pages/the-page-base`);
+      expect(picker().value).toBe(LANGUAGE_NAMES.vi);
+      expect(
+        page().getByRole('columnheader', { name: DICTIONARIES.vi.lists.columns.name }),
+      ).toBeDefined();
+      expect(page().getByRole('link', { name: SAMPLES.vi.people[1].name })).toBeDefined();
+      // The picker sits beside the colour theme, in one section of the right column.
+      expect(picker().closest('section')).toBe(
+        about().getByRole('combobox', { name: 'Colour theme' }).closest('section'),
+      );
+
+      await choose(LANGUAGE_NAMES.en);
+      expect(picker().value).toBe(LANGUAGE_NAMES.en);
+      expect(
+        page().getByRole('columnheader', { name: DICTIONARIES.en.lists.columns.name }),
+      ).toBeDefined();
+      expect(page().getByRole('link', { name: SAMPLES.en.people[1].name })).toBeDefined();
+      expect(page().queryByRole('link', { name: SAMPLES.vi.people[1].name })).toBeNull();
+
+      // Kept: a gallery opened again speaks the pick, and a value no language has opens on Vietnamese.
+      cleanup();
+      open(`${BASE}/pages/the-page-base`);
+      expect(picker().value).toBe(LANGUAGE_NAMES.en);
+      cleanup();
+      window.localStorage.setItem('credo-gallery-language', 'fr');
+      open(`${BASE}/pages/the-page-base`);
+      expect(picker().value).toBe(LANGUAGE_NAMES.vi);
+      expect(
+        page().getByRole('columnheader', { name: DICTIONARIES.vi.lists.columns.name }),
+      ).toBeDefined();
+    });
+
+    it('231 case 1: the picker is on the page of no part, and with no browser storage the gallery opens on Vietnamese and still switches', async () => {
+      open(`${BASE}/organisms/no-such-part`);
+      expect(picker().value).toBe(LANGUAGE_NAMES.vi);
+      cleanup();
+
+      vi.spyOn(Storage.prototype, 'getItem').mockImplementation(() => {
+        throw new Error('no storage');
+      });
+      vi.spyOn(Storage.prototype, 'setItem').mockImplementation(() => {
+        throw new Error('no storage');
+      });
+      open(`${BASE}/pages/the-page-base`);
+      expect(picker().value).toBe(LANGUAGE_NAMES.vi);
+      await choose(LANGUAGE_NAMES.en);
+      expect(
+        page().getByRole('columnheader', { name: DICTIONARIES.en.lists.columns.name }),
+      ).toBeDefined();
+    });
+
+    it('231 case 2: a sample a screen says reads the dictionary by key, one no screen says reads samples.ts, each in the picked language', async () => {
+      // The ListTable's own entry, first in Vietnamese: its headings are the dictionary's.
+      open(`${BASE}/pages/list-table`);
+      expect(
+        part().getByRole('columnheader', { name: DICTIONARIES.vi.lists.columns.phone }),
+      ).toBeDefined();
+      cleanup();
+      open(`${BASE}/pages/the-page-base`);
+      for (const language of ['vi', 'en'] as const) {
+        if (language === 'en') await choose(LANGUAGE_NAMES.en);
+        const words = DICTIONARIES[language];
+        // By key: the back link, the save button, the labels and the status are the screens' own.
+        expect(page().getByRole('link', { name: words.staff.back })).toBeDefined();
+        expect(page().getByRole('button', { name: words.person.save })).toBeDefined();
+        expect(page().getAllByText(words.person.phone).length).toBeGreaterThan(0);
+        expect(page().getByText(words.staff.chipActive)).toBeDefined();
+        // By samples.ts: the title, the person and the message are no screen's.
+        expect(
+          page().getByRole('heading', { level: 2, name: SAMPLES[language].staffMember }),
+        ).toBeDefined();
+        expect(page().getAllByText(SAMPLES[language].person).length).toBeGreaterThan(0);
+        expect(page().getByText(SAMPLES[language].changesKept)).toBeDefined();
+      }
+      // The ListTable's own entry draws the same table in the picked language, English now.
+      cleanup();
+      open(`${BASE}/pages/list-table`);
+      expect(
+        part().getByRole('columnheader', { name: DICTIONARIES.en.lists.columns.phone }),
+      ).toBeDefined();
+    });
+  });
+
   it('the workbench: the top bar carries the title and the part’s path, and neither a tagline nor the page’s address', () => {
     open(`${BASE}/organisms/door-card`);
 
@@ -946,10 +1047,10 @@ describe('Gallery', () => {
     // The failed plate's sample retry acts without a page behind it: the press changes nothing.
     fireEvent.click(within(part().getByRole('figure', { name: 'Failed' })).getByRole('button'));
     expect(part().getAllByRole('alert')).toHaveLength(1);
-    // The loader is named by the dictionary's words; this draw loads none, so its key is the name.
+    // The loader is named by the dictionary's words, in the language the gallery draws in.
     expect(
       within(part().getByRole('figure', { name: 'Loading' })).getByLabelText(
-        /^(Loading\.\.\.|common\.loading)$/,
+        DICTIONARIES.vi.common.loading,
       ),
     ).toBeDefined();
   });
@@ -1083,13 +1184,13 @@ describe('Gallery', () => {
       expect(frame.getByText(slot)).toBeDefined();
     }
     const page = within(part().getByRole('figure', { name: 'A page, from parts' }));
-    expect(page.getByRole('link', { name: 'Back to staff' })).toBeDefined();
-    expect(page.getByRole('heading', { level: 2, name: 'Staff member' })).toBeDefined();
-    expect(page.getByRole('button', { name: 'Save' })).toBeDefined();
+    expect(page.getByRole('link', { name: DICTIONARIES.vi.staff.back })).toBeDefined();
+    expect(page.getByRole('heading', { level: 2, name: SAMPLES.vi.staffMember })).toBeDefined();
+    expect(page.getByRole('button', { name: DICTIONARIES.vi.person.save })).toBeDefined();
     expect(page.getAllByRole('heading', { level: 3 })).toHaveLength(3);
     expect(page.getByRole('table')).toBeDefined();
     expect(page.getAllByRole('row')).toHaveLength(4);
-    expect(page.getByText('Active')).toBeDefined();
+    expect(page.getByText(DICTIONARIES.vi.staff.chipActive)).toBeDefined();
     expect(page.getByRole('status')).toBeDefined();
     cleanup();
     // A built part the screens draw says so; one no screen draws says it is not used yet.
@@ -1097,7 +1198,7 @@ describe('Gallery', () => {
     expect(stateNames()).toEqual(['Ready', 'Loading', 'Failed']);
     await userEvent.click(
       within(part().getByRole('figure', { name: 'Failed' })).getByRole('button', {
-        name: 'Try again',
+        name: DICTIONARIES.vi.common.retry,
       }),
     );
     expect(about().getByText(/Built and in use; .* open item 651 moves them\./)).toBeDefined();

@@ -1,8 +1,10 @@
-import { Burger, Button, Collapse, Select, Text, Title } from '@mantine/core';
+import { Burger, Button, Collapse, Select, Stack, Text, Title } from '@mantine/core';
 import { IconChevronRight } from '@tabler/icons-react';
-import { CREDO_COLOUR } from '@credo/shared';
-import { Fragment, useState, type ReactNode } from 'react';
+import { CREDO_COLOUR, type Language } from '@credo/shared';
+import { Fragment, useMemo, useState, type ReactNode } from 'react';
+import { I18nextProvider } from 'react-i18next';
 import { Link, useLocation } from 'react-router';
+import { createI18n, LANGUAGE_NAMES } from '../i18n';
 import { ENTRIES, GROUPS, slugOf, type Entry } from './entries';
 import classes from './Gallery.module.css';
 import { CredoMantine } from './CredoMantine';
@@ -14,6 +16,12 @@ const BASE = '/48b74d079/gallery';
 
 /** Where the browser remembers the gallery's theme; nothing outside the gallery reads it. */
 const SAVED = 'credo-gallery-theme';
+
+/** Where the browser remembers the language the samples are drawn in; nothing outside the gallery reads it. */
+const SAVED_LANGUAGE = 'credo-gallery-language';
+
+/** The samples' languages as the picker lists them, Vietnamese first: the staff read it. */
+const LANGUAGES: readonly Language[] = ['vi', 'en'];
 
 /** The app's own colour in the one spelling the palettes use, so a comparison and a return agree. */
 const APP_COLOUR = CREDO_COLOUR.toLowerCase();
@@ -43,6 +51,25 @@ function remember(colour: string) {
   }
 }
 
+/** The language the browser remembers, if the gallery offers it; else Vietnamese. */
+function rememberedLanguage(): Language {
+  try {
+    const saved = window.localStorage.getItem(SAVED_LANGUAGE);
+    return LANGUAGES.find((language) => language === saved) ?? 'vi';
+  } catch {
+    return 'vi';
+  }
+}
+
+/** Remembers a language where the browser lets it; where it does not, the choice lasts the visit. */
+function rememberLanguage(language: Language) {
+  try {
+    window.localStorage.setItem(SAVED_LANGUAGE, language);
+  } catch {
+    // No storage: the gallery draws the same, and forgets the choice when it closes.
+  }
+}
+
 const pathOf = (entry: Entry) => `${BASE}/${slugOf(entry.group)}/${slugOf(entry.name)}`;
 
 /** The part an address names: the bare address names the first, an address matching none names none. */
@@ -52,22 +79,34 @@ function partAt(pathname: string): Entry | undefined {
   return ENTRIES.find((entry) => pathOf(entry) === `${BASE}/${rest}`);
 }
 
-/** One part on the workbench: its states as plates on the stage, and a right column with its name, description, props, the Show switch, the states to pick and the theme picker. */
-function Part({ entry, picker }: { entry: Entry; picker: ReactNode }) {
+/** One part on the workbench: its states as plates on the stage, and a right column with its name, description, props, the Show switch, the states to pick and the theme and language pickers. */
+function Part({
+  entry,
+  picker,
+  language,
+}: {
+  entry: Entry;
+  picker: ReactNode;
+  language: Language;
+}) {
   const [alone, setAlone] = useState(false);
   const [at, setAt] = useState(0);
   const shown = alone ? [entry.states[at]] : entry.states;
   const instead = ENTRIES.find(({ name }) => name === entry.instead);
   const contract = contractOf(entry.name);
+  // One instance per pick, so a sample that says a word reads the dictionary a screen reads.
+  const words = useMemo(() => createI18n(language), [language]);
   return (
     <article className={classes.part}>
       <div className={classes.stage}>
-        {shown.map((state) => (
-          <figure key={state.name} aria-label={state.name} className={classes.plate}>
-            <div className={classes.sample}>{state.node}</div>
-            <figcaption className={classes.plateName}>{state.name}</figcaption>
-          </figure>
-        ))}
+        <I18nextProvider i18n={words}>
+          {shown.map((state) => (
+            <figure key={state.name} aria-label={state.name} className={classes.plate}>
+              <div className={classes.sample}>{state.node}</div>
+              <figcaption className={classes.plateName}>{state.name}</figcaption>
+            </figure>
+          ))}
+        </I18nextProvider>
       </div>
       <aside className={classes.side} aria-label="About this part">
         <div className={classes.controls}>
@@ -218,6 +257,13 @@ export function Gallery({
     setColour(next);
     remember(next);
   };
+  const [language, setLanguage] = useState<Language>(rememberedLanguage);
+  // The picker offers only these, so the one that matches is the pick.
+  const chooseLanguage = (next: string) =>
+    LANGUAGES.filter((each) => each === next).forEach((picked) => {
+      setLanguage(picked);
+      rememberLanguage(picked);
+    });
   const link = (part: Entry) => (
     <Link
       key={part.name}
@@ -229,14 +275,24 @@ export function Gallery({
     </Link>
   );
   const picker = (
-    <Select
-      size="xs"
-      label="Colour theme"
-      data={THEMES}
-      value={colour}
-      allowDeselect={false}
-      onOptionSubmit={choose}
-    />
+    <Stack gap="xs">
+      <Select
+        size="xs"
+        label="Colour theme"
+        data={THEMES}
+        value={colour}
+        allowDeselect={false}
+        onOptionSubmit={choose}
+      />
+      <Select
+        size="xs"
+        label="Sample language"
+        data={LANGUAGES.map((each) => ({ value: each, label: LANGUAGE_NAMES[each] }))}
+        value={language}
+        allowDeselect={false}
+        onOptionSubmit={chooseLanguage}
+      />
+    </Stack>
   );
   return (
     <CredoMantine colour={colour} test={test}>
@@ -295,7 +351,7 @@ export function Gallery({
               <div className={classes.side}>{picker}</div>
             </div>
           ) : (
-            <Part key={entry.name} entry={entry} picker={picker} />
+            <Part key={entry.name} entry={entry} picker={picker} language={language} />
           )}
         </div>
       </div>
