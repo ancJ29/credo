@@ -1,5 +1,6 @@
 import { addCustomerRequestSchema, type CustomerDoc } from '@credo/shared';
-import { Button, Stack, Textarea, TextInput } from '@mantine/core';
+import { Stack, Textarea, TextInput } from '@mantine/core';
+import { ActionButton } from '../components/atoms/ActionButton';
 import { IconAddressBook, IconInfoCircle, IconMapPin, IconNote } from '@tabler/icons-react';
 import { type FormEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -123,9 +124,9 @@ export function CustomerForm({
           }
         />
         {editable && (
-          <Button type="submit" loading={saving} style={{ alignSelf: 'flex-start' }}>
+          <ActionButton meaning="main" submit busy={saving}>
             {adding ? t('lists.customers.create') : t('lists.customers.save')}
-          </Button>
+          </ActionButton>
         )}
       </Stack>
     </form>

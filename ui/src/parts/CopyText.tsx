@@ -1,5 +1,6 @@
-import { Button, CopyButton } from '@mantine/core';
+import { CopyButton } from '@mantine/core';
 import { useTranslation } from 'react-i18next';
+import { ActionButton } from '../components/atoms/ActionButton';
 
 type Props = {
   /** What lands on the clipboard. */
@@ -18,9 +19,9 @@ export function CopyText({ value, label, about }: Props) {
       {({ copied, copy }) => {
         const shown = copied ? t('operator.copied') : label;
         return (
-          <Button variant="default" size="xs" aria-label={`${shown}: ${about}`} onClick={copy}>
+          <ActionButton meaning="other" label={`${shown}: ${about}`} onClick={copy}>
             {shown}
-          </Button>
+          </ActionButton>
         );
       }}
     </CopyButton>

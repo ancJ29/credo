@@ -1,4 +1,5 @@
-import { Alert, Box, Button, Center, Loader, Stack, Title } from '@mantine/core';
+import { Alert, Box, Center, Loader, Stack, Title } from '@mantine/core';
+import { ActionButton } from '../components/atoms/ActionButton';
 import { useTranslation } from 'react-i18next';
 import type { Hop } from '../api';
 
@@ -31,7 +32,9 @@ export function Boot({ status, hop, onRetry }: Props) {
             <Alert color="red" role="alert">
               {t(hop ? HOP_WORDS[hop] : 'common.unavailable')}
             </Alert>
-            <Button onClick={onRetry}>{t('common.retry')}</Button>
+            <ActionButton meaning="main" onClick={onRetry}>
+              {t('common.retry')}
+            </ActionButton>
           </Stack>
         </Box>
       )}
