@@ -20,9 +20,9 @@ flowchart LR
 
 - Each step's gate on its own tree read green, `visual`'s pinned file unchanged, each new guard seen red once by a mutation.
 - Landing 1's whole check on `pre-merge`, run 2026-11-22 from 23:39 to 23:49, exited 0 and read green.
-- _Not yet known:_ <!-- FILL: landing 2's checks on `pre-merge`, their result and time -->
-- Items 667 (lists scroll sideways) and 668 (the call link under 36 px) stay open for your look.
+- Landing 2's checks on `pre-merge`, run 2026-11-23, 00:51 to 00:56, exited 0, green: the `ui` and `visual` gates and the `scripts` citation, counts, words and fake tests.
+- Item 667 (lists scroll sideways) stays open for the screens' move, now that cards are the rule. Item 668 (the call link under 36 px) stays open, deferred: its trigger, the next change to `MyDeliveryPage.tsx`, has not come.
 
 ## What is left
 
-- Your one look, two points together: the phone's pages, the office's pages. A yes keeps cards as the phone's rule for a list and the pages as the screens' targets; a no names the page and reopens its step. <!-- FILL: your answer to the look, not yet asked -->
+- Your one look, two points together (the phone's pages, the office's pages), asked 2026-11-23 at 00:51, answered yes at 06:34 ("thank you, and yes"): a card a row is the phone's rule for a list, and the eight kinds of page are the screens' targets (item 651).
