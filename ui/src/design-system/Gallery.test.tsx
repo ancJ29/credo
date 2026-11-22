@@ -1238,7 +1238,7 @@ describe('Gallery', () => {
   });
 
   it('213 case 1: every entry carries one to three use lines and one to three don’t-use lines', () => {
-    expect(ENTRIES).toHaveLength(39);
+    expect(ENTRIES).toHaveLength(40);
     for (const entry of ENTRIES) {
       for (const lines of [entry.useWhen, entry.dontUseWhen]) {
         expect(lines.length, entry.name).toBeGreaterThanOrEqual(1);
@@ -1485,6 +1485,7 @@ describe('Gallery', () => {
       'The list page',
       'The form page',
       'The phone page',
+      'The day sheet',
     ]);
     for (const name of SLOTS) {
       const entry = ENTRIES.find((each) => each.name === name);
@@ -1838,6 +1839,43 @@ describe('Gallery', () => {
       true,
     );
     expect(made.getByRole('link', { name: 'View employee profile' })).toBeDefined();
+  });
+
+  it('236 case 8: the day sheet draws a panel a driver and a part of the day, totals at the right, the cash field and the close’s ask', () => {
+    const entry = ENTRIES.find((each) => each.name === 'The day sheet')!;
+    expect(entry.kind).toBe(KIND_OF_PAGE);
+    drawn(entry);
+    const figure = (name: string) => within(part().getByRole('figure', { name }));
+    // 1. The day's drivers: the day in its field, a titled panel a driver, no close asked.
+    const drivers = figure('The day’s drivers');
+    expect(drivers.getByLabelText('Delivery date').getAttribute('type')).toBe('date');
+    expect(
+      drivers.getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent),
+    ).toEqual(['An Nguyen', 'Binh Tran']);
+    expect(drivers.getByText('Reconciliation open')).toBeDefined();
+    expect(drivers.getByText('Reconciled · Balanced: exact match')).toBeDefined();
+    expect(drivers.getAllByRole('link', { name: /^Reconcile driver: / })).toHaveLength(2);
+    expect(drivers.queryByRole('button', { name: 'Yes, finalize day' })).toBeNull();
+    // 2. One driver's day: a panel a part, the total at the right, the cash field, the close asked once.
+    const one = figure('One driver’s day');
+    expect(one.getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent)).toEqual(
+      ['Delivered orders', 'Pending delivery', 'Actual cash received', 'Close and finalize day'],
+    );
+    const total = one.getByText('Total COD to collect').closest('tr')!;
+    const cells = total.querySelectorAll('td');
+    expect(cells[2].getAttribute('style') ?? '').toContain('right');
+    expect(cells[2].textContent).toBe('480,000 VND');
+    expect(one.getByRole('textbox', { name: /Remitted cash/ }).hasAttribute('readonly')).toBe(true);
+    expect(one.getAllByText(/^Finalize reconciliation for /)).toHaveLength(1);
+    const main = one.getByRole('button', { name: 'Yes, finalize day' });
+    expect(main.getAttribute('data-variant')).toBe('filled');
+    expect(one.getByRole('button', { name: 'Keep open' })).toBeDefined();
+    // 3. Closed: what it closed with, no ask and no cash field.
+    const closed = figure('Closed');
+    expect(closed.getByRole('status').textContent).toContain('Reconciliation finalized');
+    expect(closed.getByRole('heading', { level: 3, name: 'Reconciled & closed' })).toBeDefined();
+    expect(closed.queryByRole('button')).toBeNull();
+    expect(closed.queryByRole('textbox', { name: /Remitted cash/ })).toBeNull();
   });
 
   it('236 case 13: Panel’s new take, the address its block opens, is a content in its contract and drawn on its entry', () => {

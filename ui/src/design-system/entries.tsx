@@ -34,7 +34,7 @@ import { DialogStates } from './Dialog';
 import { FieldStates } from './Fields';
 import { SAMPLES, useLanguage } from './samples';
 import { OnTheBrand, OnTheLinks } from './OnTheBrand';
-import { FormPageStates, ListPageStates, PhonePageStates } from './Pages';
+import { DaySheetStates, FormPageStates, ListPageStates, PhonePageStates } from './Pages';
 import {
   ActionButtonStates,
   ActionRowStates,
@@ -638,6 +638,31 @@ export const ENTRIES: Entry[] = [
       'Every press at least 36 px tall, as ActionButton’s small size stands.',
     ],
     states: PhonePageStates,
+  },
+  {
+    group: 'Pages',
+    kind: KIND_OF_PAGE,
+    name: 'The day sheet',
+    description:
+      'The office’s day sheet, drawn from parts only: the day’s drivers each in a titled panel with what to bring back and the way into their day, one driver’s day with the cash field and the close asked once in its own block, and the closed day.',
+    props:
+      'PageHeader · PageShell · Panel · DataTable · StatusBadge · Fields · ActionRow · ActionButton · FormMessage',
+    useWhen: [
+      'You are about to build a page that gathers a day’s money by driver.',
+      'You need a page that asks once before it closes something for good.',
+    ],
+    dontUseWhen: [
+      'A page for the driver on a phone: that is the phone page’s.',
+      'A page that lists one kind of record: that is the list page’s.',
+    ],
+    instead: 'The list page',
+    mustHave: [
+      'The day under the title or in its field.',
+      'A titled Panel a block: a driver, or a part of the day.',
+      'Totals at the right, through DataTable.',
+      'The close asked once, in its own block.',
+    ],
+    states: DaySheetStates,
   },
   {
     group: 'Atoms',

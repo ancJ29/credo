@@ -3,6 +3,7 @@ import {
   Group,
   Image,
   NativeSelect,
+  NumberInput,
   PasswordInput,
   Stack,
   Text,
@@ -434,4 +435,205 @@ export const FormPageStates = [
   { name: 'Refused', node: <NewRecord refused /> },
   { name: 'One block', node: <OneBlock /> },
   { name: 'Made', node: <Made /> },
+];
+
+/** The day sheet's requests: what each driver took, the customer, the money and where it stands. */
+const SHEET = [
+  { number: 'GH-0001', state: 'delivered' as const, line: 0, person: 2 },
+  { number: 'GH-0002', state: 'waiting' as const, line: 1, person: -1 },
+  { number: 'GH-0003', state: 'delivered' as const, line: 2, person: 1 },
+];
+
+/** A table of the sheet's requests, the money at the right, and the line of what is to be collected when `collect` says so. */
+function SheetTable({ rows, collect }: { rows: typeof SHEET; collect?: boolean }) {
+  const { t } = useTranslation();
+  const language = useLanguage();
+  const words = SAMPLES[language];
+  const money = (amount: number) => t('orders.money', { amount: priceOf(amount, language) });
+  const amountOf = (row: (typeof SHEET)[number]) => words.lines[row.line].amount;
+  return (
+    <DataTable
+      columns={[
+        { heading: t('orders.requestNumber') },
+        { heading: t('orders.customer') },
+        { heading: t('orders.total'), number: true },
+        { heading: t('orders.stateHeading') },
+      ]}
+      rows={rows.map((row) => ({
+        key: row.number,
+        cells: [
+          row.number,
+          row.person < 0 ? words.shop : words.people[row.person].name,
+          money(amountOf(row)),
+          <StatusBadge key="state" status={row.state} />,
+        ],
+      }))}
+      total={
+        collect
+          ? [
+              t('reconcile.toCollect'),
+              '',
+              money(rows.reduce((sum, row) => sum + amountOf(row), 0)),
+              '',
+            ]
+          : undefined
+      }
+    />
+  );
+}
+
+/** The day's drivers as the deliveries page draws them: the day in its field, a titled panel a driver with what to bring back, whether the day is closed, the way into it and the driver's requests. */
+function Drivers() {
+  const { t } = useTranslation();
+  const language = useLanguage();
+  const words = SAMPLES[language];
+  const money = (amount: number) => t('orders.money', { amount: priceOf(amount, language) });
+  const first = SHEET.slice(0, 2);
+  const second = SHEET.slice(2);
+  const driver = (index: number, mine: typeof SHEET, closed: boolean) => {
+    const name = words.people[index].name;
+    const figures = mine.filter((row) => row.state === 'delivered');
+    return (
+      <Panel key={name} title={name}>
+        <Text c="dimmed">{t('orders.requestCount', { n: mine.length })}</Text>
+        <Text>
+          {t('reconcile.bringBack', {
+            total: money(figures.reduce((sum, row) => sum + words.lines[row.line].amount, 0)),
+          })}
+          {' · '}
+          {t('reconcile.deliveredOf', { n: figures.length, m: mine.length })}
+        </Text>
+        <Text c="dimmed">
+          {closed
+            ? t('reconcile.dayClosedGap', { gap: t('reconcile.gapExact') })
+            : t('reconcile.dayOpen')}
+        </Text>
+        <ActionButton
+          meaning="other"
+          to={`/deliveries/${DAY}/drivers/d${index + 1}`}
+          label={t('reconcile.openFor', { name })}
+        >
+          {t('reconcile.open')}
+        </ActionButton>
+        <SheetTable rows={mine} />
+      </Panel>
+    );
+  };
+  return (
+    <Stack p="md" gap="lg">
+      <PageHeader title={t('nav.deliveries')} />
+      <TextInput label={t('orders.sendDay')} type="date" defaultValue={DAY} maw={240} />
+      {driver(0, first, false)}
+      {driver(1, second, true)}
+    </Stack>
+  );
+}
+
+/** One driver's day, as the close asks it: the delivered and the waiting in their panels, the cash field read-only while the close is asked once, in its own block, with its main and the way to keep the day open. */
+function OneDay() {
+  const { t, i18n } = useTranslation();
+  const language = useLanguage();
+  const words = SAMPLES[language];
+  const cash = words.lines[0].amount;
+  return (
+    <Stack p="md">
+      <PageShell
+        title={t('reconcile.title', { name: words.people[0].name })}
+        subtitle={t('orders.forDay', { day: shownDay(DAY, i18n.language as 'vi' | 'en') })}
+        back={{ href: `/deliveries?day=${DAY}`, children: t('reconcile.back') }}
+        status="ready"
+      >
+        <Panel title={t('reconcile.deliveredTitle')}>
+          <SheetTable rows={SHEET.slice(0, 1)} collect />
+        </Panel>
+        <Panel title={t('reconcile.waitingTitle')}>
+          <Text c="dimmed">{t('reconcile.waitingText')}</Text>
+          <SheetTable rows={SHEET.slice(1, 2)} />
+        </Panel>
+        <Panel title={t('reconcile.cashTitle')}>
+          <NumberInput
+            label={t('reconcile.cash')}
+            description={t('reconcile.wholeDong')}
+            allowDecimal={false}
+            allowNegative={false}
+            thousandSeparator={language === 'vi' ? '.' : ','}
+            decimalSeparator={language === 'vi' ? ',' : '.'}
+            readOnly
+            defaultValue={cash}
+            maw={320}
+          />
+          <Text role="status">{t('reconcile.gapExact')}</Text>
+        </Panel>
+        <Panel title={t('reconcile.close')}>
+          <Text c="dimmed">{t('reconcile.closeText')}</Text>
+          <Text {...TYPE.bodyStrong}>
+            {t('reconcile.closeAsk', { name: words.people[0].name })}
+          </Text>
+          <Text>
+            {t('reconcile.closeCash', {
+              amount: t('orders.money', { amount: priceOf(cash, language) }),
+            })}
+          </Text>
+          <Text>{t('reconcile.closeGap', { gap: t('reconcile.gapExact') })}</Text>
+          <Text>{t('reconcile.closeWaiting', { count: 1 })}</Text>
+          <ActionRow>
+            <ActionButton meaning="main">{t('reconcile.closeConfirm')}</ActionButton>
+            <ActionButton meaning="other">{t('reconcile.keepOpen')}</ActionButton>
+          </ActionRow>
+        </Panel>
+      </PageShell>
+    </Stack>
+  );
+}
+
+/** One driver's day once closed: the message, what was delivered, and the closed day's figures in one row, the money at the right. */
+function ClosedDay() {
+  const { t, i18n } = useTranslation();
+  const language = useLanguage();
+  const words = SAMPLES[language];
+  const cash = priceOf(words.lines[0].amount, language);
+  const money = (amount: string) => t('orders.money', { amount });
+  return (
+    <Stack p="md">
+      <PageShell
+        title={t('reconcile.title', { name: words.people[0].name })}
+        subtitle={t('orders.forDay', { day: shownDay(DAY, i18n.language as 'vi' | 'en') })}
+        back={{ href: `/deliveries?day=${DAY}`, children: t('reconcile.back') }}
+        status="ready"
+      >
+        <FormMessage kind="success">{t('reconcile.closedNow')}</FormMessage>
+        <Panel title={t('reconcile.deliveredTitle')}>
+          <SheetTable rows={SHEET.slice(0, 1)} collect />
+        </Panel>
+        <Panel title={t('reconcile.closedTitle')}>
+          <DataTable
+            columns={[
+              { heading: t('reconcile.toCollect'), number: true },
+              { heading: t('reconcile.handedIn'), number: true },
+              { heading: t('reconcile.difference') },
+              { heading: t('reconcile.closedBy') },
+            ]}
+            rows={[
+              {
+                key: 'closed',
+                cells: [
+                  money(cash),
+                  money(cash),
+                  t('reconcile.gapExact'),
+                  t('reconcile.byRoot', { name: words.people[1].name }),
+                ],
+              },
+            ]}
+          />
+        </Panel>
+      </PageShell>
+    </Stack>
+  );
+}
+
+/** The day sheet's three states: the day's drivers, one driver's day with the close asked, and the day closed. */
+export const DaySheetStates = [
+  { name: 'The day’s drivers', node: <Drivers /> },
+  { name: 'One driver’s day', node: <OneDay /> },
+  { name: 'Closed', node: <ClosedDay /> },
 ];
