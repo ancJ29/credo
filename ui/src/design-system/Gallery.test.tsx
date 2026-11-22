@@ -790,7 +790,7 @@ describe('Gallery', () => {
   });
 
   it('213 case 1: every entry carries one to three use lines and one to three don’t-use lines', () => {
-    expect(ENTRIES).toHaveLength(23);
+    expect(ENTRIES).toHaveLength(25);
     for (const entry of ENTRIES) {
       for (const lines of [entry.useWhen, entry.dontUseWhen]) {
         expect(lines.length, entry.name).toBeGreaterThanOrEqual(1);
@@ -1084,6 +1084,32 @@ describe('Gallery', () => {
     expect(about().getByText(/Built; the screens do not use it yet: open item 651/)).toBeDefined();
   });
 
+  it('222 case 19: the contracts of the page base’s new takes and its two parts to come are drawn, each take a content or a meaning', () => {
+    const shell = GUIDELINE.contracts.find((contract) => contract.part === 'PageShell')!;
+    expect(shell.takes.filter(({ prop }) => ['back', 'recordStatus'].includes(prop))).toEqual([
+      expect.objectContaining({ prop: 'back', is: 'content' }),
+      expect.objectContaining({ prop: 'recordStatus', is: 'meaning' }),
+    ]);
+    open(`${BASE}/molecules/action-row`);
+    expect(stateNames()).toEqual(['Two or more', 'One']);
+    expect(
+      within(part().getByRole('figure', { name: 'Two or more' }))
+        .getAllByRole('button')
+        .map((button) => button.textContent),
+    ).toEqual(['Cancel', 'Save a draft', 'Send']);
+    expect(about().getByText(/To come: open item 651 builds it\./)).toBeDefined();
+    cleanup();
+    open(`${BASE}/molecules/table-scroll`);
+    expect(stateNames()).toEqual(['Default']);
+    expect(about().getByText(/To come: open item 653 builds it\./)).toBeDefined();
+    const decided = GUIDELINE.contracts.find(
+      (contract) => contract.part === 'TableScroll',
+    )!.decides;
+    expect(decided.flatMap((decision) => decision.from)).toEqual([
+      { table: 'WIDTHS', key: 'table' },
+    ]);
+  });
+
   it('213 case 17: every part’s entry draws its contract, and each duplicate’s winner is named on the other’s entry', () => {
     const parts = ENTRIES.filter(
       (entry) =>
@@ -1091,7 +1117,7 @@ describe('Gallery', () => {
         entry.name !== 'The page base',
     );
     // A set that found nothing would quiet the loop.
-    expect(parts.length).toBe(18);
+    expect(parts.length).toBe(20);
     expect(GUIDELINE.contracts.map((contract) => contract.part).sort()).toEqual(
       parts.map((entry) => entry.name).sort(),
     );

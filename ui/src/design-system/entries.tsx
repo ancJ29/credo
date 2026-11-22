@@ -28,7 +28,13 @@ import { PageHeader } from '../components/organisms/PageHeader';
 import { SectionCard } from '../components/organisms/SectionCard';
 import { Charter } from './Charter';
 import { OnTheBrand, OnTheLinks } from './OnTheBrand';
-import { ActionButtonStates, FormMessageStates, PageStateStates } from './Contract';
+import {
+  ActionButtonStates,
+  ActionRowStates,
+  FormMessageStates,
+  PageStateStates,
+  TableScrollStates,
+} from './Contract';
 import {
   DetailColumnsStates,
   FieldPairStates,
@@ -484,6 +490,37 @@ export const ENTRIES: Entry[] = [
     ],
     instead: 'BackLink',
     states: ActionButtonStates,
+  },
+  {
+    group: 'Molecules',
+    name: 'ActionRow',
+    kind: 'Buttons',
+    toCome: true,
+    description:
+      'A block’s buttons in one row, in the order they are read, at the end of the block, with one gap between them. Mantine’s Group, at the values it decides.',
+    props: 'children: ReactNode',
+    useWhen: ['A block of a page ends in two or more buttons, or in one: give them to the row.'],
+    dontUseWhen: [
+      'A button beside a page’s title: that is PageHeader’s actions.',
+      'A button under a message: that is FormMessage’s act.',
+    ],
+    instead: 'PageHeader',
+    states: ActionRowStates,
+  },
+  {
+    group: 'Molecules',
+    name: 'TableScroll',
+    kind: 'Lists',
+    toCome: true,
+    description:
+      'A table’s frame: below its least width the table scrolls sideways inside it and its columns keep their room, never the page. Mantine’s table scroll container, at the width it decides.',
+    props: 'children: ReactNode',
+    useWhen: ['A page draws a table of its own: wrap it, so it has the one least width.'],
+    dontUseWhen: [
+      'A kind’s list of customers or products: that is ListTable’s, which scrolls itself.',
+    ],
+    instead: 'ListTable',
+    states: TableScrollStates,
   },
   {
     group: 'Molecules',

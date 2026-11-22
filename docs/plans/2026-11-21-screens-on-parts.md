@@ -141,10 +141,10 @@ piece 203's step 8. Your runs: about 20 each for a few walks, longer for twelve.
 
 **Landing 6: the page base.**
 
-- [ ] **14. The contracts.** `PageShell` takes a back link and a record's status; `ActionRow`, a part
+- [x] **14. The contracts.** `PageShell` takes a back link and a record's status; `ActionRow`, a part
       to come (a block's buttons in order; it decides their gap and side), and `TableScroll` (a
       table's least width, `WIDTHS.table`) get entries and contracts. Case 19. _Done when:_ the gates
-      exit 0. **7 min**.
+      exit 0. **7 min**. _Done 2026-11-22: `PageShell`'s contract gains `back` (content: the address and words of the way back, none draws none) and `recordStatus` (meaning: an order's, a request's or a person's status), its fixes lines saying where each sits (the back link above the title, the chip beside it) and that the code does not take them yet (item 651); its entry's props are unchanged, the code being so. `ActionRow` (a molecule, `Buttons`) and `TableScroll` (a molecule, `Lists`) are written as parts to come: each a contract and an entry drawn from Mantine at the values it decides, `ActionRow`'s gap `SPACING.sm` and its side the block's end, `TableScroll`'s least width `WIDTHS.table` (640, already in `tokens.ts`; `ListTable` still writes its own 640 and the screens five numbers, item 653); `ActionRow` follows item 651 and `TableScroll` item 653. The ENTRIES count is 25 and the contracts 20; the to-come list in `guideline.test.ts` reads the two again. Case 19 (213's case 20 in `guideline.test.ts`) seen red once on a `width` take of `TableScroll`, then green; `Gallery.test.tsx` gains a case for the two entries' plates and panels. The pinned diff is empty (no screen moved: the contracts and the gallery only). The gates and the citation test exit 0._
 - [ ] **15. The parts.** `PageShell` draws `BackLink` and `StatusBadge`; `ActionRow` and
       `TableScroll` built from their entries. Cases 12 to 14. _Done when:_ the gates exit 0. **14 min**.
 - [ ] **16. Titles and back links.** The 41 titles through `PageShell` or `PageHeader`; a way back at

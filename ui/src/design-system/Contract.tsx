@@ -1,4 +1,4 @@
-import { Stack, Text } from '@mantine/core';
+import { Group, Stack, Table, Text } from '@mantine/core';
 import type { ReactNode } from 'react';
 import { GUIDELINE, type Contract, type PartState } from './guideline';
 import { followedWords, heldWords } from './Charter';
@@ -6,6 +6,7 @@ import classes from './Gallery.module.css';
 import { ActionButton } from '../components/atoms/ActionButton';
 import { FormMessage } from '../components/molecules/FormMessage';
 import { PageState } from '../components/organisms/PageState';
+import { SPACING, WIDTHS } from './tokens';
 
 /** The contract of a part, by the name of its entry. */
 export const contractOf = (part: string) =>
@@ -111,4 +112,43 @@ export const ActionButtonStates = platesOf('ActionButton', ({ name }) => (
   <ActionButton meaning={name.toLowerCase() as 'main'}>
     {name === 'Danger' ? 'Delete the record' : `${name} action`}
   </ActionButton>
+));
+
+/** A block's buttons in a row, from Mantine at the values the contract decides: one gap, at the end. */
+export const ActionRowStates = platesOf('ActionRow', ({ name }) => (
+  <Group gap={SPACING.sm} justify="flex-end" w={394} maw="100%">
+    {name === 'One' ? (
+      <ActionButton meaning="main">Save</ActionButton>
+    ) : (
+      <>
+        <ActionButton meaning="quiet">Cancel</ActionButton>
+        <ActionButton meaning="other">Save a draft</ActionButton>
+        <ActionButton meaning="main">Send</ActionButton>
+      </>
+    )}
+  </Group>
+));
+
+/** A table at its least width, from Mantine's scroll container: it scrolls sideways below it. */
+export const TableScrollStates = platesOf('TableScroll', () => (
+  <Table.ScrollContainer minWidth={WIDTHS.table} w={394} maw="100%">
+    <Table>
+      <Table.Thead>
+        <Table.Tr>
+          <Table.Th>Name</Table.Th>
+          <Table.Th>Phone</Table.Th>
+          <Table.Th>Address</Table.Th>
+          <Table.Th>Staff</Table.Th>
+        </Table.Tr>
+      </Table.Thead>
+      <Table.Tbody>
+        <Table.Tr>
+          <Table.Td>An Phat</Table.Td>
+          <Table.Td>0901 000 000</Table.Td>
+          <Table.Td>12 Le Loi</Table.Td>
+          <Table.Td>3</Table.Td>
+        </Table.Tr>
+      </Table.Tbody>
+    </Table>
+  </Table.ScrollContainer>
 ));

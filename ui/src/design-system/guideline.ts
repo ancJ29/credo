@@ -657,6 +657,16 @@ export const GUIDELINE: {
           line: 'Whether the page’s data is loading, failed or ready.',
         },
         { prop: 'onRetry', is: 'content', line: 'The act of a failed load’s retry.' },
+        {
+          prop: 'back',
+          is: 'content',
+          line: 'The way back to where the person came from: its address and its words; none draws none.',
+        },
+        {
+          prop: 'recordStatus',
+          is: 'meaning',
+          line: 'The status of the record the page shows (an order’s, a request’s or a person’s); none draws none.',
+        },
         { prop: 'children', is: 'content', line: 'The page’s body, drawn when its data is ready.' },
       ],
       decides: [
@@ -668,8 +678,9 @@ export const GUIDELINE: {
       ],
       fixes: [
         'The header row’s order: the title first, what acts on the page beside it.',
+        'Where the way back sits: above the title, drawn by `BackLink`; and the record’s status: beside the title, drawn by `StatusBadge`.',
         'Where a failed or loading state sits: in the place of the body, under the header row.',
-        'Not yet: it takes no back link and no record status, a screen draws them itself; open item 651 moves them into the part.',
+        'Not yet: the code takes no `back` and no `recordStatus`, a screen draws them itself; open item 651 builds them into the part.',
       ],
       states: [
         { name: 'Ready', line: 'The data is here: the heading row, then the body.' },
@@ -811,6 +822,55 @@ export const GUIDELINE: {
       heldBy: { check: 'ui/src/design-system/guideline.test.ts' },
       followed: { item: 653 },
       used: true,
+    },
+    {
+      part: 'ActionRow',
+      takes: [
+        {
+          prop: 'children',
+          is: 'content',
+          line: 'The block’s buttons, `ActionButton`s, in the order they are read.',
+        },
+      ],
+      decides: [{ what: 'The gap between its buttons.', from: [{ table: 'SPACING', key: 'sm' }] }],
+      fixes: [
+        'Their side: the end of the block, the right on a page read from the left.',
+        'Their order: as given, the first at the start of the row.',
+        'Not yet built: the screens set each row’s gap and side themselves, 27 rows; open item 651 builds the part and moves them.',
+      ],
+      states: [
+        { name: 'Two or more', line: 'The buttons in a row, in order, at the end of the block.' },
+        { name: 'One', line: 'A single button, at the end of the block.' },
+      ],
+      serves: 'A screen picks parts, never a style',
+      heldBy: { check: 'ui/src/design-system/guideline.test.ts' },
+      followed: { item: 651 },
+    },
+    {
+      part: 'TableScroll',
+      takes: [
+        {
+          prop: 'children',
+          is: 'content',
+          line: 'The table, whose columns keep their room inside the part.',
+        },
+      ],
+      decides: [
+        {
+          what: 'The table’s least width, below which it scrolls sideways.',
+          from: [{ table: 'WIDTHS', key: 'table' }],
+        },
+      ],
+      fixes: [
+        'Where it scrolls: the table alone, sideways, and never the page.',
+        'Not yet built: the screens write a least width of their own, 12 times (five numbers); open item 653 builds the part and moves them.',
+      ],
+      states: [
+        { name: 'Default', line: 'A table at its least width, scrolling sideways below it.' },
+      ],
+      serves: 'A screen picks parts, never a style',
+      heldBy: { check: 'ui/src/design-system/guideline.test.ts' },
+      followed: { item: 653 },
     },
     {
       part: 'FieldLabel',
