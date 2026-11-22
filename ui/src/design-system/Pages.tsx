@@ -1,16 +1,21 @@
 import {
   Anchor,
+  Checkbox,
+  ColorInput,
   Group,
   Image,
   NativeSelect,
   NumberInput,
   PasswordInput,
+  Radio,
   Stack,
+  Switch,
   Text,
   Textarea,
   TextInput,
 } from '@mantine/core';
 import {
+  IconBuilding,
   IconBuildingStore,
   IconLock,
   IconLogin,
@@ -31,13 +36,17 @@ import { PageHeader } from '../components/organisms/PageHeader';
 import { PageState } from '../components/organisms/PageState';
 import { Panel } from '../components/organisms/Panel';
 import { shownDay } from '../day';
+import { LANGUAGE_NAMES } from '../i18n';
 import { LISTS } from '../listSheet';
 import { numberOf, priceOf } from '../number';
 import { ListTable } from '../parts/ListTable';
 import { FieldPair } from '../parts/DetailCards';
 import { PageShell } from '../parts/PageShell';
 import { SectionCard } from '../components/organisms/SectionCard';
+import { MAX_LOGO_BYTES } from '@credo/shared';
 import { FilterBar } from './Fields';
+import { PALETTES } from './palettes';
+import { PICTURE } from './Photos';
 import { SAMPLES, useLanguage } from './samples';
 import { TONES, TYPE, WEIGHTS } from './tokens';
 
@@ -868,4 +877,85 @@ export const ConfirmPageStates = [
   { name: 'A delete', node: <Confirm erase /> },
   { name: 'A change', node: <Confirm erase={false} /> },
   { name: 'Made', node: <ConfirmMade /> },
+];
+
+/** The settings page as the company's own draws it: titled blocks, the logo from the photos with its choose and remove, the colour from a palette, the languages; `saved` says so above the blocks, `refused` says why above them and under the logo. */
+function SettingsPage({ state }: { state: 'basics' | 'saved' | 'refused' }) {
+  const { t } = useTranslation();
+  const words = SAMPLES[useLanguage()];
+  return (
+    <Stack p="md" gap="lg">
+      <div>
+        <PageHeader title={t('settings.title')} />
+        <Text c="dimmed">{t('settings.intro')}</Text>
+      </div>
+      {state === 'saved' && <FormMessage kind="saved">{t('settings.saved')}</FormMessage>}
+      {state === 'refused' && <FormMessage kind="error">{t('settings.saveRefused')}</FormMessage>}
+      <SectionCard icon={<IconBuilding size={14} />} title={t('settings.basics')}>
+        <Stack gap="lg">
+          <FieldPair>
+            <TextInput label={t('settings.name')} required defaultValue={words.shop} />
+            <Stack gap={6}>
+              <Text size="sm" fw={WEIGHTS.label}>
+                {t('settings.logo')}
+              </Text>
+              <Group>
+                <Image src={PICTURE} alt="" h={48} w={48} fit="contain" />
+                <ActionButton meaning="other">{t('settings.logoChoose')}</ActionButton>
+                <ActionButton meaning="quiet">{t('settings.logoRemove')}</ActionButton>
+              </Group>
+              {state === 'refused' && (
+                <FormMessage kind="error">
+                  {t('settings.logoTooLarge', { max: MAX_LOGO_BYTES / 1024 })}
+                </FormMessage>
+              )}
+            </Stack>
+          </FieldPair>
+          <Radio.Group label={t('settings.palette')} defaultValue={PALETTES[0].name}>
+            <Group mt="xs" gap="lg">
+              {PALETTES.map((palette) => (
+                <Radio
+                  key={palette.name}
+                  value={palette.name}
+                  label={t(`settings.palettes.${palette.name}`)}
+                />
+              ))}
+            </Group>
+          </Radio.Group>
+          <FieldPair>
+            <Stack gap="md">
+              <ColorInput
+                label={t('settings.colour')}
+                format="hex"
+                withEyeDropper={false}
+                defaultValue={PALETTES[0].shades[7]}
+              />
+              <Switch label={t('settings.whiteHeader')} />
+              <Switch label={t('settings.menuIcons')} defaultChecked />
+            </Stack>
+            <Checkbox.Group label={t('settings.languages')} defaultValue={['vi', 'en']}>
+              <Group mt="xs">
+                <Checkbox value="vi" label={LANGUAGE_NAMES.vi} />
+                <Checkbox value="en" label={LANGUAGE_NAMES.en} />
+              </Group>
+            </Checkbox.Group>
+          </FieldPair>
+          <NativeSelect
+            label={t('settings.defaultLanguage')}
+            data={[LANGUAGE_NAMES.vi, LANGUAGE_NAMES.en]}
+          />
+        </Stack>
+      </SectionCard>
+      <ActionButton meaning="main" submit>
+        {t('settings.save')}
+      </ActionButton>
+    </Stack>
+  );
+}
+
+/** The settings page's three states: the basics, saved, and refused. */
+export const SettingsPageStates = [
+  { name: 'The basics', node: <SettingsPage state="basics" /> },
+  { name: 'Saved', node: <SettingsPage state="saved" /> },
+  { name: 'Refused', node: <SettingsPage state="refused" /> },
 ];

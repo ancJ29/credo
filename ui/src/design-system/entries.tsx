@@ -36,6 +36,7 @@ import { SAMPLES, useLanguage } from './samples';
 import { OnTheBrand, OnTheLinks } from './OnTheBrand';
 import {
   ConfirmPageStates,
+  SettingsPageStates,
   DaySheetStates,
   FormPageStates,
   ImportPageStates,
@@ -392,9 +393,9 @@ export const ENTRIES: Entry[] = [
     name: 'Fields',
     kind: 'Mantine’s own',
     description:
-      'Mantine’s own fields as the theme dresses them: text, password, number, long text, drop-down and file, each with a label and a hint, with an error and read-only, and the staff list’s filter bar of a search and three drop-downs.',
+      'Mantine’s own fields as the theme dresses them: text, password, number, long text, drop-down, file and colour, each with a label and a hint, with an error and read-only, and the staff list’s filter bar of a search and three drop-downs.',
     props:
-      'TextInput · PasswordInput · NumberInput · Textarea · NativeSelect · type="file" · label · description · error · readOnly',
+      'TextInput · PasswordInput · NumberInput · Textarea · NativeSelect · type="file" · ColorInput · label · description · error · readOnly',
     useWhen: [
       'A person types or picks one value: a name, a password, an amount, a note or one of a list.',
       'A list narrows by a search and drop-downs: the filter bar.',
@@ -741,6 +742,30 @@ export const ENTRIES: Entry[] = [
       'A made value read-only beside its copy button.',
     ],
     states: ConfirmPageStates,
+  },
+  {
+    group: 'Pages',
+    kind: KIND_OF_PAGE,
+    name: 'The settings page',
+    description:
+      'The page where a company sets its name, logo, colour and languages, drawn from parts only: titled blocks of fields and choices, a save that stays on the page and says saved, and a refusal said through a message, the logo’s too.',
+    props:
+      'PageHeader · SectionCard · TextInput · ColorInput · Radio.Group · Switch · Checkbox.Group · NativeSelect · FormMessage · ActionButton',
+    useWhen: [
+      'You are about to build a page that edits one record in place and stays on it after the save.',
+      'You need a field that takes a picture, with its refusal under it.',
+    ],
+    dontUseWhen: [
+      'A form that makes a new record and then shows what was made: that is the form page’s.',
+      'A page that asks before an act that cannot be undone: that is the confirm page’s.',
+    ],
+    instead: 'The form page',
+    mustHave: [
+      'Fields in titled blocks.',
+      'The save stays on the page and says saved.',
+      'A refusal through a message, the logo’s too.',
+    ],
+    states: SettingsPageStates,
   },
   {
     group: 'Atoms',

@@ -7,7 +7,7 @@ import { SAMPLES, useLanguage } from './samples';
 import { SPACING } from './tokens';
 
 /** A plain picture for a photo sample, no real person's or company's. */
-const PICTURE =
+export const PICTURE =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' fill='lightgray'/%3E%3Cpath d='M6 34 20 6l14 28z' fill='teal'/%3E%3C/svg%3E";
 
 /** What the sign-in QR code carries in the sample: a link, never a real one. */

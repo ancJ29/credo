@@ -267,7 +267,7 @@ describe('Gallery', () => {
     expect(part().getByRole('textbox', { name: DICTIONARIES.vi.staff.colName })).toBeDefined();
   });
 
-  it('231 case 5: Fields draws the six kinds each with a label and a hint, an error and read-only, and the staff list’s filter bar', () => {
+  it('231 case 5: Fields draws the seven kinds each with a label and a hint, an error and read-only, and the staff list’s filter bar', () => {
     open(`${BASE}/foundations/fields`);
 
     expect(stateNames()).toEqual([
@@ -277,6 +277,7 @@ describe('Gallery', () => {
       'Long text',
       'Drop-down',
       'File',
+      'Colour',
       'Filter bar',
     ]);
     const { vi } = DICTIONARIES;
@@ -287,6 +288,7 @@ describe('Gallery', () => {
       ['Long text', vi.lists.columns.note, vi.import.writeNote, vi.lists.products.noteTooLong],
       ['Drop-down', vi.addPerson.department, SAMPLES.vi.departmentHint, SAMPLES.vi.departmentError],
       ['File', vi.import.file, vi.import.fileHint, vi.import.unreadable],
+      ['Colour', vi.settings.colour, SAMPLES.vi.colourHint, SAMPLES.vi.colourError],
     ];
     for (const [name, label, hint, error] of kinds) {
       const plate = within(part().getByRole('figure', { name }));
@@ -1240,7 +1242,7 @@ describe('Gallery', () => {
   });
 
   it('213 case 1: every entry carries one to three use lines and one to three don’t-use lines', () => {
-    expect(ENTRIES).toHaveLength(43);
+    expect(ENTRIES).toHaveLength(44);
     for (const entry of ENTRIES) {
       for (const lines of [entry.useWhen, entry.dontUseWhen]) {
         expect(lines.length, entry.name).toBeGreaterThanOrEqual(1);
@@ -1491,6 +1493,7 @@ describe('Gallery', () => {
       'The import page',
       'The menu page',
       'The confirm page',
+      'The settings page',
     ]);
     for (const name of SLOTS) {
       const entry = ENTRIES.find((each) => each.name === name);
@@ -1998,6 +2001,48 @@ describe('Gallery', () => {
     expect(made.getByRole('status').textContent).toContain('Share this password');
   });
 
+  it('236 case 12: the settings page draws its block’s fields and choices, saved, and a refusal as a message', () => {
+    const entry = ENTRIES.find((each) => each.name === 'The settings page')!;
+    expect(entry.kind).toBe(KIND_OF_PAGE);
+    expect(entry.states.map((state) => state.name)).toEqual(['The basics', 'Saved', 'Refused']);
+    drawn(entry);
+    const figure = (name: string) => within(part().getByRole('figure', { name }));
+    // 1. The basics: a titled block of fields and choices, one main, no message.
+    const basics = figure('The basics');
+    expect(basics.getByRole('heading', { level: 3, name: 'Basic information' })).toBeDefined();
+    expect(basics.getByRole('textbox', { name: /Company name/ })).toBeDefined();
+    expect(basics.getByRole('textbox', { name: 'Brand color' })).toBeDefined();
+    expect(basics.getAllByRole('radio')).toHaveLength(6);
+    expect(basics.getAllByRole('checkbox')).toHaveLength(2);
+    expect(basics.getAllByRole('switch')).toHaveLength(2);
+    expect(part().getByRole('figure', { name: 'The basics' }).querySelectorAll('img')).toHaveLength(
+      1,
+    );
+    expect(basics.getByRole('button', { name: 'Upload logo' })).toBeDefined();
+    expect(basics.queryByRole('status')).toBeNull();
+    expect(basics.queryByRole('alert')).toBeNull();
+    expect(basics.getAllByRole('button', { name: 'Save changes' })).toHaveLength(1);
+    // 2. Saved: the message says so and the form stays.
+    const saved = figure('Saved');
+    expect(saved.getByRole('status').textContent).toContain('Settings saved successfully');
+    expect(saved.getByRole('textbox', { name: /Company name/ })).toBeDefined();
+    expect(saved.getByRole('button', { name: 'Save changes' })).toBeDefined();
+    // 3. Refused: the whole form's message above the block, the logo's under the logo, both errors.
+    const refused = figure('Refused');
+    const alerts = refused.getAllByRole('alert');
+    expect(alerts.map((one) => one.textContent)).toEqual([
+      'Settings could not be validated. Please check the logo, name, and color.',
+      'File exceeds 200 KB and was not uploaded.',
+    ]);
+    const block = refused.getByRole('heading', { level: 3, name: 'Basic information' });
+    expect(
+      alerts[0].compareDocumentPosition(block) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+    expect(
+      block.compareDocumentPosition(alerts[1]) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
+  });
+
   it('236 case 13: Panel’s new take, the address its block opens, is a content in its contract and drawn on its entry', () => {
     const panel = GUIDELINE.contracts.find((contract) => contract.part === 'Panel')!;
     expect(panel.takes.find(({ prop }) => prop === 'to')?.is).toBe('content');
@@ -2018,5 +2063,16 @@ describe('Gallery', () => {
     expect(inputs).toHaveLength(3);
     expect(file.querySelectorAll('[readonly]')).toHaveLength(1);
     expect(file.querySelectorAll('[data-error]').length).toBeGreaterThan(0);
+  });
+
+  it('236 case 13: Fields draws a colour field, with its hint, its error and read-only', () => {
+    expect(ENTRIES.find((entry) => entry.name === 'Fields')!.props).toContain('ColorInput');
+    open(`${BASE}/foundations/fields`);
+
+    const colour = part().getByRole('figure', { name: 'Colour' });
+    const inputs = colour.querySelectorAll('input.mantine-ColorInput-input');
+    expect(inputs).toHaveLength(3);
+    expect(colour.querySelectorAll('[readonly]')).toHaveLength(1);
+    expect(colour.querySelectorAll('[data-error]').length).toBeGreaterThan(0);
   });
 });

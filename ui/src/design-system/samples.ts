@@ -48,6 +48,8 @@ export const SAMPLES: Record<
     passwordHint: string;
     departmentHint: string;
     departmentError: string;
+    colourHint: string;
+    colourError: string;
     departmentValue: string;
     messages: Record<string, string>;
   }
@@ -95,6 +97,8 @@ export const SAMPLES: Record<
     passwordHint: 'At least eight characters.',
     departmentHint: 'The department the person works in.',
     departmentError: 'Pick a department first.',
+    colourHint: 'A hex value such as the palette gives.',
+    colourError: 'Enter the colour as # and six hex digits.',
     departmentValue: 'Sales',
     messages: {
       Error: 'The name could not be saved.',
@@ -149,6 +153,8 @@ export const SAMPLES: Record<
     passwordHint: 'Ít nhất tám ký tự.',
     departmentHint: 'Phòng ban mà nhân viên làm việc.',
     departmentError: 'Hãy chọn phòng ban trước.',
+    colourHint: 'Mã màu như bảng màu cho.',
+    colourError: 'Nhập màu dạng # và sáu chữ số hex.',
     departmentValue: 'Kinh doanh',
     messages: {
       Error: 'Không thể lưu tên.',
