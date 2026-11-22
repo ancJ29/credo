@@ -1,5 +1,6 @@
 import { type Language } from '@credo/shared';
-import { Badge, Center, Group, Loader, Paper, Stack, Text, Title } from '@mantine/core';
+import { Badge, Group, Paper, Stack, Text, Title } from '@mantine/core';
+import { PageState } from '../../components/organisms/PageState';
 import { IconRefresh } from '@tabler/icons-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -105,9 +106,7 @@ export function ServicesPage({ api, build, onSignedOut }: Props) {
       </Group>
       <Text c="dimmed">{t('services.intro')}</Text>
       {found === null ? (
-        <Center mih={240}>
-          <Loader aria-label={t('common.loading')} />
-        </Center>
+        <PageState state="loading" />
       ) : (
         <Report found={found} build={build} language={language} />
       )}

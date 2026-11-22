@@ -3,7 +3,7 @@ admin-setup/2-sign-in-refused steel bfbdcbe5f32b
 admin-setup/3-settings steel 0f80304edf93
 admin-setup/4-saved steel 937948aedbff
 admin-setup/5-language-menu steel aca5f5309751
-admin-setup/6-service-down steel a7c9c2227dc8
+admin-setup/6-service-down steel 94d94878827d
 admin-setup/7-save-failed steel e8c2be8a5cf4
 admin-setup/8-save-conflict steel e13c8c6a5099
 admin-setup/9-unknown-company steel c8fcb68e09a0
@@ -30,7 +30,7 @@ operator-services/sv-1-all-well steel 18b5802e8349
 operator-services/sv-2-two-builds steel a5b748026c2f
 operator-services/sv-3-storage-silent steel 80699bc3fe04
 operator-services/sv-4-bff-silent steel bb8971db7975
-operator-services/sv-5-unavailable steel 4db877e12129
+operator-services/sv-5-unavailable steel b3e44ee1f574
 admin-staff-setup/setup-1-departments-positions steel 314ffec3c58d
 admin-staff-setup/setup-2-fields steel e5b935eb75f4
 admin-staff/staff-1-list steel 985bd16cb45e
@@ -134,7 +134,7 @@ admin-setup/2-sign-in-refused emerald 8201a4abf772
 admin-setup/3-settings emerald a3a87658019d
 admin-setup/4-saved emerald a3b416de87e6
 admin-setup/5-language-menu emerald bde7c8f29db0
-admin-setup/6-service-down emerald 14c5fbf7a827
+admin-setup/6-service-down emerald 94d94878827d
 admin-setup/7-save-failed emerald 4a7baad9cc2e
 admin-setup/8-save-conflict emerald 909c911d37f7
 admin-setup/9-unknown-company emerald c8fcb68e09a0
@@ -161,7 +161,7 @@ operator-services/sv-1-all-well emerald 989383070acc
 operator-services/sv-2-two-builds emerald cfaf67d2f25b
 operator-services/sv-3-storage-silent emerald 8d9a29e9340e
 operator-services/sv-4-bff-silent emerald 9b055ec66185
-operator-services/sv-5-unavailable emerald d7c1e301776f
+operator-services/sv-5-unavailable emerald b3e44ee1f574
 admin-staff-setup/setup-1-departments-positions emerald b079dd4e9a78
 admin-staff-setup/setup-2-fields emerald 12d0239a2433
 admin-staff/staff-1-list emerald 1ccdb4e36182
@@ -265,7 +265,7 @@ admin-setup/2-sign-in-refused brick 89766f552fa9
 admin-setup/3-settings brick 7dd31fc235b1
 admin-setup/4-saved brick 4f801e9a6d11
 admin-setup/5-language-menu brick 71469df04987
-admin-setup/6-service-down brick 9fbf8d2e34b5
+admin-setup/6-service-down brick 94d94878827d
 admin-setup/7-save-failed brick 69ebae2642ed
 admin-setup/8-save-conflict brick aedb835c86eb
 admin-setup/9-unknown-company brick c8fcb68e09a0
@@ -292,7 +292,7 @@ operator-services/sv-1-all-well brick ce87e3eb030e
 operator-services/sv-2-two-builds brick 1271aa6dc591
 operator-services/sv-3-storage-silent brick bea8210f5530
 operator-services/sv-4-bff-silent brick 89143e3f2bd3
-operator-services/sv-5-unavailable brick c7462bf4a5b5
+operator-services/sv-5-unavailable brick b3e44ee1f574
 admin-staff-setup/setup-1-departments-positions brick 52045c668c76
 admin-staff-setup/setup-2-fields brick d6f3f624669c
 admin-staff/staff-1-list brick e0c10e9025ab
@@ -396,7 +396,7 @@ admin-setup/2-sign-in-refused bronze 33f740bf1141
 admin-setup/3-settings bronze 266dbe2c8b5c
 admin-setup/4-saved bronze 69874da46ec6
 admin-setup/5-language-menu bronze 6b16c0b83744
-admin-setup/6-service-down bronze b0e8a7fae650
+admin-setup/6-service-down bronze 94d94878827d
 admin-setup/7-save-failed bronze 7315f0ec54f9
 admin-setup/8-save-conflict bronze 087e23c37a28
 admin-setup/9-unknown-company bronze c8fcb68e09a0
@@ -423,7 +423,7 @@ operator-services/sv-1-all-well bronze 75c06a2a2cd3
 operator-services/sv-2-two-builds bronze 9093a95cb5bb
 operator-services/sv-3-storage-silent bronze 87dcd233d1d5
 operator-services/sv-4-bff-silent bronze f97a07cdffb6
-operator-services/sv-5-unavailable bronze a3551119f1ce
+operator-services/sv-5-unavailable bronze b3e44ee1f574
 admin-staff-setup/setup-1-departments-positions bronze c90a8faeffa2
 admin-staff-setup/setup-2-fields bronze 84c35e364257
 admin-staff/staff-1-list bronze 1b33ce51efaa
@@ -527,7 +527,7 @@ admin-setup/2-sign-in-refused plum 0812a636d314
 admin-setup/3-settings plum 374c6b7e832c
 admin-setup/4-saved plum 93196d2161d3
 admin-setup/5-language-menu plum a6c24fb26ed3
-admin-setup/6-service-down plum ee0622ffbaad
+admin-setup/6-service-down plum 94d94878827d
 admin-setup/7-save-failed plum 9ebee41ca227
 admin-setup/8-save-conflict plum 7f7704d5324c
 admin-setup/9-unknown-company plum c8fcb68e09a0
@@ -554,7 +554,7 @@ operator-services/sv-1-all-well plum 648ee0bd291a
 operator-services/sv-2-two-builds plum 39317d4380ba
 operator-services/sv-3-storage-silent plum 940a8410e5de
 operator-services/sv-4-bff-silent plum 07c3a90c82d0
-operator-services/sv-5-unavailable plum dc256018e4b9
+operator-services/sv-5-unavailable plum b3e44ee1f574
 admin-staff-setup/setup-1-departments-positions plum 3f7a9f2534ad
 admin-staff-setup/setup-2-fields plum bd2d6902b9d3
 admin-staff/staff-1-list plum 0d9e3fb38a83
@@ -658,7 +658,7 @@ admin-setup/2-sign-in-refused indigo 54ae3fcd4875
 admin-setup/3-settings indigo 2d7526b67ad6
 admin-setup/4-saved indigo 9c097480a687
 admin-setup/5-language-menu indigo 1d3bc7ea16f5
-admin-setup/6-service-down indigo dc01e20178dd
+admin-setup/6-service-down indigo 94d94878827d
 admin-setup/7-save-failed indigo e0163a35f878
 admin-setup/8-save-conflict indigo a859c8d6f7a7
 admin-setup/9-unknown-company indigo c8fcb68e09a0
@@ -685,7 +685,7 @@ operator-services/sv-1-all-well indigo 8d29714cb5fd
 operator-services/sv-2-two-builds indigo 1e04a25667eb
 operator-services/sv-3-storage-silent indigo 4e1d93487d43
 operator-services/sv-4-bff-silent indigo 2399373e97cd
-operator-services/sv-5-unavailable indigo af0160f8274e
+operator-services/sv-5-unavailable indigo b3e44ee1f574
 admin-staff-setup/setup-1-departments-positions indigo 1b695499f8ed
 admin-staff-setup/setup-2-fields indigo 4a7d7d0e8229
 admin-staff/staff-1-list indigo 523f36c59193
@@ -789,7 +789,7 @@ admin-setup/2-sign-in-refused company d5983ab73a2b
 admin-setup/3-settings company 9f17cbca3918
 admin-setup/4-saved company 3c5101946bad
 admin-setup/5-language-menu company 7c4559bcd14d
-admin-setup/6-service-down company a639235664e4
+admin-setup/6-service-down company 94d94878827d
 admin-setup/7-save-failed company 1ca9e2c26ac2
 admin-setup/8-save-conflict company c2f5c32c0f24
 admin-setup/9-unknown-company company c8fcb68e09a0
@@ -816,7 +816,7 @@ operator-services/sv-1-all-well company ab2cbe386d11
 operator-services/sv-2-two-builds company 88db4c115134
 operator-services/sv-3-storage-silent company 6318efd34be7
 operator-services/sv-4-bff-silent company 02f8d0b00c55
-operator-services/sv-5-unavailable company 73e44de2ce92
+operator-services/sv-5-unavailable company b3e44ee1f574
 admin-staff-setup/setup-1-departments-positions company a11960e3ade2
 admin-staff-setup/setup-2-fields company 44799a9ab2cb
 admin-staff/staff-1-list company f91c28e2bf9c
@@ -920,7 +920,7 @@ admin-setup/2-sign-in-refused terracotta e65148402e15
 admin-setup/3-settings terracotta 4a3a0a17806a
 admin-setup/4-saved terracotta 7b366e31f62c
 admin-setup/5-language-menu terracotta df00993cdd54
-admin-setup/6-service-down terracotta c85534c3ccac
+admin-setup/6-service-down terracotta 94d94878827d
 admin-setup/7-save-failed terracotta 5c2dcae8f54c
 admin-setup/8-save-conflict terracotta 7342d3863085
 admin-setup/9-unknown-company terracotta c8fcb68e09a0
@@ -947,7 +947,7 @@ operator-services/sv-1-all-well terracotta eecaf234c6c5
 operator-services/sv-2-two-builds terracotta 08bc101d5fb8
 operator-services/sv-3-storage-silent terracotta 53c5a0ed7a73
 operator-services/sv-4-bff-silent terracotta 69337258ac96
-operator-services/sv-5-unavailable terracotta a87c812dbcc0
+operator-services/sv-5-unavailable terracotta b3e44ee1f574
 admin-staff-setup/setup-1-departments-positions terracotta 5a3910b84396
 admin-staff-setup/setup-2-fields terracotta 02a258e0a50a
 admin-staff/staff-1-list terracotta 20a035895e71
@@ -1051,7 +1051,7 @@ admin-setup/2-sign-in-refused red 298b450e1852
 admin-setup/3-settings red 9fd974ffd99e
 admin-setup/4-saved red fdf72673b450
 admin-setup/5-language-menu red adafed060501
-admin-setup/6-service-down red ec724102a789
+admin-setup/6-service-down red 94d94878827d
 admin-setup/7-save-failed red 06db27ec718b
 admin-setup/8-save-conflict red 66defff0e92f
 admin-setup/9-unknown-company red c8fcb68e09a0
@@ -1078,7 +1078,7 @@ operator-services/sv-1-all-well red 828bd4eddd0c
 operator-services/sv-2-two-builds red c9657825edcb
 operator-services/sv-3-storage-silent red d519348c7c40
 operator-services/sv-4-bff-silent red 66bd139136f3
-operator-services/sv-5-unavailable red 331931f8d7c8
+operator-services/sv-5-unavailable red b3e44ee1f574
 admin-staff-setup/setup-1-departments-positions red 62961448da38
 admin-staff-setup/setup-2-fields red 72da5782902e
 admin-staff/staff-1-list red b6a0d4caccf7
@@ -1182,7 +1182,7 @@ admin-setup/2-sign-in-refused amber b24b8cd724b0
 admin-setup/3-settings amber fdd4eb43f6aa
 admin-setup/4-saved amber cf63ef133e3a
 admin-setup/5-language-menu amber 0439dd5b0162
-admin-setup/6-service-down amber d28cb345a16b
+admin-setup/6-service-down amber 94d94878827d
 admin-setup/7-save-failed amber 94e9942bdd32
 admin-setup/8-save-conflict amber 241d2a2bf8c0
 admin-setup/9-unknown-company amber c8fcb68e09a0
@@ -1209,7 +1209,7 @@ operator-services/sv-1-all-well amber 7a1fc903a98e
 operator-services/sv-2-two-builds amber b8c1f606ed40
 operator-services/sv-3-storage-silent amber c842489a81c5
 operator-services/sv-4-bff-silent amber 1a7f8941edfe
-operator-services/sv-5-unavailable amber 7db2945b72ef
+operator-services/sv-5-unavailable amber b3e44ee1f574
 admin-staff-setup/setup-1-departments-positions amber 88071a75cd2a
 admin-staff-setup/setup-2-fields amber 07298fcad63d
 admin-staff/staff-1-list amber 252657009c07

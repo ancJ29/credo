@@ -1,5 +1,6 @@
 import { clientAddress, HOME_BOX, type Language } from '@credo/shared';
-import { Group, Stack, Table, Text, Title } from '@mantine/core';
+import { Group, Stack, Table, Title } from '@mantine/core';
+import { PageState } from '../../components/organisms/PageState';
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Api } from '../../api';
@@ -42,7 +43,7 @@ export function ClientsPage({ api, onSignedOut }: Props) {
       </Group>
       <Loaded status={loaded.status} onRetry={loaded.reload}>
         {clients.length === 0 ? (
-          <Text c="dimmed">{t('operator.empty')}</Text>
+          <PageState state="empty">{t('operator.empty')}</PageState>
         ) : (
           <Table.ScrollContainer minWidth={760}>
             <Table highlightOnHover>

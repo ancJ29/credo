@@ -1,5 +1,6 @@
 import { can, type Language } from '@credo/shared';
-import { Group, Text } from '@mantine/core';
+import { Group } from '@mantine/core';
+import { PageState } from '../../components/organisms/PageState';
 import { useTranslation } from 'react-i18next';
 import { LISTS, type ListKind } from '../../listSheet';
 import { type PageProps, useLoad } from '../../page';
@@ -41,7 +42,7 @@ export function ListPage({ kind, ...page }: PageProps & { kind: ListKind }) {
       }
     >
       {rows.length === 0 ? (
-        <Text c="dimmed">{t(`lists.${kind}.empty`)}</Text>
+        <PageState state="empty">{t(`lists.${kind}.empty`)}</PageState>
       ) : (
         <ListTable kind={kind} shown={list.shown} rows={rows} language={language} />
       )}

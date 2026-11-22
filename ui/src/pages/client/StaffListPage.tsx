@@ -20,6 +20,7 @@ import {
   Text,
   TextInput,
 } from '@mantine/core';
+import { PageState } from '../../components/organisms/PageState';
 import { IconSearch } from '@tabler/icons-react';
 import { useEffect, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -235,7 +236,9 @@ export function StaffListPage(page: PageProps) {
         ))}
       </div>
       {people.length === 0 ? (
-        <Text c="dimmed">{t(everyone.length === 0 ? 'staff.empty' : 'staff.noMatch')}</Text>
+        <PageState state="empty">
+          {t(everyone.length === 0 ? 'staff.empty' : 'staff.noMatch')}
+        </PageState>
       ) : (
         <>
           <Stack gap="xs" hiddenFrom="sm" data-testid="staff-cards">

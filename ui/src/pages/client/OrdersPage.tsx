@@ -1,5 +1,6 @@
 import { addDays, can, type Language, ORDER_LIST_DAYS, type Order } from '@credo/shared';
 import { Anchor, Group, Stack, Table, Text, Title } from '@mantine/core';
+import { PageState } from '../../components/organisms/PageState';
 import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router';
@@ -45,7 +46,7 @@ export function OrdersPage(page: PageProps) {
       <Text c="dimmed">{t('orders.since', { day: shownDay(from, language) })}</Text>
       <Loaded status={loaded.status} onRetry={loaded.reload}>
         {rows.length === 0 ? (
-          <Text c="dimmed">{t('orders.empty')}</Text>
+          <PageState state="empty">{t('orders.empty')}</PageState>
         ) : (
           <Table.ScrollContainer minWidth={720}>
             <Table highlightOnHover>

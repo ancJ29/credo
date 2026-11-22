@@ -1,5 +1,6 @@
 import { type CustomerDoc, can, type ProductDoc, type SaveProductRequest } from '@credo/shared';
-import { Alert, Button, Stack, Text, Title } from '@mantine/core';
+import { Button, Stack, Text, Title } from '@mantine/core';
+import { PageState } from '../../components/organisms/PageState';
 import { type ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useParams } from 'react-router';
@@ -135,9 +136,7 @@ function Record<D extends { version: string }, V>({
             <Text c="dimmed">{spec.head(doc).code}</Text>
           </Stack>
         ) : (
-          <Alert color="gray" role="alert">
-            {t(`lists.${kind}.notThere`)}
-          </Alert>
+          <PageState state="notFound">{t(`lists.${kind}.notThere`)}</PageState>
         )}
       </Loaded>
       <Button component={Link} to={`/${kind}`} variant="subtle" style={{ alignSelf: 'flex-start' }}>

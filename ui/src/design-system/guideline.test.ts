@@ -326,3 +326,17 @@ describe('The screens’ main actions', () => {
     );
   });
 });
+
+describe('The screens’ page states', () => {
+  it('222 case 10: no screen draws Mantine’s Alert or Loader; the parts and the mock draw them', () => {
+    const drawsOne = (source: string) => /<(Alert|Loader)\b/.test(source);
+    expect(drawsOne('<Alert color="red">A</Alert>')).toBe(true);
+    expect(drawsOne('<Loader size="sm" />')).toBe(true);
+    expect(drawsOne('<AlertBox /><LoaderBar />')).toBe(false);
+    const scanned = Object.keys(SCREENS).filter(
+      (path) => !path.startsWith('../components/') && !path.startsWith('../mock/'),
+    );
+    expect(scanned.length).toBeGreaterThan(50);
+    expect(scanned.filter((path) => drawsOne(SCREENS[path] ?? ''))).toEqual([]);
+  });
+});
