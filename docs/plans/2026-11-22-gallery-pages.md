@@ -150,11 +150,12 @@ of the same shape: a gallery-wide mechanism 16 (its step 1), a part's take with 
 
 **Landing 1: the phone's frame and five pages.**
 
-- [ ] **1. The phone's frame.** `Viewport` out of `Frame`; a phone plate; the kind "Kinds of page";
+- [x] **1. The phone's frame.** `Viewport` out of `Frame`; a phone plate; the kind "Kinds of page";
       `Entry` gains `mustHave`, drawn under "A new page of this kind must have", since case 1 of the
       gallery's test caps use lines at three, and they say when, not what. Cases 1 to 3. _Done
       when:_ the gates exit 0 and `pnpm --filter @credo/scripts exec vitest run src/citations.test.ts
       src/counts.test.ts` exits 0 (`counts.ts` names `Frame.tsx` a site of the widths). **16 min**.
+      _Done 2026-11-22, the gates from 21:55:_ `Viewport` is in `ui/src/mock/Frame.tsx`, `Frame` draws it round its router; `Entry` gains `mustHave` and a state `phone`, `KIND_OF_PAGE` names the kind; cases 1 to 3 each seen red by a mutation; the three gates, the pinned file and the words and fake tests ran on this tree. Items 667 and 668 filed.
 - [ ] **2. The phone page.** `Panel` takes `to` (content: the address the block opens); the six
       states in the phone's frame. Cases 4, 5, 13. _Done when:_ the gates exit 0. **11 min**.
 - [ ] **3. The list page.** Six states, the last in the phone's frame, a `Panel` with `to` a row.

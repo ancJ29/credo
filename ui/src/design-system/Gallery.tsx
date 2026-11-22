@@ -1,10 +1,11 @@
 import { Burger, Button, Collapse, Select, Stack, Text, Title } from '@mantine/core';
 import { IconChevronRight } from '@tabler/icons-react';
-import { CREDO_COLOUR, type Language } from '@credo/shared';
+import { CREDO_COLOUR, WIDTHS, type Language } from '@credo/shared';
 import { Fragment, useMemo, useState, type ReactNode } from 'react';
 import { I18nextProvider } from 'react-i18next';
 import { Link, useLocation } from 'react-router';
 import { createI18n, LANGUAGE_NAMES } from '../i18n';
+import { Viewport } from '../mock/Frame';
 import { ENTRIES, GROUPS, slugOf, type Entry } from './entries';
 import classes from './Gallery.module.css';
 import { CredoMantine } from './CredoMantine';
@@ -80,14 +81,18 @@ function partAt(pathname: string): Entry | undefined {
 }
 
 /** One part on the workbench: its states as plates on the stage, and a right column with its name, description, props, the Show switch, the states to pick and the theme and language pickers. */
-function Part({
+export function Part({
   entry,
   picker,
   language,
+  colour,
+  test,
 }: {
   entry: Entry;
   picker: ReactNode;
   language: Language;
+  colour: string;
+  test?: boolean;
 }) {
   const [alone, setAlone] = useState(false);
   const [at, setAt] = useState(0);
@@ -102,7 +107,22 @@ function Part({
         <I18nextProvider i18n={words}>
           {shown.map((state) => (
             <figure key={state.name} aria-label={state.name} className={classes.plate}>
-              <div className={classes.sample}>{state.node}</div>
+              <div className={classes.sample}>
+                {state.phone ? (
+                  <Viewport
+                    title={`${state.name}, at the phone’s width`}
+                    colour={colour}
+                    language={language}
+                    scheme="light"
+                    width={WIDTHS.phone}
+                    test={test}
+                  >
+                    {state.node}
+                  </Viewport>
+                ) : (
+                  state.node
+                )}
+              </div>
               <figcaption className={classes.plateName}>{state.name}</figcaption>
             </figure>
           ))}
@@ -179,6 +199,16 @@ function Part({
             </Text>
           )}
         </section>
+        {entry.mustHave && (
+          <section className={classes.sideSection}>
+            <h3 className={classes.sideHead}>A new page of this kind must have</h3>
+            <ul className={classes.useLines}>
+              {entry.mustHave.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+          </section>
+        )}
         <section className={classes.sideSection}>
           <h3 className={classes.sideHead}>Props</h3>
           <code className={classes.props}>{entry.props}</code>
@@ -351,7 +381,14 @@ export function Gallery({
               <div className={classes.side}>{picker}</div>
             </div>
           ) : (
-            <Part key={entry.name} entry={entry} picker={picker} language={language} />
+            <Part
+              key={entry.name}
+              entry={entry}
+              picker={picker}
+              language={language}
+              colour={colour}
+              test={test}
+            />
           )}
         </div>
       </div>

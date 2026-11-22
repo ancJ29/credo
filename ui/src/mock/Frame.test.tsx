@@ -1,7 +1,10 @@
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { useLocation } from 'react-router';
-import { Frame } from './Frame';
+import { useTranslation } from 'react-i18next';
+import { DICTIONARIES } from '../i18n';
+import { MemoryRouter } from 'react-router';
+import { Frame, Stage, Viewport } from './Frame';
 
 const frame = (language: 'vi' | 'en' = 'en') =>
   render(
@@ -287,5 +290,82 @@ describe('Frame', () => {
 
     expect(disconnect).toHaveBeenCalledTimes(1);
     vi.unstubAllGlobals();
+  });
+});
+
+describe('Viewport', () => {
+  const draw = (language: 'vi' | 'en') =>
+    render(
+      <MemoryRouter initialEntries={['/the-hosts']}>
+        <Viewport
+          title="a viewport"
+          colour="#2f7d6d"
+          language={language}
+          scheme="light"
+          width={390}
+          test
+        >
+          <Where />
+        </Viewport>
+      </MemoryRouter>,
+    );
+  const Where = () => {
+    const { t } = useTranslation();
+    return (
+      <p>
+        {useLocation().pathname} {t('auth.title')}
+      </p>
+    );
+  };
+  const inside = () => {
+    const iframe = screen.getByTitle<HTMLIFrameElement>('a viewport');
+    act(() => {
+      fireEvent.load(iframe);
+    });
+    return { iframe, inner: iframe.contentDocument! };
+  };
+
+  it('236 case 1: draws its page 390 wide in the host’s colour and language, the host’s styles copied in', () => {
+    document.head.appendChild(document.createElement('style')).textContent = '.y{color:blue}';
+    draw('vi');
+
+    const { iframe, inner } = inside();
+
+    expect(iframe.getAttribute('width')).toBe('390');
+    expect(inner.documentElement.lang).toBe('vi');
+    expect(inner.documentElement.getAttribute('data-mantine-color-scheme')).toBe('light');
+    expect([...inner.head.querySelectorAll('style')].map((one) => one.textContent)).toContain(
+      '.y{color:blue}',
+    );
+    expect(inner.body.textContent).toContain(DICTIONARIES.vi.auth.title);
+    expect(inner.body.textContent).not.toContain(DICTIONARIES.en.auth.title);
+  });
+
+  it('236 case 1: starts no router of its own, so the host’s reaches the page', () => {
+    draw('en');
+
+    const { inner } = inside();
+
+    expect(inner.body.textContent).toContain('/the-hosts');
+  });
+});
+
+describe('Stage', () => {
+  it('draws a screen in the look and the words, its router at Settings or at the address given', () => {
+    const At = () => (
+      <p>
+        {useLocation().pathname} {useTranslation().t('auth.title')}
+      </p>
+    );
+    const open = (path?: string) =>
+      render(
+        <Stage colour="#2f7d6d" language="vi" scheme="light" test path={path}>
+          <At />
+        </Stage>,
+      ).container.querySelector('p')!.textContent;
+
+    expect(open()).toBe(`/settings ${DICTIONARIES.vi.auth.title}`);
+    cleanup();
+    expect(open('/staff')).toBe(`/staff ${DICTIONARIES.vi.auth.title}`);
   });
 });

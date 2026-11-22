@@ -20,7 +20,11 @@ type StageProps = {
   children: ReactNode;
 };
 
-type Props = Omit<StageProps, 'root' | 'test'> & { title: string; width: Width };
+type ViewportProps = Omit<StageProps, 'root' | 'path'> & { title: string; width: Width };
+type Props = Omit<ViewportProps, 'test'> & { path?: string };
+
+/** Where a mock screen's router starts: the page the screens are drawn from. */
+const SETTINGS = '/settings';
 
 /** What a mock screen is drawn inside: the app's look and words, and a router at Settings, or at
  * `path` for the whole app drawn as a scene. */
@@ -30,7 +34,7 @@ export function Stage({
   scheme,
   root,
   test,
-  path = '/settings',
+  path = SETTINGS,
   children,
 }: StageProps) {
   return (
@@ -44,13 +48,23 @@ export function Stage({
 const FLOOR = 320;
 
 /**
- * One screen in its own page: an iframe is the only box whose width is the viewport's, so the
- * app's breakpoints answer to the frame's width, not the mock's. The screen is drawn into it
- * with the page's own styles copied in, and the frame is as tall as the screen, never shorter
- * than `FLOOR`: a screen that fills the viewport (the sign-in's centred card) is then centred in
- * a frame that fits it, with no empty block above.
+ * One page in its own window: an iframe is the only box whose width is the viewport's, so the
+ * app's breakpoints answer to the frame's width, not the host's. The page is drawn into it
+ * with the host's styles copied in, and the frame is as tall as the page, never shorter than
+ * `FLOOR`: a screen that fills the viewport (the sign-in's centred card) is then centred in a
+ * frame that fits it, with no empty block above. It draws the look and the words and no router,
+ * so a host that has one (the gallery's) reaches the page through the portal, and the mock's
+ * `Frame` puts its own round the page.
  */
-export function Frame({ title, colour, language, scheme, width, path, children }: Props) {
+export function Viewport({
+  title,
+  colour,
+  language,
+  scheme,
+  width,
+  test,
+  children,
+}: ViewportProps) {
   const [body, setBody] = useState<HTMLElement | null>(null);
   const [height, setHeight] = useState(FLOOR);
   const watcher = useRef<MutationObserver>(undefined);
@@ -108,17 +122,27 @@ export function Frame({ title, colour, language, scheme, width, path, children }
       />
       {body &&
         createPortal(
-          <Stage
+          <Providers
             colour={colour}
             language={language}
             scheme={scheme}
             root={() => body.ownerDocument.documentElement}
-            path={path}
+            test={test}
           >
             {children}
-          </Stage>,
+          </Providers>,
           body,
         )}
     </>
+  );
+}
+
+/** One mock screen in its own page: `Viewport` with a router at Settings, or at `path` for the
+ * whole app drawn as a scene. */
+export function Frame({ path = SETTINGS, children, ...frame }: Props) {
+  return (
+    <Viewport {...frame}>
+      <MemoryRouter initialEntries={[path]}>{children}</MemoryRouter>
+    </Viewport>
   );
 }

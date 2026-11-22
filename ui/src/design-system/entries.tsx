@@ -256,8 +256,14 @@ export type Entry = {
   instead?: string;
   /** A part with a contract and no code yet: its entry is drawn from Mantine at the values it decides. */
   toCome?: true;
-  states: { name: string; node: ReactNode }[];
+  /** What a new page of this kind must have, one short line each: only a kind of page has them. */
+  mustHave?: string[];
+  /** A state drawn `phone` stands in a frame as wide as a phone, where the app's breakpoints answer to it. */
+  states: { name: string; node: ReactNode; phone?: true }[];
 };
+
+/** The kind a page of the app's own sits under in Pages: each entry in it carries `mustHave`. */
+export const KIND_OF_PAGE = 'Kinds of page';
 
 /** A part's address segment: its name in lower case, hyphenated. */
 export const slugOf = (name: string) =>

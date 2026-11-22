@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { CREDO_COLOUR } from '@credo/shared';
@@ -6,8 +6,8 @@ import { DEMO_CONFIG } from '@credo/shared/demo';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { openApp } from '../../tests/open';
 import { DICTIONARIES, LANGUAGE_NAMES } from '../i18n';
-import { Gallery } from './Gallery';
-import { ENTRIES, slugOf } from './entries';
+import { Gallery, Part } from './Gallery';
+import { ENTRIES, KIND_OF_PAGE, slugOf, type Entry } from './entries';
 import { followedWords, heldWords } from './Charter';
 import { GUIDELINE } from './guideline';
 import { ContractPanel, FormMessageStates, PageStateStates } from './Contract';
@@ -1424,5 +1424,74 @@ describe('Gallery', () => {
     // The panel of ours and the card with a section title each name the other.
     expect(words('Panel')).toContain('SectionCard');
     expect(words('SectionCard')).toContain('Panel');
+  });
+
+  const drawn = (entry: Entry, language: 'vi' | 'en' = 'en') =>
+    render(
+      <MemoryRouter>
+        <CredoMantine colour={CREDO_COLOUR} test>
+          <Part entry={entry} picker={null} language={language} colour={CREDO_COLOUR} test />
+        </CredoMantine>
+      </MemoryRouter>,
+    );
+  const sample = (mustHave?: string[]): Entry => ({
+    group: 'Pages',
+    kind: KIND_OF_PAGE,
+    name: 'A sample page',
+    description: 'A page.',
+    props: '',
+    useWhen: ['When.'],
+    dontUseWhen: ['Not.'],
+    mustHave,
+    states: [
+      { name: 'At the phone', node: <p>drawn at the phone</p>, phone: true },
+      { name: 'On the computer', node: <p>drawn on the computer</p> },
+    ],
+  });
+
+  it('236 case 1: a phone plate draws its page in a frame 390 wide, in the gallery’s colour and language, and any other plate beside it', () => {
+    drawn(sample(), 'vi');
+
+    const frame = screen.getByTitle<HTMLIFrameElement>('At the phone, at the phone’s width');
+    act(() => {
+      fireEvent.load(frame);
+    });
+
+    expect(frame.getAttribute('width')).toBe('390');
+    expect(frame.contentDocument!.documentElement.lang).toBe('vi');
+    expect(frame.contentDocument!.body.textContent).toContain('drawn at the phone');
+    expect(part().queryByText('drawn at the phone')).toBeNull();
+    expect(part().getByText('drawn on the computer')).toBeDefined();
+    expect(part().getAllByTitle(/at the phone’s width/)).toHaveLength(1);
+  });
+
+  it('236 case 3: a kind of page’s entry draws its must-have lines under their heading, and a part with none draws no heading', () => {
+    drawn(sample(['The first line.', 'The second line.']));
+
+    const lines = within(
+      about()
+        .getByRole('heading', { level: 3, name: 'A new page of this kind must have' })
+        .closest('section')!,
+    );
+    expect(lines.getAllByRole('listitem').map((item) => item.textContent)).toEqual([
+      'The first line.',
+      'The second line.',
+    ]);
+    cleanup();
+
+    drawn(sample());
+
+    expect(about().queryByRole('heading', { name: /must have/ })).toBeNull();
+  });
+
+  it('236 case 3: every entry under the kind of page has one to a handful of must-have lines, and no other entry has any', () => {
+    for (const entry of ENTRIES) {
+      if (entry.kind === KIND_OF_PAGE) {
+        expect(entry.mustHave?.length, entry.name).toBeGreaterThanOrEqual(1);
+        for (const line of entry.mustHave ?? []) expect(line.trim(), entry.name).not.toBe('');
+      } else {
+        expect(entry.mustHave, entry.name).toBeUndefined();
+      }
+    }
   });
 });
