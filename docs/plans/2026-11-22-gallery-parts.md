@@ -1,0 +1,256 @@
+# The gallery's missing parts, its samples in Vietnamese first
+
+## At a glance
+
+What it is for: the campaign's second milestone, "the missing parts added to the gallery, each with
+its use", for the staff of a small business in Vietnam, who read Vietnamese. Piece 230's list names
+eleven parts the screens draw and the gallery lacks, and every sample is English. Here the samples
+turn Vietnamese first, with a switch to English; then each part joins by the charter's rule of three:
+five become parts of ours (a table, a panel, a menu row, a copy button, a tag), six are Mantine's own
+as the theme already dresses them (fields with the filter bar, choices, the frame's menus, photos and
+the QR code, links, a dialog). The cheapest path: the theme already decides most looks, and the
+screens stay as they are. The price: about 126 machine minutes in three landings, no picture run, no
+review, one look of yours at the end.
+
+## The slice
+
+One slice: the gallery, every sample in Vietnamese or English, and the eleven parts each with its
+use, walkable in a browser when it ends. Each landing passes four stages: **1**, the cheap build (the
+switch on the page base first; a part from its entry); **2**, `ui`'s and `visual`'s gates and the
+citation test, `visual/src/resolved.pinned.txt` unchanged, since no screen moves; **3**, your one look
+at step 11, landings 1 and 2 having none of their own, since a no there reopens one step; **4**,
+ridge after the day's push, where the gallery ships in the app's bundle, its products row and card
+updated at step 11.
+
+**The screens stay.** No screen moves onto a new part here. Why: moving 79 fields, 33 panels, 15
+tables and 9 links is piece 222's shape, about 360 machine minutes and two picture runs a landing, past
+a day; the gallery, which no walk draws, needs no picture run and no review (QA's rule 5); and the
+pages milestone draws these parts next, so each has a caller. The move is a milestone behind the
+pages; item 651 is its record, and each new contract's `followed` names it.
+
+**Not in it:** the screens' move (item 651); the page shapes (milestone 3); dark mode (item 307); a
+confirm dialog part (item 306).
+
+## The brief, checked
+
+Recounted at `2ae77051`. Each count below is `n` with its pattern, files after "in"; S, the screens,
+leaves out the design system, the parts of ours, the mock and the tests, so a count stays the
+screens' once the parts draw Mantine's own:
+
+```bash
+S=(-- 'ui/src/*.tsx' ':!ui/src/design-system' ':!ui/src/components' ':!ui/src/mock' ':!*.test.*')
+n() { echo "$1 $(git grep -ohP "$1" "${S[@]}" | wc -l) in $(git grep -lP "$1" "${S[@]}" | wc -l)"; }
+```
+
+Where piece 230's detail differs, or the brief's premise does:
+- Tables: `n '<Table(?![\w.])'` reads 15 in 12, not 16: the detail's sixteenth is a type,
+  `Promise<Table>` in `ui/src/importFile.ts#L7`.
+- Panels `n '<Paper(?![\w.])'` 33 in 23, links `n '<Anchor(?![\w.])'` 9 in 8, badges
+  `n '<Badge(?![\w.])'` 5 in 4: the detail's 35 in 25, 11 and 6 counted the parts' own (`SectionCard`,
+  `DoorCard`, `BackLink`'s two, `StatusBadge`). The orchestrator's 54 fields and 45 panels in all of
+  `ui/src` add the gallery's 2 and the design system's 10. The other counts hold.
+- The filter bar is drawn twice (`ui/src/pages/client/StaffListPage.tsx#L133-L215`,
+  `ui/src/pages/client/DeliveriesPage.tsx#L40`): under three, so no part. `ProofPhoto` is
+  `ui/src/parts/OrderParts.tsx#L239`, its image `#L252`.
+- No walk, `visual` or `scripts` test reads the gallery (`git grep -n -i gallery -- visual walk
+  scripts` finds nothing), so no walk picture moves. `scripts/src/words.test.ts` reads the
+  dictionaries (755 keys, `#L43`); `scripts/src/fake.test.ts`'s first case reads the built bundle,
+  the gallery's chunk with it, and refuses the data set's company there (`#L55`). So the samples go in
+  neither the dictionary nor the data set.
+- Twelve finders in `ui/src/design-system/Gallery.test.tsx` read a sample's English word (`#L244`,
+  `#L245`, `#L260`, `#L261`, `#L929-L931`, `#L985-L995`, `#L1064`, `#L1065`, `#L1066`, `#L1070`,
+  `#L1078`, `#L1099`); nine read Vietnamese and hold under the default (`#L231-L232`, `#L257-L259`,
+  `#L267-L270`). `ui/src/App.test.tsx`'s gallery cases find only the "Design system" heading.
+
+## Each part, and the rule that decides it
+
+The charter's rule of three (`ui/src/design-system/guideline.ts`, the rule "A part joins
+`ui/src/components/` at its third use"): a part of ours at its third use, never one that decides
+nothing of Mantine's look, and every look decided in the design system before its first use. The
+theme (`ui/src/design-system/appTheme.ts`'s `themeOf`) already dresses the fields, the tick box, the
+badge, a table row under the pointer and the dialog; `cssVariables.ts`'s `credoVariables` the link.
+
+| Part | Today, `n` pattern and count | It becomes | The rule that decides |
+| --- | --- | --- | --- |
+| Text field | `<TextInput(?![\w.])` 52 in 23, `<PasswordInput(?![\w.])` 8, `<NumberInput(?![\w.])` 3, `<Textarea(?![\w.])` 4, `<NativeSelect(?![\w.])` 12 in 8 | Fields, Mantine's own | it would decide nothing the theme's `Input`, `InputWrapper` and `PasswordInput` do not |
+| Filter bar | the staff list's search and three drop-downs, the deliveries' day (the brief's list) | a state of Fields | two uses |
+| Choices | `<Checkbox(?![\w.])` 10 in 3, `<Switch(?![\w.])` 4, `<Radio\.Group(?![\w.])` 2, `<SegmentedControl(?![\w.])` 1 | Choices, Mantine's own | the theme dresses the tick box; nothing more to decide |
+| Table | `<Table(?![\w.])` 15 in 12; `ta="right"` 32 in 8; `<Table\.Tfoot>` 3; `<Table highlightOnHover` 6 | `DataTable`, a molecule drawn in `TableScroll` | 15 uses; no part decides a number's side, a total line or which rows light |
+| Panel | `<Paper(?![\w.])` 33 in 23, `<Paper withBorder p="md"` 24; `<Title order=\{3\}` 15 in 6 | `Panel`, an organism | 33 uses, each writing its own edge and padding |
+| Menu tile | `className=\{classes\.moreRow\}` 3 in 1; `<Menu(?![\w.])` 2 in 1 | `MenuRow`, an atom; Menus, Mantine's own | three rows, their look a screen stylesheet's (`ui/src/frame/frame.module.css`'s `.moreRow`); two menus |
+| Copy button | `<CopyText(?![\w.])` 5 in 5; `rightSectionWidth=\{96\}` 4 | `CopyText` joins `components/molecules/`, taking `field` | five uses in `ui/src/parts/`; four draw one read-only field round it, its face `styles=\{READ_ONLY\}` 9 in 7 |
+| Tag | `<Badge(?![\w.])` 5 in 4: four light, no status (`OperatorsPage.tsx#L55`, `ServicesPage.tsx#L174`, `#L186`, `PermissionEditor.tsx#L72`), one the frame's | `Tag`, an atom | four uses, each picking its look and colour |
+| Code and photo | `<Image(?![\w.])` 5, `<FileButton(?![\w.])` 2, `<QrCode(?![\w.])` 1, `<PhotoPanel(?![\w.])` 1, `<ProofPhoto(?![\w.])` 2 | Photos and codes, Mantine's own and `ui/src/parts/QrCode.tsx`'s `QrCode` | each under three |
+| Text link | `<Anchor(?![\w.])` 9 in 8 | Links, Mantine's own | the theme writes its colour (`--mantine-color-anchor`) |
+| Dialog | `<Modal(?![\w.])` 1 (`ui/src/parts/SessionEnded.tsx#L27`) | Dialog, Mantine's own | one use; the theme's `Modal` decides it |
+
+Mantine's own entries sit in Foundations under a kind, "Mantine's own", which the present entry
+"Mantine, in the theme" joins, its address unchanged; a part of ours sits in its level with its
+contract, its look read from the theme's tables, `followed` item 651.
+
+## The samples in Vietnamese
+
+- **Default and switch.** The gallery opens in Vietnamese. A "Sample language" picker, Mantine's own
+  as the colour theme's is, sits beside it in the right column and on the no-part page, its names
+  `ui/src/i18n/index.ts`'s `LANGUAGE_NAMES`, remembered as the theme is (`Gallery.tsx`'s `remembered`
+  and `remember`); a stored value no language has opens on Vietnamese.
+- **Where the words come from.** The stage is drawn inside one `I18nextProvider` of `createI18n` in
+  the picked language. A sample that says what a screen says reads the dictionary by its key, so the
+  gallery shows the very word and length a phone meets; a sample no screen says (a person, a shop, a
+  message's sample) reads `ui/src/design-system/samples.ts`, one table of both languages, importing
+  nothing of the data set. The gallery's own words (names, descriptions, use lines, props, the
+  charter, the values' notes, the frame's slot names) stay English: they are the coder's.
+- **What changes.** The two English instances (`ui/src/design-system/entries.tsx#L64`,
+  `PageBase.tsx#L17`) and `PageBase.tsx#L107` and `#L192`'s `language="en"` go;
+  `Contract.tsx#L65`'s `WORDS` and every entry whose plates hold words read by language, 20 of the
+  25: all but the charter, the values, On the brand, `LogoTile` (its caption is the gallery's) and
+  `BrandBand` (a company's name, one in both). The values' Formats state, which draws no value today
+  (`Values.tsx#L288-L296`), draws a price, a number's marks, a day and a time through `number.ts` and
+  `day.ts`.
+
+## The order, and why
+
+**1**, the samples: every new entry is drawn in them, and you asked for them first. **2**, what the
+pages draw, in the detail's order: fields with the filter bar, the table, the panel, the choices; the
+form, import, day-sheet and settings pages need them (piece 230's detail, "For milestones 2 and 3"),
+so landing 2 on `pre-merge` lets the pages milestone start. **3**, the menu row and the copy button,
+which the menu and confirm pages need, then the tag, photos and codes, links and the dialog, which no
+page shape needs.
+
+## What each landing touches
+
+| # | Files | Tests that follow | Pictures |
+| --- | --- | --- | --- |
+| 1 | `Gallery.tsx`, `entries.tsx`, `PageBase.tsx`, `Contract.tsx`, `Values.tsx`, a new `samples.ts`, all in `ui/src/design-system/` | the 21 sample finders above, read by key | none: the pinned file unchanged |
+| 2 | `entries.tsx`, `guideline.ts`, `components/molecules/DataTable.tsx`, `components/organisms/Panel.tsx`, their tests | `Gallery.test.tsx#L102` (Foundations 3, now 5) and `#L1120` (20 parts, now 22) | none |
+| 3 | `components/atoms/MenuRow.tsx` and `Tag.tsx`, `CopyText.tsx` moved, five imports, `entries.tsx`, `guideline.ts` | the same two counts (9 and 25); `scripts/src/counts.test.ts`, as a file moves | none |
+
+## The steps
+
+Each step's gates: `pnpm --filter @credo/ui check`, `pnpm --filter @credo/visual check` and the
+citation test, each case seen red once, `visual/src/resolved.pinned.txt` unchanged. Sizes are the
+same shapes' last rows: the gallery's provider 13 (piece 215's fix), words across the entries 14
+(213's step 4), entries with no code 9 (222's step 14), parts from their entries 12 (222's step 15), a
+part and its importers 14 (222's step 7), five entries 14 (213's step 10), a recap 5 (213's step 12).
+
+**Landing 1: the samples in Vietnamese.**
+
+- [ ] **1. The switch and the base.** The picker and its remembered pick, the stage in the picked
+      language's provider, `samples.ts`; the page base's two states and `ListTable` drawn by
+      language. Cases 1, 2. _Done when:_ the gates exit 0 and `git grep -n "createI18n('en')" --
+      ui/src/design-system/PageBase.tsx` finds nothing. **13 min**.
+- [ ] **2. Every entry, and landing 1.** The other entries' words by language, the Formats state's
+      four values; the finders read by key; the recap begun. Cases 3, 4. _Done when:_ the gates exit
+      0, `git grep -n -E "createI18n\(.en.\)|language=.en." -- ui/src/design-system` finds nothing,
+      and `pnpm --filter @credo/scripts exec vitest run src/words.test.ts src/fake.test.ts` exits 0.
+      **14 min**.
+
+**Landing 2: what the pages draw.**
+
+- [ ] **3. Fields.** The kind "Mantine's own"; Fields: text, password, number, long text and
+      drop-down, each with a label, a hint, an error and read-only, and the staff list's filter bar.
+      Case 5. _Done when:_ the gates exit 0. **9 min**.
+- [ ] **4. The table.** `DataTable` in `components/molecules/`: takes columns (each a heading, and
+      whether it holds a number: a meaning), rows and a total (content); decides a number's side, the
+      total line at `WEIGHTS.emphasis`, every row lit under the pointer at the theme's colour, drawn
+      in `TableScroll`. Its entry (an order's lines with a total; a list whose name opens a page) and
+      contract. Cases 6, 13, 14. _Done when:_ the gates exit 0. **12 min**.
+- [ ] **5. The panel.** `Panel` in `components/organisms/`: takes a title and what it holds (content);
+      decides its edge (`ROLES.border`), its padding and gap (`SPACING.md`), the title a level-3
+      heading, none where none is given. Its entry and contract; `SectionCard`'s "Content with no
+      title" line (`entries.tsx#L645`) names `Panel`. Cases 7, 13, 14. _Done when:_ the gates exit
+      0. **12 min**.
+- [ ] **6. Choices, and landing 2.** Choices: a tick box and a list of them, a switch, a one-of-many
+      list and the segmented pick, as the settings page and the permission editor draw them; the
+      recap's line. Case 8. _Done when:_ the gates exit 0 with Foundations at 5 and 22 parts. **9
+      min**.
+
+**Landing 3: the rest.**
+
+- [ ] **7. The menu row, and menus.** `MenuRow` in `components/atoms/`: takes words, an icon and an
+      address or a press; decides its padding, gap and size, the line between rows and its hover, as
+      `.moreRow` and `.go` draw them, which stay `MorePage`'s until the move. Menus: the frame's
+      language and person menus, opened by a press. Cases 9, 12, 13. _Done when:_ the gates exit 0.
+      **12 min**.
+- [ ] **8. The copy button.** `git mv ui/src/parts/CopyText.tsx ui/src/components/molecules/`, its
+      five imports with it; it takes `field` (content: the label of a read-only field that shows the
+      value in the code face, the button at its right, as `ClientMade.tsx#L21`'s `Field` draws it), its
+      code face one value of `tokens.ts`; its entry (alone in a row; in its field), contract (`used`)
+      and test. Cases 10, 13, 16. _Done when:_ the gates exit 0 and `pnpm --filter @credo/scripts exec
+      vitest run src/citations.test.ts src/counts.test.ts` exits 0. **14 min**.
+- [ ] **9. The tag.** `Tag` in `components/atoms/`: takes words and a meaning (the brand's, or a tone
+      of `TONES`); decides the light look and the chip's size (`SIZES.chip`). Its entry (a colleague's
+      "you", a permission's "custom", a build that differs, a service's state) and contract. Cases
+      11, 13, 14. _Done when:_ the gates exit 0. **12 min**.
+- [ ] **10. Photos and codes, links, the dialog.** A person's photo with its choose button, a
+      delivery's proof, a company's logo, the sign-in QR code; a name link in a row, a phone link, a
+      link in a sentence; a dialog a press opens, in the ended session's words. Item 507 closes. Case
+      12. _Done when:_ the gates exit 0 with Foundations at 9 and 25 parts. **14 min**.
+- [ ] **11. The recap, and the look.** The recap closed; the gallery's row and card in
+      `docs/products.md` name the samples' languages and the new parts; item 651 gains the new parts'
+      site counts, item 515 the line below. Your points 1 to 3, together. _Done when:_ the citation
+      test exits 0. **5 min**.
+
+## The cases
+
+| # | The case | Held by |
+| --- | --- | --- |
+| 1 | The samples are Vietnamese first and English once picked; the pick is kept, and an unknown one opens on Vietnamese | `Gallery.test.tsx` |
+| 2 | A sample a screen says reads the dictionary by key; one no screen says reads `samples.ts` | `Gallery.test.tsx` |
+| 3 | The gallery's own words stay English whatever the pick | `Gallery.test.tsx` |
+| 4 | The Formats state draws a price, a number's marks, a day and a time in the picked language | `Gallery.test.tsx` |
+| 5 | Fields draws five kinds with a label, a hint, an error and read-only, and the filter bar | `Gallery.test.tsx` |
+| 6 | A number column and the total sit at the right; every row lights under the pointer | `DataTable.test.tsx` |
+| 7 | A panel draws its edge and padding, its title over what it holds, no heading where none is given | `Panel.test.tsx` |
+| 8 | Choices draws the tick box, the switch, the one-of-many list and the segmented pick | `Gallery.test.tsx` |
+| 9 | A menu row draws its icon, words and way on, a line between rows; it opens its address or acts | `MenuRow.test.tsx` |
+| 10 | The copy button copies its value and says the copied word; given a field, the value shows read-only beside it | `CopyText.test.tsx` |
+| 11 | A tag draws its words light at the chip's size, in the brand's tone or its meaning's | `Tag.test.tsx` |
+| 12 | Menus, photos and codes, links and the dialog draw Mantine's own; the dialog opens on a press | `Gallery.test.tsx` |
+| 13 | Each new part has its entry in its level and a contract whose every take is a content or a meaning | `Gallery.test.tsx`'s cases 4 and 17, `guideline.test.ts` |
+| 14 | Each pair's winner is named on the other's entry: `Panel` and `SectionCard`, `DataTable` and `ListTable`, `Tag` and `StatusBadge` | `Gallery.test.tsx` |
+| 15 | No step moves a screen | `visual/src/resolved.test.ts`, the pinned file unchanged |
+| 16 | The five screens that copy draw the same from the part's new home | their own tests, unchanged |
+
+## Checks before `main`
+
+**The whole check:** no landing calls it. Each touches `ui` alone (and `.md`), no file in
+`ui/package.json`'s `exports` (`src/importDemo.ts`, `src/mock/index.ts`, `src/scene.ts`,
+`src/i18n/index.ts`), no root config, no lockfile. A landing's check on `pre-merge` is `ui`'s and
+`visual`'s gates and the citation test, landing 1's with step 2's two `scripts` tests and landing 3's
+with `counts.test.ts`; the day's push gets its own whole check, as QA says.
+
+**The review before `main`:** none of its own. Rule 5: a gallery part moves no screen, so its check
+is its gates and your look; the copy button's move edits five import lines, and the pinned file holds
+that no screen moved. If `pre-merge` holds other work worth a review when `main` moves, that one
+review reads these commits with it.
+
+## The human's points
+
+Asked together at step 11, one look: the gallery opened by `pnpm fake` in the piece's worktree, at
+`/48b74d079/gallery` on the address it prints, on a computer; on ridge after the push. The work goes
+on past it; a no reopens its step.
+
+1. **The samples in Vietnamese (step 2).** Every sample opens in Vietnamese: the buttons, messages,
+   tables, names and amounts a staff member reads, in the app's own words; a picker beside the colour
+   theme turns them English, the descriptions staying English for the coder. Do they read as your
+   staff would read them? A yes keeps Vietnamese first; a no names the entry, and step 1 or 2
+   reopens.
+2. **The five new parts (steps 4, 5, 7, 8, 9).** The table, its numbers and total at the right and
+   its rows lit under the pointer; the framed panel; the phone menu's row; the copy button in its
+   field; the small tag; each with when to use it. Does each look the way the screens should draw it?
+   A yes keeps it for the screens' move; a no names the part, and its step reopens.
+3. **Mantine's own, as the theme dresses it (steps 3, 6, 7, 10).** Fields with a hint and an error,
+   the filter bar, the choices, the frame's menus, a photo and the QR code, links, a dialog a press
+   opens. Does each read as the app's own? A yes keeps them; a no names the entry, and its look is
+   decided in the theme at its step, which moves every screen that draws it.
+
+## The open items in reach
+
+| Item | What this plan does |
+| --- | --- |
+| 507 | closes: its table half at step 4, its dialog at step 10 |
+| 651 | stays: the five contracts name it; step 11 adds their site counts; its move is the milestone behind the pages |
+| 515 | stays parked: its trigger, a change to a part no walk shows, fires here, but this look is the gallery itself, and no yes is kept against a picture; step 11 says so in the item |
+| 555 | not in reach: the new parts sit in the gallery's chunk, which only its address loads (`ui/src/App.tsx#L45`) |
+| 306, 307, 505 | stay: the dialog entry is Mantine's own, not a confirm part; light only; each new file is read as the others are |
