@@ -27,13 +27,14 @@ function threeWays(
   );
 }
 
-/** The five kinds of field, worded by the dictionary where a screen says it, and the staff list's filter bar. */
+/** The six kinds of field, worded by the dictionary where a screen says it, and the staff list's filter bar. */
 export const FieldStates: { name: string; node: ReactNode }[] = [
   { name: 'Text', node: <TextField /> },
   { name: 'Password', node: <PasswordField /> },
   { name: 'Number', node: <NumberField /> },
   { name: 'Long text', node: <LongTextField /> },
   { name: 'Drop-down', node: <DropDownField /> },
+  { name: 'File', node: <FileField /> },
   { name: 'Filter bar', node: <FilterBar /> },
 ];
 
@@ -95,6 +96,16 @@ function DropDownField() {
     ),
     words.departmentHint,
     words.departmentError,
+  );
+}
+
+/** A file field: the import's spreadsheet, its format as the hint and its refusal as the error. */
+function FileField() {
+  const { t } = useTranslation();
+  return threeWays(
+    (extra) => <TextInput type="file" accept=".xlsx" label={t('import.file')} {...extra} />,
+    t('import.fileHint'),
+    t('import.unreadable'),
   );
 }
 

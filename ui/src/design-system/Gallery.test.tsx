@@ -267,7 +267,7 @@ describe('Gallery', () => {
     expect(part().getByRole('textbox', { name: DICTIONARIES.vi.staff.colName })).toBeDefined();
   });
 
-  it('231 case 5: Fields draws the five kinds each with a label and a hint, an error and read-only, and the staff list’s filter bar', () => {
+  it('231 case 5: Fields draws the six kinds each with a label and a hint, an error and read-only, and the staff list’s filter bar', () => {
     open(`${BASE}/foundations/fields`);
 
     expect(stateNames()).toEqual([
@@ -276,6 +276,7 @@ describe('Gallery', () => {
       'Number',
       'Long text',
       'Drop-down',
+      'File',
       'Filter bar',
     ]);
     const { vi } = DICTIONARIES;
@@ -285,6 +286,7 @@ describe('Gallery', () => {
       ['Number', vi.lists.columns.price, vi.lists.write.price, vi.lists.products.priceInvalid],
       ['Long text', vi.lists.columns.note, vi.import.writeNote, vi.lists.products.noteTooLong],
       ['Drop-down', vi.addPerson.department, SAMPLES.vi.departmentHint, SAMPLES.vi.departmentError],
+      ['File', vi.import.file, vi.import.fileHint, vi.import.unreadable],
     ];
     for (const [name, label, hint, error] of kinds) {
       const plate = within(part().getByRole('figure', { name }));
@@ -1238,7 +1240,7 @@ describe('Gallery', () => {
   });
 
   it('213 case 1: every entry carries one to three use lines and one to three don’t-use lines', () => {
-    expect(ENTRIES).toHaveLength(40);
+    expect(ENTRIES).toHaveLength(41);
     for (const entry of ENTRIES) {
       for (const lines of [entry.useWhen, entry.dontUseWhen]) {
         expect(lines.length, entry.name).toBeGreaterThanOrEqual(1);
@@ -1486,6 +1488,7 @@ describe('Gallery', () => {
       'The form page',
       'The phone page',
       'The day sheet',
+      'The import page',
     ]);
     for (const name of SLOTS) {
       const entry = ENTRIES.find((each) => each.name === name);
@@ -1878,6 +1881,41 @@ describe('Gallery', () => {
     expect(closed.queryByRole('textbox', { name: /Remitted cash/ })).toBeNull();
   });
 
+  it('236 case 9: the import page draws choose, the preview with each row’s result by meaning, and done, one main each', () => {
+    const entry = ENTRIES.find((each) => each.name === 'The import page')!;
+    expect(entry.kind).toBe(KIND_OF_PAGE);
+    drawn(entry);
+    const figure = (name: string) => within(part().getByRole('figure', { name }));
+    const mains = (name: string) =>
+      [...part().getByRole('figure', { name }).querySelectorAll('[data-variant="filled"]')].map(
+        (one) => one.textContent,
+      );
+    // 1. Choose: the file field and its hint, the template, one main to read the file.
+    const choose = figure('Choose');
+    expect(choose.getByLabelText('Excel spreadsheet').getAttribute('type')).toBe('file');
+    expect(choose.getByText('.xlsx format, up to 2 MB and 500 rows.')).toBeDefined();
+    expect(choose.getByRole('button', { name: 'Download template' })).toBeDefined();
+    expect(mains('Choose')).toEqual(['Parse file']);
+    expect(choose.queryByRole('table')).toBeNull();
+    // 2. The preview: the count of what will be added, each row's result in its meaning's tone.
+    const preview = figure('The preview');
+    expect(preview.getByText('2 of 3 rows ready to import. 1 rows contain errors.')).toBeDefined();
+    const ready = preview.getAllByText('Ready to import');
+    expect(ready).toHaveLength(2);
+    for (const one of ready)
+      expect(one.getAttribute('style') ?? '').toContain(`--mantine-color-${TONES.success}-`);
+    const refused = preview.getByText('Department “Sales” does not exist.');
+    expect(refused.getAttribute('style') ?? '').toContain(`--mantine-color-${TONES.danger}-`);
+    expect(mains('The preview')).toEqual(['Import 2 people']);
+    expect(preview.queryByLabelText('Excel spreadsheet')).toBeNull();
+    // 3. Done: what was added and skipped, one main back to the list.
+    const done = figure('Done');
+    expect(done.getByText('Successfully imported 2 people.')).toBeDefined();
+    expect(done.getByText('1 rows skipped: codes were assigned concurrently.')).toBeDefined();
+    expect(mains('Done')).toEqual(['Back to staff directory']);
+    expect(done.queryByRole('table')).toBeNull();
+  });
+
   it('236 case 13: Panel’s new take, the address its block opens, is a content in its contract and drawn on its entry', () => {
     const panel = GUIDELINE.contracts.find((contract) => contract.part === 'Panel')!;
     expect(panel.takes.find(({ prop }) => prop === 'to')?.is).toBe('content');
@@ -1887,5 +1925,16 @@ describe('Gallery', () => {
 
     const takes = about().getByRole('heading', { level: 3, name: 'Takes from a screen' });
     expect(within(takes.closest('section')!).getByText('to')).toBeDefined();
+  });
+
+  it('236 case 13: Fields draws a file field, with its hint, its error and read-only', () => {
+    expect(ENTRIES.find((entry) => entry.name === 'Fields')!.props).toContain('type="file"');
+    open(`${BASE}/foundations/fields`);
+
+    const file = part().getByRole('figure', { name: 'File' });
+    const inputs = file.querySelectorAll('input[type="file"]');
+    expect(inputs).toHaveLength(3);
+    expect(file.querySelectorAll('[readonly]')).toHaveLength(1);
+    expect(file.querySelectorAll('[data-error]').length).toBeGreaterThan(0);
   });
 });

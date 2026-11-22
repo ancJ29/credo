@@ -34,7 +34,13 @@ import { DialogStates } from './Dialog';
 import { FieldStates } from './Fields';
 import { SAMPLES, useLanguage } from './samples';
 import { OnTheBrand, OnTheLinks } from './OnTheBrand';
-import { DaySheetStates, FormPageStates, ListPageStates, PhonePageStates } from './Pages';
+import {
+  DaySheetStates,
+  FormPageStates,
+  ImportPageStates,
+  ListPageStates,
+  PhonePageStates,
+} from './Pages';
 import {
   ActionButtonStates,
   ActionRowStates,
@@ -384,9 +390,9 @@ export const ENTRIES: Entry[] = [
     name: 'Fields',
     kind: 'Mantine’s own',
     description:
-      'Mantine’s own fields as the theme dresses them: text, password, number, long text and drop-down, each with a label and a hint, with an error and read-only, and the staff list’s filter bar of a search and three drop-downs.',
+      'Mantine’s own fields as the theme dresses them: text, password, number, long text, drop-down and file, each with a label and a hint, with an error and read-only, and the staff list’s filter bar of a search and three drop-downs.',
     props:
-      'TextInput · PasswordInput · NumberInput · Textarea · NativeSelect · label · description · error · readOnly',
+      'TextInput · PasswordInput · NumberInput · Textarea · NativeSelect · type="file" · label · description · error · readOnly',
     useWhen: [
       'A person types or picks one value: a name, a password, an amount, a note or one of a list.',
       'A list narrows by a search and drop-downs: the filter bar.',
@@ -663,6 +669,29 @@ export const ENTRIES: Entry[] = [
       'The close asked once, in its own block.',
     ],
     states: DaySheetStates,
+  },
+  {
+    group: 'Pages',
+    kind: KIND_OF_PAGE,
+    name: 'The import page',
+    description:
+      'The page that adds many records from a spreadsheet, drawn from parts only and one step at a time: choose the file, the preview that counts what will be added and says each row’s result, and done.',
+    props: 'PageHeader · Panel · Fields · DataTable · ActionRow · ActionButton · FormMessage',
+    useWhen: [
+      'You are about to build a page that adds many records from one file.',
+      'You need a page that shows what a file will do before it does it.',
+    ],
+    dontUseWhen: [
+      'A page that adds one record: that is the form page’s.',
+      'A page that lists the records already held: that is the list page’s.',
+    ],
+    instead: 'The form page',
+    mustHave: [
+      'One step drawn at a time, one main each.',
+      'The preview counts what will be added.',
+      'A row’s result by its meaning, never a colour’s name.',
+    ],
+    states: ImportPageStates,
   },
   {
     group: 'Atoms',

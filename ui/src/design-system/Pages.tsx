@@ -29,7 +29,7 @@ import { PageShell } from '../parts/PageShell';
 import { SectionCard } from '../components/organisms/SectionCard';
 import { FilterBar } from './Fields';
 import { SAMPLES, useLanguage } from './samples';
-import { TYPE, WEIGHTS } from './tokens';
+import { TONES, TYPE, WEIGHTS } from './tokens';
 
 /** The day, the request and the photo the phone page's samples hold: no real person's. */
 const DAY = '2026-11-23';
@@ -636,4 +636,111 @@ export const DaySheetStates = [
   { name: 'The day’s drivers', node: <Drivers /> },
   { name: 'One driver’s day', node: <OneDay /> },
   { name: 'Closed', node: <ClosedDay /> },
+];
+
+/** The import's rows: a name each, the row's number and its result. */
+const IMPORT_ROWS = [
+  { line: 2, person: 0, ready: true },
+  { line: 3, person: 1, ready: true },
+  { line: 4, person: 2, ready: false },
+];
+
+/** Choose, as the import draws its first step: the words under the title, the template, the file field and the one main. */
+function Choose() {
+  const { t } = useTranslation();
+  return (
+    <Stack p="md" gap="lg">
+      <div>
+        <PageHeader title={t('import.title')} />
+        <Text c="dimmed">{t('import.intro')}</Text>
+      </div>
+      <Panel>
+        <Stack gap="lg">
+          <Stack gap="xs" align="flex-start">
+            <ActionButton meaning="other">{t('import.template')}</ActionButton>
+            <Text {...TYPE.caption}>{t('import.templateHint')}</Text>
+          </Stack>
+          <TextInput
+            type="file"
+            accept=".xlsx"
+            label={t('import.file')}
+            description={t('import.fileHint')}
+          />
+          <Text>{t('import.chosen', { name: 'staff.xlsx' })}</Text>
+          <ActionButton meaning="main">{t('import.read')}</ActionButton>
+        </Stack>
+      </Panel>
+    </Stack>
+  );
+}
+
+/** The preview, as the import draws its second step: what will be added counted, each row's result in the tone of its meaning, the one main to add them. */
+function Preview() {
+  const { t } = useTranslation();
+  const words = SAMPLES[useLanguage()];
+  const held = IMPORT_ROWS.filter((row) => row.ready).length;
+  return (
+    <Stack p="md" gap="lg">
+      <PageHeader title={t('import.previewTitle')} />
+      <Text>
+        {t('import.summary', {
+          held,
+          total: IMPORT_ROWS.length,
+          refused: IMPORT_ROWS.length - held,
+        })}
+      </Text>
+      <DataTable
+        columns={[
+          { heading: t('import.colRow'), number: true },
+          { heading: t('staff.colName') },
+          { heading: t('import.colResult') },
+        ]}
+        rows={IMPORT_ROWS.map((row) => ({
+          key: String(row.line),
+          cells: [
+            row.line,
+            words.people[row.person].name,
+            row.ready ? (
+              <Text key="result" c={TONES.success}>
+                {t('import.willAdd')}
+              </Text>
+            ) : (
+              <Text key="result" c={TONES.danger}>
+                {t('import.refusedDepartment', { name: words.departmentValue })}
+              </Text>
+            ),
+          ],
+        }))}
+      />
+      <ActionRow>
+        <ActionButton meaning="main">{t('import.add', { count: held })}</ActionButton>
+        <ActionButton meaning="other">{t('import.another')}</ActionButton>
+      </ActionRow>
+    </Stack>
+  );
+}
+
+/** Done, as the import draws its last step: what was added, what was skipped, and the one main back to the list. */
+function ImportDone() {
+  const { t } = useTranslation();
+  return (
+    <Stack p="md" gap="lg">
+      <PageHeader title={t('import.doneTitle')} />
+      <FormMessage kind="success">{t('import.doneAdded', { count: 2 })}</FormMessage>
+      <FormMessage kind="warning">{t('import.doneRefused', { count: 1 })}</FormMessage>
+      <Text>{t('import.doneSignIn')}</Text>
+      <ActionRow>
+        <ActionButton meaning="main" to="/staff">
+          {t('staff.back')}
+        </ActionButton>
+      </ActionRow>
+    </Stack>
+  );
+}
+
+/** The import page's three states: choose, the preview, and done. */
+export const ImportPageStates = [
+  { name: 'Choose', node: <Choose /> },
+  { name: 'The preview', node: <Preview /> },
+  { name: 'Done', node: <ImportDone /> },
 ];
