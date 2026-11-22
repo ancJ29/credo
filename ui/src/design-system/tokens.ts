@@ -110,6 +110,8 @@ export const TOKENS = {
   doorSubtitleGap: 32,
   /** A section title's grey icon tile, in px. */
   iconTile: 24,
+  /** A read-only field's value, where it is something to copy: the code face. */
+  codeFace: { fontFamily: 'ui-monospace, monospace' },
 } as const;
 
 /**

@@ -27,14 +27,21 @@ import { PageHeader } from '../components/organisms/PageHeader';
 import { SectionCard } from '../components/organisms/SectionCard';
 import { Charter } from './Charter';
 import { ChoiceStates } from './Choices';
+import { MenuStates } from './Menus';
+import { PhotoStates } from './Photos';
+import { LinkStates } from './Links';
+import { DialogStates } from './Dialog';
 import { FieldStates } from './Fields';
 import { SAMPLES, useLanguage } from './samples';
 import { OnTheBrand, OnTheLinks } from './OnTheBrand';
 import {
   ActionButtonStates,
   ActionRowStates,
+  CopyTextStates,
   DataTableStates,
   FormMessageStates,
+  MenuRowStates,
+  TagStates,
   PageStateStates,
   PanelStates,
   TableScrollStates,
@@ -405,6 +412,76 @@ export const ENTRIES: Entry[] = [
     states: ChoiceStates,
   },
   {
+    group: 'Foundations',
+    name: 'Menus',
+    kind: 'Mantine’s own',
+    description:
+      'Mantine’s own menus as the theme dresses them: the frame’s language menu and person menu, each a button that a press opens onto a list.',
+    props: 'Menu · Menu.Target · Menu.Dropdown · Menu.Label · Menu.Item',
+    useWhen: [
+      'A few choices or acts sit behind one button in the header: the language, the person.',
+      'The list is short and each item acts at once or opens a page.',
+    ],
+    dontUseWhen: [
+      'A page of rows on a phone: that is MenuRow’s.',
+      'One value picked from a long list in a form: a drop-down, under Fields.',
+    ],
+    instead: 'MenuRow',
+    states: MenuStates,
+  },
+  {
+    group: 'Foundations',
+    name: 'Photos and codes',
+    kind: 'Mantine’s own',
+    description:
+      'Mantine’s own picture as the theme dresses it, with the sign-in QR code beside it: a person’s photo and its choose button, a delivery’s proof, a company’s logo and the code a phone reads to sign in.',
+    props: 'Image · FileButton · Avatar · QrCode (value, label)',
+    useWhen: [
+      'A person’s or a company’s picture is shown, or chosen from a file on the device.',
+      'A delivery’s proof is shown under its title.',
+      'A sign-in link is shown as a code a phone reads.',
+    ],
+    dontUseWhen: [
+      'A small mark of the client’s beside a name: that is LogoTile’s.',
+      'A link to copy or follow as words: that is under Links.',
+    ],
+    instead: 'LogoTile',
+    states: PhotoStates,
+  },
+  {
+    group: 'Foundations',
+    name: 'Links',
+    kind: 'Mantine’s own',
+    description:
+      'Mantine’s own link as the theme dresses it, in the link colour: a name that opens its page in a row, a phone number a tap calls and a link inside a sentence.',
+    props: 'Anchor · component · to · href',
+    useWhen: [
+      'A name or a number in a row or a sentence opens a page or calls a phone.',
+      'The link is words inside text, not a button.',
+    ],
+    dontUseWhen: [
+      'A way back above a page: that is BackLink’s.',
+      'An act that changes something: a button, under ActionButton.',
+    ],
+    instead: 'BackLink',
+    states: LinkStates,
+  },
+  {
+    group: 'Foundations',
+    name: 'Dialog',
+    kind: 'Mantine’s own',
+    description:
+      'Mantine’s own dialog as the theme dresses it: a press opens it over the page, as the ended session’s dialog says its title, its text and the two ways on.',
+    props: 'Modal · opened · onClose · title · centered',
+    useWhen: ['The page waits on one answer and nothing beneath works until it comes.'],
+    dontUseWhen: [
+      'A message that needs no answer: that is FormMessage’s.',
+      'A list of choices behind a header button: that is under Menus.',
+    ],
+    instead: 'FormMessage',
+    states: DialogStates,
+  },
+  {
     group: 'Pages',
     name: 'The page base',
     description:
@@ -549,6 +626,21 @@ export const ENTRIES: Entry[] = [
   },
   {
     group: 'Atoms',
+    name: 'MenuRow',
+    kind: 'Lists',
+    description:
+      'A row of a menu page: an optional icon, its words and, where it opens an address, an arrow at the end; a line between rows and a lit row under the pointer.',
+    props: 'icon?: typeof IconChevronRight · to?: string · onClick?: () => void · children: string',
+    useWhen: ['A page lists ways on or acts as rows, as the phone’s More does.'],
+    dontUseWhen: [
+      'A list behind a header button: that is Menus, Mantine’s own.',
+      'A row of data with columns: that is DataTable’s.',
+    ],
+    instead: 'DataTable',
+    states: MenuRowStates,
+  },
+  {
+    group: 'Atoms',
     name: 'StatusBadge',
     kind: 'Marks',
     description:
@@ -557,9 +649,9 @@ export const ENTRIES: Entry[] = [
     useWhen: ['A record’s status is shown as a chip beside its name or in its row.'],
     dontUseWhen: [
       'A message to the person: that is FormMessage’s.',
-      'A status of no record, or a colour of the screen’s own choosing: ask, and the guideline gains a status.',
+      'A word that is no status of a record, as a colleague’s “you”: that is Tag’s.',
     ],
-    instead: 'FormMessage',
+    instead: 'Tag',
     states: [
       {
         name: 'An order',
@@ -571,6 +663,24 @@ export const ENTRIES: Entry[] = [
       },
       { name: 'A person', node: <StatusRow statuses={['active', 'inactive']} /> },
     ],
+  },
+  {
+    group: 'Atoms',
+    name: 'Tag',
+    kind: 'Marks',
+    description:
+      'A word beside a name or in a row, drawn light at the chip’s size: in the brand’s tone, or in the tone of its meaning (danger, success, warning or info).',
+    props: "meaning?: 'brand' | 'danger' | 'success' | 'warning' | 'info' · children: string",
+    useWhen: [
+      'A word marks a person or a setting, as a colleague’s “you” or a permission that is custom.',
+      'A state of a thing that is no record’s status, as a service’s health or a build that differs: give it its meaning.',
+    ],
+    dontUseWhen: [
+      'A record’s status, an order’s or a person’s: that is StatusBadge’s.',
+      'A message to the person: that is FormMessage’s.',
+    ],
+    instead: 'StatusBadge',
+    states: TagStates,
   },
   {
     group: 'Atoms',
@@ -637,6 +747,24 @@ export const ENTRIES: Entry[] = [
     ],
     instead: 'ListTable',
     states: DataTableStates,
+  },
+  {
+    group: 'Molecules',
+    name: 'CopyText',
+    kind: 'Buttons',
+    description:
+      'A button that copies a value and says the copied word for a moment after; given a field, it sits at the right of a read-only field that shows the value in the code face.',
+    props: 'value: string · label: string · about: string · field?: string',
+    useWhen: [
+      'A page shows a link or a password once, to be sent on: give the button the value and the field’s label.',
+      'A table row holds a link to copy: the button alone, its words naming what it copies.',
+    ],
+    dontUseWhen: [
+      'A value that is only read: that is DetailField’s.',
+      'A button that does anything but copy: that is ActionButton’s.',
+    ],
+    instead: 'ActionButton',
+    states: CopyTextStates,
   },
   {
     group: 'Molecules',
