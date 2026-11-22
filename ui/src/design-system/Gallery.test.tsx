@@ -1066,7 +1066,7 @@ describe('Gallery', () => {
   });
 
   it('213 case 1: every entry carries one to three use lines and one to three don’t-use lines', () => {
-    expect(ENTRIES).toHaveLength(31);
+    expect(ENTRIES).toHaveLength(32);
     for (const entry of ENTRIES) {
       for (const lines of [entry.useWhen, entry.dontUseWhen]) {
         expect(lines.length, entry.name).toBeGreaterThanOrEqual(1);
@@ -1311,6 +1311,7 @@ describe('Gallery', () => {
       'FieldPair',
       'ListTable',
       'The list page',
+      'The form page',
       'The phone page',
     ]);
     for (const name of SLOTS) {
@@ -1605,6 +1606,58 @@ describe('Gallery', () => {
     ]);
     expect(cards[0].textContent).toBe('An NguyenActiveNV-0010901 234 567');
     expect(cards[2].textContent).toContain('Inactive');
+  });
+
+  it('236 case 7: the form page draws blocks of fields, a field’s refusal on the field and a whole form’s above, one main at the foot, the made state', () => {
+    const entry = ENTRIES.find((each) => each.name === 'The form page')!;
+    expect(entry.kind).toBe(KIND_OF_PAGE);
+    drawn(entry);
+    const figure = (name: string) => within(part().getByRole('figure', { name }));
+    // 1. A new record: the way back above the title, three titled blocks, one main at the foot.
+    const fresh = figure('A new record');
+    const back = fresh.getByRole('link', { name: 'Back to staff directory' });
+    const title = fresh.getByRole('heading', { name: 'Add staff member' });
+    expect(back.compareDocumentPosition(title) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(
+      fresh.getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent),
+    ).toEqual(['Basic information', 'Contact details', 'Internal notes']);
+    expect(fresh.getAllByRole('button')).toHaveLength(1);
+    expect(fresh.getByRole('button', { name: 'Add employee' }).getAttribute('data-variant')).toBe(
+      'filled',
+    );
+    expect(fresh.queryByRole('alert')).toBeNull();
+    expect(fresh.getByRole('textbox', { name: /Staff code/ }).hasAttribute('data-error')).toBe(
+      false,
+    );
+    // 2. Refused: the whole form's message above the blocks, the code's refusal on its field.
+    const refused = figure('Refused');
+    const message = refused.getByRole('alert');
+    expect(message.textContent).toContain('Failed to add employee');
+    const first = refused.getAllByRole('heading', { level: 3 })[0];
+    expect(message.compareDocumentPosition(first) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(refused.getByRole('textbox', { name: /Staff code/ }).hasAttribute('data-error')).toBe(
+      true,
+    );
+    expect(
+      refused.getByText('Code must be 2–20 alphanumeric characters or hyphens.'),
+    ).toBeDefined();
+    expect(refused.getAllByRole('button')).toHaveLength(1);
+    // 3. One block: its fields in one titled block, one main.
+    const one = figure('One block');
+    expect(one.getAllByRole('heading', { level: 3 })).toHaveLength(1);
+    const press = one.getByRole('button', { name: 'Update password' });
+    expect(press.getAttribute('data-variant')).toBe('filled');
+    expect(one.getAllByRole('button').filter((button) => button !== press)).toHaveLength(3);
+    // 4. Made: what was made, read-only, with the way on.
+    const made = figure('Made');
+    expect(made.getByRole('status').textContent).toContain('only displayed once');
+    expect(made.getByRole('textbox', { name: 'Login username' }).hasAttribute('readonly')).toBe(
+      true,
+    );
+    expect(made.getByRole('textbox', { name: 'Initial password' }).hasAttribute('readonly')).toBe(
+      true,
+    );
+    expect(made.getByRole('link', { name: 'View employee profile' })).toBeDefined();
   });
 
   it('236 case 13: Panel’s new take, the address its block opens, is a content in its contract and drawn on its entry', () => {

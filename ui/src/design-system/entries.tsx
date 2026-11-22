@@ -30,7 +30,7 @@ import { ChoiceStates } from './Choices';
 import { FieldStates } from './Fields';
 import { SAMPLES, useLanguage } from './samples';
 import { OnTheBrand, OnTheLinks } from './OnTheBrand';
-import { ListPageStates, PhonePageStates } from './Pages';
+import { FormPageStates, ListPageStates, PhonePageStates } from './Pages';
 import {
   ActionButtonStates,
   ActionRowStates,
@@ -512,6 +512,31 @@ export const ENTRIES: Entry[] = [
       'At the phone’s width a card a row, the name and its chip first, the other columns as captions.',
     ],
     states: ListPageStates,
+  },
+  {
+    group: 'Pages',
+    kind: KIND_OF_PAGE,
+    name: 'The form page',
+    description:
+      'A form that adds a record, drawn from parts only: the way back above the title, fields in titled blocks two a row, a refusal on its field and a whole form’s above the blocks, one main at the foot, and what was made.',
+    props: 'PageShell · SectionCard · FieldPair · Fields · Choices · FormMessage · ActionButton',
+    useWhen: [
+      'You are about to build a page where someone fills in fields and saves one record.',
+      'You need a page that says what it made after the save.',
+    ],
+    dontUseWhen: [
+      'A page that lists records: that is the list page’s.',
+      'A page that asks before an act that cannot be undone: that is the confirm page’s.',
+    ],
+    instead: 'The list page',
+    mustHave: [
+      'The way back above the title.',
+      'Fields in titled blocks, two a row.',
+      'A field’s refusal on its field, a whole form’s above the blocks.',
+      'One main at the foot.',
+      'After a save, what was made.',
+    ],
+    states: FormPageStates,
   },
   {
     group: 'Pages',

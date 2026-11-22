@@ -1,4 +1,15 @@
-import { Anchor, Group, Image, Stack, Text } from '@mantine/core';
+import {
+  Anchor,
+  Group,
+  Image,
+  NativeSelect,
+  PasswordInput,
+  Stack,
+  Text,
+  Textarea,
+  TextInput,
+} from '@mantine/core';
+import { IconLock, IconLogin, IconNote, IconPhone, IconUser } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { ActionButton } from '../components/atoms/ActionButton';
 import { StatusBadge, type Status } from '../components/atoms/StatusBadge';
@@ -12,7 +23,9 @@ import { shownDay } from '../day';
 import { LISTS } from '../listSheet';
 import { numberOf, priceOf } from '../number';
 import { ListTable } from '../parts/ListTable';
+import { FieldPair } from '../parts/DetailCards';
 import { PageShell } from '../parts/PageShell';
+import { SectionCard } from '../components/organisms/SectionCard';
 import { FilterBar } from './Fields';
 import { SAMPLES, useLanguage } from './samples';
 import { TYPE, WEIGHTS } from './tokens';
@@ -313,4 +326,112 @@ export const ListPageStates = [
   { name: 'Loading', node: <ListState state="loading" /> },
   { name: 'Failed', node: <ListState state="failed" /> },
   { name: 'At the phone', node: <Cards />, phone: true as const },
+];
+
+/** The form page as the staff member's add draws it: the way back above the title, fields in titled blocks two a row, one main at the foot; `refused` adds a whole-form message above the blocks and the code's refusal on its field. */
+function NewRecord({ refused }: { refused: boolean }) {
+  const { t } = useTranslation();
+  const words = SAMPLES[useLanguage()];
+  return (
+    <Stack p="md">
+      <PageShell
+        title={t('addPerson.title')}
+        status="ready"
+        back={{ href: '/staff', children: t('staff.back') }}
+        subtitle={t('addPerson.intro')}
+      >
+        <Stack gap="lg">
+          {refused && <FormMessage kind="error">{t('addPerson.failed')}</FormMessage>}
+          <SectionCard icon={<IconUser size={14} />} title={t('addPerson.basic')}>
+            <FieldPair>
+              <TextInput label={t('addPerson.name')} required defaultValue={words.person} />
+              <TextInput
+                label={t('addPerson.code')}
+                description={t('addPerson.codeHint')}
+                error={refused && t('addPerson.codeInvalid')}
+                defaultValue={refused ? '!' : ''}
+              />
+              <NativeSelect
+                label={t('addPerson.department')}
+                data={[t('addPerson.noneChosen'), words.departmentValue]}
+              />
+            </FieldPair>
+          </SectionCard>
+          <SectionCard icon={<IconPhone size={14} />} title={t('addPerson.contacts')}>
+            <FieldPair>
+              <TextInput label={t('addPerson.phone')} type="tel" defaultValue={words.phone} />
+              <TextInput label={t('addPerson.personalPhone')} type="tel" />
+            </FieldPair>
+          </SectionCard>
+          <SectionCard icon={<IconNote size={14} />} title={t('addPerson.noteCard')}>
+            <Textarea label={t('addPerson.note')} />
+          </SectionCard>
+          <ActionButton meaning="main" submit>
+            {t('addPerson.submit')}
+          </ActionButton>
+        </Stack>
+      </PageShell>
+    </Stack>
+  );
+}
+
+/** A form of one block, as the own password's: the words under the title, the block's fields, one main. */
+function OneBlock() {
+  const { t } = useTranslation();
+  const words = SAMPLES[useLanguage()];
+  return (
+    <Stack p="md">
+      <PageShell title={t('ownPassword.title')} status="ready" subtitle={t('ownPassword.text')}>
+        <Stack gap="lg">
+          <SectionCard icon={<IconLock size={14} />} title={t('ownPassword.title')}>
+            <PasswordInput label={t('ownPassword.current')} defaultValue={words.secretValue} />
+            <FieldPair>
+              <PasswordInput label={t('ownPassword.new')} description={words.passwordHint} />
+              <PasswordInput label={t('ownPassword.again')} />
+            </FieldPair>
+          </SectionCard>
+          <ActionButton meaning="main" submit>
+            {t('ownPassword.submit')}
+          </ActionButton>
+        </Stack>
+      </PageShell>
+    </Stack>
+  );
+}
+
+/** What the add made: the message, the credentials read-only in their block, the main to open it. */
+function Made() {
+  const { t } = useTranslation();
+  const words = SAMPLES[useLanguage()];
+  return (
+    <Stack p="md">
+      <PageShell title={t('addPerson.madeTitle')} status="ready">
+        <Stack gap="lg">
+          <FormMessage kind="success">{t('addPerson.madeIntro')}</FormMessage>
+          <SectionCard icon={<IconLogin size={14} />} title={t('addPerson.madeCard')}>
+            <FieldPair>
+              <TextInput label={t('addPerson.signInName')} value={words.codeValue} readOnly />
+              <TextInput label={t('addPerson.firstPassword')} value={words.secretValue} readOnly />
+            </FieldPair>
+          </SectionCard>
+          <Stack gap="xs" align="flex-start">
+            <ActionButton meaning="main" to="/staff/s1">
+              {t('addPerson.open')}
+            </ActionButton>
+            <ActionButton meaning="other" to="/staff/new">
+              {t('addPerson.another')}
+            </ActionButton>
+          </Stack>
+        </Stack>
+      </PageShell>
+    </Stack>
+  );
+}
+
+/** The form page's four states: a new record, refused, one block, and made. */
+export const FormPageStates = [
+  { name: 'A new record', node: <NewRecord refused={false} /> },
+  { name: 'Refused', node: <NewRecord refused /> },
+  { name: 'One block', node: <OneBlock /> },
+  { name: 'Made', node: <Made /> },
 ];
