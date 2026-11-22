@@ -24,6 +24,7 @@ import { ActionButton } from '../components/atoms/ActionButton';
 import { MenuRow } from '../components/atoms/MenuRow';
 import { StatusBadge, type Status } from '../components/atoms/StatusBadge';
 import { ActionRow } from '../components/molecules/ActionRow';
+import { CopyText } from '../components/molecules/CopyText';
 import { DataTable } from '../components/molecules/DataTable';
 import { FormMessage } from '../components/molecules/FormMessage';
 import { PageHeader } from '../components/organisms/PageHeader';
@@ -786,4 +787,85 @@ function MenuPage({ others }: { others: boolean }) {
 export const MenuPageStates = [
   { name: 'The company’s More', node: <MenuPage others />, phone: true as const },
   { name: 'No other pages', node: <MenuPage others={false} />, phone: true as const },
+];
+
+/** The company and its code the confirm page's samples name: the gallery's own, no real client's. */
+const CLIENT_CODE = 'sample-shop';
+/** A one-time password the made state shows once: made up for the sample. */
+const MADE_PASSWORD = 'k7Tq-92xv-Lm4d';
+
+/** The confirm page before the act: what will happen first, the standing warning at a delete, the code to type, then the last press and the way back. */
+function Confirm({ erase }: { erase: boolean }) {
+  const { t } = useTranslation();
+  const { shop } = SAMPLES[useLanguage()];
+  return (
+    <Stack p="md" gap="lg">
+      <div>
+        <PageHeader
+          title={t(erase ? 'operator.deleteClientTitle' : 'operator.rootTitle', { name: shop })}
+        />
+        {!erase && <Text c="dimmed">{t('operator.rootIntro', { name: shop })}</Text>}
+      </div>
+      {erase && (
+        <FormMessage kind="warning" standing title={CLIENT_CODE}>
+          {t('operator.deleteClientIntro', { name: shop })}
+        </FormMessage>
+      )}
+      <Panel>
+        <Stack gap="lg">
+          <TextInput
+            label={t(erase ? 'operator.deleteClientCodeLabel' : 'operator.rootCodeLabel')}
+            description={t(erase ? 'operator.deleteClientCodeHint' : 'operator.rootCodeHint', {
+              code: CLIENT_CODE,
+            })}
+            autoCapitalize="none"
+            autoComplete="off"
+            required
+          />
+          <Text {...TYPE.caption}>
+            {t(erase ? 'operator.deleteClientTouch' : 'operator.rootTouch')}
+          </Text>
+          <ActionRow>
+            <ActionButton meaning={erase ? 'danger' : 'main'} submit>
+              {t(erase ? 'operator.deleteClientMake' : 'operator.rootSet')}
+            </ActionButton>
+            <ActionButton meaning="other" to="/operator/clients">
+              {t('operator.back')}
+            </ActionButton>
+          </ActionRow>
+        </Stack>
+      </Panel>
+    </Stack>
+  );
+}
+
+/** The confirm page after the act: the success, the made value read-only in its field with the copy button at its right, and the way back. */
+function ConfirmMade() {
+  const { t } = useTranslation();
+  return (
+    <Stack p="md" gap="lg">
+      <PageHeader title={t('operator.rootMadeTitle')} />
+      <FormMessage kind="success">{t('operator.rootMadeIntro')}</FormMessage>
+      <Panel>
+        <CopyText
+          value={MADE_PASSWORD}
+          label={t('operator.copy')}
+          about={t('operator.rootMadePassword')}
+          field={t('operator.rootMadePassword')}
+        />
+      </Panel>
+      <ActionRow>
+        <ActionButton meaning="main" to="/operator/clients">
+          {t('operator.back')}
+        </ActionButton>
+      </ActionRow>
+    </Stack>
+  );
+}
+
+/** The confirm page's three states: a delete, a change, and made. */
+export const ConfirmPageStates = [
+  { name: 'A delete', node: <Confirm erase /> },
+  { name: 'A change', node: <Confirm erase={false} /> },
+  { name: 'Made', node: <ConfirmMade /> },
 ];

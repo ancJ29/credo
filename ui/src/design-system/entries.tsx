@@ -35,6 +35,7 @@ import { FieldStates } from './Fields';
 import { SAMPLES, useLanguage } from './samples';
 import { OnTheBrand, OnTheLinks } from './OnTheBrand';
 import {
+  ConfirmPageStates,
   DaySheetStates,
   FormPageStates,
   ImportPageStates,
@@ -716,6 +717,30 @@ export const ENTRIES: Entry[] = [
       'Each place or act a MenuRow.',
     ],
     states: MenuPageStates,
+  },
+  {
+    group: 'Pages',
+    kind: KIND_OF_PAGE,
+    name: 'The confirm page',
+    description:
+      'The page that asks before an act that changes a company for good, drawn from parts only: what will happen first, a standing warning at a delete, the code to type, the last press, and once made, the new value read-only beside its copy button.',
+    props: 'PageHeader · FormMessage · Panel · TextInput · ActionRow · ActionButton · CopyText',
+    useWhen: [
+      'You are about to build the page that asks before a delete, a move or a new password.',
+      'You need a page that hands back a made value once and never again.',
+    ],
+    dontUseWhen: [
+      'A question that fits in a line over the page it came from: that is a dialog, which this app does not use for acts.',
+      'A form that only saves what was typed: that is the form page’s.',
+    ],
+    instead: 'The form page',
+    mustHave: [
+      'What will happen first, and a standing warning where it cannot be undone.',
+      'One thing to type where the act cannot be undone.',
+      'Red only on a delete’s last press.',
+      'A made value read-only beside its copy button.',
+    ],
+    states: ConfirmPageStates,
   },
   {
     group: 'Atoms',

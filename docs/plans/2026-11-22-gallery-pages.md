@@ -177,8 +177,9 @@ of the same shape: a gallery-wide mechanism 16 (its step 1), a part's take with 
 - [x] **7. The menu page.** Its two states in the phone's frame, from `MenuRow`. Case 10. _Done when:_
       the gates exit 0. **4 min**.
       _Done 2026-11-23, the gates from 00:21:_ `Pages.tsx` draws the entry `The menu page` (kind "Kinds of page", 42 entries now) in two states at the phone's width: the company's More (the pages the bar leaves out in one panel, then the person's link and sign-out last in another, each a `MenuRow`) and More with no other pages; case 10 seen red by four mutations (sign-out not last, a page row without its address, a state out of the phone's frame, the two panels made one); the three gates, the pinned file and the words and fake tests ran on this tree.
-- [ ] **8. The confirm page.** Its three states, the made one with `CopyText` in its field. Case 11.
+- [x] **8. The confirm page.** Its three states, the made one with `CopyText` in its field. Case 11.
       _Done when:_ the gates exit 0. **10 min**.
+      _Done 2026-11-23, the gates from 00:29:_ `Pages.tsx` draws the entry `The confirm page` (kind "Kinds of page", 43 entries now) in three states: a delete (the standing warning above the code to type, the one red press, the way back), a change (what will happen first, the code to type, a main press that is not red) and made (the new password read-only in its field with `CopyText` at its right, one main back); case 11 seen red by five mutations (the delete's press not red, the warning not standing, the change's press red, the made field without its `field`, the change's intro gone); the three gates, the pinned file and the words and fake tests ran on this tree.
 - [ ] **9. The settings page.** Fields' colour kind; its three states, the logo from landing 3's
       photos. Cases 12, 13. _Done when:_ the gates exit 0. **11 min**.
 - [ ] **10. The recap, and the look.** The recap closed; the gallery's row and card in

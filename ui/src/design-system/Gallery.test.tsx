@@ -1240,7 +1240,7 @@ describe('Gallery', () => {
   });
 
   it('213 case 1: every entry carries one to three use lines and one to three don’t-use lines', () => {
-    expect(ENTRIES).toHaveLength(42);
+    expect(ENTRIES).toHaveLength(43);
     for (const entry of ENTRIES) {
       for (const lines of [entry.useWhen, entry.dontUseWhen]) {
         expect(lines.length, entry.name).toBeGreaterThanOrEqual(1);
@@ -1490,6 +1490,7 @@ describe('Gallery', () => {
       'The day sheet',
       'The import page',
       'The menu page',
+      'The confirm page',
     ]);
     for (const name of SLOTS) {
       const entry = ENTRIES.find((each) => each.name === name);
@@ -1957,6 +1958,44 @@ describe('Gallery', () => {
     const bare = rowsOf('No other pages');
     expect(bare.panels).toHaveLength(1);
     expect(bare.rows.map((row) => row.words)).toEqual(['Change password', 'Sign out']);
+  });
+
+  it('236 case 11: the confirm page draws the warning first, red only on a delete, the made value with its copy button', () => {
+    const entry = ENTRIES.find((each) => each.name === 'The confirm page')!;
+    expect(entry.kind).toBe(KIND_OF_PAGE);
+    expect(entry.states.map((state) => state.name)).toEqual(['A delete', 'A change', 'Made']);
+    drawn(entry);
+    const figure = (name: string) => within(part().getByRole('figure', { name }));
+    const reds = (name: string) =>
+      [...part().getByRole('figure', { name }).querySelectorAll('button, a')]
+        .filter((one) => one.getAttribute('data-variant') === 'filled')
+        .map((one) => one.textContent);
+    // 1. A delete: the standing warning before the code field, the red press last but for the way back.
+    const erase = figure('A delete');
+    const warning = erase.getByRole('note');
+    expect(warning.textContent).toContain('This action cannot be undone');
+    const typed = erase.getByRole('textbox', { name: /Type client code to confirm deletion/ });
+    expect(warning.compareDocumentPosition(typed) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const press = erase.getByRole('button', { name: 'Delete client and all data' });
+    expect(press.getAttribute('data-variant')).toBe('filled');
+    expect(press.getAttribute('style') ?? '').toContain(`--mantine-color-${TONES.danger}-`);
+    expect(erase.getByRole('link', { name: 'Back to clients' })).toBeDefined();
+    // 2. A change: what will happen first, the code to type, a main press that is not red.
+    const change = figure('A change');
+    expect(change.queryByRole('note')).toBeNull();
+    expect(change.getByText(/This sets a new password for/)).toBeDefined();
+    expect(change.getByRole('textbox', { name: /Type client code to confirm/ })).toBeDefined();
+    const update = change.getByRole('button', { name: 'Update root password' });
+    expect(update.getAttribute('style') ?? '').not.toContain(`--mantine-color-${TONES.danger}-`);
+    expect(reds('A change')).toEqual(['Update root password']);
+    // 3. Made: the value read-only in its field, the copy button at its right, no code to type.
+    const made = figure('Made');
+    const field = made.getByRole<HTMLInputElement>('textbox', { name: 'New password' });
+    expect(field.hasAttribute('readonly')).toBe(true);
+    expect(field.value).toBe('k7Tq-92xv-Lm4d');
+    expect(made.getByRole('button', { name: 'Copy: New password' })).toBeDefined();
+    expect(made.queryByRole('textbox', { name: /Type client code/ })).toBeNull();
+    expect(made.getByRole('status').textContent).toContain('Share this password');
   });
 
   it('236 case 13: Panel’s new take, the address its block opens, is a content in its contract and drawn on its entry', () => {
