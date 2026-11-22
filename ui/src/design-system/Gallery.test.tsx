@@ -1,4 +1,4 @@
-import { cleanup, render, screen, within } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router';
 import { CREDO_COLOUR } from '@credo/shared';
@@ -921,8 +921,14 @@ describe('Gallery', () => {
     open(`${BASE}/organisms/page-state`);
     expect(part().getAllByRole('alert')).toHaveLength(1);
     expect(part().getAllByRole('status')).toHaveLength(4);
+    // The failed plate's sample retry acts without a page behind it: the press changes nothing.
+    fireEvent.click(within(part().getByRole('figure', { name: 'Failed' })).getByRole('button'));
+    expect(part().getAllByRole('alert')).toHaveLength(1);
+    // The loader is named by the dictionary's words; this draw loads none, so its key is the name.
     expect(
-      within(part().getByRole('figure', { name: 'Loading' })).getByLabelText('Loading'),
+      within(part().getByRole('figure', { name: 'Loading' })).getByLabelText(
+        /^(Loading\.\.\.|common\.loading)$/,
+      ),
     ).toBeDefined();
   });
 
@@ -1000,6 +1006,15 @@ describe('Gallery', () => {
     );
     expect(screen.getByText(/The app follows it\./)).toBeDefined();
     expect(screen.queryByText(/To come/)).toBeNull();
+  });
+
+  it('213 case 13: a part not yet built has its panel say it is to come, and the item that builds it', () => {
+    render(
+      <CredoMantine colour={CREDO_COLOUR} test>
+        <ContractPanel contract={{ ...GUIDELINE.contracts[0], followed: { item: 651 } }} />
+      </CredoMantine>,
+    );
+    expect(screen.getByText(/To come: open item 651 builds it\./)).toBeDefined();
   });
 
   it('213 case 16: each slot of the page base is an entry with a contract, and the base draws a page from them', async () => {

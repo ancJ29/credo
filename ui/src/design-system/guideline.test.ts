@@ -227,7 +227,7 @@ describe('The guideline’s contracts', () => {
     expect(serving([{ part: 'X', serves: 'A rule nobody wrote' }], rulesOf())).toEqual(['X']);
     // A part to come has its contract, and its `followed` names the item that builds it.
     const coming = ENTRIES.filter((entry) => entry.toCome).map((entry) => entry.name);
-    expect(coming).toEqual(['PageState']);
+    expect(coming).toEqual([]);
     for (const part of coming)
       expect(contractsOf().find((c) => c.part === part)?.followed, part).toEqual({ item: 651 });
     const held = contractsOf().map(({ part, heldBy, followed }) => ({

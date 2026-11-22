@@ -473,23 +473,44 @@ export const GUIDELINE: {
           is: 'meaning',
           line: 'Which state the page is in: loading, failed, forbidden, nothing, empty, or not found.',
         },
-        { prop: 'onRetry', is: 'content', line: 'The act of a failed load’s retry.' },
-        { prop: 'add', is: 'content', line: 'The act of an empty list’s add button.' },
-        { prop: 'children', is: 'content', line: 'Its words, where a state has any.' },
+        {
+          prop: 'title',
+          is: 'content',
+          line: 'The title of a state that has one: forbidden, nothing, empty or not found; a loading or a failed state draws none.',
+        },
+        {
+          prop: 'onRetry',
+          is: 'content',
+          line: 'The act of a failed load’s retry; with none given, no retry is drawn.',
+        },
+        {
+          prop: 'add',
+          is: 'content',
+          line: 'The act of an empty list’s add button, an `ActionButton` the screen passes, only where the page’s heading offers none; drawn in no other state.',
+        },
+        {
+          prop: 'children',
+          is: 'content',
+          line: 'Its words, as text and no more, where a state has any; a failed load, given none, says the dictionary’s own.',
+        },
       ],
       decides: [
         { what: 'The title’s style.', from: [{ table: 'TYPE', key: 'pageTitle' }] },
         { what: 'The message’s style.', from: [{ table: 'TYPE', key: 'caption' }] },
-        { what: 'The failed state’s colour.', from: [{ table: 'TONES', key: 'danger' }] },
         {
-          what: 'The gap between its title and its message.',
+          what: 'The failed state’s colour, as the error message draws it.',
+          from: [{ table: 'TONES', key: 'danger' }],
+        },
+        {
+          what: 'The gap between its title, its message and its add.',
           from: [{ table: 'SPACING', key: 'xs' }],
         },
       ],
       fixes: [
-        'Its loader and the loader’s spoken name, and its least height while it loads.',
-        'Its retry button: a default button under the failed message.',
-        'Its spoken role: alert for a failed load, status for the rest.',
+        'Its loader and the loader’s spoken name, the dictionary’s loading words, and its least height while it loads, 240.',
+        'Its failed message: an error message, the whole width of the column, over its retry.',
+        'Its retry button: a default button under the failed message, left-aligned, with the dictionary’s retry words.',
+        'Its spoken role: alert for a failed load, status for the rest, none while loading.',
       ],
       states: [
         { name: 'Loading', line: 'The page’s data is on its way.' },
@@ -511,6 +532,7 @@ export const GUIDELINE: {
       serves: 'A screen picks parts, never a style',
       heldBy: { check: 'ui/src/design-system/guideline.test.ts' },
       followed: { item: 651 },
+      used: true,
     },
     {
       part: 'ActionButton',

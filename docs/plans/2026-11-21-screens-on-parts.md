@@ -122,22 +122,22 @@ piece 203's step 8. Your runs: about 20 each for a few walks, longer for twelve.
 
 **Landing 4: page states.**
 
-- [ ] **11. The part.** `PageState` in `components/organisms/`, its failed state a `FormMessage` and
+- [x] **11. The part.** `PageState` in `components/organisms/`, its failed state a `FormMessage` and
       an `ActionButton` retry; `Loaded` and `Notice` draw through it, their 34 uses unedited. Its
       contract: `add` only where the heading offers none (the four empty lists' pages do). Cases 8,
-      9. _Done when:_ the gates exit 0. **14 min**.
+      9. _Done when:_ the gates exit 0. **14 min**. _Done 2026-11-22: `PageState` built in `components/organisms/` (state, title, onRetry, add, children); its failed state is a `FormMessage` error over an `ActionButton` retry (drawn only where an act is given, the words the dictionary's unless children are given), the rest a title over words spoken `status`, the loader named by the dictionary and 240 high. The recount holds, 34 uses (26 `Loaded`, 8 `Notice`; the same with the tests counted), none edited: `Loaded` and `Notice` draw through it. The contract gained `title` (content), `onRetry` and `add` say what the code does (`add` is an `ActionButton` the screen passes, drawn only in the empty state), and its fixes lines name the loader, the failed message and retry; the entry is drawn from it and no longer to come, the sample plates drawn by the part itself. Item 658's kind of take: `children` is text, not a node, so a screen cannot put a style into the words (`Notice` passes its dictionary lines); `add` is a node, since it holds an `ActionButton`, whose look is its meaning's, and the contract says so; a screen's own style on it is the screens' check (case 15), not the part's code. Cases 8 and 9 each seen red once on a stub, then green; the pinned diff is 20 lines, all of `piece-2`'s `office-3-forbidden` and `office-4-nothing` (the words now caption-sized), no other screen; the ui and visual gates and the citation test exit 0. The plan amended for landings 4 to 7 in one go (the human, 2026-11-22), see "Checks before `main`"._
 - [ ] **12. The rest, and landing 4.** `Boot`, the loaders of `QrLanding`, `JoinPage` and
       `ServicesPage`, four empty lists, the not-found line; the check of case 10; the card's step;
-      your runs. _Done when:_ `git grep -cP '<(Alert|Loader)\b'` S counts 0, your second run green.
-      **29 min**. Your point 3.
+      its runs are the one set after step 18. _Done when:_ `git grep -cP '<(Alert|Loader)\b'` S
+      counts 0. **29 min**. Your point 3, asked with 4 and 5 at the end.
 
 **Landing 5: status chips.**
 
 - [ ] **13. The chips, and landing 5.** `StateBadge`'s six calls and the two staff chips draw
       `StatusBadge`; `StateBadge` goes. The person page's "Resigned" passes `inactive`, the list's
       word (one word a status, 213's case 14), unless your point 4 says no; `staff-8-left` joins
-      `--moved` by hand (the pinned file hashes no words). Case 11; the card; your runs. _Done when:_
-      `git grep -cP '<StateBadge\b'` counts 0, your second run green. **29 min**. Your point 4.
+      `--moved` by hand (the pinned file hashes no words). Case 11; the card; its runs are the one set after step 18. _Done when:_
+      `git grep -cP '<StateBadge\b'` counts 0. **29 min**. Your point 4, asked at the end.
 
 **Landing 6: the page base.**
 
@@ -151,15 +151,17 @@ piece 203's step 8. Your runs: about 20 each for a few walks, longer for twelve.
       a page's head through `PageShell`, a flow's last act (the four turning filled when done) an
       `ActionButton`; the finders follow. _Done when:_ the gates exit 0. **20 min**.
 - [ ] **17. Rows, tables, and landing 6.** The 27 rows and 12 widths; the check of case 15; the card;
-      your runs, every walk. _Done when:_ `git grep -cP '<Title \{\.\.\.TYPE\.pageTitle\}|minWidth=\{'`
-      S counts 1, the sign-in door's title, your second run green. **29 min**. Your point 5.
+      its runs, every walk, are the one set after step 18. _Done when:_
+      `git grep -cP '<Title \{\.\.\.TYPE\.pageTitle\}|minWidth=\{'` S counts 1, the sign-in door's
+      title. **29 min**. Your point 5, asked at the end.
 
 **Landing 7: the formats.**
 
 - [ ] **18. A number's place, and landing 7.** `ui/src/number.ts` beside `day.ts`: a number, a price,
-      a number's marks; `useMoney` and the four sites read it. Cases 16, 17. The recap closed; your one
-      run, `bash walk/run.sh admin-lists office-orders driver-deliveries office-reconcile`. _Done
-      when:_ the pinned file unchanged, the run green, every count 0. **20 min** (14, and 6).
+      a number's marks; `useMoney` and the four sites read it. Cases 16, 17. The recap closed; its run is
+      the one set after this step, with the formats' walks `admin-lists office-orders
+      driver-deliveries office-reconcile` among the twelve. _Done when:_ the pinned file unchanged.
+      **20 min** (14, and 6).
 
 ## The cases
 
@@ -190,6 +192,13 @@ whole check for what a `ui` test holds.
 
 ## Checks before `main`
 
+**Landings 4 to 7 in one go** (the human, 2026-11-22: "can we just code all at once, and check all
+at once instead of piece by piece"): they are built as steps 11 to 18 back to back, each step with
+its own gates. After step 18: one write run over all twelve walks and one check run, in place of a
+pair a landing; one review before `main` over landings 2 to 7 with its one fix pass; one landing on
+`pre-merge`; and one look that asks points 3 to 5 together. The rows above that say "your runs",
+"your second run" or "and landing N" for these landings mean that set.
+
 **The whole check** (QA's rule on `pre-merge`): landing 2 alone, whose code touches `ui` and `walk`'s
 specs. The others' code is `ui`'s; the pinned file and the bases they also change are read by
 `visual`'s gate and your runs. Each day's push gets its own, as QA says.
@@ -201,6 +210,9 @@ rework-1d). Landing 1 (one design-system value) and 7 (no screen moved) need non
 ## The human's points
 
 The work goes on past each look; a no reopens its landing.
+
+Points 3 to 5 are asked together, once, after the one set of runs of landings 4 to 7 (see
+"Checks before `main`"); a no reopens its step 11 to 17.
 
 1. **Messages (step 6).** The walks page asks again each screen whose message moved: a yellow
    warning now orange, the delete page's intro orange as a warning, the sign-in refusal without its

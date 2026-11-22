@@ -1,11 +1,11 @@
-import { Alert, Button, Center, Loader, Stack, Text, Title } from '@mantine/core';
+import { Stack, Text } from '@mantine/core';
 import type { ReactNode } from 'react';
 import { GUIDELINE, type Contract, type PartState } from './guideline';
 import { followedWords, heldWords } from './Charter';
 import classes from './Gallery.module.css';
 import { ActionButton } from '../components/atoms/ActionButton';
 import { FormMessage } from '../components/molecules/FormMessage';
-import { TONES, TYPE } from './tokens';
+import { PageState } from '../components/organisms/PageState';
 
 /** The contract of a part, by the name of its entry. */
 export const contractOf = (part: string) =>
@@ -86,28 +86,19 @@ export const FormMessageStates = platesOf('FormMessage', ({ name }) => (
   </Stack>
 ));
 
-/** A page state: its title and message as the contract's styles draw them, its loader and retry button. */
-function PageStateSample({ state: { name, role, tone } }: { state: PartState }) {
-  if (name === 'Loading')
-    return (
-      <Center mih={240}>
-        <Loader aria-label="Loading" />
-      </Center>
-    );
-  if (tone)
-    return (
-      <Stack align="flex-start" w={394} maw="100%">
-        <Alert color={TONES[tone]} role={role} w="100%">
-          The page did not load.
-        </Alert>
-        <Button variant="default">Try again</Button>
-      </Stack>
-    );
+/** A page state, drawn by the part itself: its title and words, its retry and its add. */
+function PageStateSample({ state: { name } }: { state: PartState }) {
+  const state = name === 'Not found' ? 'notFound' : (name.toLowerCase() as 'loading');
   return (
-    <Stack gap="xs" role={role} w={394} maw="100%">
-      <Title {...TYPE.pageTitle}>{name}</Title>
-      <Text {...TYPE.caption}>{WORDS[name]}</Text>
-      {name === 'Empty' && <Button variant="default">Add</Button>}
+    <Stack w={394} maw="100%">
+      <PageState
+        state={state}
+        title={name}
+        onRetry={() => undefined}
+        add={<ActionButton meaning="other">Add</ActionButton>}
+      >
+        {WORDS[name]}
+      </PageState>
     </Stack>
   );
 }

@@ -1,7 +1,5 @@
-import { Alert, Center, Loader, Stack } from '@mantine/core';
-import { ActionButton } from '../components/atoms/ActionButton';
+import { PageState } from '../components/organisms/PageState';
 import type { ReactNode } from 'react';
-import { useTranslation } from 'react-i18next';
 
 type Props = {
   status: 'loading' | 'failed' | 'ready';
@@ -11,25 +9,6 @@ type Props = {
 
 /** A page's data is one state: loading, failed with a way to retry, or ready. */
 export function Loaded({ status, onRetry, children }: Props) {
-  const { t } = useTranslation();
-  if (status === 'loading') {
-    return (
-      <Center mih={240}>
-        <Loader aria-label={t('common.loading')} />
-      </Center>
-    );
-  }
-  if (status === 'failed') {
-    return (
-      <Stack align="flex-start">
-        <Alert color="red" role="alert" w="100%">
-          {t('common.loadFailed')}
-        </Alert>
-        <ActionButton meaning="other" onClick={onRetry}>
-          {t('common.retry')}
-        </ActionButton>
-      </Stack>
-    );
-  }
-  return children;
+  if (status === 'ready') return children;
+  return <PageState state={status} onRetry={onRetry} />;
 }

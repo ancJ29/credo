@@ -656,11 +656,10 @@ export const ENTRIES: Entry[] = [
     group: 'Organisms',
     name: 'PageState',
     kind: 'States',
-    toCome: true,
     description:
-      'What a whole page shows when its data is not a list or a record: loading, failed with a retry, forbidden, nothing, empty with an add, or not found. Mantine’s Loader, Alert and Title, at the values it decides.',
+      'What a whole page shows in the place of its body when its data is not a list or a record: loading, failed with a retry, forbidden, nothing, empty with an add, or not found. A failed load is an error message with a default-look retry under it, the rest a title over words, spoken as a status; the loader is named and with a least height.',
     props:
-      'state: loading | failed | forbidden | nothing | empty | not found · onRetry · add · children',
+      "state: 'loading' | 'failed' | 'forbidden' | 'nothing' | 'empty' | 'notFound' · title?: string · onRetry?: () => void · add?: ReactNode · children?: string",
     useWhen: [
       'A page’s data is loading, failed, forbidden, empty or missing, and the page says so in the place of its body.',
     ],
