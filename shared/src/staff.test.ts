@@ -25,6 +25,8 @@ const OFF = {
   birthDate: false,
   address: false,
 };
+/** The switches a setup that says nothing reads as: every one off but the email sign-in. */
+const DEFAULTS = { ...OFF, email: true };
 const ID = '7f0c9a52-5b2e-4a39-9d5f-0c6a8e1b2d34';
 const person = {
   id: ID,
@@ -206,11 +208,11 @@ describe('staff', () => {
     // a setup saved before these existed has none, and reads as the defaults
     expect(staffSetupSchema.safeParse(bare).success).toBe(true);
     expect(staffConfig(bare)).toEqual({
-      fields: { ...OFF },
+      fields: { ...DEFAULTS },
       customFields: [],
       numbering: { prefix: 'EMP-', digits: 4 },
     });
-    // a switch left out is off
+    // a switch left out is off, but the email's, which is on
     const set = {
       ...bare,
       fields: { photo: true },
@@ -219,7 +221,7 @@ describe('staff', () => {
     };
     expect(staffSetupSchema.safeParse(set).success).toBe(true);
     expect(staffConfig(staffSetupSchema.parse(set))).toEqual({
-      fields: { ...OFF, photo: true },
+      fields: { ...DEFAULTS, photo: true },
       customFields: [{ ...own, options: [], inList: false }],
       numbering: { prefix: 'NV', digits: 3 },
     });
@@ -298,7 +300,7 @@ describe('staff', () => {
     });
   });
 
-  it('C: A person’s email is optional and kept as a sign-in name is, and the company’s switches for the email and the QR code are off until turned on', () => {
+  it('C: A person’s email is optional and kept as a sign-in name is, and the company’s switch for the email sign-in is on until turned off, the QR code’s off until turned on', () => {
     expect(employeeSchema.parse(person).email).toBeUndefined();
     expect(employeeSchema.parse({ ...person, email: null }).email).toBeNull();
     expect(employeeSchema.parse({ ...person, email: '  Lan@Minh-Phat.Example ' }).email).toBe(
@@ -314,13 +316,22 @@ describe('staff', () => {
       }).success,
     ).toBe(true);
     expect(staffConfig({ fields: { personalPhone: true, photo: false, qr: true } }).fields).toEqual(
-      { ...OFF, personalPhone: true, qr: true },
+      { ...DEFAULTS, personalPhone: true, qr: true },
     );
+    // the email sign-in starts on where the switch was never set, and a saved `false` keeps it off
+    expect(staffConfig({}).fields.email).toBe(true);
+    expect(staffConfig({ fields: { personalPhone: true, photo: false } }).fields.email).toBe(true);
+    expect(
+      staffConfig({ fields: { personalPhone: false, photo: false, email: false } }).fields.email,
+    ).toBe(false);
+    expect(
+      staffConfig({ fields: { personalPhone: false, photo: false, email: true } }).fields.email,
+    ).toBe(true);
     // the start date, the birth date and the address are switches the same way
     expect(
       staffConfig({ fields: { personalPhone: false, photo: false, startDate: true } }).fields,
     ).toEqual({
-      ...OFF,
+      ...DEFAULTS,
       startDate: true,
     });
     expect(

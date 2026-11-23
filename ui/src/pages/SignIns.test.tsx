@@ -1,10 +1,10 @@
-import { type EmployeeDoc } from '@credo/shared';
+import { type EmployeeDoc, staffConfig } from '@credo/shared';
 import { DEMO_QR_SECRET } from '@credo/shared/demo';
 import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
-import { openApp, person } from '../../tests/open';
-import { ApiError } from '../api';
+import { openApp, person, type Spied } from '../../tests/open';
+import { ApiError, type Api } from '../api';
 
 import { DICTIONARIES } from '../i18n';
 
@@ -19,6 +19,14 @@ const at = (code: string) => `/staff/${person(code).id}`;
 const menu = () => within(screen.getAllByRole('navigation', { name: words.nav.menu })[0]);
 const NEW = 'New-password-2@';
 const OLD = 'Old-password-1!';
+
+/** A company whose root saved the email sign-in off: the setup read says so. */
+const emailOff = (spied: Spied, original: Api) =>
+  spied.getStaffSetup.mockImplementation(async () => {
+    const read = await original.getStaffSetup();
+    const fields = { ...staffConfig(read.setup).fields, email: false };
+    return { ...read, setup: { ...read.setup, fields } };
+  });
 
 /** The user's menu, opened by the button that names the person. */
 const openUserMenu = (name: string) => userEvent.click(screen.getByRole('button', { name }));
@@ -67,7 +75,10 @@ describe('an email on a person', () => {
         return { ...held, employee: { ...held.employee, email: 'hung@minh-phat.example' } };
       };
     const off = openApp(at('EMP-0002'), {
-      override: (spied, original) => spied.getEmployee.mockImplementation(withEmail(original)),
+      override: (spied, original) => {
+        spied.getEmployee.mockImplementation(withEmail(original));
+        emailOff(spied, original);
+      },
     });
     expect(
       await screen.findByText(filled(words.person.signInReady, { code: 'EMP-0002' })),
@@ -121,8 +132,17 @@ describe('an email on a person', () => {
     expect((field as HTMLInputElement).value).toBe('lan@minh-phat.example');
   });
 
-  it('C: The email panel is the root’s alone, only while the company keeps the email, and not for a person who left', async () => {
+  it('C: The root’s person page offers the email where the company never set the switch', async () => {
     openApp(at('EMP-0002'));
+    expect(
+      await screen.findByRole('heading', { level: 3, name: words.person.emailTitle }),
+    ).toBeTruthy();
+    expect(screen.getByLabelText(words.person.emailNew)).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: words.person.qrTitle })).toBeNull();
+  });
+
+  it('C: The email panel is the root’s alone, only while the company keeps the email, and not for a person who left', async () => {
+    openApp(at('EMP-0002'), { override: emailOff });
     await screen.findByRole('heading', { level: 2, name: 'Trần Văn Hùng' });
     expect(screen.queryByRole('heading', { name: words.person.emailTitle })).toBeNull();
     expect(screen.queryByRole('heading', { name: words.person.qrTitle })).toBeNull();
@@ -142,7 +162,7 @@ describe('an email on a person', () => {
     expect(screen.queryByRole('heading', { name: words.person.qrTitle })).toBeNull();
   });
 
-  it('C: The root turns the email and the QR sign-in on in the staff setup, and the person’s page then shows both', async () => {
+  it('C: The root turns the QR sign-in on in the staff setup, where the email already is, and the person’s page then shows both', async () => {
     const { api } = openApp('/staff-setup');
     await screen.findByRole('heading', { level: 2, name: words.setup.title });
     const email = screen.getByRole<HTMLInputElement>('checkbox', {
@@ -151,9 +171,8 @@ describe('an email on a person', () => {
     const qr = screen.getByRole<HTMLInputElement>('checkbox', {
       name: words.setup.fieldQr,
     });
-    expect([email.checked, qr.checked]).toEqual([false, false]);
+    expect([email.checked, qr.checked]).toEqual([true, false]);
 
-    await userEvent.click(email);
     await userEvent.click(qr);
     await userEvent.click(screen.getByRole('button', { name: words.setup.save }));
     await screen.findByText(words.setup.saved);

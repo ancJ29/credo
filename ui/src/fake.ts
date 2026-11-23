@@ -198,7 +198,7 @@ type Options = {
   /** Where the fake finds out whether this device holds a handle. */
   device: Pick<ReturnType<typeof createDeviceStore>, 'authId' | 'operatorAuthId'>;
   cue: Cue | null;
-  /** The company has turned on sign-in by email and by QR code, which the data set leaves off. */
+  /** The company has turned on sign-in by QR code, which the data set leaves off, and saved the email's on. */
   signIns?: boolean;
   /** A deploy half done: c-storage runs the newer build the others have not reached. */
   drift?: boolean;

@@ -187,10 +187,15 @@ citation test, `pnpm --filter @credo/scripts exec vitest run src/citations.test.
       `SignIn` draws the ticked `Checkbox` and hands `onSubmit(name, password, remember)`, `ClientApp` keeps
       the handle by it, a password change where the old handle sat (`device.remembered()`), a QR sign-in on the device;
       the pinned diff names the three company doors alone.
-- [ ] **6. Email on by default.** `staffConfig`'s one line; rows 1 to 6 red first; the describe at
+- [x] **6. Email on by default.** `staffConfig`'s one line; rows 1 to 6 red first; the describe at
       `bff/src/routes/staff-setup.route.test.ts#L159` no longer says email is off until turned on.
       _Done when:_ `shared`'s, `bff`'s, `ui`'s and `visual`'s gates, the pinned diff naming the eleven
       staff screens below alone. **13 min** (piece 151's red-first fix steps: 7, 13, 15).
+      _Done 2026-11-23 17:19:_ `shared`'s, `bff`'s, `ui`'s and `visual`'s gates exit 0, `citations.test.ts` exit 0;
+      rows 1, 2, 4, 5 and 6 red on the old default, then green (row 3's first half held on the old code, its
+      second saving `email: false` itself); `staffConfig`'s `email: true` the one line, `fields.email` read by
+      the seven readers unchanged; the describe at `staff-setup.route.test.ts#L159` says email is on until
+      turned off; the pinned diff names the eleven staff screens alone; no stored data touched, the plan's reading held.
 - [ ] **7. The prose.** Two rows in `docs/decisions.md` (email on by default, a saved choice kept;
       the legacy's look round every door, reversing 5 November's header, which rested on a legacy
       never read, `docs/recaps/2026-11-05-signin-look.md#L14`); `docs/products.md#L31`'s row true.

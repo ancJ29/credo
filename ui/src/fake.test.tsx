@@ -700,6 +700,25 @@ describe('the fake Api', () => {
     }
   });
 
+  it('C: The fake signs in by email where the company never set the email switch, and not where the root saved it off', async () => {
+    const api = fake('', { client: 'fake.session' });
+    const hung = DEMO_EMPLOYEES[1];
+    const read = await api.getEmployee(hung.id);
+    const given = await api.setEmail(hung.id, {
+      version: read.version,
+      email: 'hung@minh-phat.example',
+    });
+    expect(given.kind).toBe('set');
+    expect((await api.signIn('hung@minh-phat.example', 'pw')).user.name).toBe(hung.name);
+
+    const held = await api.getStaffSetup();
+    await api.saveStaffSetup(
+      { ...held.setup, fields: { ...staffConfig(held.setup).fields, email: false } },
+      held.version,
+    );
+    expect(await status(api.signIn('hung@minh-phat.example', 'pw'))).toBe(401);
+  });
+
   it('C: The fake signs no one in by email while the company has the email sign-in off', async () => {
     const api = fake('', { client: 'fake.session' }, true);
     const hung = DEMO_EMPLOYEES[1];

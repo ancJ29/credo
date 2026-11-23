@@ -55,7 +55,7 @@ describe('the demo data set', () => {
     expect(fields).toEqual({
       personalPhone: true,
       photo: true,
-      email: false,
+      email: true,
       qr: false,
       startDate: true,
       birthDate: true,

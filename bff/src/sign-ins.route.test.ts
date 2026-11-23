@@ -321,8 +321,20 @@ describe('C: An email names the person by id in its own record', () => {
     expect(await status(t, 'lan@x.example', lan.password)).toBe(200);
   });
 
-  it('C: A person’s email is set only while the company has the email sign-in on: a 403 when it is off', async () => {
+  it('C: Where the root never set the email switch, the root gives a person an email and the person signs in by it', async () => {
     const t = await staffTenant(cs);
+    const lan = await person(t, { code: 'EMP-0001' });
+
+    const reply = await setEmail(t, lan.id, lan.version, 'lan@x.example');
+
+    expect(reply.statusCode).toBe(200);
+    expect(await status(t, 'lan@x.example', lan.password)).toBe(200);
+    expect(await status(t, 'emp-0001', lan.password)).toBe(200);
+  });
+
+  it('C: A person’s email is set only while the company has the email sign-in on: a 403 when the root saved it off', async () => {
+    const t = await staffTenant(cs);
+    await t.setup({ fields: { email: false } });
     const lan = await person(t, { code: 'EMP-0001' });
 
     const off = await setEmail(t, lan.id, lan.version, 'lan@x.example');
