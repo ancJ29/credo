@@ -82,9 +82,9 @@ import {
   Widths,
 } from './Values';
 
-/** A sample company logo for the tile: a plain shape, no real company's. */
+/** A sample company logo for the tile: Tabler's Adobe icon (3.49.0) at stroke 2, in teal, the human's choice for the gallery's sample. */
 const SAMPLE_LOGO =
-  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath d='M6 34 20 6l14 28z' fill='teal'/%3E%3C/svg%3E";
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='teal' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12.893 4.514l7.977 14a.993 .993 0 0 1 -.394 1.365a1.04 1.04 0 0 1 -.5 .127h-3.476l-4.5 -8l-2.5 4h1.5l2 4h-8.977c-.565 0 -1.023 -.45 -1.023 -1c0 -.171 .045 -.34 .13 -.49l7.977 -13.993a1.034 1.034 0 0 1 1.786 0l0 -.009'/%3E%3C/svg%3E";
 
 /** Each status of a row, as the person reads it: the part draws its words from the stage's dictionary. */
 function StatusRow({ statuses }: { statuses: Status[] }) {
