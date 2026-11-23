@@ -97,7 +97,7 @@ colour's name is a literal, as a shade or a weight is.
   back, `pnpm --filter @credo/ui check` and `pnpm --filter @credo/visual check` exit 0,
   `git diff --exit-code visual/src/resolved.pinned.txt` exits 0, `git grep -nP 'role="alert"'
   "${S[@]}"` reads 0, item 662 marked `[FIXED]`. **5 min**, a first run of this shape. Done 2026-11-23 09:26: case 3 red on the `Text` line (1 failed, exit 1), green with the part; `ui` and `visual` checks exit 0; pinned diff exit 0; the alert grep reads 0; item 662 `[FIXED]`.
-- [ ] **2. The nine lines to their tones, and the check.** Cases 1 and 2 written first, case 1 seen
+- [x] **2. The nine lines to their tones, and the check.** Cases 1 and 2 written first, case 1 seen
   red by the nine real lines. Each line names its meaning through `TONES`: the import pages'
   `danger` and `success` as the gallery's import page does; `PermissionEditor`'s `warning`; the
   services state's three through a `TONE` table beside `STATE` (`ServicesPage.tsx#L28-L32`), and
@@ -108,7 +108,7 @@ colour's name is a literal, as a shade or a weight is.
   red once more by a planted `c="red"` in `ImportPage.tsx`, then reverted; `git grep -nP "$P"
   "${S[@]}"` reads 0; `git diff --stat visual/src/resolved.pinned.txt` reads 10 lines changed, each
   `operator-services/sv-2-two-builds`; both gates and the citation test exit 0. **8 min**, the shape
-  of piece 222's step 18 (five sites moved under a case refusing them in screens, 8 minutes).
+  of piece 222's step 18 (five sites moved under a case refusing them in screens, 8 minutes). Done 2026-11-23 09:29: the recount read nine lines in four files; case 1 red on the four real files, then red on a planted `c="red"` in `ImportPage.tsx`, reverted; the grep reads 0; the pinned diff is 10 lines out and 10 in, all `operator-services/sv-2-two-builds`; `ui` and `visual` checks and the citation test exit 0 (gates read below at the commit).
 - [ ] **3. The Rules group out.** `'Rules'` deleted from `GROUPS`; the heading test reads six and
   asks that every group listed holds an entry (case 4); `guideline.ts#L194` loses "The Rules group
   stays empty."; `docs/products.md#L129` lists six and drops "(Rules is empty for now)". _Done when:_

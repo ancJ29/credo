@@ -14,6 +14,16 @@ const TYPE_NUMBER =
 
 const SRC = `${import.meta.dirname}/..`;
 
+/** A palette's name: Mantine's fourteen palettes, the client's `brand`, `white` and `black`. */
+const PALETTE =
+  '(?:dark|gray|red|pink|grape|violet|indigo|blue|cyan|teal|green|lime|yellow|orange|brand|white|black)';
+
+/** A colour named by its palette: `c`, `color` or `bg` set by `=` or `:` to a quoted name, or to a
+ * braced expression holding one, or a palette's Mantine variable. */
+const COLOUR_NAME = new RegExp(
+  `\\b(?:c|color|bg)\\s*[=:]\\s*(?:["'\`]|\\{[^}]*?["'\`])${PALETTE}\\b|--mantine-color-${PALETTE}\\b`,
+);
+
 /** `Intl` written as a formatter: `new Intl.NumberFormat(...)`, or called without `new`. */
 const INTL = /\bIntl\.[A-Z]/;
 
@@ -47,6 +57,48 @@ describe('The shades', () => {
     expect(own.length).toBeGreaterThanOrEqual(50);
     const named = own.filter((path) => SHADE.test(readFileSync(`${SRC}/${path}`, 'utf8')));
     expect(named).toEqual([]);
+  });
+});
+
+describe('The colour names', () => {
+  it('1: No screen names a colour by a palette; the design system, its parts and the mock may', () => {
+    const all = globSync('**/*.{css,ts,tsx}', { cwd: SRC });
+    // A glob that found nothing, or a folder moved, would quiet the check below.
+    expect(all.some((path) => path.endsWith('.module.css'))).toBe(true);
+    expect(all.some((path) => path.endsWith('.tsx'))).toBe(true);
+    const own = all.filter(
+      (path) =>
+        !path.startsWith('design-system/') &&
+        !path.startsWith('mock/') &&
+        !path.startsWith('components/') &&
+        !/\.test\.tsx?$/.test(path),
+    );
+    expect(own.length).toBeGreaterThanOrEqual(50);
+    const named = own.filter((path) => COLOUR_NAME.test(readFileSync(`${SRC}/${path}`, 'utf8')));
+    expect(named).toEqual([]);
+  });
+
+  it('2: the pattern refuses an attribute, a braced condition, a style key and a variable, and passes a tone', () => {
+    for (const form of [
+      '<Text c="red">',
+      "<Badge color='yellow'>",
+      "<Badge color={row.odd ? 'green' : 'gray'}>",
+      '<Text c={`orange`}>',
+      "{ color: 'blue' }",
+      "{ bg: 'brand' }",
+      'color: var(--mantine-color-red);',
+    ])
+      expect(COLOUR_NAME.test(form), form).toBe(true);
+    for (const form of [
+      '<Text c={TONES.danger}>',
+      '<Badge color={TONES[tone]}>',
+      '<Text c="dimmed">',
+      '<Text {...TYPE.caption}>',
+      '<Avatar color="initials">',
+      "head(classes.brand, 'brand')",
+      'color: var(--mantine-color-body);',
+    ])
+      expect(COLOUR_NAME.test(form), form).toBe(false);
   });
 });
 

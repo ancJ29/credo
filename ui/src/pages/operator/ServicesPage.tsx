@@ -7,7 +7,7 @@ import { useTranslation } from 'react-i18next';
 import { type Api, ApiError, hopOf, type ServicesCheck } from '../../api';
 import { timeOf } from '../../day';
 import { refusal } from '../../page';
-import { TYPE } from '../../design-system/tokens';
+import { TONES, TYPE } from '../../design-system/tokens';
 import { FormMessage } from '../../components/molecules/FormMessage';
 import { ActionButton } from '../../components/atoms/ActionButton';
 import { PageHeader } from '../../components/organisms/PageHeader';
@@ -29,6 +29,12 @@ const STATE = {
   answers: 'services.answers',
   silent: 'services.silent',
   unseen: 'services.unseen',
+} as const;
+
+const TONE = {
+  answers: TONES.success,
+  silent: TONES.danger,
+  unseen: TONES.info,
 } as const;
 
 const NAME = {
@@ -171,10 +177,7 @@ function Report({
                 <Text {...TYPE.bodyStrong}>{t(NAME[row.id][0])}</Text>
                 <Text {...TYPE.caption}>{t(NAME[row.id][1])}</Text>
               </Stack>
-              <Badge
-                color={row.state === 'answers' ? 'green' : row.state === 'silent' ? 'red' : 'gray'}
-                variant="light"
-              >
+              <Badge color={TONE[row.state]} variant="light">
                 {t(STATE[row.state])}
               </Badge>
             </Group>
@@ -183,7 +186,7 @@ function Report({
                 {t('services.build')}: <code>{shortBuild(row.build)}</code>
               </Text>
               {row.odd && (
-                <Badge color="yellow" variant="light">
+                <Badge color={TONES.warning} variant="light">
                   {t('services.differs')}
                 </Badge>
               )}
