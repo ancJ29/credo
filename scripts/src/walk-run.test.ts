@@ -109,7 +109,9 @@ case " $* " in
     last=""; for a in "$@"; do last="$a"; done
     [ -z "$SHIM_ARGS_LOG" ] || echo "$*" >> "$SHIM_ARGS_LOG"
     # The trap goes in before the lane counts as held, so the gate lock can only appear once all
-    # lanes hold their first TERM.
+    # lanes hold their first TERM. The group's TERM also reaches the lane's tee, and if that dies
+    # first the trap's echo would take SIGPIPE and end the holder at once: it ignores SIGPIPE.
+    [ -z "$SHIM_HOLD_TERM" ] || trap '' PIPE
     [ -z "$SHIM_HOLD_TERM" ] || trap 'echo "held TERM"; sleep 60; echo "pass done"' TERM
     [ -z "$SHIM_SLEEP_DIR" ] || echo $$ >> "$SHIM_SLEEP_DIR/pids"
     if [ -n "$SHIM_HOLD_FOR" ]; then
