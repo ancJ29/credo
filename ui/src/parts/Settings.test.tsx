@@ -168,7 +168,9 @@ describe('Settings', () => {
       new File([new Uint8Array(MAX_LOGO_BYTES + 1)], 'big.png', { type: 'image/png' }),
     );
 
-    expect((await screen.findByRole('alert')).textContent).toBe(
+    const alert = await screen.findByRole('alert');
+    expect(alert.classList.contains('mantine-Alert-root')).toBe(true);
+    expect(alert.textContent).toBe(
       words.logoTooLarge.replace('{{max}}', String(MAX_LOGO_BYTES / 1024)),
     );
     expect(document.querySelector('img')!.getAttribute('src')).toBe(config.logo);

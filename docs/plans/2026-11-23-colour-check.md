@@ -91,12 +91,12 @@ colour's name is a literal, as a shade or a weight is.
 
 ## The steps
 
-- [ ] **1. The logo's refusal through `FormMessage`, closing item 662.** `Settings.tsx#L147` becomes
+- [x] **1. The logo's refusal through `FormMessage`, closing item 662.** `Settings.tsx#L147` becomes
   `<FormMessage kind="error">`; `Settings.test.tsx#L162-L175` also asks that the alert is the
   message part's (`.mantine-Alert-root`). Case 3. _Done when:_ case 3 seen red with the line put
   back, `pnpm --filter @credo/ui check` and `pnpm --filter @credo/visual check` exit 0,
   `git diff --exit-code visual/src/resolved.pinned.txt` exits 0, `git grep -nP 'role="alert"'
-  "${S[@]}"` reads 0, item 662 marked `[FIXED]`. **5 min**, a first run of this shape.
+  "${S[@]}"` reads 0, item 662 marked `[FIXED]`. **5 min**, a first run of this shape. Done 2026-11-23 09:26: case 3 red on the `Text` line (1 failed, exit 1), green with the part; `ui` and `visual` checks exit 0; pinned diff exit 0; the alert grep reads 0; item 662 `[FIXED]`.
 - [ ] **2. The nine lines to their tones, and the check.** Cases 1 and 2 written first, case 1 seen
   red by the nine real lines. Each line names its meaning through `TONES`: the import pages'
   `danger` and `success` as the gallery's import page does; `PermissionEditor`'s `warning`; the

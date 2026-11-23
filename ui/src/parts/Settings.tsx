@@ -144,9 +144,9 @@ function SettingsForm({ config, outcome, saving, onSave, onReload, logoRefusal }
                   )}
                 </Group>
                 {logoRefused && (
-                  <Text size="sm" c="red" role="alert">
+                  <FormMessage kind="error">
                     {t(`settings.${logoRefused}`, { max: MAX_LOGO_BYTES / 1024 })}
-                  </Text>
+                  </FormMessage>
                 )}
               </Stack>
               <Radio.Group
