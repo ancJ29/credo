@@ -13,6 +13,7 @@ import { Providers } from '../frame/Providers';
 import { QrLanding } from './client/QrLanding';
 import { SignIn, SignInFrame } from './SignIn';
 import { BRAND_GRADIENT, shadesOf } from '../design-system/appTheme';
+import { TOKENS } from '../design-system/tokens';
 
 const brand = { name: 'Minh Phát', logo: null };
 const words = DICTIONARIES.en;
@@ -162,14 +163,16 @@ const doors = (languages?: readonly ('en' | 'vi')[]) => {
 };
 
 describe('the frame every door wears', () => {
-  it('1: every door draws the app’s header: the brand gradient, a logo and the name', () => {
+  it('14: every door’s card holds the band with the logo where there is one, the name as the first heading and the title as the second', () => {
     for (const [name, door] of doors()) {
       const { container } = draw(door);
-      const header = screen.getByRole('banner');
-      expect(header.getAttribute('style'), name).toContain(BRAND_GRADIENT);
-      expect(header.querySelector('svg'), name).toBeTruthy();
-      expect(within(header).getByRole('heading', { level: 1 }).textContent, name).toBeTruthy();
-      expect(container.querySelectorAll('header'), name).toHaveLength(1);
+      const headings = screen.getAllByRole('heading');
+      expect(headings[0]?.tagName, name).toBe('H1');
+      expect(headings[0]?.textContent, name).toBeTruthy();
+      expect(headings[1]?.tagName, name).toBe('H2');
+      expect(headings[1]?.textContent, name).toBeTruthy();
+      expect(container.querySelector('[data-bar]'), name).toBeTruthy();
+      expect(container.querySelector('img'), name).toBeNull();
       cleanup();
     }
     draw(
@@ -177,10 +180,10 @@ describe('the frame every door wears', () => {
         x
       </SignInFrame>,
     );
-    expect(screen.getByRole('banner').querySelector('img')?.getAttribute('src')).toBe('logo.png');
+    expect(screen.getByRole('img', { name: 'Minh Phát' }).getAttribute('src')).toBe('logo.png');
   });
 
-  it('7: every button on the header’s gradient wears the header’s text, and the language switch its washes', () => {
+  it('7: every button on the brand’s gradient wears the header’s text, and the language switch its washes', () => {
     let seen = 0;
     for (const [name, door] of doors(['vi', 'en'])) {
       const { container } = draw(door);
@@ -200,33 +203,39 @@ describe('the frame every door wears', () => {
     expect(seen).toBeGreaterThan(1);
   });
 
-  it('2: no door draws a side menu or the phone’s bar', () => {
+  it('16: no door draws a side menu, the phone’s bar or a header', () => {
     for (const [name, door] of doors()) {
       draw(door);
       expect(screen.queryByRole('navigation'), name).toBeNull();
       expect(document.querySelector('nav'), name).toBeNull();
       expect(document.querySelector('footer'), name).toBeNull();
+      expect(document.querySelector('header'), name).toBeNull();
+      expect(screen.queryByRole('banner'), name).toBeNull();
       cleanup();
     }
   });
 
-  it('3: the card sits on the app’s ground, not a gradient of its own', () => {
+  it('13: every door stands on the brand’s sweep over the whole screen, and its card carries no gradient but its bar’s', () => {
     for (const [name, door] of doors()) {
       const { container } = draw(door);
-      const styles = [...container.querySelectorAll('[style]')].map((el) =>
-        el.getAttribute('style'),
-      );
-      const gradients = styles.filter((style) => style?.includes('gradient'));
+      const sweep = container.querySelector<HTMLElement>(`[style*="${TOKENS.doorSweep}"]`);
+      expect(sweep?.getAttribute('style'), name).toContain('100vh');
+      for (const heading of screen.getAllByRole('heading'))
+        expect(sweep?.contains(heading), name).toBe(true);
+      const gradients = [...container.querySelectorAll('[style]')]
+        .map((el) => el.getAttribute('style'))
+        .filter((style) => style?.includes('gradient'));
       expect(
-        gradients.every((style) => style?.includes('--credo-header-gradient')),
+        gradients.every(
+          (style) => style?.includes('--credo-header-gradient') || style?.includes('90deg'),
+        ),
         name,
       ).toBe(true);
-      expect(styles.join(' '), name).not.toContain('neutral-0');
       cleanup();
     }
   });
 
-  it('4: a client’s door takes its client’s colour, credo’s doors credo’s', () => {
+  it('13: a client’s door takes its client’s colour, credo’s doors credo’s', () => {
     const style = (colour: string, door: ReactNode) => {
       const { container } = render(
         <Providers colour={colour} language="en" test>
@@ -234,14 +243,16 @@ describe('the frame every door wears', () => {
         </Providers>,
       );
       const css = [...document.querySelectorAll('style')].map((el) => el.textContent).join('');
-      const header = container.querySelector('header');
+      const sweep = container
+        .querySelector(`[style*="${TOKENS.doorSweep}"]`)
+        ?.getAttribute('style');
       cleanup();
-      return { css, header: header?.getAttribute('style') };
+      return { css, sweep };
     };
     const client = style('#aa3300', <SignIn brand={brand} status="idle" onSubmit={vi.fn()} />);
     const credo = style(CREDO_COLOUR, <OperatorSignIn status="idle" onSubmit={vi.fn()} />);
 
-    expect(client.header).toContain('var(--credo-header-gradient)');
+    expect(client.sweep).toContain('var(--credo-header-gradient)');
     expect(client.css).toContain(
       '--credo-header-gradient: linear-gradient(135deg, var(--mantine-color-brand-7)',
     );
@@ -251,7 +262,7 @@ describe('the frame every door wears', () => {
     expect(credo.css).not.toContain(shadesOf('#aa3300')[7]);
   });
 
-  it('6: a door whose caller offers one language, or none, draws no switch', () => {
+  it('15: a door whose caller offers one language, or none, draws no switch', () => {
     for (const offered of [undefined, [], ['en']] as const) {
       for (const [name, door] of doors(offered)) {
         draw(door);
@@ -267,7 +278,7 @@ describe('the frame every door wears', () => {
     }
   });
 
-  it('7: the switch changes the words shown, never what is submitted', async () => {
+  it('15: the switch changes the words shown, never what is submitted', async () => {
     const onSubmit = vi.fn();
     const onLanguage = vi.fn();
     draw(
@@ -301,10 +312,11 @@ describe('the frame every door wears', () => {
 });
 
 describe('the join page in the same frame', () => {
-  it('1+2: draws the header and no menu, and the language switch since its caller offers a handler', async () => {
+  it('14+16: draws the card and no header or menu, and the language switch since its caller offers a handler', async () => {
     openApp(`/operator/join#${DEMO_JOIN_TOKEN}`);
     await screen.findByRole('button', { name: words.passkey.makeButton });
-    expect(screen.getByRole('banner')).toBeTruthy();
+    expect(screen.queryByRole('banner')).toBeNull();
+    expect(screen.getByRole('heading', { level: 1 })).toBeTruthy();
     expect(document.querySelector('nav')).toBeNull();
     expect(screen.getByRole('group', { name: words.user.language })).toBeTruthy();
   });

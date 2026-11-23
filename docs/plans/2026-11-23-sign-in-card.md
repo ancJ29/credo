@@ -153,11 +153,16 @@ citation test, `pnpm --filter @credo/scripts exec vitest run src/citations.test.
       row 17's tick half red (`auth.remember` undefined), then green; `BrandBand`'s name is `Title` order 1
       in size md and `DoorHeading`'s `Title` order 2 in size h3, their look pinned by their own tests; the
       dictionary grows 755 to 756 keys, `words.test.ts` and `docs/products.md#L86` say so.
-- [ ] **3. The four doors on the parts.** `SignInFrame` draws `DoorPage`, `DoorCard` and `DoorHeading`
+- [x] **3. The four doors on the parts.** `SignInFrame` draws `DoorPage`, `DoorCard` and `DoorHeading`
       round what it is given; rows 13 to 16 and 18; the "Not yet" and entry lines rewritten, `used` set.
       _Done when:_ `ui`'s and `visual`'s gates, and the pinned styles' diff names the nine doors alone:
       `git diff -U0 -- visual/src/resolved.pinned.txt | grep '^+[a-z]' | cut -d' ' -f1 | sort -u`.
       **10 min** (piece 222's screen moves: 12, 10, 10).
+      _Done 2026-11-23 16:23:_ `ui`'s and `visual`'s gates exit 0, `words.test.ts`, `fake.test.ts` and `citations.test.ts` exit 0;
+      rows 13, 14, 16 and 18 red on the old frame and the old contracts, then green (row 15's cases kept, renamed);
+      the pinned diff names the nine doors alone; `SignInFrame` keeps its props and draws `DoorPage`, `DoorCard` and
+      `DoorHeading` (the logo, where there is none, no longer an icon), both contracts `used`, the page title gone from
+      the three door files' raw count.
 - [ ] **4. The handle where the tick says.** `createDeviceStore` takes the tab's storage beside the
       kept one (`localStorage` and `sessionStorage` in `ui/src/main.tsx`, the fake's one tab storage
       for both, `ui/src/fake.ts#L1599-L1603`); rows 8 to 10 red first; the memo's claim at

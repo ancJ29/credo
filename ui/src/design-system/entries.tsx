@@ -1101,7 +1101,7 @@ export const ENTRIES: Entry[] = [
     useWhen: ['A page a person reaches before sign-in, the card holding its words and buttons.'],
     dontUseWhen: [
       "A block inside a signed-in page: that is SectionCard's.",
-      "The card `SignInFrame` (`ui/src/pages/SignIn.tsx`) draws for itself: this card is the one to use, and the frame's moves to it (open item 651).",
+      "A card of a screen's own on a door: `SignInFrame` (`ui/src/pages/SignIn.tsx`) draws this one for the four doors.",
     ],
     instead: 'SectionCard',
     states: [

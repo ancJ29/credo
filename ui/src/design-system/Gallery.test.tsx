@@ -505,6 +505,27 @@ describe('Gallery', () => {
     window.localStorage.clear();
   });
 
+  it('241.1 case 18: DoorCard and DoorPage say they are built and in use, and no line says a screen draws a card of its own', () => {
+    for (const [slug, name] of [
+      ['door-card', 'DoorCard'],
+      ['door-page', 'DoorPage'],
+    ] as const) {
+      open(`${BASE}/organisms/${slug}`);
+      expect(
+        about().getByText(/Built and in use; .* open item 651 moves them\./),
+        name,
+      ).toBeDefined();
+      expect(about().queryByText(/Not yet: no screen draws it/), name).toBeNull();
+      expect(about().getByText(/Drawn by `SignInFrame`/), name).toBeDefined();
+      const contract = GUIDELINE.contracts.find((each) => each.part === name)!;
+      expect(contract.used, name).toBe(true);
+      expect(contract.fixes.join(' '), name).not.toContain('card of its own');
+      cleanup();
+    }
+    const entry = ENTRIES.find((each) => each.name === 'DoorCard')!;
+    expect(entry.dontUseWhen.join(' ')).not.toContain('draws for itself');
+  });
+
   it('231 case 12: Menus draws the language menu and the person menu, each opened by a press', async () => {
     open(`${BASE}/foundations/menus`);
 
@@ -1664,7 +1685,7 @@ describe('Gallery', () => {
       const entry = ENTRIES.find((each) => each.name === name)!;
       return [...entry.useWhen, ...entry.dontUseWhen].join(' ');
     };
-    // The screens’ own frame of a door draws a card of its own: the entry names it and the winner.
+    // The screens’ frame draws the door card: the entry names the frame.
     expect(words('DoorCard')).toContain('SignInFrame');
     expect(words('DetailField')).toContain('FieldPair');
     expect(words('FieldPair')).toContain('DetailField');

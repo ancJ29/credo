@@ -1220,7 +1220,7 @@ export const GUIDELINE: {
       fixes: [
         'Its bar: 4 px in the brand’s gradient across the top; then the band, then the body with its own padding.',
         'Its shadow: the one that lifts a door off its page.',
-        'Not yet: no screen draws it; `SignInFrame` in `ui/src/pages/SignIn.tsx` draws a card of its own, and open item 651 moves it to this one.',
+        'Drawn by `SignInFrame` in `ui/src/pages/SignIn.tsx`, round the four doors; the buttons and words inside stay each screen’s own (open item 651).',
       ],
       states: [
         { name: 'Sign-in', line: 'The card holding the sign-in fields.' },
@@ -1229,6 +1229,7 @@ export const GUIDELINE: {
       serves: 'A screen picks parts, never a style',
       heldBy: { check: 'ui/src/design-system/guideline.test.ts' },
       followed: { item: 651 },
+      used: true,
     },
     {
       part: 'DoorPage',
@@ -1250,7 +1251,7 @@ export const GUIDELINE: {
         'Its sweep: at least the screen’s height.',
         'Its switch: in the top right corner, two or more languages only, the picked one on a pale wash.',
         'Its card: centred, at most the width of a door’s card.',
-        'Not yet: no screen draws it; open item 651 moves the four doors onto it.',
+        'Drawn by `SignInFrame` in `ui/src/pages/SignIn.tsx`, for the four doors.',
       ],
       states: [
         { name: 'Company, two languages', line: 'The company’s sweep, the switch and the card.' },
@@ -1260,6 +1261,7 @@ export const GUIDELINE: {
       serves: 'A screen picks parts, never a style',
       heldBy: { check: 'ui/src/design-system/guideline.test.ts' },
       followed: { item: 651 },
+      used: true,
     },
   ],
   buttons: {
