@@ -445,6 +445,50 @@ describe('Gallery', () => {
     ).toBeDefined();
   });
 
+  it('241.1 case 17: DoorPage draws a company’s door with its switch, credo’s own with no logo, and a door of one language with no switch; the switch changes the picked language', async () => {
+    const user = userEvent.setup();
+    open(`${BASE}/organisms/door-page`);
+
+    expect(part().getByRole('heading', { level: 2, name: 'DoorPage' })).toBeDefined();
+    expect(stateNames()).toEqual([
+      'Company, two languages',
+      'Credo, no logo',
+      'One language, no switch',
+    ]);
+    const plate = (name: string) => within(part().getByRole('figure', { name }));
+    const switchOf = (name: string) =>
+      plate(name).queryByRole('group', { name: DICTIONARIES.vi.user.language });
+    expect(switchOf('Company, two languages')).not.toBeNull();
+    expect(switchOf('Credo, no logo')).not.toBeNull();
+    expect(switchOf('One language, no switch')).toBeNull();
+    // The company's card holds its logo, credo's holds none.
+    expect(plate('Company, two languages').getAllByRole('img')).toHaveLength(1);
+    expect(plate('Credo, no logo').queryAllByRole('img')).toHaveLength(0);
+    expect(plate('Credo, no logo').getByText('Credo')).toBeDefined();
+    // Each plate's card sits in a screen the brand's gradient sweeps.
+    for (const name of stateNames()) {
+      const screenOf = plate(name!)
+        .getByRole('textbox')
+        .closest<HTMLElement>('[style*="gradient"]');
+      expect(screenOf, name!).not.toBeNull();
+    }
+    // Pressing English in the first plate changes the words of every plate.
+    const first = within(switchOf('Company, two languages')!);
+    expect(
+      first.getByRole('button', { name: LANGUAGE_NAMES.vi }).getAttribute('aria-current'),
+    ).toBe('true');
+    await user.click(first.getByRole('button', { name: LANGUAGE_NAMES.en }));
+    expect(
+      first.getByRole('button', { name: LANGUAGE_NAMES.en }).getAttribute('aria-current'),
+    ).toBe('true');
+    expect(
+      plate('One language, no switch').getByRole('heading', {
+        level: 3,
+        name: DICTIONARIES.en.auth.title,
+      }),
+    ).toBeDefined();
+  });
+
   it('231 case 12: Menus draws the language menu and the person menu, each opened by a press', async () => {
     open(`${BASE}/foundations/menus`);
 
@@ -1247,7 +1291,7 @@ describe('Gallery', () => {
   });
 
   it('213 case 1: every entry carries one to three use lines and one to three don’t-use lines', () => {
-    expect(ENTRIES).toHaveLength(44);
+    expect(ENTRIES).toHaveLength(45);
     for (const entry of ENTRIES) {
       for (const lines of [entry.useWhen, entry.dontUseWhen]) {
         expect(lines.length, entry.name).toBeGreaterThanOrEqual(1);
@@ -1584,7 +1628,7 @@ describe('Gallery', () => {
         entry.kind !== KIND_OF_PAGE,
     );
     // A set that found nothing would quiet the loop.
-    expect(parts.length).toBe(25);
+    expect(parts.length).toBe(26);
     expect(GUIDELINE.contracts.map((contract) => contract.part).sort()).toEqual(
       parts.map((entry) => entry.name).sort(),
     );

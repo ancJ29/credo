@@ -136,11 +136,14 @@ Sizes are the last rows of each step's shape in the runs log; none is cut below 
 is the touched package's `pnpm --filter @credo/<pkg> check`, exit 0 from its own code, plus the
 citation test, `pnpm --filter @credo/scripts exec vitest run src/citations.test.ts`.
 
-- [ ] **1. `DoorPage` in the gallery.** `ui/src/components/organisms/DoorPage.tsx`: the brand's sweep
+- [x] **1. `DoorPage` in the gallery.** `ui/src/components/organisms/DoorPage.tsx`: the brand's sweep
       over the whole screen from the theme (`BRAND_GRADIENT`, `ui/src/design-system/appTheme.ts#L64`),
       today's switch moved into its top corner, the card centred; its entry (Organisms, kind Layout)
       in the three states above; its contract in `guideline.ts`. _Done when:_ `ui`'s gate, row 17's
       case seen red. **9 min** (piece 231's part, entry and contract steps: 5, 9, 11).
+      _Done 2026-11-23 15:59:_ `ui`'s gate exit 0; row 17's case red with the entry absent, then green;
+      `DoorPage` takes `languages` as `{ language, name }` pairs (a component may not import the
+      language names) and no `brand`, the card being its child; `DoorCard`'s dictionary tick is step 2's.
 - [ ] **2. The card's headings and the tick's word.** `BrandBand`'s name and `DoorHeading`'s title
       take the first and second levels, their look pinned unchanged by their own tests; `auth.remember`
       in `ui/src/i18n/en.ts` and `vi.ts` ("Remember me", "Ghi nhớ đăng nhập", the legacy's); `DoorCard`'s

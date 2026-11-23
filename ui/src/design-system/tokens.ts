@@ -100,6 +100,8 @@ export const TOKENS = {
   dividerLabel: { fontSize: 'var(--mantine-font-size-sm)', color: 'var(--mantine-color-dimmed)' },
   /** A band's padding above and below, then at the sides, in px: the legacy's 28 over 40. */
   doorPadding: '28px 40px',
+  /** A door's whole screen: the brand's header gradient (`--credo-header-gradient`) sweeping it. */
+  doorSweep: 'var(--credo-header-gradient)',
   /** A door card's bar: 4 px high, in the brand's gradient at 90°. */
   doorBar: 4,
   doorBarGradient:

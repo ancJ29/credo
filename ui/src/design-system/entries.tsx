@@ -1,5 +1,6 @@
 import {
   Badge,
+  Box,
   Button,
   Checkbox,
   Divider,
@@ -12,6 +13,7 @@ import {
   useMantineTheme,
 } from '@mantine/core';
 import type { ReactNode } from 'react';
+import type { Language } from '@credo/shared';
 import { useTranslation } from 'react-i18next';
 import { IconBuilding, IconKeyboard, IconLock, IconQrcode, IconUser } from '@tabler/icons-react';
 import { BackLink } from '../components/atoms/BackLink';
@@ -23,8 +25,11 @@ import { BrandBand } from '../components/molecules/BrandBand';
 import { DetailField } from '../components/molecules/DetailField';
 import { SectionTitle } from '../components/molecules/SectionTitle';
 import { DoorCard } from '../components/organisms/DoorCard';
+import { DoorPage } from '../components/organisms/DoorPage';
 import { PageHeader } from '../components/organisms/PageHeader';
 import { SectionCard } from '../components/organisms/SectionCard';
+import { CREDO_BRAND } from '../brand';
+import { LANGUAGE_NAMES } from '../i18n';
 import { Charter } from './Charter';
 import { ChoiceStates } from './Choices';
 import { MenuStates } from './Menus';
@@ -142,6 +147,43 @@ function LinkState() {
         <BackLink href="#">{words.backToSignIn}</BackLink>
       </Stack>
     </DoorCard>
+  );
+}
+
+/** One door's screen as the gallery draws it: the sweep, the switch where there are two languages, a card of the company's or credo's own. */
+function DoorPageSample({
+  credo,
+  languages,
+}: {
+  credo?: boolean;
+  languages?: readonly Language[];
+}) {
+  const { t, i18n } = useTranslation();
+  const words = SAMPLES[useLanguage()];
+  return (
+    <Box style={{ '--door-page-height': '460px' }}>
+      <DoorPage
+        languages={languages?.map((language) => ({ language, name: LANGUAGE_NAMES[language] }))}
+        onLanguage={languages ? (language) => void i18n.changeLanguage(language) : undefined}
+      >
+        <DoorCard
+          name={credo ? CREDO_BRAND.name : words.shop}
+          logo={credo ? undefined : SAMPLE_LOGO}
+        >
+          <Stack gap="md">
+            <DoorHeading title={t('auth.title')} />
+            <TextInput
+              label={t('auth.username')}
+              placeholder={t('auth.usernamePlaceholder')}
+              leftSection={<IconUser size={18} />}
+            />
+            <Button variant="gradient" size="md" fullWidth>
+              {t('auth.submit')}
+            </Button>
+          </Stack>
+        </DoorCard>
+      </DoorPage>
+    </Box>
   );
 }
 
@@ -1078,6 +1120,35 @@ export const ENTRIES: Entry[] = [
             <LinkState />
           </Stack>
         ),
+      },
+    ],
+  },
+  {
+    group: 'Organisms',
+    name: 'DoorPage',
+    kind: 'Layout',
+    description:
+      "A door's whole screen: the brand's gradient sweeping all of it, the language switch in its top right corner, and the card centred, with no menu, bar or header.",
+    props:
+      'languages?: readonly Choice[] · onLanguage?: (language: Language) => void · children: ReactNode',
+    useWhen: ['A page a person reaches before sign-in, round its DoorCard.'],
+    dontUseWhen: [
+      'A signed-in page, with its menu and header: that is PageShell’s.',
+      'The card alone: that is DoorCard’s.',
+    ],
+    instead: 'DoorCard',
+    states: [
+      {
+        name: 'Company, two languages',
+        node: <DoorPageSample languages={['vi', 'en']} />,
+      },
+      {
+        name: 'Credo, no logo',
+        node: <DoorPageSample credo languages={['vi', 'en']} />,
+      },
+      {
+        name: 'One language, no switch',
+        node: <DoorPageSample />,
       },
     ],
   },
