@@ -222,6 +222,7 @@ citation test, `pnpm --filter @credo/scripts exec vitest run src/citations.test.
       before `main`, since sign-in is worth one (QA rule 5). **43 min** (a recap 3; a whole check and
       a review about 20 each).
 - [x] **10b. The sample logo, the human's choice.** The gallery's `SAMPLE_LOGO` (the teal triangle beside "Công ty An Phát") is Tabler's `IconBrandAdobe` (3.49.0) at stroke 2, teal, kept a data-URL string drawn from the installed icon's shapes, so `LogoTile`, `BrandBand` and `DoorCard` and their contracts do not move (every real logo is a tenant's string). _Done 2026-11-23 22:31:_ `ui`'s and `visual`'s gates exit 0 on the committed tree, the pinned diff empty, the string opens as an SVG.
+- [x] **10c. Item 671's three timeouts.** The whole check's one red was `Gallery.test.tsx`'s "213 case 3" at 5,938 ms; alone it takes 1.8 s, so the three cases item 671 names (case 8, 213 cases 2 and 3) walk every entry and each gets its own 10 s timeout, the global one unchanged. _Done 2026-11-23 23:02:_ `ui`'s gate exits 0 on the committed tree, item 671 marked fixed with the measured durations.
 
 ## The walk
 

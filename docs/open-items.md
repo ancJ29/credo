@@ -2276,9 +2276,11 @@ The human answered yes on 2026-11-23 (the gallery pages plan, step 10, point 1):
 
 *Read at step 2 (2026-11-22):* the phone page's entry draws the call as the screen does, Mantine's own `Anchor`, the one line shorter than 36 px, and its must-have line holds the presses (`ActionButton`, `size: 'sm'`) to 36 px; the item stays open, the screen's move being the milestone behind (651).
 
-## 671. Three `Gallery.test.tsx` cases time out at 5000 ms in a whole `ui` gate under load, and pass alone — the machine; `[DEFERRED]` (the sign-in card piece's step 6, 2026-11-23, Low)
+## 671. Three `Gallery.test.tsx` cases time out at 5000 ms in a whole `ui` gate under load, and pass alone — the machine; `[FIXED]` in the sign-in card piece's step 10c (the step 6 note, 2026-11-23, Low)
 
 In five runs of `ui`'s whole gate on 2026-11-23, from 17:00 to 17:13 (a load of 8 to 14, the step 6 logs in the credo root's `logs/`), three cases of `ui/src/design-system/Gallery.test.tsx` timed out at 5000 ms: "8: each component's description and props in the table are its file's doc comment and props", "213 case 2: an entry's instead names an entry that exists, and the panel links to its address" and "213 case 3: the side panel shows the part's use lines under its description, before its props". Each run showed one to three of them, the file taking 45 to 54 s; the next whole run passed with no change, and the file alone passes in 22 s. A fact, not a diagnosis. *Trigger:* the landing's whole check, or the next `ui` gate red on one of these cases.
+
+**`[FIXED]` in step 10c (2026-11-23):** the landing's whole check on `pre-merge` (22:36 to 22:44) hit it again, case 3 at 5,938 ms. Run alone at load 1.3 the three cases take 1,600 ms (case 8), 1,524 ms (213 case 2) and 1,802 ms (213 case 3), the file 16.6 s, so each is slow rather than hung. Case 8 walks the 22 component files (21 at `591dfedb`); cases 2 and 3 walk `ENTRIES`, 92 entries now against 87 at `591dfedb`, so this piece's entries lengthened the loops by about 6 percent, not the cause. Each of the three now has its own 10 s timeout (three times its alone time or more; 5 s is the global default, so a rounded 5 s would change nothing) as the `it`'s third argument; the global `testTimeout` and every other case are unchanged.
 
 ## 672. The passkeys walk's add-a-passkey step waited past 5 s on the stack's reply once, the table one row short — the machine; `[DEFERRED]` (the sign-in card piece's step 10, 2026-11-23, Low)
 
