@@ -132,8 +132,8 @@ is independent and last, as it touches the gallery alone.
 
 One landing after step 3: `ui`'s and `visual`'s gates and the citation test on the branch, no whole
 check (no other package reads these lines). Then the services walk alone, in your terminal:
-`bash walk/run.sh services --moved sv-2-two-builds --write`, green with only that screen's six
-pictures moved; the machine reads git's diff (six PNGs) and commits. No review of its own: the
+`bash walk/run.sh services --moved sv-2-two-builds --write`, green with only that screen's pictures
+moved; the machine reads git's diff (five PNGs, not six: `vi-390` is byte-identical to its base) and commits. No review of its own: the
 change meets a screen, so it joins the review before `main` of the push that carries it (QA rule 5).
 
 ## Your points
