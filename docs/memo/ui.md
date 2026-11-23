@@ -288,7 +288,7 @@ only in the mode and the output folder.
   the parameter. The fake is handed `sessionStorage` alone, so nothing the fake keeps survives the tab; the app is
   handed `localStorage` and, for an unticked sign-in, `sessionStorage` too, keeping that handle under
   `credo.session`, the key the fake reads, so in the fake build a tab holding a real unticked sign-in
-  boots signed in as the root (item 673). The fake also
+  that then opens `?fake` boots signed in as the root (item 673). The fake also
   pins the pages to the data set's own day, whatever day it is opened on.
 - _And the strip holds for this package's own build only._ `ui/src/scene.ts` imports the fake
   **statically**, and it is a published entry point of this package, which the walks page builds
