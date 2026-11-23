@@ -214,6 +214,7 @@ citation test, `pnpm --filter @credo/scripts exec vitest run src/citations.test.
 - [ ] **9. Your walk run, then the bases.** The run line below, green; the bases committed alone,
       their count per walk matching the log; then the same walks without flags, 0 moved. **2 min**
       (piece 240's receipt and bases: 1, 1).
+- [x] **9a. The red of the first walk run, mended.** The 20:19 run's three green walks have their bases committed alone (48 pictures: piece-1 18, operator 6, passkeys 24, as the log's moved lines); `piece-2`'s English tests failed at scene 24's password fill (`getByLabel('Password')` also met Mantine's "Toggle password visibility" button), now `exactly(words.auth.password)`; and the Vietnamese `staff-24-email-sign-in` pictures differed fake to stack by 72 px because the fake typed 16 characters where the stack's `madePassword` makes a fixed 12, so the fake types `Fake-pass-1!` (12), no mask. _Done 2026-11-23 20:45:_ the red is the human's 20:19 run, not seen red here (no browser); the fix is read by the human's next run, step 9; `walk`'s gate exit 0 on the tree at 20:45.
 - [ ] **10. The recap and the landing.** The recap and its products row; `pre-merge` taken in, the
       gates again, the landing; the whole check, since the landing touches `shared` (which every
       package imports) and five packages (QA, "The whole check on `pre-merge`"); `pre-main-review`

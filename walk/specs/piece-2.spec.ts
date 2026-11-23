@@ -469,9 +469,11 @@ async function walk(page: Page, language: Language, width: number) {
   await page.getByRole('button', { name: 'root', exact: true }).click();
   await page.getByRole('menuitem', { name: words.user.signOut }).click();
   await typed(words.auth.username, 'hung@minh-phat.example');
+  // The stack types the 12 characters `madePassword` makes (bff/src/calling/password.ts); the fake
+  // types 12 as well, so the masked box draws the same dots in both.
   await page
-    .getByLabel(words.auth.password)
-    .fill(company?.people['EMP-0002'] ?? 'Fake-password-1!');
+    .getByLabel(exactly(words.auth.password))
+    .fill(company?.people['EMP-0002'] ?? 'Fake-pass-1!');
   await at('staff-24-email-sign-in');
   await press(words.auth.submit);
   await expect(page.getByRole('heading', { level: 2, name: 'Trần Văn Hùng' })).toBeVisible();
