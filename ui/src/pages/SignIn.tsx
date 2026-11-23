@@ -1,5 +1,5 @@
 import type { Language } from '@credo/shared';
-import { Box, Button, PasswordInput, Stack, TextInput } from '@mantine/core';
+import { Box, Button, Checkbox, PasswordInput, Stack, TextInput } from '@mantine/core';
 import { IconLock, IconUser } from '@tabler/icons-react';
 import { type FormEvent, type ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -20,7 +20,8 @@ type Props = {
   waitSeconds?: number;
   /** What is already typed, for a mock of a half-filled form. */
   initial?: { username: string; password: string };
-  onSubmit: (username: string, password: string) => void;
+  /** What was typed, and whether the sign-in is kept on the device (the tick, which starts on). */
+  onSubmit: (username: string, password: string, remember: boolean) => void;
   /** The languages the company offers, and the caller's handler for a chosen one. */
   languages?: readonly Language[];
   onLanguage?: (language: Language) => void;
@@ -70,10 +71,11 @@ export function SignIn({
   const { t } = useTranslation();
   const [username, setUsername] = useState(initial?.username ?? '');
   const [password, setPassword] = useState(initial?.password ?? '');
+  const [remember, setRemember] = useState(true);
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    onSubmit(username, password);
+    onSubmit(username, password, remember);
   };
 
   return (
@@ -109,6 +111,11 @@ export function SignIn({
             withAsterisk={false}
             value={password}
             onChange={(event) => setPassword(event.currentTarget.value)}
+          />
+          <Checkbox
+            label={t('auth.remember')}
+            checked={remember}
+            onChange={(event) => setRemember(event.currentTarget.checked)}
           />
           <Button
             type="submit"

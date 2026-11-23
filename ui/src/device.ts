@@ -38,6 +38,8 @@ export function createDeviceStore(storage: Store, tabStorage: Store = storage) {
       (remember ? tabStorage : storage).removeItem(KEYS.session);
       (remember ? storage : tabStorage).setItem(KEYS.session, authId);
     },
+    /** Whether the handle held is the device's (or none is held): false where it sits in the tab alone. */
+    remembered: () => tabStorage.getItem(KEYS.session) === null,
     clearAuthId: () => {
       storage.removeItem(KEYS.session);
       tabStorage.removeItem(KEYS.session);

@@ -19,6 +19,7 @@ const KEYS: Record<string, (w: Words) => string[]> = {
     w.auth.usernamePlaceholder,
     w.auth.password,
     w.auth.passwordPlaceholder,
+    w.auth.remember,
     w.auth.submit,
   ],
   'signin-refused': (w) => [
@@ -29,6 +30,7 @@ const KEYS: Record<string, (w: Words) => string[]> = {
     w.auth.usernamePlaceholder,
     w.auth.password,
     w.auth.passwordPlaceholder,
+    w.auth.remember,
     w.auth.submit,
   ],
   operator: (w) => ['Credo', w.operator.signIn, w.passkey.signInHint, w.passkey.signInButton],

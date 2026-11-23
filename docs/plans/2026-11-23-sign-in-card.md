@@ -176,11 +176,17 @@ citation test, `pnpm --filter @credo/scripts exec vitest run src/citations.test.
       passes `localStorage` and `sessionStorage`, the fake its one storage twice; row 10's `App.test.tsx`
       half and rows 11, 12 wait for step 5, which hands the tick to `ClientApp`; the memo's rule and hazard
       rewritten, the anchor in `docs/memo/bff.md` moved with its heading.
-- [ ] **5. The tick on the door, on the fake.** `SignIn` draws the tick ticked and hands it to
+- [x] **5. The tick on the door, on the fake.** `SignIn` draws the tick ticked and hands it to
       `ClientApp`, which keeps the handle by it (`ui/src/ClientApp.tsx#L209`; `#L242` where the old one
       was; `#L160` on the device); rows 7, 11, 12 red first. _Done when:_ `ui`'s and `visual`'s gates,
       the pinned diff naming the three company doors alone (`1-sign-in`, `2-sign-in-refused`,
       `12-sign-in-wait`). **8 min** (the same row).
+      _Done 2026-11-23 16:40:_ `ui`'s and `visual`'s gates exit 0, `@credo/scripts`' `words.test.ts`, `fake.test.ts` and `citations.test.ts` exit 0;
+      row 7's tick case, row 11's tab case and row 10's tab-clearing case red on the old door and app, then green
+      (row 11's device case, row 12 and the BFF request held on the old code, the device being the old default);
+      `SignIn` draws the ticked `Checkbox` and hands `onSubmit(name, password, remember)`, `ClientApp` keeps
+      the handle by it, a password change where the old handle sat (`device.remembered()`), a QR sign-in on the device;
+      the pinned diff names the three company doors alone.
 - [ ] **6. Email on by default.** `staffConfig`'s one line; rows 1 to 6 red first; the describe at
       `bff/src/routes/staff-setup.route.test.ts#L159` no longer says email is off until turned on.
       _Done when:_ `shared`'s, `bff`'s, `ui`'s and `visual`'s gates, the pinned diff naming the eleven

@@ -50,6 +50,15 @@ describe('what the device keeps', () => {
     expect(kept.getItem('credo.session')).toBeNull();
   });
 
+  it('says where the handle sits: the device\u2019s unless it is held in the tab alone', () => {
+    const device = createDeviceStore(memory(), memory());
+    expect(device.remembered()).toBe(true);
+    device.setAuthId('in.tab', false);
+    expect(device.remembered()).toBe(false);
+    device.setAuthId('on.device');
+    expect(device.remembered()).toBe(true);
+  });
+
   it('clears the handle wherever it was kept, and a new one replaces the old', () => {
     const kept = memory();
     const tab = memory();

@@ -61,7 +61,21 @@ describe('SignIn', () => {
     await userEvent.type(screen.getByLabelText(labelled(words.auth.password)), 'secret');
     await userEvent.click(screen.getByRole('button', { name: words.auth.submit }));
 
-    expect(onSubmit).toHaveBeenCalledExactlyOnceWith('root', 'secret');
+    expect(onSubmit).toHaveBeenCalledExactlyOnceWith('root', 'secret', true);
+  });
+
+  it('7: starts with “Remember me” ticked, and sends the tick as it stands', async () => {
+    const onSubmit = vi.fn();
+    draw(<SignIn brand={brand} status="idle" onSubmit={onSubmit} />);
+
+    const tick = screen.getByRole<HTMLInputElement>('checkbox', { name: words.auth.remember });
+    expect(tick.checked).toBe(true);
+    await userEvent.type(screen.getByLabelText(labelled(words.auth.username)), 'root');
+    await userEvent.type(screen.getByLabelText(labelled(words.auth.password)), 'secret');
+    await userEvent.click(tick);
+    await userEvent.click(screen.getByRole('button', { name: words.auth.submit }));
+
+    expect(onSubmit).toHaveBeenCalledExactlyOnceWith('root', 'secret', false);
   });
 
   it('wears the account title over its form, and the frame names its heading as it is told over what it holds', () => {
@@ -110,13 +124,13 @@ describe('SignIn', () => {
     ).toBe(true);
   });
 
-  it('is the old card: a title over underlined fields with their placeholders, and no extras', () => {
+  it('is the old card: a title over underlined fields with their placeholders, the one tick and no extras', () => {
     draw(<SignIn brand={brand} status="idle" onSubmit={vi.fn()} />);
 
     expect(screen.getByRole('heading', { level: 2 }).textContent).toBe(words.auth.title);
     expect(screen.getByPlaceholderText(words.auth.usernamePlaceholder)).toBeTruthy();
     expect(screen.getByPlaceholderText(words.auth.passwordPlaceholder)).toBeTruthy();
-    expect(screen.queryByRole('checkbox')).toBeNull();
+    expect(screen.getAllByRole('checkbox')).toHaveLength(1);
     expect(screen.getAllByRole('button')).toHaveLength(2);
   });
 
