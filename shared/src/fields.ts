@@ -65,12 +65,14 @@ export const customFieldsWriteSchema = customFieldsSchema.refine(
   { error: 'a field key' },
 );
 
-/** The person's optional fields the root switches on; off until turned on. */
+/** The person's optional fields the root switches on; `staffConfig` reads an absent one as off,
+ * except email, which it reads as on. */
 export const staffFieldsSchema = z.strictObject({
   personalPhone: z.boolean().default(false),
   photo: z.boolean().default(false),
   /** The email is a second sign-in name; the QR switch lets the root show a person a QR code.
-   * Both are absent from a setup saved before they existed, and read as off. */
+   * Absent from a setup saved before they existed, `staffConfig` reads email as on and QR as off;
+   * a saved `false` is kept. */
   email: z.boolean().optional(),
   qr: z.boolean().optional(),
   /** The start date, the birth date and the address: values in `extra` under these same names.

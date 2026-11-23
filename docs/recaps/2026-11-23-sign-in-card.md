@@ -11,7 +11,7 @@ flowchart LR
 
 - A door page, a gallery part with three states: the brand's colour sweep, the language switch in its corner, the card centred.
 - The company's sign-in, its QR landing, the operators' sign-in and the join page all stand on it (eight doors in the walks' question).
-- "Remember me" is ticked by default; unticked, the sign-in lasts the browser tab only (the tab's storage beside the device's).
+- "Remember me" is ticked by default; unticked, the sign-in lasts the browser tab only (the tab's storage beside the device's), except that a browser set to reopen its last tabs brings it back, as on any site: the machine decided that on 11-23 (no signed client yet), and a no from you adds a server-side end after some hours.
 - Email sign-in is on by default; a saved choice is kept, no stored data touched.
 - The walks gain one scene, a staff member signing in by the email the root gave.
 
@@ -19,7 +19,7 @@ flowchart LR
 
 - Each of steps 1 to 8 read its gates green on its tree.
 - The walks: bases committed in two commits (48 pictures, then the staff walk's 78, 6 of them new). The recheck moved nothing on three walks; passkeys stalled once, green on a rerun alone: item 672 (Low, deferred).
-- Item 671 (gallery tests time out under load) stays open.
+- Item 671 (gallery tests time out under load) is fixed in step 10c: three cases get their own 10 s timeout.
 - The 5 November header decision is reversed, written in the decisions page.
 
 ## What is left
