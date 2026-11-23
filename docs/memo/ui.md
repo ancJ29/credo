@@ -87,11 +87,13 @@ _does_ is then the app's, and the two apps do opposite things.
 - _Hazard no test catches:_ that the client's half-typed form is lost. The inverse is asserted — a
   400 keeps what was typed — and the 401 case is not.
 
-## The handle lives in the browser's localStorage, with no clock of its own
+## The handle lives in the browser's storage, where "Remember me" says, with no clock of its own
 
-`ui/src/device.ts`'s `createDeviceStore` keeps the session handle, the operator's handle, the
-device's id, the client's code, the chosen language and some menu state in `localStorage`, in the
-clear, and the app sends the handle as a header on every call — never as a cookie. **There is no
+`ui/src/device.ts`'s `createDeviceStore` takes two storages: the kept one (`localStorage`) holds the
+operator's handle, the device's id, the client's code, the chosen language and some menu state, in
+the clear, and the session handle where the person ticked "Remember me"; unticked, the session
+handle sits in the tab's own `sessionStorage` instead, never in both, and a sign-out or a 401
+clears it from both. The app sends the handle as a header on every call — never as a cookie. **There is no
 expiry timer in this package at all.** The week a session lasts is the back end's
 ([the BFF's memo](bff.md#a-session-lasts-a-week-and-an-operators-an-hour-unused)), and a device
 learns its session has lapsed only from the 401 on its next call.
@@ -107,6 +109,11 @@ learns its session has lapsed only from the 401 on its next call.
   company's handle is refused at the second and dropped. _Except at a company's own address:_ each
   company's address is its own origin, so its device storage is its own, and the address, not the
   stored code, names the company.
+- _Hazard no gate catches:_ an unticked sign-in ends with its tab, not with the browser: a browser
+  set to reopen its last tabs restores their `sessionStorage` and brings the sign-in back, as on any
+  site (the human's yes, 2026-11-23, and no server-side end is added), so a sign-in that must not
+  outlive a browser's restart cannot lean on the tick. _Trigger:_ the first report of an unticked
+  person found signed in after a restart.
 - _Hazard no gate catches:_ every read and write of browser storage is unguarded. A browser with
   site data blocked, or a private window that throws on access, is untested territory.
 

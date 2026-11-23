@@ -1600,7 +1600,7 @@ export function fakeParts(search: string, storage: Parameters<typeof createDevic
   const params = new URLSearchParams(search);
   if (!params.has('fake') && storage.getItem(FAKE_KEY) === null) return null;
   storage.setItem(FAKE_KEY, '1');
-  const device = createDeviceStore(storage);
+  const device = createDeviceStore(storage, storage);
   device.setClientCode(DEMO_CODE);
   const cue = parseCue(params.get('cue'));
   return {

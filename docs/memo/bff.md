@@ -145,7 +145,7 @@ keeps every request from writing. An operator's session, under that file's `OPER
   renewed; there is no "signed in elsewhere" list and no way to end one person's other sessions
   short of giving them a password, which ends all of them.
 - *Hazard for a caller:* the expiry is the store's, not the app's. Nothing in the UI holds a clock
-  ([the UI's memo](ui.md#the-handle-lives-in-the-browsers-localstorage-with-no-clock-of-its-own)),
+  ([the UI's memo](ui.md#the-handle-lives-in-the-browsers-storage-where-remember-me-says-with-no-clock-of-its-own)),
   so a device learns its session has lapsed only from the 401 on its next call.
 - *Hazard no gate catches:* a session record that no longer parses stops resolving and is left
   where it is. Nothing sweeps expired sessions, so a company's session records grow with every

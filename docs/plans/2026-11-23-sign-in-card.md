@@ -163,12 +163,19 @@ citation test, `pnpm --filter @credo/scripts exec vitest run src/citations.test.
       the pinned diff names the nine doors alone; `SignInFrame` keeps its props and draws `DoorPage`, `DoorCard` and
       `DoorHeading` (the logo, where there is none, no longer an icon), both contracts `used`, the page title gone from
       the three door files' raw count.
-- [ ] **4. The handle where the tick says.** `createDeviceStore` takes the tab's storage beside the
+- [x] **4. The handle where the tick says.** `createDeviceStore` takes the tab's storage beside the
       kept one (`localStorage` and `sessionStorage` in `ui/src/main.tsx`, the fake's one tab storage
       for both, `ui/src/fake.ts#L1599-L1603`); rows 8 to 10 red first; the memo's claim at
       `docs/memo/ui.md#L90` rewritten, with its hazard: a browser that reopens its tabs may bring an
       unticked one back signed in. _Done when:_ `ui`'s gate. **6 min** (piece 123's step 1, a sign-in
       state with its rule and words on the fake: 25 for three such parts).
+      _Done 2026-11-23 16:28:_ `ui`'s gate exit 0, `@credo/scripts`' `words.test.ts`, `fake.test.ts` and `citations.test.ts` exit 0;
+      row 9 and row 10's clearing red on the old store, then green (row 8 held on the old code, a
+      ticked handle being the device's already); `createDeviceStore(kept, tab = kept)`, `setAuthId(id,
+      remember = true)` writes one storage and clears the other, `authId` reads the tab's first; `main.tsx`
+      passes `localStorage` and `sessionStorage`, the fake its one storage twice; row 10's `App.test.tsx`
+      half and rows 11, 12 wait for step 5, which hands the tick to `ClientApp`; the memo's rule and hazard
+      rewritten, the anchor in `docs/memo/bff.md` moved with its heading.
 - [ ] **5. The tick on the door, on the fake.** `SignIn` draws the tick ticked and hands it to
       `ClientApp`, which keeps the handle by it (`ui/src/ClientApp.tsx#L209`; `#L242` where the old one
       was; `#L160` on the device); rows 7, 11, 12 red first. _Done when:_ `ui`'s and `visual`'s gates,

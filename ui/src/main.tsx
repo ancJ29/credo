@@ -18,7 +18,7 @@ const fake =
 const { api, device, passkeys, build, today } = fake ?? realParts();
 
 function realParts() {
-  const device = createDeviceStore(localStorage);
+  const device = createDeviceStore(localStorage, sessionStorage);
   const api = createApi({
     deviceId: device.deviceId(),
     clientCode: device.clientCode,
