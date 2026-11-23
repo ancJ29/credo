@@ -86,7 +86,7 @@ describe('Gallery', () => {
     for (const name of names) expect(style).toContain(`--credo-${name}: `);
   });
 
-  it('213 case 4: lists Start here, Foundations, Rules, Pages, Atoms, Molecules and Organisms in order, each with its count and every component file of its level', () => {
+  it('213 case 4: lists Start here, Foundations, Pages, Atoms, Molecules and Organisms in order, each with its count and every component file of its level', () => {
     open(`${BASE}/atoms/field-label`);
 
     const heads = list()
@@ -95,12 +95,17 @@ describe('Gallery', () => {
     expect(heads).toEqual([
       'Start here',
       'Foundations',
-      'Rules',
       'Pages',
       'Atoms',
       'Molecules',
       'Organisms',
     ]);
+    // A group the list shows is never empty.
+    for (const head of heads) {
+      expect(
+        within(list().getByRole('region', { name: head ?? '' })).queryAllByRole('link').length,
+      ).toBeGreaterThan(0);
+    }
     expect(found.length).toBeGreaterThan(0);
     expect(list().getByRole('region', { name: 'Start here' }).textContent).toContain('1');
     expect(list().getByRole('region', { name: 'Foundations' }).textContent).toContain('9');

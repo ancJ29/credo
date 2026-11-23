@@ -109,11 +109,11 @@ colour's name is a literal, as a shade or a weight is.
   "${S[@]}"` reads 0; `git diff --stat visual/src/resolved.pinned.txt` reads 10 lines changed, each
   `operator-services/sv-2-two-builds`; both gates and the citation test exit 0. **8 min**, the shape
   of piece 222's step 18 (five sites moved under a case refusing them in screens, 8 minutes). Done 2026-11-23 09:29: the recount read nine lines in four files; case 1 red on the four real files, then red on a planted `c="red"` in `ImportPage.tsx`, reverted; the grep reads 0; the pinned diff is 10 lines out and 10 in, all `operator-services/sv-2-two-builds`; `ui` and `visual` checks and the citation test exit 0 (gates read below at the commit).
-- [ ] **3. The Rules group out.** `'Rules'` deleted from `GROUPS`; the heading test reads six and
+- [x] **3. The Rules group out.** `'Rules'` deleted from `GROUPS`; the heading test reads six and
   asks that every group listed holds an entry (case 4); `guideline.ts#L194` loses "The Rules group
   stays empty."; `docs/products.md#L129` lists six and drops "(Rules is empty for now)". _Done when:_
   case 4 seen red with `'Rules'` put back, `pnpm --filter @credo/ui check` and the citation test exit
-  0. **4 min**, the shape of piece 232's step 2 (one guarded change to the gallery, 4 minutes).
+  0. **4 min**, the shape of piece 232's step 2 (one guarded change to the gallery, 4 minutes). Done 2026-11-23 09:36: `'Rules'` out of `GROUPS`; the heading test reads six and asks each listed group holds a link; case 4 red with `'Rules'` put back (the order assertion, one case failed), then reverted; `guideline.ts` and `docs/products.md` lose the two phrases (gates read below at the commit).
 
 **Order:** step 1 first, so step 2's red is nine lines, not ten, and no line is edited twice; step 3
 is independent and last, as it touches the gallery alone.
