@@ -111,7 +111,7 @@ learns its session has lapsed only from the 401 on its next call.
   stored code, names the company.
 - _Hazard no gate catches:_ an unticked sign-in ends with its tab, not with the browser: a browser
   set to reopen its last tabs restores their `sessionStorage` and brings the sign-in back, as on any
-  site (the human's yes, 2026-11-23, and no server-side end is added), so a sign-in that must not
+  site (the machine's decision, 2026-11-23 15:43, under `docs/decisions.md`'s 2026-10-30 row, since details are the machine's until a client signs; the human is told in the chat, and a no adds the plan's back-end step, an unticked sign-in also ending on the server after some hours; no server-side end is added now), so a sign-in that must not
   outlive a browser's restart cannot lean on the tick. _Trigger:_ the first report of an unticked
   person found signed in after a restart.
 - _Hazard no gate catches:_ every read and write of browser storage is unguarded. A browser with
@@ -285,8 +285,10 @@ only in the mode and the output folder.
   build, and the app boots against the real back end as if nothing had been asked.
 - _The surprise:_ *_`?fake` is sticky for the tab, and the fake keeps its state somewhere else._ The
   first `?fake` writes a flag, so every later navigation in that tab stays on the fake even without
-  the parameter. The fake is handed `sessionStorage` where the app is handed `localStorage`, so
-  nothing the fake keeps survives the tab, and the two never see each other's store. The fake also
+  the parameter. The fake is handed `sessionStorage` alone, so nothing the fake keeps survives the tab; the app is
+  handed `localStorage` and, for an unticked sign-in, `sessionStorage` too, keeping that handle under
+  `credo.session`, the key the fake reads, so in the fake build a tab holding a real unticked sign-in
+  boots signed in as the root (item 673). The fake also
   pins the pages to the data set's own day, whatever day it is opened on.
 - _And the strip holds for this package's own build only._ `ui/src/scene.ts` imports the fake
   **statically**, and it is a published entry point of this package, which the walks page builds
