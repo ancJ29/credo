@@ -126,7 +126,7 @@ For partners, the plain version, with the delivery photos' card, is [What credo 
 
 Open the app's ridge address with `/48b74d079/gallery` after it. No sign-in. You need a PC, and a phone or a tablet for step 6.
 
-1. On the PC, the gallery opens on "Start here": your goal, what credo is, where a coder looks first, and that a gap is asked, then written as a rule. Read the list down the left: Start here, Foundations, Rules, Pages, Atoms, Molecules and Organisms, each with its count (Rules is empty for now).
+1. On the PC, the gallery opens on "Start here": your goal, what credo is, where a coder looks first, and that a gap is asked, then written as a rule. Read the list down the left: Start here, Foundations, Pages, Atoms, Molecules and Organisms, each with its count.
 2. Press "Values" under Foundations: every colour, text style, gap, width, icon size and corner has a line saying what it is for. Then press a part, such as "Door card"; its "Use when" and "Don’t use when" lines are under its description on the right. Its states appear side by side in the middle; its name, description and props are in the right-hand column.
 3. In that column, under "Show", press "One at a time" and pick another state from the list that appears under it.
 4. Press Atoms, then "ActionButton" and "StatusBadge", Molecules, then "FormMessage", and Organisms, then "PageState": the right-hand column has "Takes from a screen" and "Decides itself", and a part to come says so. Does each read as the one way, with nothing left for a screen to choose?

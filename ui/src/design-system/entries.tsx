@@ -250,7 +250,6 @@ function PageHeaderSample({ state }: { state: string }) {
 export const GROUPS = [
   'Start here',
   'Foundations',
-  'Rules',
   'Pages',
   'Atoms',
   'Molecules',

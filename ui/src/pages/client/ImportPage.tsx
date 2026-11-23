@@ -24,7 +24,7 @@ import {
 import { INVALID } from '../../parts/ownFields';
 import { type PageProps, refusal, useLoad } from '../../page';
 import { saveAs } from '../../saveAs';
-import { TYPE } from '../../design-system/tokens';
+import { TONES, TYPE } from '../../design-system/tokens';
 import { ActionButton } from '../../components/atoms/ActionButton';
 import { PageShell } from '../../parts/PageShell';
 import { FormMessage } from '../../components/molecules/FormMessage';
@@ -207,7 +207,7 @@ function ImportForm({
                   <Table.Td>{row.line}</Table.Td>
                   <Table.Td>{row.name}</Table.Td>
                   <Table.Td>
-                    <Text c="red">{t('import.busy')}</Text>
+                    <Text c={TONES.danger}>{t('import.busy')}</Text>
                   </Table.Td>
                 </Table.Tr>
               ))}
@@ -270,10 +270,10 @@ function ImportForm({
                     <Table.Td>{row.position}</Table.Td>
                     <Table.Td>
                       {row.request ? (
-                        <Text c="green">{t('import.willAdd')}</Text>
+                        <Text c={TONES.success}>{t('import.willAdd')}</Text>
                       ) : (
                         row.problems.map((found) => (
-                          <Text key={reasonOf(found, t, language)} c="red">
+                          <Text key={reasonOf(found, t, language)} c={TONES.danger}>
                             {reasonOf(found, t, language)}
                           </Text>
                         ))

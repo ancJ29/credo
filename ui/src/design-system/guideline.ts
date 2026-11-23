@@ -191,7 +191,7 @@ export const GUIDELINE: {
       {
         need: 'A screen’s coder: what a screen says or offers',
         where:
-          'The part’s contract, in the panel beside its entry: what a screen gives it and what it decides. A rule that holds for every screen is in the rules below. The Rules group stays empty.',
+          'The part’s contract, in the panel beside its entry: what a screen gives it and what it decides. A rule that holds for every screen is in the rules below.',
       },
       {
         need: 'A design-system coder: a colour, a text style, a gap, a width, an icon size or a corner',
@@ -230,7 +230,7 @@ export const GUIDELINE: {
         followed: 'yes',
       },
       {
-        says: 'A screen writes no numbered shade of a palette; text on the client’s colour comes from the on-brand values, never from a white written in the screen. Mantine’s own slots (`--mantine-color-body`, `-text`, `-default-border`, `-default-hover`) and an avatar’s `color="initials"` are allowed.',
+        says: 'A screen writes no numbered shade of a palette and no palette’s name (`c="red"`, `color: "green"`, `--mantine-color-orange`); a colour is a meaning from `TONES`; text on the client’s colour comes from the on-brand values, never from a white written in the screen. Mantine’s own slots (`--mantine-color-body`, `-text`, `-default-border`, `-default-hover`) and an avatar’s `color="initials"` are allowed.',
         why: 'The client’s colour changes every shade, so a shade written in a screen reads on one colour and fails on another.',
         heldBy: { check: 'ui/src/design-system/literals.test.ts' },
         followed: 'yes',
@@ -378,7 +378,7 @@ export const GUIDELINE: {
     notes: [
       {
         about: 'tones',
-        text: 'A screen names a meaning (danger, success, warning, info), never a Mantine colour. Not yet: the screens still write red, green, orange, gray and yellow (about 130 uses) and `dimmed` (about 50 more), which move with the parts; a yellow has no meaning and becomes warning. Open item 651 moves them.',
+        text: 'A screen names a meaning (danger, success, warning, info), never a Mantine colour. A check refuses a palette’s name in a screen (`literals.test.ts`, case 1); a yellow has no meaning and is warning. Not yet: `dimmed` (about 50 uses) has no meaning of its own, and moves with the parts (open item 651).',
       },
       {
         about: 'styles',

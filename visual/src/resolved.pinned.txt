@@ -27,7 +27,7 @@ operator-passkeys/pk-4-no-operator steel 8132e40a57e5
 operator-passkeys/pk-5-link-dead steel e5215195bf35
 operator-passkeys/pk-6-sign-in-ended steel 19c92ff27be1
 operator-services/sv-1-all-well steel 18b5802e8349
-operator-services/sv-2-two-builds steel a5b748026c2f
+operator-services/sv-2-two-builds steel 1a9cfb74a8e0
 operator-services/sv-3-storage-silent steel 80699bc3fe04
 operator-services/sv-4-bff-silent steel bb8971db7975
 operator-services/sv-5-unavailable steel b3e44ee1f574
@@ -158,7 +158,7 @@ operator-passkeys/pk-4-no-operator emerald fce7583776e4
 operator-passkeys/pk-5-link-dead emerald 776be85fdc72
 operator-passkeys/pk-6-sign-in-ended emerald f2b69bb08cdb
 operator-services/sv-1-all-well emerald 989383070acc
-operator-services/sv-2-two-builds emerald cfaf67d2f25b
+operator-services/sv-2-two-builds emerald b81fa2676f26
 operator-services/sv-3-storage-silent emerald 8d9a29e9340e
 operator-services/sv-4-bff-silent emerald 9b055ec66185
 operator-services/sv-5-unavailable emerald b3e44ee1f574
@@ -289,7 +289,7 @@ operator-passkeys/pk-4-no-operator brick d9c6e782ff9b
 operator-passkeys/pk-5-link-dead brick caa079efc89c
 operator-passkeys/pk-6-sign-in-ended brick aa349ffe1a57
 operator-services/sv-1-all-well brick ce87e3eb030e
-operator-services/sv-2-two-builds brick 1271aa6dc591
+operator-services/sv-2-two-builds brick 16616db8c25e
 operator-services/sv-3-storage-silent brick bea8210f5530
 operator-services/sv-4-bff-silent brick 89143e3f2bd3
 operator-services/sv-5-unavailable brick b3e44ee1f574
@@ -420,7 +420,7 @@ operator-passkeys/pk-4-no-operator bronze 3272ef2988da
 operator-passkeys/pk-5-link-dead bronze 51b8513f0b63
 operator-passkeys/pk-6-sign-in-ended bronze 2d37439ec708
 operator-services/sv-1-all-well bronze 75c06a2a2cd3
-operator-services/sv-2-two-builds bronze 9093a95cb5bb
+operator-services/sv-2-two-builds bronze 587024d988fc
 operator-services/sv-3-storage-silent bronze 87dcd233d1d5
 operator-services/sv-4-bff-silent bronze f97a07cdffb6
 operator-services/sv-5-unavailable bronze b3e44ee1f574
@@ -551,7 +551,7 @@ operator-passkeys/pk-4-no-operator plum 6d9c81344e8f
 operator-passkeys/pk-5-link-dead plum 909c8e6da6f6
 operator-passkeys/pk-6-sign-in-ended plum 75cbbeb8d2fe
 operator-services/sv-1-all-well plum 648ee0bd291a
-operator-services/sv-2-two-builds plum 39317d4380ba
+operator-services/sv-2-two-builds plum 8b0aaec84a0b
 operator-services/sv-3-storage-silent plum 940a8410e5de
 operator-services/sv-4-bff-silent plum 07c3a90c82d0
 operator-services/sv-5-unavailable plum b3e44ee1f574
@@ -682,7 +682,7 @@ operator-passkeys/pk-4-no-operator indigo 0cf2ad6b594a
 operator-passkeys/pk-5-link-dead indigo 6ea350b1bb3c
 operator-passkeys/pk-6-sign-in-ended indigo fbbcea0e394d
 operator-services/sv-1-all-well indigo 8d29714cb5fd
-operator-services/sv-2-two-builds indigo 1e04a25667eb
+operator-services/sv-2-two-builds indigo d0446e04b987
 operator-services/sv-3-storage-silent indigo 4e1d93487d43
 operator-services/sv-4-bff-silent indigo 2399373e97cd
 operator-services/sv-5-unavailable indigo b3e44ee1f574
@@ -813,7 +813,7 @@ operator-passkeys/pk-4-no-operator company f2d4f532e851
 operator-passkeys/pk-5-link-dead company c82b5d68b6cd
 operator-passkeys/pk-6-sign-in-ended company 6f9c6b1f640b
 operator-services/sv-1-all-well company ab2cbe386d11
-operator-services/sv-2-two-builds company 88db4c115134
+operator-services/sv-2-two-builds company 653c16dc7aac
 operator-services/sv-3-storage-silent company 6318efd34be7
 operator-services/sv-4-bff-silent company 02f8d0b00c55
 operator-services/sv-5-unavailable company b3e44ee1f574
@@ -944,7 +944,7 @@ operator-passkeys/pk-4-no-operator terracotta 4c5e24821bac
 operator-passkeys/pk-5-link-dead terracotta d72af018fe2a
 operator-passkeys/pk-6-sign-in-ended terracotta ee49abbf5d6b
 operator-services/sv-1-all-well terracotta eecaf234c6c5
-operator-services/sv-2-two-builds terracotta 08bc101d5fb8
+operator-services/sv-2-two-builds terracotta 38ed2e7b8846
 operator-services/sv-3-storage-silent terracotta 53c5a0ed7a73
 operator-services/sv-4-bff-silent terracotta 69337258ac96
 operator-services/sv-5-unavailable terracotta b3e44ee1f574
@@ -1075,7 +1075,7 @@ operator-passkeys/pk-4-no-operator red cd6faf228349
 operator-passkeys/pk-5-link-dead red 7cf28d43bc2d
 operator-passkeys/pk-6-sign-in-ended red e6cedb4b41e7
 operator-services/sv-1-all-well red 828bd4eddd0c
-operator-services/sv-2-two-builds red c9657825edcb
+operator-services/sv-2-two-builds red 927bf62c83a7
 operator-services/sv-3-storage-silent red d519348c7c40
 operator-services/sv-4-bff-silent red 66bd139136f3
 operator-services/sv-5-unavailable red b3e44ee1f574
@@ -1206,7 +1206,7 @@ operator-passkeys/pk-4-no-operator amber d0e559cf8868
 operator-passkeys/pk-5-link-dead amber e386b35f217b
 operator-passkeys/pk-6-sign-in-ended amber db8d34834c9e
 operator-services/sv-1-all-well amber 7a1fc903a98e
-operator-services/sv-2-two-builds amber b8c1f606ed40
+operator-services/sv-2-two-builds amber 0f25c664ecc8
 operator-services/sv-3-storage-silent amber c842489a81c5
 operator-services/sv-4-bff-silent amber 1a7f8941edfe
 operator-services/sv-5-unavailable amber b3e44ee1f574

@@ -62,7 +62,7 @@ export const TYPE = {
 /**
  * The four meanings a screen's colour carries, each written once as the Mantine colour that draws it.
  * This is the one place a Mantine colour name is written for a meaning: a screen names the meaning
- * (`danger`), never `red`. The screens still write the names today (the guideline's values page).
+ * (`danger`), never `red`. A check holds it: `literals.test.ts` refuses a palette's name in a screen.
  */
 export const TONES = { danger: 'red', success: 'green', warning: 'orange', info: 'gray' } as const;
 

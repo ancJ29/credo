@@ -6,6 +6,7 @@ import {
 } from '@credo/shared';
 import { Badge, Checkbox, Group, SegmentedControl, Stack, Text } from '@mantine/core';
 import { useTranslation } from 'react-i18next';
+import { TONES } from '../design-system/tokens';
 import { NEEDS, PERMISSION_LABEL } from '../permissionLabels';
 
 type Props = {
@@ -63,7 +64,7 @@ export function PermissionEditor({ layer, onChange, mode, below, label }: Props)
                 </Text>
               )}
               {needs(id) !== undefined && (
-                <Text size="xs" c="orange">
+                <Text size="xs" c={TONES.warning}>
                   {needs(id)}
                 </Text>
               )}
