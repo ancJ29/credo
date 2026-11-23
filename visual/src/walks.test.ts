@@ -36,7 +36,7 @@ const piece2Walks = () => {
 };
 
 describe('the walks', () => {
-  it('The sign-in look question is the question of exactly the nine doors and of no other screen', () => {
+  it('The sign-in look question is the question of exactly the eight doors and of no other screen', () => {
     const DOORS = [
       '1-sign-in',
       '2-sign-in-refused',
@@ -45,7 +45,6 @@ describe('the walks', () => {
       'pk-3-not-given',
       'pk-4-no-operator',
       'pk-5-link-dead',
-      'phone-1-signed-in',
       'phone-2-code-used',
     ];
     const asking = WALKS.flatMap((walk) => walk.screens)
@@ -445,23 +444,23 @@ describe('the walks', () => {
     expect(spec).toContain('status: 503');
   });
 
-  it('puts piece 2’s groups A, B, C and D in four walks, thirty-four screens in all, each a scene and none from the mock', () => {
+  it('puts piece 2’s groups A, B, C and D in four walks, thirty-five screens in all, each a scene and none from the mock', () => {
     const piece2 = piece2Walks();
 
     expect(piece2.map((walk) => [walk.id, walk.person, walk.part, walk.screens.length])).toEqual([
       ['admin-staff-setup', 'admin', 'setup', 2],
-      ['admin-staff', 'admin', 'staff', 23],
+      ['admin-staff', 'admin', 'staff', 24],
       ['office-staff', 'office', 'staff', 7],
       ['phone-sign-in', 'driver', 'staff', 2],
     ]);
     const screens = piece2.flatMap((walk) => walk.screens);
-    expect(screens).toHaveLength(34);
+    expect(screens).toHaveLength(35);
     expect(screens.filter((screen) => screen.mock !== undefined)).toEqual([]);
     expect(screens.filter((screen) => screen.scene === undefined)).toEqual([]);
-    expect(new Set(screens.map((screen) => screen.id)).size).toBe(34);
+    expect(new Set(screens.map((screen) => screen.id)).size).toBe(35);
     expect(piece2.map((walk) => walk.screens.map((screen) => screen.number))).toEqual([
       [1, 2],
-      [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23],
+      [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24],
       [1, 2, 3, 4, 5, 6, 7],
       [1, 2],
     ]);
@@ -509,7 +508,7 @@ describe('the walks', () => {
     expect(scenes.get('office-7-password-wrong')?.cue).toBe('changePassword:403');
   });
 
-  it('puts D’s four screens after B’s, numbered 19 to 22 as the plan names them, the file without the name column on the wrong path, and the switch back on appended as 23', () => {
+  it('puts D’s four screens after B’s, numbered 19 to 22 as the plan names them, the file without the name column on the wrong path, the switch back on as 23 and the email sign-in appended as 24', () => {
     const staff = WALKS.find((walk) => walk.id === 'admin-staff')!.screens;
 
     expect(staff.slice(18).map((screen) => [screen.id, screen.number, screen.path])).toEqual([
@@ -518,6 +517,7 @@ describe('the walks', () => {
       ['staff-21-imported', 21, 'main'],
       ['staff-22-no-name', 22, 'wrong'],
       ['staff-23-back-on', 23, 'main'],
+      ['staff-24-email-sign-in', 24, 'main'],
     ]);
     expect(staff[21].scene!.steps).toEqual([
       { attach: 'import.file', file: 'import-no-name' },
@@ -535,7 +535,7 @@ describe('the walks', () => {
         );
     const keys = (step: Step) =>
       'press' in step
-        ? [step.press, ...(step.within ? [step.within] : [])]
+        ? [...(step.text ? [] : [step.press]), ...(step.within ? [step.within] : [])]
         : 'see' in step
           ? // a cell's own words (a name from the data) are in no dictionary
             step.text
@@ -564,6 +564,7 @@ describe('the walks', () => {
       (screen) => screen.scene?.steps ?? [],
     )) {
       if ('see' in step && step.text) expect(isKey(step.see), step.see).toBe(false);
+      if ('press' in step && step.text) expect(isKey(step.press), step.press).toBe(false);
     }
     for (const key of used) {
       expect(typeof words('en', key), key).toBe('string');

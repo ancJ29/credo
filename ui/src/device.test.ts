@@ -31,6 +31,57 @@ describe('what the device keeps', () => {
     expect(createDeviceStore(storage).authId()).toBeNull();
   });
 
+  it('keeps a ticked sign-in on the device: another tab is signed in', () => {
+    const kept = memory();
+    const device = createDeviceStore(kept, memory());
+
+    device.setAuthId('d.secret', true);
+
+    expect(createDeviceStore(kept, memory()).authId()).toBe('d.secret');
+  });
+
+  it('keeps an unticked sign-in in the tab: a reload is signed in, another tab is not', () => {
+    const kept = memory();
+    const tab = memory();
+    createDeviceStore(kept, tab).setAuthId('d.secret', false);
+
+    expect(createDeviceStore(kept, tab).authId()).toBe('d.secret');
+    expect(createDeviceStore(kept, memory()).authId()).toBeNull();
+    expect(kept.getItem('credo.session')).toBeNull();
+  });
+
+  it('says where the handle sits: the device\u2019s unless it is held in the tab alone', () => {
+    const device = createDeviceStore(memory(), memory());
+    expect(device.remembered()).toBe(true);
+    device.setAuthId('in.tab', false);
+    expect(device.remembered()).toBe(false);
+    device.setAuthId('on.device');
+    expect(device.remembered()).toBe(true);
+  });
+
+  it('clears the handle wherever it was kept, and a new one replaces the old', () => {
+    const kept = memory();
+    const tab = memory();
+    const device = createDeviceStore(kept, tab);
+
+    device.setAuthId('on.device', true);
+    device.clearAuthId();
+    expect(device.authId()).toBeNull();
+    expect(kept.getItem('credo.session')).toBeNull();
+
+    device.setAuthId('in.tab', false);
+    device.clearAuthId();
+    expect(device.authId()).toBeNull();
+    expect(tab.getItem('credo.session')).toBeNull();
+
+    device.setAuthId('on.device', true);
+    device.setAuthId('in.tab', false);
+    expect(kept.getItem('credo.session')).toBeNull();
+    device.setAuthId('on.device.again', true);
+    expect(tab.getItem('credo.session')).toBeNull();
+    expect(createDeviceStore(kept, memory()).authId()).toBe('on.device.again');
+  });
+
   it('keeps whether the side menu shows: it does until a person hides it', () => {
     const storage = memory();
     const device = createDeviceStore(storage);

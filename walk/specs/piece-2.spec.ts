@@ -7,8 +7,8 @@ import { required, shot, WIDTHS } from '../support';
 
 /**
  * Piece 2's groups A, B, C and D, four walks in one run: the staff setup and the staff list, the person's
- * pages, the import, the office's and the phone's, thirty-four screens, each in Vietnamese and in English
- * at the three widths (34 × 2 × 3 = 204). The `fake` project runs it on `pnpm fake -- …`, the UI alone over the data set,
+ * pages, the import, the office's and the phone's, thirty-five screens, each in Vietnamese and in English
+ * at the three widths (35 × 2 × 3 = 210). The `fake` project runs it on `pnpm fake -- …`, the UI alone over the data set,
  * and keeps the pictures as the full run's reference; the `full` project runs it on the stack
  * (`pnpm stack -- …`) and compares them with the bases, or with the fake run's pictures. Each screen opens at an address of its own, so a screen never meets
  * what an earlier one changed. Words come from the app's own dictionaries.
@@ -458,6 +458,26 @@ async function walk(page: Page, language: Language, width: number) {
   await expect(page.getByRole('button', { name: words.person.archive, exact: true })).toBeVisible();
   await at('staff-23-back-on');
 
+  // 24. An email given on the default switches: the person signs in by it, in the box where others type their code.
+  const company = await open(page, language, { path: '/staff' });
+  await personNamed(page, 'Trần Văn Hùng');
+  await typed(words.person.emailNew, 'hung@minh-phat.example');
+  await press(words.person.emailSet);
+  await expect(page.getByRole('status')).toHaveText(
+    words.person.emailChanged.replace('{{email}}', 'hung@minh-phat.example'),
+  );
+  await page.getByRole('button', { name: 'root', exact: true }).click();
+  await page.getByRole('menuitem', { name: words.user.signOut }).click();
+  await typed(words.auth.username, 'hung@minh-phat.example');
+  // The stack types the 12 characters `madePassword` makes (bff/src/calling/password.ts); the fake
+  // types 12 as well, so the masked box draws the same dots in both.
+  await page
+    .getByLabel(exactly(words.auth.password))
+    .fill(company?.people['EMP-0002'] ?? 'Fake-pass-1!');
+  await at('staff-24-email-sign-in');
+  await press(words.auth.submit);
+  await expect(page.getByRole('heading', { level: 2, name: 'Trần Văn Hùng' })).toBeVisible();
+
   // The office's walk: people signed in by their code, as their permissions allow.
   await open(page, language, { path: '/staff', as: 'EMP-0001' });
   await expect(title(words.staff.title)).toBeVisible();
@@ -538,7 +558,7 @@ for (const [device, width] of Object.entries(WIDTHS)) {
       ['vi', 'Vietnamese'],
       ['en', 'English'],
     ] as const) {
-      test(`walks all thirty-four screens in ${name}`, async ({ page }) => {
+      test(`walks all thirty-five screens in ${name}`, async ({ page }) => {
         await walk(page, language, width);
       });
     }

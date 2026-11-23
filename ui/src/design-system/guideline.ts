@@ -1220,7 +1220,7 @@ export const GUIDELINE: {
       fixes: [
         'Its bar: 4 px in the brand’s gradient across the top; then the band, then the body with its own padding.',
         'Its shadow: the one that lifts a door off its page.',
-        'Not yet: no screen draws it; `SignInFrame` in `ui/src/pages/SignIn.tsx` draws a card of its own, and open item 651 moves it to this one.',
+        'Drawn by `SignInFrame` in `ui/src/pages/SignIn.tsx`, round the four doors; the buttons and words inside stay each screen’s own (open item 651).',
       ],
       states: [
         { name: 'Sign-in', line: 'The card holding the sign-in fields.' },
@@ -1229,6 +1229,39 @@ export const GUIDELINE: {
       serves: 'A screen picks parts, never a style',
       heldBy: { check: 'ui/src/design-system/guideline.test.ts' },
       followed: { item: 651 },
+      used: true,
+    },
+    {
+      part: 'DoorPage',
+      takes: [
+        {
+          prop: 'languages',
+          is: 'content',
+          line: 'The languages the company offers, each with its name; one or none draws no switch.',
+        },
+        { prop: 'onLanguage', is: 'content', line: 'The act of a chosen language.' },
+        { prop: 'children', is: 'content', line: 'The card the screen centres.' },
+      ],
+      decides: [
+        { what: 'The sweep over the whole screen.', from: [{ table: 'TOKENS', key: 'doorSweep' }] },
+        { what: 'The switch’s size.', from: [{ table: 'SIZES', key: 'chip' }] },
+        { what: 'The switch’s weight.', from: [{ table: 'WEIGHTS', key: 'title' }] },
+      ],
+      fixes: [
+        'Its sweep: at least the screen’s height.',
+        'Its switch: in the top right corner, two or more languages only, the picked one on a pale wash.',
+        'Its card: centred, at most the width of a door’s card.',
+        'Drawn by `SignInFrame` in `ui/src/pages/SignIn.tsx`, for the four doors.',
+      ],
+      states: [
+        { name: 'Company, two languages', line: 'The company’s sweep, the switch and the card.' },
+        { name: 'Credo, no logo', line: 'Credo’s own door, its card with no logo.' },
+        { name: 'One language, no switch', line: 'A door of one language draws no switch.' },
+      ],
+      serves: 'A screen picks parts, never a style',
+      heldBy: { check: 'ui/src/design-system/guideline.test.ts' },
+      followed: { item: 651 },
+      used: true,
     },
   ],
   buttons: {

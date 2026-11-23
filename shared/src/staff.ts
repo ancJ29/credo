@@ -147,8 +147,9 @@ export const staffSetupSchema = z.strictObject({
 });
 export type StaffSetup = z.infer<typeof staffSetupSchema>;
 
-/** What the setup says about a person's fields and codes, whole: off, none and `EMP-0001` style
- * where it says nothing. The one place those defaults are written. */
+/** What the setup says about a person's fields and codes, whole: off (the email sign-in on), none and
+ * `EMP-0001` style where it says nothing; a saved `email: false` is kept. The one place those
+ * defaults are written. */
 export function staffConfig(setup: Partial<StaffSetup>): {
   fields: Required<StaffFields>;
   customFields: CustomField[];
@@ -158,7 +159,7 @@ export function staffConfig(setup: Partial<StaffSetup>): {
     fields: {
       personalPhone: false,
       photo: false,
-      email: false,
+      email: true,
       qr: false,
       startDate: false,
       birthDate: false,

@@ -184,6 +184,13 @@ describe('a scene’s steps', () => {
     ).rejects.toThrow('found no button, link or choice named “Archive ”');
   });
 
+  it('press a control by its own words when the step says they are not a key', async () => {
+    draw();
+
+    await runSteps(document.body, [{ press: 'Archive', text: true }], WORDS, QUICK);
+    expect(out()).toBe('plain');
+  });
+
   it('wait for what a step names to show, then do it', async () => {
     draw({ later: true });
 

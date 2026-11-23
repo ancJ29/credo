@@ -15,6 +15,7 @@ export const vi: Dictionary = {
     password: 'Mật khẩu',
     passwordPlaceholder: 'Nhập mật khẩu',
     submit: 'Đăng nhập',
+    remember: 'Ghi nhớ đăng nhập',
     refused: 'Tên đăng nhập hoặc mật khẩu không chính xác.',
   },
   nav: {

@@ -157,7 +157,8 @@ export function ClientApp({
     qrAsked.current = true;
     void api.signInQr(qr.id, qr.secret).then(
       (session) => {
-        device.setAuthId(session.authId);
+        // A phone's code is its own: kept on the device, as it always was.
+        device.setAuthId(session.authId, true);
         setUser(session.user);
         setQrStatus('done');
         // The code is spent: the address is cleared of it, and the first page opens.
@@ -202,11 +203,11 @@ export function ClientApp({
     setUser(null);
   };
 
-  async function submit(name: string, password: string) {
+  async function submit(name: string, password: string, remember: boolean) {
     setSignIn('busy');
     try {
       const session = await api.signIn(name, password);
-      device.setAuthId(session.authId);
+      device.setAuthId(session.authId, remember);
       setSignIn('idle');
       setUser(session.user);
     } catch (error) {
@@ -239,7 +240,7 @@ export function ClientApp({
 
   /** The session that replaces the one held, when one's own password changed. */
   const replaced = (session: SessionReply) => {
-    device.setAuthId(session.authId);
+    device.setAuthId(session.authId, device.remembered());
     setUser(session.user);
   };
 
@@ -442,7 +443,7 @@ export function ClientApp({
           waitSeconds={waitSeconds}
           languages={config.languages}
           onLanguage={chooseLanguage}
-          onSubmit={(n, p) => void submit(n, p)}
+          onSubmit={(n, p, r) => void submit(n, p, r)}
         />
       )}
     </Providers>

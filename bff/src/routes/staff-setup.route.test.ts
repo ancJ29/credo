@@ -156,7 +156,7 @@ describe('The staff setup saves with its tag; a department or position sent with
   });
 });
 
-describe('The root chooses which optional fields the company keeps on a person, an email, a second phone, a photo, all off until turned on; a field turned off is hidden everywhere, and what was stored in it stays', () => {
+describe('The root chooses which optional fields the company keeps on a person, a second phone, a photo, off until turned on, and an email, on until turned off; a field turned off is hidden everywhere, and what was stored in it stays', () => {
   const licence = {
     key: 'licence',
     label: { vi: 'Bằng lái', en: 'Licence' },

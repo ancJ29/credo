@@ -48,12 +48,13 @@ function setup(
   kept: Record<string, string | null> = {},
   path = '/',
   address?: string,
+  tab?: ReturnType<typeof memory>,
 ) {
   const initial = Object.entries({ ...linked, ...kept }).flatMap(([key, value]) =>
     value === null ? [] : [[key, value] as const],
   );
   const storage = memory(Object.fromEntries(initial));
-  const device = createDeviceStore(storage);
+  const device = createDeviceStore(storage, tab);
   const api = {
     getConfig: vi.fn(() => Promise.resolve(doc)),
     me: vi.fn(() => Promise.resolve({ user: root })),
@@ -82,7 +83,7 @@ function setup(
     <App api={api} device={device} passkeys={noPasskeys} build="dev" test address={address} />,
     path,
   );
-  return { api, device, storage, ...drawn };
+  return { api, device, storage, tab, ...drawn };
 }
 
 /** The brand colour the page is drawn in, as Mantine's variable holds it. */
@@ -206,6 +207,96 @@ describe('the app', () => {
     expect(await screen.findByLabelText(labelled(words.auth.username))).toBeTruthy();
     expect(device.authId()).toBeNull();
     expect(api.me).toHaveBeenCalledOnce();
+  });
+
+  it('7: A sign-in with the tick off keeps its handle in the tab alone, and signing out clears it there', async () => {
+    const tab = memory();
+    const { api, device, storage } = setup({}, {}, '/', undefined, tab);
+    await userEvent.click(await screen.findByRole('checkbox', { name: words.auth.remember }));
+    await signInAs();
+
+    expect((await screen.findAllByText(words.nav.settings)).length).toBeGreaterThan(0);
+    expect(api.signIn).toHaveBeenCalledExactlyOnceWith('root', 'pw');
+    expect(tab.getItem('credo.session')).toBe('d.s');
+    expect(storage.getItem('credo.session')).toBeNull();
+
+    await userEvent.click(screen.getByRole('button', { name: 'root' }));
+    await userEvent.click(screen.getByRole('menuitem', { name: words.user.signOut }));
+    expect(await screen.findByLabelText(labelled(words.auth.username))).toBeTruthy();
+    expect(device.authId()).toBeNull();
+    expect(tab.getItem('credo.session')).toBeNull();
+  });
+
+  it('7: A sign-in with the tick left on keeps its handle on the device, and the request is the name and the password alone', async () => {
+    const tab = memory();
+    const { api, storage } = setup({}, {}, '/', undefined, tab);
+    await signInAs();
+
+    expect((await screen.findAllByText(words.nav.settings)).length).toBeGreaterThan(0);
+    expect(api.signIn).toHaveBeenCalledExactlyOnceWith('root', 'pw');
+    expect(storage.getItem('credo.session')).toBe('d.s');
+    expect(tab.getItem('credo.session')).toBeNull();
+  });
+
+  it('10: A 401 clears a handle kept in the tab', async () => {
+    const tab = memory({ 'credo.session': 'd.s' });
+    const { device } = setup(
+      { me: () => Promise.reject(new ApiError(401)) },
+      {},
+      '/',
+      undefined,
+      tab,
+    );
+
+    expect(await screen.findByLabelText(labelled(words.auth.username))).toBeTruthy();
+    expect(device.authId()).toBeNull();
+    expect(tab.getItem('credo.session')).toBeNull();
+  });
+
+  it.each([
+    ['11: A password changed keeps the new session on the device where the old one was', true],
+    ['11: A password changed keeps the new session in the tab where the old one was', false],
+  ])('%s', async (_name, onDevice) => {
+    const tab = memory(onDevice ? {} : { 'credo.session': 'd.s' });
+    const { storage } = setup(
+      {
+        changePassword: () =>
+          Promise.resolve({
+            kind: 'changed' as const,
+            session: { authId: 'n.s', expiresAt: 2, user: root },
+          }),
+      },
+      onDevice ? signedIn : {},
+      '/password',
+      undefined,
+      tab,
+    );
+    await userEvent.type(await screen.findByLabelText(words.ownPassword.current), 'old');
+    await userEvent.type(screen.getByLabelText(words.ownPassword.new), 'Aa1!aaaa');
+    await userEvent.type(screen.getByLabelText(words.ownPassword.again), 'Aa1!aaaa');
+    await userEvent.click(screen.getByRole('button', { name: words.ownPassword.submit }));
+
+    await screen.findByText(words.ownPassword.changed);
+    expect(onDevice ? storage.getItem('credo.session') : tab.getItem('credo.session')).toBe('n.s');
+    expect(onDevice ? tab.getItem('credo.session') : storage.getItem('credo.session')).toBeNull();
+  });
+
+  it('12: A QR code’s sign-in keeps the phone’s handle on the device', async () => {
+    const tab = memory();
+    const link = `/login?client-code=minh-phat&qr=${crypto.randomUUID()}.${'a'.repeat(32)}`;
+    const { storage } = setup(
+      {
+        signInQr: () => Promise.resolve({ authId: 'q.s', expiresAt: 1, user: root }),
+      },
+      {},
+      link,
+      undefined,
+      tab,
+    );
+
+    expect((await screen.findAllByText(words.nav.settings)).length).toBeGreaterThan(0);
+    expect(storage.getItem('credo.session')).toBe('q.s');
+    expect(tab.getItem('credo.session')).toBeNull();
   });
 
   it('With both languages each user switches from the header’s button, kept on that device', async () => {

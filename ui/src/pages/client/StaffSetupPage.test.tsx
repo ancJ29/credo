@@ -1,5 +1,5 @@
 import { DEMO_STAFF_SETUP } from '@credo/shared/demo';
-import { screen, within } from '@testing-library/react';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
 import { vi } from 'vitest';
@@ -93,6 +93,31 @@ describe('the staff setup page', () => {
     });
     await user.click(birth);
     expect((birth as HTMLInputElement).checked).toBe(true);
+  });
+
+  it('The setup page draws the email tick ticked where the company never set it, and a save keeps it', async () => {
+    const { api } = openApp('/staff-setup');
+    const email = await screen.findByRole<HTMLInputElement>('checkbox', {
+      name: words.setup.fieldEmail,
+    });
+    expect(email.checked).toBe(true);
+
+    await user.click(screen.getByRole('button', { name: words.setup.save }));
+    await screen.findByText(words.setup.saved);
+    expect((await api.getStaffSetup()).setup.fields).toMatchObject({ email: true });
+    expect(
+      screen.getByRole<HTMLInputElement>('checkbox', { name: words.setup.fieldEmail }).checked,
+    ).toBe(true);
+
+    // the root switches it off and saves: the choice is kept, and the tick is drawn off
+    const again = screen.getByRole<HTMLInputElement>('checkbox', { name: words.setup.fieldEmail });
+    await user.click(again);
+    expect(again.checked).toBe(false);
+    await user.click(screen.getByRole('button', { name: words.setup.save }));
+    await waitFor(async () =>
+      expect((await api.getStaffSetup()).setup.fields).toMatchObject({ email: false }),
+    );
+    expect(again.checked).toBe(false);
   });
 
   it('The setup page names the three switches in Vietnamese', async () => {

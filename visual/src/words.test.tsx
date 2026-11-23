@@ -211,6 +211,8 @@ const PROOF: Record<string, (w: (typeof DICTIONARIES)['en']) => string> = {
   'admin-staff:staff-22-no-name': (w) =>
     `alert: ${w.import.noName.replaceAll('{{name}}', w.addPerson.name)}`,
   'admin-staff:staff-23-back-on': (w) => `button: ${w.person.archive}`,
+  'admin-staff:staff-24-email-sign-in': (w) =>
+    `textbox "${w.auth.username}" = "hung@minh-phat.example" placeholder "${w.auth.usernamePlaceholder}"`,
   'office-staff:office-1-menu': (w) => `link: ${w.nav.staff}`,
   'office-staff:office-2-add': (w) => `region: ${w.person.signInNotYet}`,
   'office-staff:office-3-forbidden': (w) => `heading: ${w.forbidden.title}`,

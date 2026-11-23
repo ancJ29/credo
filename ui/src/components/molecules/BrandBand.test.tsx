@@ -25,6 +25,15 @@ describe('BrandBand', () => {
     expect(band.firstElementChild).toBe(screen.getByRole('img', { name: 'Acme' }));
   });
 
+  it('241.1 step 2: draws the name as the first heading, the look unchanged', () => {
+    draw();
+
+    const name = screen.getByRole('heading', { level: 1, name: 'Acme' });
+    expect(name.style.fontWeight).toBe('700');
+    expect(name.style.getPropertyValue('--title-fz')).toBe('var(--mantine-font-size-md)');
+    expect(name.style.lineHeight).toBe('var(--mantine-line-height-md)');
+  });
+
   it('2: draws the name alone with no logo', () => {
     draw();
 

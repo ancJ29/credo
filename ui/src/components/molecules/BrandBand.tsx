@@ -1,8 +1,8 @@
-import { Group, Text } from '@mantine/core';
+import { Group, Title } from '@mantine/core';
 import { TOKENS, WEIGHTS } from '../../design-system/tokens';
 import { LogoTile } from '../atoms/LogoTile';
 
-/** The company's logo tile beside its name, bold and centred on the brand's palest shade, a brand-1 line beneath. */
+/** The company's logo tile beside its name as the first heading, bold and centred on the brand's palest shade, a brand-1 line beneath. */
 export function BrandBand({ name, logo }: { name: string; logo?: string }) {
   return (
     <Group
@@ -15,9 +15,9 @@ export function BrandBand({ name, logo }: { name: string; logo?: string }) {
       }}
     >
       <LogoTile logo={logo} alt={name} />
-      <Text fw={WEIGHTS.title} size="md">
+      <Title order={1} size="md" lh="md" fw={WEIGHTS.title}>
         {name}
-      </Text>
+      </Title>
     </Group>
   );
 }

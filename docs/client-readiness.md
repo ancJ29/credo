@@ -373,7 +373,7 @@ Not features — jobs a client's person could finish on a Monday.
    from Excel, photos, per-person rights, a person switched off when they leave and back on when
    they return, their own password, and the company's name, colour and three frame switches. The
    menu that governs it is [`ui/src/nav.ts#L27-L85`](../ui/src/nav.ts#L27); the screens are
-   `admin-setup`, `setup-1` and `staff-1` to `staff-23`.
+   `admin-setup`, `setup-1` and `staff-1` to `staff-24`.
 
 All of it is in Vietnamese and English on phone, tablet and PC, and a signed-in session lasts seven
 days sliding ([`bff/src/calling/sessions.ts#L13`](../bff/src/calling/sessions.ts#L13)), so a driver signs in about

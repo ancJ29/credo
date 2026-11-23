@@ -198,7 +198,7 @@ type Options = {
   /** Where the fake finds out whether this device holds a handle. */
   device: Pick<ReturnType<typeof createDeviceStore>, 'authId' | 'operatorAuthId'>;
   cue: Cue | null;
-  /** The company has turned on sign-in by email and by QR code, which the data set leaves off. */
+  /** The company has turned on sign-in by QR code, which the data set leaves off, and saved the email's on. */
   signIns?: boolean;
   /** A deploy half done: c-storage runs the newer build the others have not reached. */
   drift?: boolean;
@@ -1600,7 +1600,7 @@ export function fakeParts(search: string, storage: Parameters<typeof createDevic
   const params = new URLSearchParams(search);
   if (!params.has('fake') && storage.getItem(FAKE_KEY) === null) return null;
   storage.setItem(FAKE_KEY, '1');
-  const device = createDeviceStore(storage);
+  const device = createDeviceStore(storage, storage);
   device.setClientCode(DEMO_CODE);
   const cue = parseCue(params.get('cue'));
   return {

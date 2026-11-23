@@ -15,8 +15,10 @@ describe('DoorHeading', () => {
   it('3: draws its title as a heading, bold and centred', () => {
     draw();
 
-    const title = screen.getByRole('heading', { name: 'Sign in' });
+    const title = screen.getByRole('heading', { level: 2, name: 'Sign in' });
     expect(title.style.fontWeight).toBe('700');
+    expect(title.style.getPropertyValue('--title-fz')).toBe('var(--mantine-h3-font-size)');
+    expect(title.style.getPropertyValue('--title-lh')).toBe('var(--mantine-h3-line-height)');
     expect(title.style.textAlign).toBe('center');
   });
 

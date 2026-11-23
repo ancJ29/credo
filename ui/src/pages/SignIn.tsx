@@ -1,37 +1,16 @@
 import type { Language } from '@credo/shared';
-import {
-  Box,
-  Button,
-  Flex,
-  Group,
-  Image,
-  Paper,
-  PasswordInput,
-  Stack,
-  TextInput,
-  Title,
-  UnstyledButton,
-} from '@mantine/core';
-import { IconBrandAdobe, IconLock, IconUser } from '@tabler/icons-react';
+import { Box, Button, Checkbox, PasswordInput, Stack, TextInput } from '@mantine/core';
+import { IconLock, IconUser } from '@tabler/icons-react';
 import { type FormEvent, type ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Brand } from '../brand';
-import classes from '../frame/frame.module.css';
 import { LANGUAGE_NAMES } from '../i18n';
 import { BRAND_GRADIENT } from '../design-system/appTheme';
 import { waitWords } from './waitWords';
-import { SIZES, TYPE, WEIGHTS } from '../design-system/tokens';
+import { DoorHeading } from '../components/atoms/DoorHeading';
+import { DoorCard } from '../components/organisms/DoorCard';
+import { DoorPage } from '../components/organisms/DoorPage';
 import { FormMessage } from '../components/molecules/FormMessage';
-
-/** The page's own ground behind a door's card, the grey the signed-in pages sit on. */
-const GROUND = 'light-dark(var(--credo-surface-sunken), var(--mantine-color-body))';
-
-/** The language switch's outline, white on the coloured header. */
-const SWITCH = {
-  border: '1px solid var(--credo-language-edge)',
-  borderRadius: 6,
-  overflow: 'hidden',
-};
 
 type Props = {
   brand: Brand;
@@ -41,7 +20,8 @@ type Props = {
   waitSeconds?: number;
   /** What is already typed, for a mock of a half-filled form. */
   initial?: { username: string; password: string };
-  onSubmit: (username: string, password: string) => void;
+  /** What was typed, and whether the sign-in is kept on the device (the tick, which starts on). */
+  onSubmit: (username: string, password: string, remember: boolean) => void;
   /** The languages the company offers, and the caller's handler for a chosen one. */
   languages?: readonly Language[];
   onLanguage?: (language: Language) => void;
@@ -59,79 +39,22 @@ type FrameProps = {
 };
 
 /**
- * What a door is drawn in: the app's own coloured header (gradient, logo, company name and, where
- * the caller offers more than one language, the language switch) with no menu, and the card on the
- * app's own ground beneath. The sign-in, the operator's and the join page share it.
+ * What a door is drawn in: the brand's colour sweeping the whole screen, the language switch in its
+ * corner, and the legacy's card centred on it (the band with the logo and the name, then the title
+ * and what the caller gives), with no menu, bar or header. The sign-in, the QR landing, the
+ * operators' sign-in and the join page share it.
  */
 export function SignInFrame({ brand, title, languages = [], onLanguage, children }: FrameProps) {
-  const { t, i18n } = useTranslation();
   return (
-    <Box mih="100vh" style={{ display: 'flex', flexDirection: 'column' }}>
-      <Group
-        component="header"
-        h={56}
-        px="md"
-        justify="space-between"
-        wrap="nowrap"
-        className={classes.header}
-        style={{ background: BRAND_GRADIENT, flexShrink: 0 }}
-      >
-        <Group gap="sm" wrap="nowrap" className={classes.brand}>
-          {brand.logo ? (
-            <Image src={brand.logo} alt="" h={36} w={36} fit="contain" radius="sm" />
-          ) : (
-            <IconBrandAdobe size={36} stroke={1.5} aria-hidden />
-          )}
-          <Title order={1} size="h4" fw={WEIGHTS.emphasis} c="inherit">
-            {brand.name}
-          </Title>
-        </Group>
-        {languages.length > 1 && onLanguage && (
-          <Group gap={0} wrap="nowrap" role="group" aria-label={t('user.language')} style={SWITCH}>
-            {languages.map((language) => (
-              <UnstyledButton
-                key={language}
-                aria-label={LANGUAGE_NAMES[language]}
-                aria-current={i18n.language === language}
-                px={8}
-                py={3}
-                fz={SIZES.chip}
-                fw={WEIGHTS.title}
-                style={{
-                  background:
-                    i18n.language === language ? 'var(--credo-language-picked)' : undefined,
-                }}
-                onClick={() => onLanguage(language)}
-              >
-                {language.toUpperCase()}
-              </UnstyledButton>
-            ))}
-          </Group>
-        )}
-      </Group>
-      <Flex
-        flex={1}
-        justify="center"
-        align={{ base: 'flex-start', sm: 'center' }}
-        px={{ base: 'sm', sm: 'md' }}
-        py={{ base: 'md', sm: 24 }}
-        style={{ background: GROUND }}
-      >
-        <Paper
-          shadow="lg"
-          radius="md"
-          w="100%"
-          maw={440}
-          p={{ base: '24px 20px', sm: 32 }}
-          style={{ border: '1px solid var(--mantine-color-default-border)' }}
-        >
-          <Title {...TYPE.pageTitle} ta="center" mb="md">
-            {title}
-          </Title>
-          {children}
-        </Paper>
-      </Flex>
-    </Box>
+    <DoorPage
+      languages={languages.map((language) => ({ language, name: LANGUAGE_NAMES[language] }))}
+      onLanguage={onLanguage}
+    >
+      <DoorCard name={brand.name} logo={brand.logo ?? undefined}>
+        <DoorHeading title={title} />
+        <Box mt="md">{children}</Box>
+      </DoorCard>
+    </DoorPage>
   );
 }
 
@@ -148,10 +71,11 @@ export function SignIn({
   const { t } = useTranslation();
   const [username, setUsername] = useState(initial?.username ?? '');
   const [password, setPassword] = useState(initial?.password ?? '');
+  const [remember, setRemember] = useState(true);
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
-    onSubmit(username, password);
+    onSubmit(username, password, remember);
   };
 
   return (
@@ -187,6 +111,11 @@ export function SignIn({
             withAsterisk={false}
             value={password}
             onChange={(event) => setPassword(event.currentTarget.value)}
+          />
+          <Checkbox
+            label={t('auth.remember')}
+            checked={remember}
+            onChange={(event) => setRemember(event.currentTarget.checked)}
           />
           <Button
             type="submit"

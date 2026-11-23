@@ -14,6 +14,7 @@ export const en = {
     password: 'Password',
     passwordPlaceholder: 'Enter your password',
     submit: 'Sign in',
+    remember: 'Remember me',
     refused: 'Incorrect username or password.',
   },
   nav: {

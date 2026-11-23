@@ -1,5 +1,6 @@
 import {
   Badge,
+  Box,
   Button,
   Checkbox,
   Divider,
@@ -12,6 +13,7 @@ import {
   useMantineTheme,
 } from '@mantine/core';
 import type { ReactNode } from 'react';
+import type { Language } from '@credo/shared';
 import { useTranslation } from 'react-i18next';
 import { IconBuilding, IconKeyboard, IconLock, IconQrcode, IconUser } from '@tabler/icons-react';
 import { BackLink } from '../components/atoms/BackLink';
@@ -23,8 +25,11 @@ import { BrandBand } from '../components/molecules/BrandBand';
 import { DetailField } from '../components/molecules/DetailField';
 import { SectionTitle } from '../components/molecules/SectionTitle';
 import { DoorCard } from '../components/organisms/DoorCard';
+import { DoorPage } from '../components/organisms/DoorPage';
 import { PageHeader } from '../components/organisms/PageHeader';
 import { SectionCard } from '../components/organisms/SectionCard';
+import { CREDO_BRAND } from '../brand';
+import { LANGUAGE_NAMES } from '../i18n';
 import { Charter } from './Charter';
 import { ChoiceStates } from './Choices';
 import { MenuStates } from './Menus';
@@ -77,9 +82,9 @@ import {
   Widths,
 } from './Values';
 
-/** A sample company logo for the tile: a plain shape, no real company's. */
+/** A sample company logo for the tile: Tabler's Adobe icon (3.49.0) at stroke 2, in teal, the human's choice for the gallery's sample. */
 const SAMPLE_LOGO =
-  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Cpath d='M6 34 20 6l14 28z' fill='teal'/%3E%3C/svg%3E";
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='teal' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12.893 4.514l7.977 14a.993 .993 0 0 1 -.394 1.365a1.04 1.04 0 0 1 -.5 .127h-3.476l-4.5 -8l-2.5 4h1.5l2 4h-8.977c-.565 0 -1.023 -.45 -1.023 -1c0 -.171 .045 -.34 .13 -.49l7.977 -13.993a1.034 1.034 0 0 1 1.786 0l0 -.009'/%3E%3C/svg%3E";
 
 /** Each status of a row, as the person reads it: the part draws its words from the stage's dictionary. */
 function StatusRow({ statuses }: { statuses: Status[] }) {
@@ -110,7 +115,7 @@ function SignInState() {
           placeholder={t('auth.passwordPlaceholder')}
           leftSection={<IconLock size={18} />}
         />
-        <Checkbox defaultChecked label={words.remember} />
+        <Checkbox defaultChecked label={t('auth.remember')} />
         <Button variant="gradient" size="md" fullWidth>
           {t('auth.submit')}
         </Button>
@@ -142,6 +147,43 @@ function LinkState() {
         <BackLink href="#">{words.backToSignIn}</BackLink>
       </Stack>
     </DoorCard>
+  );
+}
+
+/** One door's screen as the gallery draws it: the sweep, the switch where there are two languages, a card of the company's or credo's own. */
+function DoorPageSample({
+  credo,
+  languages,
+}: {
+  credo?: boolean;
+  languages?: readonly Language[];
+}) {
+  const { t, i18n } = useTranslation();
+  const words = SAMPLES[useLanguage()];
+  return (
+    <Box style={{ '--door-page-height': '460px' }}>
+      <DoorPage
+        languages={languages?.map((language) => ({ language, name: LANGUAGE_NAMES[language] }))}
+        onLanguage={languages ? (language) => void i18n.changeLanguage(language) : undefined}
+      >
+        <DoorCard
+          name={credo ? CREDO_BRAND.name : words.shop}
+          logo={credo ? undefined : SAMPLE_LOGO}
+        >
+          <Stack gap="md">
+            <DoorHeading title={t('auth.title')} />
+            <TextInput
+              label={t('auth.username')}
+              placeholder={t('auth.usernamePlaceholder')}
+              leftSection={<IconUser size={18} />}
+            />
+            <Button variant="gradient" size="md" fullWidth>
+              {t('auth.submit')}
+            </Button>
+          </Stack>
+        </DoorCard>
+      </DoorPage>
+    </Box>
   );
 }
 
@@ -786,7 +828,7 @@ export const ENTRIES: Entry[] = [
     name: 'DoorHeading',
     kind: 'Text',
     description:
-      "A door's title as a heading, bold and centred, and a small dimmed subtitle beneath only when given.",
+      "A door's title as the second heading, in the third's size, bold and centred, and a small dimmed subtitle beneath only when given.",
     props: 'title: string · subtitle?: string',
     useWhen: ["A door's title, and a subtitle only if it has one, at the top of a card."],
     dontUseWhen: [
@@ -980,7 +1022,7 @@ export const ENTRIES: Entry[] = [
     name: 'BrandBand',
     kind: 'Headings',
     description:
-      "The company's logo tile beside its name, bold and centred on the brand's palest shade, a brand-1 line beneath.",
+      "The company's logo tile beside its name as the first heading, bold and centred on the brand's palest shade, a brand-1 line beneath.",
     props: 'name: string · logo?: string',
     useWhen: ["The company's logo and name lead a door or a card."],
     dontUseWhen: ["The logo alone: that is LogoTile's.", "A page's title: that is PageHeader's."],
@@ -1059,7 +1101,7 @@ export const ENTRIES: Entry[] = [
     useWhen: ['A page a person reaches before sign-in, the card holding its words and buttons.'],
     dontUseWhen: [
       "A block inside a signed-in page: that is SectionCard's.",
-      "The card `SignInFrame` (`ui/src/pages/SignIn.tsx`) draws for itself: this card is the one to use, and the frame's moves to it (open item 651).",
+      "A card of a screen's own on a door: `SignInFrame` (`ui/src/pages/SignIn.tsx`) draws this one for the four doors.",
     ],
     instead: 'SectionCard',
     states: [
@@ -1078,6 +1120,35 @@ export const ENTRIES: Entry[] = [
             <LinkState />
           </Stack>
         ),
+      },
+    ],
+  },
+  {
+    group: 'Organisms',
+    name: 'DoorPage',
+    kind: 'Layout',
+    description:
+      "A door's whole screen: the brand's gradient sweeping all of it, the language switch in its top right corner, and the card centred, with no menu, bar or header.",
+    props:
+      'languages?: readonly Choice[] · onLanguage?: (language: Language) => void · children: ReactNode',
+    useWhen: ['A page a person reaches before sign-in, round its DoorCard.'],
+    dontUseWhen: [
+      'A signed-in page, with its menu and header: that is PageShell’s.',
+      'The card alone: that is DoorCard’s.',
+    ],
+    instead: 'DoorCard',
+    states: [
+      {
+        name: 'Company, two languages',
+        node: <DoorPageSample languages={['vi', 'en']} />,
+      },
+      {
+        name: 'Credo, no logo',
+        node: <DoorPageSample credo languages={['vi', 'en']} />,
+      },
+      {
+        name: 'One language, no switch',
+        node: <DoorPageSample />,
       },
     ],
   },

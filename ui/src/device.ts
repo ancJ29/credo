@@ -10,13 +10,16 @@ const KEYS = {
   menu: 'credo.menu',
 };
 
+type Store = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
+
 const languageOf = (kept: string | null) => LANGUAGES.find((language) => language === kept) ?? null;
 
 /** What this device keeps between visits: the id it minted once, the client it was linked to, the
- * session handle (a reload keeps the sign-in), the operator's own handle apart from it, whether
+ * session handle (a reload keeps the sign-in; it sits on the device where the person ticked
+ * "Remember me", in the tab's own storage where not), the operator's own handle apart from it, whether
  * the side menu shows, the language its user chose, and the language the last successful boot showed, which speaks before
  * the settings load. */
-export function createDeviceStore(storage: Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>) {
+export function createDeviceStore(storage: Store, tabStorage: Store = storage) {
   return {
     /** Minted on first use and kept; the BFF names a session record by it. */
     deviceId() {
@@ -29,9 +32,18 @@ export function createDeviceStore(storage: Pick<Storage, 'getItem' | 'setItem' |
     /** The one client this device belongs to, kept from the link that named it. */
     clientCode: () => storage.getItem(KEYS.client),
     setClientCode: (code: string) => storage.setItem(KEYS.client, code),
-    authId: () => storage.getItem(KEYS.session),
-    setAuthId: (authId: string) => storage.setItem(KEYS.session, authId),
-    clearAuthId: () => storage.removeItem(KEYS.session),
+    authId: () => tabStorage.getItem(KEYS.session) ?? storage.getItem(KEYS.session),
+    /** Kept on the device where `remember` (a tick), else in this tab alone; never in both. */
+    setAuthId: (authId: string, remember = true) => {
+      (remember ? tabStorage : storage).removeItem(KEYS.session);
+      (remember ? storage : tabStorage).setItem(KEYS.session, authId);
+    },
+    /** Whether the handle held is the device's (or none is held): false where it sits in the tab alone. */
+    remembered: () => tabStorage.getItem(KEYS.session) === null,
+    clearAuthId: () => {
+      storage.removeItem(KEYS.session);
+      tabStorage.removeItem(KEYS.session);
+    },
     /** The operator's handle, which opens no client and which no client's opens. */
     operatorAuthId: () => storage.getItem(KEYS.operator),
     setOperatorAuthId: (authId: string) => storage.setItem(KEYS.operator, authId),
