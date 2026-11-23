@@ -188,6 +188,7 @@ describe('Gallery', () => {
     expect(list().queryAllByRole('link', { current: 'page' })).toHaveLength(0);
   });
 
+  // Walks every entry: 10 s, three times its alone time or more (item 671).
   it('8: each component’s description and props in the table are its file’s doc comment and props', async () => {
     const user = userEvent.setup();
     open(BASE);
@@ -211,7 +212,7 @@ describe('Gallery', () => {
       expect(part().getByText(doc)).toBeDefined();
       expect(part().getByText(props)).toBeDefined();
     }
-  });
+  }, 10_000);
 
   it('9: on a part of two states or more “One at a time” shows one state and a row to pick another; a part of one state has no switch; another part opens on all states', async () => {
     const user = userEvent.setup();
@@ -1338,6 +1339,7 @@ describe('Gallery', () => {
     }
   });
 
+  // Walks every entry: 10 s, three times its alone time or more (item 671).
   it('213 case 2: an entry’s “instead” names an entry that exists, and the panel links to its address', () => {
     const withInstead = ENTRIES.filter((entry) => entry.instead !== undefined);
     expect(withInstead.length).toBeGreaterThan(0);
@@ -1359,8 +1361,9 @@ describe('Gallery', () => {
     cleanup();
     open(`${BASE}/atoms/back-link`);
     expect(about().queryByText(/^Instead:/)).toBeNull();
-  });
+  }, 10_000);
 
+  // Walks every entry: 10 s, three times its alone time or more (item 671).
   it('213 case 3: the side panel shows the part’s use lines under its description, before its props', () => {
     for (const entry of ENTRIES) {
       open(`${BASE}/${slugOf(entry.group)}/${slugOf(entry.name)}`);
@@ -1379,7 +1382,7 @@ describe('Gallery', () => {
       );
       cleanup();
     }
-  });
+  }, 10_000);
 
   it('3: asks search engines not to list it and carries its title', () => {
     open(BASE);
