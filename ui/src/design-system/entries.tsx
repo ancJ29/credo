@@ -115,7 +115,7 @@ function SignInState() {
           placeholder={t('auth.passwordPlaceholder')}
           leftSection={<IconLock size={18} />}
         />
-        <Checkbox defaultChecked label={words.remember} />
+        <Checkbox defaultChecked label={t('auth.remember')} />
         <Button variant="gradient" size="md" fullWidth>
           {t('auth.submit')}
         </Button>
@@ -828,7 +828,7 @@ export const ENTRIES: Entry[] = [
     name: 'DoorHeading',
     kind: 'Text',
     description:
-      "A door's title as a heading, bold and centred, and a small dimmed subtitle beneath only when given.",
+      "A door's title as the second heading, in the third's size, bold and centred, and a small dimmed subtitle beneath only when given.",
     props: 'title: string · subtitle?: string',
     useWhen: ["A door's title, and a subtitle only if it has one, at the top of a card."],
     dontUseWhen: [
@@ -1022,7 +1022,7 @@ export const ENTRIES: Entry[] = [
     name: 'BrandBand',
     kind: 'Headings',
     description:
-      "The company's logo tile beside its name, bold and centred on the brand's palest shade, a brand-1 line beneath.",
+      "The company's logo tile beside its name as the first heading, bold and centred on the brand's palest shade, a brand-1 line beneath.",
     props: 'name: string · logo?: string',
     useWhen: ["The company's logo and name lead a door or a card."],
     dontUseWhen: ["The logo alone: that is LogoTile's.", "A page's title: that is PageHeader's."],

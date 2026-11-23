@@ -237,7 +237,7 @@ describe('Gallery', () => {
   it('10: the door heading, the logo tile and the page header each draw the state the mock adds', () => {
     open(`${BASE}/atoms/door-heading`);
     expect(stateNames()).toEqual(['With subtitle', 'Title only']);
-    expect(part().getAllByRole('heading', { level: 3, name: /^Đăng nhập/ })).toHaveLength(2);
+    expect(part().getAllByRole('heading', { level: 2, name: /^Đăng nhập/ })).toHaveLength(2);
     expect(part().getAllByText(/^Quét mã QR hoặc/)).toHaveLength(1);
   });
 
@@ -483,10 +483,26 @@ describe('Gallery', () => {
     ).toBe('true');
     expect(
       plate('One language, no switch').getByRole('heading', {
-        level: 3,
+        level: 2,
         name: DICTIONARIES.en.auth.title,
       }),
     ).toBeDefined();
+  });
+
+  it('241.1 case 17: DoorCard’s Sign-in state holds the dictionary’s tick, ticked, in Vietnamese and in English', () => {
+    window.localStorage.clear();
+    const vi = open(`${BASE}/organisms/door-card`);
+
+    expect(DICTIONARIES.en.auth.remember).toBe('Remember me');
+    expect(DICTIONARIES.vi.auth.remember).toBe('Ghi nhớ đăng nhập');
+    const signIn = () => within(part().getByRole('figure', { name: 'Sign-in' }));
+    const tick = (name: string) => signIn().getByRole<HTMLInputElement>('checkbox', { name });
+    expect(tick(DICTIONARIES.vi.auth.remember).checked).toBe(true);
+    vi.unmount();
+    window.localStorage.setItem('credo-gallery-language', 'en');
+    open(`${BASE}/organisms/door-card`);
+    expect(tick(DICTIONARIES.en.auth.remember).checked).toBe(true);
+    window.localStorage.clear();
   });
 
   it('231 case 12: Menus draws the language menu and the person menu, each opened by a press', async () => {

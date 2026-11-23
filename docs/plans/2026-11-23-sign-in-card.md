@@ -144,11 +144,15 @@ citation test, `pnpm --filter @credo/scripts exec vitest run src/citations.test.
       _Done 2026-11-23 15:59:_ `ui`'s gate exit 0; row 17's case red with the entry absent, then green;
       `DoorPage` takes `languages` as `{ language, name }` pairs (a component may not import the
       language names) and no `brand`, the card being its child; `DoorCard`'s dictionary tick is step 2's.
-- [ ] **2. The card's headings and the tick's word.** `BrandBand`'s name and `DoorHeading`'s title
+- [x] **2. The card's headings and the tick's word.** `BrandBand`'s name and `DoorHeading`'s title
       take the first and second levels, their look pinned unchanged by their own tests; `auth.remember`
       in `ui/src/i18n/en.ts` and `vi.ts` ("Remember me", "Ghi nhớ đăng nhập", the legacy's); `DoorCard`'s
       Sign-in state reads it, the sample word gone. _Done when:_ `ui`'s gate. **6 min** (piece 240's
       steps 1 and 3: 6, 6). Then point 1, which stops nothing.
+      _Done 2026-11-23 16:05:_ `ui`'s gate exit 0, `@credo/scripts`' `words.test.ts`, `fake.test.ts` and `citations.test.ts` exit 0;
+      row 17's tick half red (`auth.remember` undefined), then green; `BrandBand`'s name is `Title` order 1
+      in size md and `DoorHeading`'s `Title` order 2 in size h3, their look pinned by their own tests; the
+      dictionary grows 755 to 756 keys, `words.test.ts` and `docs/products.md#L86` say so.
 - [ ] **3. The four doors on the parts.** `SignInFrame` draws `DoorPage`, `DoorCard` and `DoorHeading`
       round what it is given; rows 13 to 16 and 18; the "Not yet" and entry lines rewritten, `used` set.
       _Done when:_ `ui`'s and `visual`'s gates, and the pinned styles' diff names the nine doors alone:

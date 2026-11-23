@@ -35,7 +35,6 @@ export const SAMPLES: Record<
     quietAction: string;
     aField: string;
     aBadge: string;
-    remember: string;
     or: string;
     useLink: string;
     linkTitle: string;
@@ -84,7 +83,6 @@ export const SAMPLES: Record<
     quietAction: 'Quiet action',
     aField: 'A field',
     aBadge: 'A badge',
-    remember: 'Remember me',
     or: 'or',
     useLink: 'Use a sign-in link',
     linkTitle: 'Sign in with a link',
@@ -140,7 +138,6 @@ export const SAMPLES: Record<
     quietAction: 'Thao tác phụ',
     aField: 'Một ô nhập',
     aBadge: 'Một nhãn',
-    remember: 'Ghi nhớ đăng nhập',
     or: 'hoặc',
     useLink: 'Dùng liên kết đăng nhập',
     linkTitle: 'Đăng nhập bằng liên kết',
