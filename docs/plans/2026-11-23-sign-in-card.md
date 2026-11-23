@@ -196,10 +196,12 @@ citation test, `pnpm --filter @credo/scripts exec vitest run src/citations.test.
       second saving `email: false` itself); `staffConfig`'s `email: true` the one line, `fields.email` read by
       the seven readers unchanged; the describe at `staff-setup.route.test.ts#L159` says email is on until
       turned off; the pinned diff names the eleven staff screens alone; no stored data touched, the plan's reading held.
-- [ ] **7. The prose.** Two rows in `docs/decisions.md` (email on by default, a saved choice kept;
+- [x] **7. The prose.** Two rows in `docs/decisions.md` (email on by default, a saved choice kept;
       the legacy's look round every door, reversing 5 November's header, which rested on a legacy
       never read, `docs/recaps/2026-11-05-signin-look.md#L14`); `docs/products.md#L31`'s row true.
       _Done when:_ the citation test. **3 min** (piece 222's step 10c: 2).
+      _Done 2026-11-23 17:27:_ two rows in `docs/decisions.md` (the legacy's look round every door; email, QR and passkeys on by default, a saved
+      choice kept), `docs/products.md#L31`'s row true, open item 671 filed (the gallery's load red); `citations.test.ts` exit 0.
 - [ ] **8. The walk.** As "The walk" below. _Done when:_ `visual`'s, `walk`'s and `ui`'s gates, row
       19 seen red with the old list, row 20 replayed. **10 min** (piece 125's step 5, one scene with
       its fake and tests: 5, plus its gates).
