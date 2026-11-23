@@ -187,6 +187,36 @@ describe('an email on a person', () => {
   });
 });
 
+describe('the walk spec’s email sign-in, replayed on the real router', () => {
+  it('WK6: The root gives a person an email on the default switches, signs out, and the email typed in the one box signs that person in', async () => {
+    const { api, device } = openApp(at('EMP-0002'));
+    await userEvent.type(
+      await screen.findByLabelText(words.person.emailNew),
+      'hung@minh-phat.example',
+    );
+    await userEvent.click(screen.getByRole('button', { name: words.person.emailSet }));
+    await screen.findByText(
+      filled(words.person.signInReadyEmail, { code: 'EMP-0002', email: 'hung@minh-phat.example' }),
+    );
+
+    await openUserMenu('root');
+    await userEvent.click(screen.getByRole('menuitem', { name: words.user.signOut }));
+    await userEvent.type(
+      await screen.findByLabelText(words.auth.username),
+      'hung@minh-phat.example',
+    );
+    await userEvent.type(screen.getByLabelText(words.auth.password), 'Fake-password-1!');
+    expect(screen.getByLabelText<HTMLInputElement>(words.auth.username).value).toBe(
+      'hung@minh-phat.example',
+    );
+
+    await userEvent.click(screen.getByRole('button', { name: words.auth.submit }));
+    await waitFor(() => expect(device.authId()).toBe(`fake.session.${person('EMP-0002').id}`));
+    expect(api.signIn).toHaveBeenLastCalledWith('hung@minh-phat.example', 'Fake-password-1!');
+    expect(await screen.findByRole('button', { name: 'Trần Văn Hùng' })).toBeTruthy();
+  });
+});
+
 describe('a QR code for a person', () => {
   it('C: The root shows a person a QR code and its link, for one sign-in within 15 minutes; a new code cancels the last', async () => {
     const { api } = openApp(at('EMP-0004'), { signIns: true });

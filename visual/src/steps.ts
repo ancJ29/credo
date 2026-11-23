@@ -44,7 +44,7 @@ function target(
   if ('press' in step) {
     return {
       selector: PRESSED,
-      name: wordsFor(dictionary, step.press, step.with),
+      name: step.text ? step.press : wordsFor(dictionary, step.press, step.with),
       within: step.within === undefined ? undefined : wordsFor(dictionary, step.within),
       kind: 'button, link or choice',
     };

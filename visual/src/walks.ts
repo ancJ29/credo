@@ -35,8 +35,9 @@ export type DeviceWidth = (typeof DEVICE_WIDTH)[Device];
  */
 export type Step =
   /** Presses the button, link, switch or choice with these words; `within` names the group of
-   * choices it sits in by the words of its label, `with` fills a word's `{{name}}`. */
-  | { press: string; within?: string; with?: Record<string, string> }
+   * choices it sits in by the words of its label, `with` fills a word's `{{name}}`; `text` says the
+   * words are the control's own (the signed-in person's name on the menu button), not a key. */
+  | { press: string; within?: string; with?: Record<string, string>; text?: true }
   /** Replaces what is typed in the field with these words by `text`. */
   | { fill: string; text: string }
   /** Chooses, in the list with these words, the option that reads `option`. */
@@ -317,11 +318,11 @@ const CUSTOMERS_CHOSEN: Step[] = [{ attach: 'import.file', file: 'customers' }];
 const PRODUCTS_CHOSEN: Step[] = [{ attach: 'import.file', file: 'products' }];
 
 /**
- * The one question the sign-in doors ask (docs/plans/2026-11-05-signin-look.md): the coloured header, the
- * card on the app's ground, and the one difference from the mock, named where it is looked at.
+ * The one question the sign-in doors ask (docs/plans/2026-11-23-sign-in-card.md, which rewrote 5 November's for the
+ * legacy app's look): the colour over the whole screen, the logo and the name atop the card, the switch in the corner.
  */
 export const SIGN_IN_LOOK =
-  'Do the sign-in doors read as the same app: the coloured header with the logo and the name, the card on the app’s grey ground, no side menu? Every door that offers two languages, the three join screens among them, carries the language switch the mock showed, and the language pressed is kept on the device.';
+  'Do the doors read like the legacy app’s: the colour sweeping the whole screen, the logo and the name atop the card, the language switch in the corner, and on a company’s door “Remember me” ticked?';
 
 /**
  * The walks: piece 1's, the client's admin on a PC, whose screens keep the app frame plan's
@@ -1118,6 +1119,28 @@ export const WALKS: Walk[] = [
         },
         question: 'Is anything lost from the record of someone switched back on?',
       },
+      {
+        id: 'staff-24-email-sign-in',
+        number: 24,
+        path: 'main',
+        scene: {
+          path: personAt('EMP-0002'),
+          steps: [
+            { fill: 'person.emailNew', text: 'hung@minh-phat.example' },
+            { press: 'person.emailSet' },
+            { press: 'root', text: true },
+            { press: 'user.signOut' },
+            { fill: 'auth.username', text: 'hung@minh-phat.example' },
+            { fill: 'auth.password', text: 'Fake-password-1!' },
+          ],
+        },
+        sentence: {
+          en: 'A person the root gave an email signs in by it, in the box where others type their code',
+          vi: 'Người được root cấp email đăng nhập bằng email đó, ở ô mà người khác gõ mã của họ',
+        },
+        question:
+          'Would a person whose root gave them an email sign in by it here, in the box where others type their code?',
+      },
     ],
   },
   {
@@ -1234,7 +1257,7 @@ export const WALKS: Walk[] = [
           en: 'Signed in on a phone by the code, on the person’s first page',
           vi: 'Đăng nhập trên điện thoại bằng mã, vào trang đầu tiên của người đó',
         },
-        question: SIGN_IN_LOOK,
+        question: 'Is the person’s first page where a phone should land after the code?',
       },
       {
         id: 'phone-2-code-used',

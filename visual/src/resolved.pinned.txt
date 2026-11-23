@@ -56,6 +56,7 @@ admin-staff/staff-20-preview steel ff5ccd4a477a
 admin-staff/staff-21-imported steel 4926fc7501d7
 admin-staff/staff-22-no-name steel a513a8550983
 admin-staff/staff-23-back-on steel d175bf26d509
+admin-staff/staff-24-email-sign-in steel 87af0e330b76
 office-staff/office-1-menu steel 4f7efdd5607f
 office-staff/office-2-add steel ef76fa3a2c2e
 office-staff/office-3-forbidden steel 1c590b72261e
@@ -187,6 +188,7 @@ admin-staff/staff-20-preview emerald f668d1ef5504
 admin-staff/staff-21-imported emerald febea068a333
 admin-staff/staff-22-no-name emerald acee55355891
 admin-staff/staff-23-back-on emerald e85626cc9711
+admin-staff/staff-24-email-sign-in emerald ff5de9db529d
 office-staff/office-1-menu emerald c17a13ef22b0
 office-staff/office-2-add emerald 49c4c5ed5a7c
 office-staff/office-3-forbidden emerald 1735a01c2b05
@@ -318,6 +320,7 @@ admin-staff/staff-20-preview brick 3d8621df113d
 admin-staff/staff-21-imported brick 550cc5e83fa2
 admin-staff/staff-22-no-name brick 9fdc2341ce3f
 admin-staff/staff-23-back-on brick fc5c5dad16b1
+admin-staff/staff-24-email-sign-in brick 25bf7e1eb89b
 office-staff/office-1-menu brick 2ce35f69353b
 office-staff/office-2-add brick 7c14736502c9
 office-staff/office-3-forbidden brick e82395e96d8b
@@ -449,6 +452,7 @@ admin-staff/staff-20-preview bronze d001c2299ef9
 admin-staff/staff-21-imported bronze e62b60736586
 admin-staff/staff-22-no-name bronze 74bf4421a68a
 admin-staff/staff-23-back-on bronze e41162caa2a4
+admin-staff/staff-24-email-sign-in bronze e40ad312b4f1
 office-staff/office-1-menu bronze 4912a7c062d8
 office-staff/office-2-add bronze 57fce2b9ced7
 office-staff/office-3-forbidden bronze 18c5b0680b95
@@ -580,6 +584,7 @@ admin-staff/staff-20-preview plum f4efbd619f93
 admin-staff/staff-21-imported plum c8c95316f6e0
 admin-staff/staff-22-no-name plum 07980ea2675f
 admin-staff/staff-23-back-on plum cc9829fe0cd2
+admin-staff/staff-24-email-sign-in plum 7540d4842415
 office-staff/office-1-menu plum c72450eaa780
 office-staff/office-2-add plum de1dcd2005eb
 office-staff/office-3-forbidden plum 5fff547bf4e5
@@ -711,6 +716,7 @@ admin-staff/staff-20-preview indigo a29f00b9a00e
 admin-staff/staff-21-imported indigo 334e92ff43fb
 admin-staff/staff-22-no-name indigo d4da57c22416
 admin-staff/staff-23-back-on indigo f5bbd4bffa5e
+admin-staff/staff-24-email-sign-in indigo 30ebac91b3c3
 office-staff/office-1-menu indigo 43910b80c513
 office-staff/office-2-add indigo a67d814bacc4
 office-staff/office-3-forbidden indigo e7b495c39242
@@ -842,6 +848,7 @@ admin-staff/staff-20-preview company 0cfa2de7cb06
 admin-staff/staff-21-imported company cd99ba1453f2
 admin-staff/staff-22-no-name company dfae8233636b
 admin-staff/staff-23-back-on company 37338a95730f
+admin-staff/staff-24-email-sign-in company e28208ce9df7
 office-staff/office-1-menu company 8b80e4d2e773
 office-staff/office-2-add company 42f7a588ff2f
 office-staff/office-3-forbidden company 6a1860193a07
@@ -973,6 +980,7 @@ admin-staff/staff-20-preview terracotta 3ffbbd8b8c27
 admin-staff/staff-21-imported terracotta b04351412e0d
 admin-staff/staff-22-no-name terracotta 21e549d0b52b
 admin-staff/staff-23-back-on terracotta 9fe34c452b64
+admin-staff/staff-24-email-sign-in terracotta 7af9766be0b2
 office-staff/office-1-menu terracotta ba200e403b61
 office-staff/office-2-add terracotta 07e02bfd2154
 office-staff/office-3-forbidden terracotta 9747302115d9
@@ -1104,6 +1112,7 @@ admin-staff/staff-20-preview red 333d48ec257d
 admin-staff/staff-21-imported red 866abf83ddd7
 admin-staff/staff-22-no-name red c6e5d1d10b08
 admin-staff/staff-23-back-on red 5d27332062c9
+admin-staff/staff-24-email-sign-in red 3b7cd81153f0
 office-staff/office-1-menu red 9aef6b2bf69c
 office-staff/office-2-add red 7475f6eb5ee8
 office-staff/office-3-forbidden red c4c58e95a8e3
@@ -1235,6 +1244,7 @@ admin-staff/staff-20-preview amber ac064dd941dd
 admin-staff/staff-21-imported amber 3b3d02ca873c
 admin-staff/staff-22-no-name amber 53d48b7cb7f8
 admin-staff/staff-23-back-on amber b23d5aaac158
+admin-staff/staff-24-email-sign-in amber ae23f58da337
 office-staff/office-1-menu amber 0c3d43f0fd45
 office-staff/office-2-add amber cdd1fc096485
 office-staff/office-3-forbidden amber 9e22db41a740

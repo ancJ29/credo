@@ -202,9 +202,15 @@ citation test, `pnpm --filter @credo/scripts exec vitest run src/citations.test.
       _Done when:_ the citation test. **3 min** (piece 222's step 10c: 2).
       _Done 2026-11-23 17:27:_ two rows in `docs/decisions.md` (the legacy's look round every door; email, QR and passkeys on by default, a saved
       choice kept), `docs/products.md#L31`'s row true, open item 671 filed (the gallery's load red); `citations.test.ts` exit 0.
-- [ ] **8. The walk.** As "The walk" below. _Done when:_ `visual`'s, `walk`'s and `ui`'s gates, row
+- [x] **8. The walk.** As "The walk" below. _Done when:_ `visual`'s, `walk`'s and `ui`'s gates, row
       19 seen red with the old list, row 20 replayed. **10 min** (piece 125's step 5, one scene with
       its fake and tests: 5, plus its gates).
+      _Done 2026-11-23 17:53:_ row 19 red on the old nine (`SIGN_IN_LOOK` asked of nine screens, `phone-1-signed-in` the extra), then green on the
+      eight doors; `phone-1-signed-in` has its own question; the new scene `staff-24-email-sign-in` (the root gives an email on the default
+      switches, signs out, types it in the one box) appended after `staff-23-back-on` in `visual/src/walks.ts` and `walk/specs/piece-2.spec.ts`
+      (a `press` step gained `text` for the menu button's own name), its Vietnamese questions, `words.test.tsx`'s proof and the pinned
+      scratch write (ten lines, the new scene only); row 20 replayed in `SignIns.test.tsx` (WK6); `visual`'s, `walk`'s and `ui`'s gates green
+      on the tree; no walk run, the bases and the 6 new pictures wait for step 9.
 - [ ] **9. Your walk run, then the bases.** The run line below, green; the bases committed alone,
       their count per walk matching the log; then the same walks without flags, 0 moved. **2 min**
       (piece 240's receipt and bases: 1, 1).
