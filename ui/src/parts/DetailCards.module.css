@@ -1,0 +1,7 @@
+/* The side column of a page whose side comes first: in view beside the blocks as the page scrolls, from the width the columns sit side by side. */
+.stuck {
+  @media (min-width: 62em) {
+    position: sticky;
+    top: 4.5rem;
+  }
+}

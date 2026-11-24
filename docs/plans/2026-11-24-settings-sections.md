@@ -142,7 +142,7 @@ three small fix steps, a different shape. Each gate is the touched package's
 `pnpm --filter @credo/<pkg> check`, exit 0 by its own code, plus the citation test. "The pinned diff"
 is `git diff -U0 -- visual/src/resolved.pinned.txt | grep '^+[a-z]' | cut -d' ' -f1 | sort -u`.
 
-- [ ] **1. The gallery.** `ColourScope` in `ui/src/design-system/`; `headerLook` and `HeaderBrand` out of
+- [x] **1. The gallery.** `ColourScope` in `ui/src/design-system/`; `headerLook` and `HeaderBrand` out of
       `Shell`, which draws them as before; `ui/src/parts/BrandPreview.tsx` (the block "Preview", its
       two captions, the bar and `DoorCard` with the sign-in's title under a `ColourScope`, both hidden as
       above), its Pages entry in three states; `DetailColumns`' option and its state; the settings page's
@@ -151,6 +151,10 @@ is `git diff -U0 -- visual/src/resolved.pinned.txt | grep '^+[a-z]' | cut -d' ' 
       _Done when:_ `ui`'s, `visual`'s and `scripts`' gates, the scripts' `fake.test.ts` among them; the
       pinned diff empty; `git diff -U0 pre-merge -- ui/src/frame/Shell.test.tsx` empty. **15 min** (piece
       236's step 1: 15, a part taken out of its file and drawn; 241.1's step 1: 10). Then point 1.
+      _Done 2026-11-24, build 250.1 step 1, sonnet:_ `ui`'s, `visual`'s and `scripts`' gates each exit 0 (the
+      run of 15:17 to 15:30), the pinned diff empty, the Shell test's diff empty; rows 7 to 10 and 12 red
+      first on the old code (15:06). `BrandPreview`'s prop for the colour is `brand`, since the contracts' test
+      refuses a take named `colour`; the preview sits after the form in the page's order and first by CSS.
 - [ ] **2. The page, on the fake.** `Settings.tsx` in `DetailColumns`, its new option on: the form as `main`, its four
       `DetailCard`s and the save, `submit` still a `SubmitEvent`; `BrandPreview` as `side`, from the draft;
       the mock's screen 3 gains a state "typed", the frame in `FILLED`, the form in `TYPED`

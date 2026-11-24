@@ -31,6 +31,28 @@ describe('the frame of a detail page', () => {
     );
   });
 
+  it('9: with the side first, the side comes above the main below 992 and the main first without it', () => {
+    const order = (container: HTMLElement) =>
+      columns(container).map((column) => (column as HTMLElement).style.order);
+    const without = draw(<DetailColumns main={<p>Details</p>} side={<p>Actions</p>} />);
+    expect(without.container.querySelector('[style*="order"]')).toBeNull();
+    expect(order(without.container)).toEqual(['', '']);
+    without.unmount();
+
+    const first = draw(<DetailColumns sideFirst main={<p>Details</p>} side={<p>Actions</p>} />);
+    const [main, side] = columns(first.container);
+    expect(main?.textContent).toBe('Details');
+    expect(side?.textContent).toBe('Actions');
+    // the phone's order puts the side first; from 992 the main is first again
+    const rules = [...first.container.querySelectorAll('.mantine-Grid-inner > style')]
+      .map((block) => block.textContent)
+      .join('');
+    expect(rules).toMatch(/--col-order:2/);
+    expect(rules).toMatch(/--col-order:1/);
+    expect((side as HTMLElement).querySelector('[class*="stuck"]')).not.toBeNull();
+    expect((main as HTMLElement).querySelector('[class*="stuck"]')).toBeNull();
+  });
+
   it.each([null, false, undefined])(
     'A side of %s counts as none: one column, no blank half',
     (side) => {

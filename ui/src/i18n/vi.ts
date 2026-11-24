@@ -79,6 +79,13 @@ export const vi: Dictionary = {
     saveRefused: 'Cài đặt chưa hợp lệ. Vui lòng kiểm tra lại logo, tên và màu sắc.',
     conflict: 'Cài đặt đã được cập nhật từ phiên khác. Thay đổi của bạn chưa được lưu.',
     conflictReload: 'Xem cài đặt mới nhất',
+    identity: 'Nhận diện',
+    pictures: 'Hình ảnh',
+    frame: 'Màu sắc và khung',
+    languagesSection: 'Ngôn ngữ',
+    preview: 'Xem trước',
+    previewHeader: 'Thanh tiêu đề, như người dùng thấy',
+    previewCard: 'Thẻ đăng nhập, như người dùng thấy',
   },
   operator: {
     badge: 'Quản trị viên',
