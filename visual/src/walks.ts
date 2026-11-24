@@ -322,7 +322,7 @@ const PRODUCTS_CHOSEN: Step[] = [{ attach: 'import.file', file: 'products' }];
  * legacy app's look): the colour over the whole screen, the logo and the name atop the card, the switch in the corner.
  */
 export const SIGN_IN_LOOK =
-  'Do the doors read like the legacy app’s: the colour sweeping the whole screen, the logo and the name atop the card, the language switch in the corner, and on a company’s door “Remember me” ticked and “Sign in with a passkey” under “or”?';
+  'Do the doors read like the legacy app’s: the colour sweeping the whole screen, the logo and the name atop the card, the language switch in the corner, and on the company’s sign-in “Remember me” ticked and “Sign in with a passkey” under “or”?';
 
 /**
  * The walks: piece 1's, the client's admin on a PC, whose screens keep the app frame plan's

@@ -24,7 +24,7 @@ gets its own record, four routes and its own address as the passkey's home. The 
 
 One slice, walkable when it ends: a person signs in by code, email or QR code, opens the user menu
 (More on a phone), "Add a passkey", presses its one button and gives a touch; signs out; presses
-"Sign in with a passkey" on the door and lands on their first page. The root the same. Stage 1 is the
+"Sign in with a passkey" on the door and is signed in as themselves, on the page they were on, as a password does. The root the same. Stage 1 is the
 fake (steps 3 and 4; the gallery comes first, as you asked); stage 2, each step's gate and the
 landing's whole check; stage 3, the gallery look and the walks page; stage 4, ridge.
 
@@ -241,8 +241,15 @@ Sizes are the last rows of each step's shape in the runs log. Each gate is the t
       scene 27 ends on the add page, signed in as the person (a sign-in returns to the address the person left,
       so it is not their first page), its question reads "sign the person in as themselves"; scene 28 and 29
       are on the wrong path, which the walks test pins as 9, 10, 11, 16, 22, 28, 29.
-- [ ] **8. The prose.** As "Prose that goes false"; items 674 and 675 marked fixed. _Done when:_ the
+- [x] **8. The prose.** As "Prose that goes false"; items 674 and 675 marked fixed. _Done when:_ the
       citation test. **5 min** (241.1's step 7: 1; piece 142's three pages: 2).
+      _Done 2026-11-24 10:52:_ the citation test exits 0; `visual`'s gate again (the door question's wording is code). Item 674 and
+      item 675 are marked `[FIXED]` in `docs/open-items.md`: 674 by the question's "on the company’s sign-in",
+      675 by the decisions row's "as each is built". Prose moved: `docs/partners/words.md`'s passkey entry, `docs/products.md`
+      (the sign-in row names the passkey; 767 words), `docs/decisions.md`'s row, and a new section of `docs/memo/bff.md`
+      for the company's passkeys. A password's sign-in sets the user and navigates nowhere
+      (`ui/src/ClientApp.tsx#L233-L240`), as the passkey's does (`#L265-L270`), so both stay on the address the person
+      left; the plan's "lands on their first page" (the slice) and scene 27's table row now say that.
 - [ ] **9. Your walk run, then the bases.** The run line below, green; the bases committed alone, each
       walk's count matching the log; the same walks without flags, 0 moved. **2 min** (241.1's 9b: 1).
 - [ ] **10. The recap and the landing.** The recap and its products rows; `pre-merge` taken in, the
@@ -273,7 +280,7 @@ pictures. Trần Văn Hùng, just signed in by his email in scene 24, goes on:
 | --- | --- | --- |
 | `staff-25-add-passkey` | the add page, before the press | Would a person know from this page what a passkey is, and that their password stays? |
 | `staff-26-passkey-added` | after the touch | Does it say plainly that the passkey is added, and how to use it next time? |
-| `staff-27-passkey-sign-in` | signed out, the button pressed: his first page | Did the passkey open the person's own first page, with nothing typed? |
+| `staff-27-passkey-sign-in` | signed out, the button pressed: signed in again as himself, on the page he was on | Did the passkey sign the person in as themselves, with nothing typed? |
 | `staff-28-passkey-not-given` | the door, the device giving none | Would a person know to try again? |
 | `staff-29-passkey-refused` | the door, a passkey that opens nothing here | Would a person whose passkey is not taken know to use their password? |
 
