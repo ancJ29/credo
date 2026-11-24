@@ -149,6 +149,7 @@ describe('the fake Api', () => {
     parses('me', meReplySchema, await api.me());
     parses('me staff', meReplySchema, await staff.me());
     parses('passkeyOptions', optionsReplySchema, await api.passkeyOptions());
+    parses('ownPasskeyOptions', optionsReplySchema, await api.ownPasskeyOptions());
     parses('operatorPasskeyOptions', optionsReplySchema, await api.operatorPasskeyOptions());
     parses(
       'operatorPasskeySignIn',
@@ -451,6 +452,8 @@ describe('the fake Api', () => {
         'me',
         'passkeyOptions',
         'passkeySignIn',
+        'ownPasskeyOptions',
+        'ownPasskeyAdd',
         'operatorPasskeyOptions',
         'operatorPasskeySignIn',
         'operatorJoinOptions',
@@ -817,6 +820,43 @@ describe('the fake Api', () => {
       held.version,
     );
     expect(await api.passkeyOptions()).toBeNull();
+  });
+
+  it('20: The fake adds a passkey for whoever is signed in and signs in by it as them, refuses where none was added, and answers 404 where passkeys are off', async () => {
+    const staffId = DEMO_EMPLOYEES[3]?.id ?? '';
+    const response = { token: 'fake.token', response: CREDENTIAL };
+
+    const root = fake('', { client: 'fake.session' });
+    expect(await status(root.passkeySignIn(response))).toBe(401);
+    expect(await root.ownPasskeyOptions()).toEqual({
+      options: { challenge: 'fake-challenge' },
+      token: 'fake.token',
+    });
+    await root.ownPasskeyAdd(response);
+    expect((await root.passkeySignIn(response)).user).toEqual({
+      name: DEMO_ROOT_NAME,
+      root: true,
+      permissions: {},
+    });
+
+    const staff = fake('', { client: `fake.session.${staffId}` });
+    await staff.ownPasskeyAdd(response);
+    const signedIn = await staff.passkeySignIn(response);
+    expect(signedIn.authId).toBe(`fake.session.${staffId}`);
+    expect(signedIn.user.root).toBe(false);
+
+    const out = fake('');
+    expect(await status(out.ownPasskeyOptions())).toBe(401);
+    expect(await status(out.ownPasskeyAdd(response))).toBe(401);
+
+    const held = await root.getStaffSetup();
+    await root.saveStaffSetup(
+      { ...held.setup, fields: { ...staffConfig(held.setup).fields, passkey: false } },
+      held.version,
+    );
+    expect(await status(root.ownPasskeyOptions())).toBe(404);
+    expect(await status(root.ownPasskeyAdd(response))).toBe(404);
+    expect(await status(root.passkeySignIn(response))).toBe(401);
   });
 
   it('C: Two fresh fakes mint the same QR link for the same person, so a screen that shows it reads the same on every build', async () => {

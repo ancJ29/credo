@@ -38,6 +38,7 @@ import { MorePage } from './pages/MorePage';
 import { Notice } from './pages/client/Notice';
 import { NewOrderPage, OrderPage } from './pages/client/OrderPage';
 import { OrdersPage } from './pages/client/OrdersPage';
+import { OwnPasskeyPage } from './pages/client/OwnPasskeyPage';
 import { OwnPasswordPage } from './pages/client/OwnPasswordPage';
 import { QrLanding } from './pages/client/QrLanding';
 import { SettingsPage } from './pages/client/SettingsPage';
@@ -306,13 +307,14 @@ export function ClientApp({
   /** A page by its address opens only for someone whose menu lists it; else the 403 page. */
   const guarded = (who: UserView, id: Page['id'], page: ReactElement) =>
     mayOpen(who, id) ? page : <Notice kind="forbidden" />;
-  /** One's own password is the one page every signed-in person has, whatever else they may open. */
+  /** One's own password and passkey are the pages every signed-in person has, whatever else they may open. */
   const ownPassword = (who: UserView) => (
     <>
       <Route
         path="/password"
         element={<OwnPasswordPage {...pageFor(who)} onSession={replaced} />}
       />
+      <Route path="/passkey" element={<OwnPasskeyPage {...pageFor(who)} passkeys={passkeys} />} />
       <Route path="/more" element={<MorePage />} />
     </>
   );
@@ -351,6 +353,7 @@ export function ClientApp({
           user={user.name}
           pages={pages}
           passwordPath="/password"
+          passkeyPath="/passkey"
           shown={device.menuShown()}
           onShown={device.setMenuShown}
           languages={config.languages}

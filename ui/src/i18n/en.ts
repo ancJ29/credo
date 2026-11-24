@@ -550,6 +550,7 @@ export const en = {
     added: 'Passkey added.',
     addedText:
       'Next time, press Sign in with a passkey on the sign-in page and use your face, fingerprint or device PIN.',
+    tooOld: 'For your safety, sign out and sign in again, then add a passkey.',
   },
   qrSignIn: {
     busyTitle: 'Signing you in...',

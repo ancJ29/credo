@@ -56,6 +56,8 @@ export const staffCalls = {
 export const passkeyCalls = {
   passkeyOptions: down,
   passkeySignIn: down,
+  ownPasskeyOptions: down,
+  ownPasskeyAdd: down,
   operatorPasskeyOptions: down,
   operatorPasskeySignIn: down,
   operatorJoinOptions: down,

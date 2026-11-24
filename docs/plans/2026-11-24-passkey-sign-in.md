@@ -184,10 +184,18 @@ Sizes are the last rows of each step's shape in the runs log. Each gate is the t
       again after a refusal; `api.passkeyOptions` (null on a 404) and `api.passkeySignIn`, the fake's options
       following the switch and its sign-in refusing until step 4's add; one new key, `auth.passkeyRefused`
       (766 keys), since the operators' refusal tells a person to ask for an invite; piece 1's four finders `exact`.
-- [ ] **4. The add page, on the fake.** `ui/src/pages/client/OwnPasskeyPage.tsx` at `/passkey`, of the
+- [x] **4. The add page, on the fake.** `ui/src/pages/client/OwnPasskeyPage.tsx` at `/passkey`, of the
       confirm kind; `Shell`'s menu link for everyone signed in; its two api calls and their fake answers.
       Rows 18 to 20. _Done when:_ `ui`'s and `visual`'s gates, the pinned diff naming `lists-9-more`
       alone. **14 min** (the same row).
+      _Done 2026-11-24 09:51:_ `ui`'s and `visual`'s gates, the citation test and the scripts' `words.test.ts` and
+      `fake.test.ts` each exit 0; the pinned diff names `lists-9-more` alone; rows 18 to 20 each green, then
+      red by one mutation each once the code stood (the add's spent options, its age check, its 403 words,
+      the fake's owner of the credential, the menu's link), not on old code. `OwnPasskeyPage` asks its options as it
+      opens, keeps them with their time, asks again past four minutes or after a try that reached the service;
+      `Shell` takes `passkeyPath` after `passwordPath`; `api.ownPasskeyOptions` and `api.ownPasskeyAdd`; the
+      fake keeps the one credential for whoever added it last, 404 where passkeys are off; one new key,
+      `ownPasskey.tooOld` (767 keys), the page's other outcomes reusing the operators' `passkey.*` words.
 - [ ] **5. The add, in the BFF.** `bff/src/calling/passkeys.ts`, the library's four calls taking an
       origin and a relying party, `registerOperatorAuth` calling them with its own; `bff/src/records/passkeys.ts`,
       the owner's record over its tag; the add's two routes behind `forClient`, the sign-in check handing on

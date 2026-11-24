@@ -317,7 +317,7 @@ describe('the app', () => {
     expect((await screen.findAllByText(wordsVi.nav.settings)).length).toBeGreaterThan(0);
   });
 
-  it('4: More opens at its own address with the other pages, the password and sign-out, and the toggle’s state is kept on the device', async () => {
+  it('4: More opens at its own address with the other pages, the password, the passkey and sign-out, and the toggle’s state is kept on the device', async () => {
     const { device } = setup({}, signedIn, '/more');
     const main = () => within(document.querySelector('main')!);
     await screen.findByRole('heading', { level: 2, name: words.nav.more });
@@ -326,11 +326,28 @@ describe('the app', () => {
       '/customers',
       '/products',
       '/password',
+      '/passkey',
     ]);
     expect(device.menuShown()).toBe(true);
 
     await userEvent.click(screen.getByRole('button', { name: words.nav.hideMenu }));
     expect(device.menuShown()).toBe(false);
+  });
+
+  it('18: The root’s user menu lists Add a passkey after Change password, and it opens the add page', async () => {
+    setup({}, signedIn);
+
+    await userEvent.click(await screen.findByRole('button', { name: 'root' }));
+    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
+      words.user.password,
+      words.user.passkey,
+      words.user.signOut,
+    ]);
+    await userEvent.click(screen.getByRole('menuitem', { name: words.user.passkey }));
+
+    expect(
+      await screen.findByRole('heading', { level: 2, name: words.ownPasskey.title }),
+    ).toBeTruthy();
   });
 
   it('4: A person with no page still has More', async () => {
