@@ -14,20 +14,20 @@ import {
   Image,
   NativeSelect,
   Radio,
-  SimpleGrid,
   Stack,
   Switch,
   Text,
   TextInput,
 } from '@mantine/core';
-import { IconBuilding } from '@tabler/icons-react';
+import { IconId, IconLanguage, IconPalette, IconPhoto } from '@tabler/icons-react';
 import { type SubmitEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LANGUAGE_NAMES } from '../i18n';
 import { Loaded } from '../frame/Loaded';
 import { ActionButton } from '../components/atoms/ActionButton';
 import { FormMessage } from '../components/molecules/FormMessage';
-import { DetailCard } from './DetailCards';
+import { BrandPreview } from './BrandPreview';
+import { DetailCard, DetailColumns } from './DetailCards';
 import { PALETTES, paletteOfColour } from '../design-system/palettes';
 import { TYPE, WEIGHTS } from '../design-system/tokens';
 import { PageHeader } from '../components/organisms/PageHeader';
@@ -111,127 +111,151 @@ function SettingsForm({ config, outcome, saving, onSave, onReload, logoRefusal }
             {t('settings.conflict')}
           </FormMessage>
         )}
-        <DetailCard icon={<IconBuilding size={14} />} title={t('settings.basics')}>
-          <Stack gap="lg">
-            <SimpleGrid cols={{ base: 1, sm: 2 }} spacing="lg" verticalSpacing="lg">
-              <TextInput
-                label={t('settings.name')}
-                required
-                value={draft.name}
-                onChange={(event) => change({ name: event.currentTarget.value })}
-              />
-              <Stack gap={6}>
-                <Text size="sm" fw={WEIGHTS.label}>
-                  {t('settings.logo')}
-                </Text>
-                <Group>
-                  {draft.logo ? (
-                    <Image src={draft.logo} alt="" h={48} w={48} fit="contain" />
-                  ) : (
-                    <Text {...TYPE.caption}>{t('settings.logoNone')}</Text>
-                  )}
-                  <FileButton accept="image/*" onChange={chooseLogo}>
-                    {(props) => (
-                      <ActionButton meaning="other" onClick={props.onClick}>
-                        {t('settings.logoChoose')}
+        <DetailColumns
+          sideFirst
+          side={
+            <BrandPreview
+              name={draft.name}
+              logo={draft.logo ?? undefined}
+              brand={isHexColour(draft.colour) ? draft.colour : config.colour}
+              whiteHeader={draft.whiteHeader}
+            />
+          }
+          main={
+            <Stack gap="lg">
+              <DetailCard icon={<IconId size={14} />} title={t('settings.identity')}>
+                <TextInput
+                  label={t('settings.name')}
+                  required
+                  value={draft.name}
+                  onChange={(event) => change({ name: event.currentTarget.value })}
+                />
+              </DetailCard>
+              <DetailCard icon={<IconPhoto size={14} />} title={t('settings.pictures')}>
+                <Stack gap={6}>
+                  <Text size="sm" fw={WEIGHTS.label}>
+                    {t('settings.logo')}
+                  </Text>
+                  <Group>
+                    {draft.logo ? (
+                      <Image src={draft.logo} alt="" h={48} w={48} fit="contain" />
+                    ) : (
+                      <Text {...TYPE.caption}>{t('settings.logoNone')}</Text>
+                    )}
+                    <FileButton accept="image/*" onChange={chooseLogo}>
+                      {(props) => (
+                        <ActionButton meaning="other" onClick={props.onClick}>
+                          {t('settings.logoChoose')}
+                        </ActionButton>
+                      )}
+                    </FileButton>
+                    {draft.logo && (
+                      <ActionButton meaning="quiet" onClick={() => change({ logo: null })}>
+                        {t('settings.logoRemove')}
                       </ActionButton>
                     )}
-                  </FileButton>
-                  {draft.logo && (
-                    <ActionButton meaning="quiet" onClick={() => change({ logo: null })}>
-                      {t('settings.logoRemove')}
-                    </ActionButton>
+                  </Group>
+                  {logoRefused && (
+                    <FormMessage kind="error">
+                      {t(`settings.${logoRefused}`, { max: MAX_LOGO_BYTES / 1024 })}
+                    </FormMessage>
                   )}
-                </Group>
-                {logoRefused && (
-                  <FormMessage kind="error">
-                    {t(`settings.${logoRefused}`, { max: MAX_LOGO_BYTES / 1024 })}
-                  </FormMessage>
-                )}
-              </Stack>
-              <Radio.Group
-                label={t('settings.palette')}
-                value={paletteOfColour(draft.colour)?.name ?? ''}
-                onChange={(name) =>
-                  PALETTES.filter((palette) => palette.name === name).forEach((palette) =>
-                    change({ colour: palette.shades[7] }),
-                  )
-                }
-                style={{ gridColumn: '1 / -1' }}
-              >
-                <Group mt="xs" gap="lg" align="flex-start">
-                  {PALETTES.map((palette) => (
-                    <Radio
-                      key={palette.name}
-                      value={palette.name}
-                      label={t(`settings.palettes.${palette.name}`)}
-                      color={palette.shades[7]}
-                      size="lg"
-                      radius="xl"
-                      styles={{
-                        body: { flexDirection: 'column', alignItems: 'center', gap: 4 },
-                        labelWrapper: { alignItems: 'center' },
-                        radio: {
-                          backgroundColor: palette.shades[7],
-                          borderColor: palette.shades[7],
-                        },
-                      }}
+                </Stack>
+              </DetailCard>
+              <DetailCard icon={<IconPalette size={14} />} title={t('settings.frame')}>
+                <Stack gap="lg">
+                  <Radio.Group
+                    label={t('settings.palette')}
+                    value={paletteOfColour(draft.colour)?.name ?? ''}
+                    onChange={(name) =>
+                      PALETTES.filter((palette) => palette.name === name).forEach((palette) =>
+                        change({ colour: palette.shades[7] }),
+                      )
+                    }
+                  >
+                    <Group mt="xs" gap="lg" align="flex-start">
+                      {PALETTES.map((palette) => (
+                        <Radio
+                          key={palette.name}
+                          value={palette.name}
+                          label={t(`settings.palettes.${palette.name}`)}
+                          color={palette.shades[7]}
+                          size="lg"
+                          radius="xl"
+                          styles={{
+                            body: { flexDirection: 'column', alignItems: 'center', gap: 4 },
+                            labelWrapper: { alignItems: 'center' },
+                            radio: {
+                              backgroundColor: palette.shades[7],
+                              borderColor: palette.shades[7],
+                            },
+                          }}
+                        />
+                      ))}
+                    </Group>
+                  </Radio.Group>
+                  <Stack gap="md">
+                    <ColorInput
+                      label={t('settings.colour')}
+                      format="hex"
+                      withEyeDropper={false}
+                      value={draft.colour}
+                      onChange={(colour) => change({ colour })}
                     />
-                  ))}
-                </Group>
-              </Radio.Group>
-              <Stack gap="md">
-                <ColorInput
-                  label={t('settings.colour')}
-                  format="hex"
-                  withEyeDropper={false}
-                  value={draft.colour}
-                  onChange={(colour) => change({ colour })}
-                />
-                <Switch
-                  label={t('settings.whiteHeader')}
-                  checked={draft.whiteHeader}
-                  onChange={(event) => change({ whiteHeader: event.currentTarget.checked })}
-                />
-                <Switch
-                  label={t('settings.whiteMenu')}
-                  checked={draft.whiteMenu}
-                  onChange={(event) => change({ whiteMenu: event.currentTarget.checked })}
-                />
-                <Switch
-                  label={t('settings.menuIcons')}
-                  checked={draft.menuIcons}
-                  onChange={(event) => change({ menuIcons: event.currentTarget.checked })}
-                />
-              </Stack>
-              <Checkbox.Group
-                label={t('settings.languages')}
-                value={draft.languages}
-                onChange={chooseLanguages}
-              >
-                <Group mt="xs">
-                  {LANGUAGES.map((language) => (
-                    <Checkbox key={language} value={language} label={LANGUAGE_NAMES[language]} />
-                  ))}
-                </Group>
-              </Checkbox.Group>
-              <NativeSelect
-                label={t('settings.defaultLanguage')}
-                value={draft.defaultLanguage}
-                data={draft.languages.map((language) => ({
-                  value: language,
-                  label: LANGUAGE_NAMES[language],
-                }))}
-                onChange={(event) =>
-                  change({ defaultLanguage: event.currentTarget.value as Language })
-                }
-              />
-            </SimpleGrid>
-          </Stack>
-        </DetailCard>
-        <ActionButton meaning="main" submit busy={saving} disabled={!valid}>
-          {t('settings.save')}
-        </ActionButton>
+                    <Switch
+                      label={t('settings.whiteHeader')}
+                      checked={draft.whiteHeader}
+                      onChange={(event) => change({ whiteHeader: event.currentTarget.checked })}
+                    />
+                    <Switch
+                      label={t('settings.whiteMenu')}
+                      checked={draft.whiteMenu}
+                      onChange={(event) => change({ whiteMenu: event.currentTarget.checked })}
+                    />
+                    <Switch
+                      label={t('settings.menuIcons')}
+                      checked={draft.menuIcons}
+                      onChange={(event) => change({ menuIcons: event.currentTarget.checked })}
+                    />
+                  </Stack>
+                </Stack>
+              </DetailCard>
+              <DetailCard icon={<IconLanguage size={14} />} title={t('settings.languagesSection')}>
+                <Stack gap="lg">
+                  <Checkbox.Group
+                    label={t('settings.languages')}
+                    value={draft.languages}
+                    onChange={chooseLanguages}
+                  >
+                    <Group mt="xs">
+                      {LANGUAGES.map((language) => (
+                        <Checkbox
+                          key={language}
+                          value={language}
+                          label={LANGUAGE_NAMES[language]}
+                        />
+                      ))}
+                    </Group>
+                  </Checkbox.Group>
+                  <NativeSelect
+                    label={t('settings.defaultLanguage')}
+                    value={draft.defaultLanguage}
+                    data={draft.languages.map((language) => ({
+                      value: language,
+                      label: LANGUAGE_NAMES[language],
+                    }))}
+                    onChange={(event) =>
+                      change({ defaultLanguage: event.currentTarget.value as Language })
+                    }
+                  />
+                </Stack>
+              </DetailCard>
+              <ActionButton meaning="main" submit busy={saving} disabled={!valid}>
+                {t('settings.save')}
+              </ActionButton>
+            </Stack>
+          }
+        />
       </Stack>
     </form>
   );

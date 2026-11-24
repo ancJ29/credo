@@ -155,7 +155,7 @@ is `git diff -U0 -- visual/src/resolved.pinned.txt | grep '^+[a-z]' | cut -d' ' 
       run of 15:17 to 15:30), the pinned diff empty, the Shell test's diff empty; rows 7 to 10 and 12 red
       first on the old code (15:06). `BrandPreview`'s prop for the colour is `brand`, since the contracts' test
       refuses a take named `colour`; the preview sits after the form in the page's order and first by CSS.
-- [ ] **2. The page, on the fake.** `Settings.tsx` in `DetailColumns`, its new option on: the form as `main`, its four
+- [x] **2. The page, on the fake.** `Settings.tsx` in `DetailColumns`, its new option on: the form as `main`, its four
       `DetailCard`s and the save, `submit` still a `SubmitEvent`; `BrandPreview` as `side`, from the draft;
       the mock's screen 3 gains a state "typed", the frame in `FILLED`, the form in `TYPED`
       (`ui/src/mock/fixtures.ts#L33`). Rows 1 to 6 red first. _Done when:_ `ui`'s and `visual`'s gates;
@@ -163,6 +163,8 @@ is `git diff -U0 -- visual/src/resolved.pinned.txt | grep '^+[a-z]' | cut -d' ' 
       `10-saved-white`, `11-menu-icons` and `office-5-settings` alone (80 lines, 8 screens on 10 colours);
       `git diff pre-merge -- ui/src/parts/Settings.test.tsx | grep -c '^-[^-]'` 0. **14 min** (241.1's step 5:
       14; 241.2's step 3: 13).
+      _Done 2026-11-24, build 250.1 step 2, sonnet:_ `ui`'s and `visual`'s gates each exit 0 (the run of 15:38 to 15:46), the pinned diff the eight screens and 80 lines, the Settings test's diff with no removed
+      line; rows 1, 2, 3, 4 and 6 red first on the old code (15:36), row 5 the old 21 cases green beside.
 - [ ] **3. The walk.** As "The walk" below; row 13. _Done when:_ `visual`'s, `walk`'s and `ui`'s gates;
       row 13 red on the old counts; the pinned diff naming `13-preview` alone. **14 min** (241.1's step 8:
       14, one scene).
