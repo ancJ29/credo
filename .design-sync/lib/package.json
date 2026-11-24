@@ -1,0 +1,8 @@
+{
+  "name": "credo-design-system",
+  "private": true,
+  "type": "module",
+  "module": "dist/index.es.js",
+  "types": "dist/index.d.ts",
+  "scripts": { "build": "bash build.sh" }
+}

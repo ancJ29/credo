@@ -18,3 +18,5 @@ ui/signin-mock/
 # The docs site's build and Docusaurus's generated files.
 site/build/
 site/.docusaurus/
+# The Claude Design sync's inputs: not product code.
+.design-sync/

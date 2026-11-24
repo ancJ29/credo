@@ -1,0 +1,59 @@
+{
+  "projectId": "ca2ecbd0-7f3a-4dcf-b00f-29d3655827e6",
+  "shape": "package",
+  "pkg": "credo-design-system",
+  "globalName": "Credo",
+  "buildCmd": "bash .design-sync/lib/build.sh",
+  "srcDir": "ui/src",
+  "provider": {
+    "component": "CredoProvider",
+    "props": {
+      "language": "en"
+    }
+  },
+  "extraFonts": [
+    "../../ui/node_modules/@fontsource-variable/noto-sans/index.css"
+  ],
+  "overrides": {
+    "DoorPage": {
+      "cardMode": "column"
+    },
+    "DoorCard": {
+      "cardMode": "column"
+    },
+    "DataTable": {
+      "cardMode": "column"
+    },
+    "PageHeader": {
+      "cardMode": "column"
+    },
+    "ActionRow": {
+      "cardMode": "column"
+    },
+    "CopyText": {
+      "cardMode": "column"
+    },
+    "DoorHeading": {
+      "cardMode": "column"
+    },
+    "FormMessage": {
+      "cardMode": "column"
+    },
+    "MenuRow": {
+      "cardMode": "column"
+    },
+    "BrandBand": {
+      "cardMode": "column"
+    },
+    "ActionButton": {
+      "cardMode": "column"
+    },
+    "LogoTile": {
+      "cardMode": "column"
+    },
+    "CredoProvider": {
+      "cardMode": "column"
+    }
+  },
+  "readmeHeader": ".design-sync/conventions.md"
+}
