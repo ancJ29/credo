@@ -55,6 +55,7 @@ import {
   readSignIn,
 } from './records/staff-records';
 import { registerOperatorAuth } from './routes/operator-auth';
+import { registerOwnPasskeyRoutes } from './routes/own-passkeys';
 import { registerListRoutes } from './routes/lists';
 import { registerDeliveryPhotoRoutes } from './routes/delivery-photo';
 import { registerOrderRoutes } from './routes/orders';
@@ -279,7 +280,7 @@ export function buildApp({
     if (!session || !found || session.generation !== found.user.generation) throw unauthorized();
     const view = await viewOf(request.storage, session.user, found.user);
     if (!view) throw unauthorized();
-    return { ...view, signInName: session.user, signIn: found };
+    return { ...view, signInName: session.user, signIn: found, issuedAt: session.issuedAt };
   }
 
   /** The answer for a person's own view: no more than the app shows. */
@@ -515,6 +516,41 @@ export function buildApp({
   app.get(ROUTES.me, forClient, async (request): Promise<MeReplyBody> => ({
     user: userViewOf(await signedIn(request)),
   }));
+
+  /** The session a passkey signs in, as the QR sign-in's is: the root by the company's own id, a
+   * person by their id, each still named by their sign-in record; null otherwise. */
+  async function holder(request: FastifyRequest, handle: string) {
+    const { tenantId, storage } = request;
+    const device = deviceOf(request);
+    const person = handle === tenantId ? null : await readEmployee(storage, tenantId, handle);
+    if (handle !== tenantId && !person) return null;
+    const name = person ? normaliseSignInName(person.employee.code) : ROOT_NAME;
+    const found = await readSignIn(storage, tenantId, name);
+    const view = found ? await viewOf(storage, name, found.user, { person }) : null;
+    if (
+      !found ||
+      !view ||
+      (person ? found.user.employeeId !== person.employee.id : !found.user.root)
+    ) {
+      return null;
+    }
+    return async (): Promise<SessionReplyBody> => {
+      const sessions = sessionsOf(storage);
+      await endKept(request, sessions);
+      const { authId, expiresAt } = await sessions.issue(device, name, found.user.generation);
+      return { authId, expiresAt, user: userViewOf(view) };
+    };
+  }
+
+  registerOwnPasskeyRoutes(app, {
+    now,
+    origin,
+    serviceKey,
+    forClient,
+    signedIn,
+    deviceOf,
+    holder,
+  });
 
   const { operatorSignedIn, confirmed } = registerOperatorAuth(app, {
     storage,

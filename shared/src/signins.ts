@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { emailSchema } from './records';
 import { passwordIsValid } from './staff';
-import { ROUTES, tagSchema } from './wire';
+import { passkeySignInRequestSchema, registrationResponseSchema, ROUTES, tagSchema } from './wire';
 
 // The ways to sign in beyond a code and a password: an email, a QR code, and one's own password.
 // The email is a second sign-in name the root gives, and no mail is ever sent to it.
@@ -60,12 +60,26 @@ export const changeOwnPasswordRequestSchema = z.strictObject({
 });
 export type ChangeOwnPasswordRequest = z.infer<typeof changeOwnPasswordRequestSchema>;
 
+/** A person adding their own passkey: the challenge's token and the device's answer. The session
+ * itself is the guard (issued in the last ten minutes); no touch beside it. */
+export const ownPasskeyAddRequestSchema = z.strictObject({
+  token: passkeySignInRequestSchema.shape.token,
+  response: registrationResponseSchema,
+});
+export type OwnPasskeyAddRequest = z.infer<typeof ownPasskeyAddRequestSchema>;
+
 /** The routes of these ways, beside `ROUTES` and `employeeRoutes`. */
 export const signInRoutes = {
   qr: '/api/auth/sign-in-qr',
   password: '/api/auth/password',
   email: (id: string) => `${ROUTES.employees}/${id}/email`,
   issueQr: (id: string) => `${ROUTES.employees}/${id}/qr`,
+  /** Asks for the options a sign-in by a company's passkey is made with; answers 404 where passkeys are off. */
+  passkeyOptions: '/api/auth/passkey/options',
+  passkeySignIn: '/api/auth/passkey/sign-in',
+  /** One's own passkey add, behind a session: its options, then the add. */
+  ownPasskeyOptions: '/api/auth/passkey/add-options',
+  ownPasskeyAdd: '/api/auth/passkey/add',
 };
 
 /** Wrong tries a name has free before any wait. */

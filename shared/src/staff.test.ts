@@ -21,12 +21,13 @@ const OFF = {
   photo: false,
   email: false,
   qr: false,
+  passkey: false,
   startDate: false,
   birthDate: false,
   address: false,
 };
-/** The switches a setup that says nothing reads as: every one off but the email sign-in. */
-const DEFAULTS = { ...OFF, email: true };
+/** The switches a setup that says nothing reads as: every one off but the email and passkey sign-ins. */
+const DEFAULTS = { ...OFF, email: true, passkey: true };
 const ID = '7f0c9a52-5b2e-4a39-9d5f-0c6a8e1b2d34';
 const person = {
   id: ID,
@@ -326,6 +327,23 @@ describe('staff', () => {
     ).toBe(false);
     expect(
       staffConfig({ fields: { personalPhone: false, photo: false, email: true } }).fields.email,
+    ).toBe(true);
+    // the passkey sign-in starts on where the switch was never set, and a saved `false` keeps it off
+    expect(staffConfig({}).fields.passkey).toBe(true);
+    expect(staffConfig({ fields: { personalPhone: true, photo: false } }).fields.passkey).toBe(
+      true,
+    );
+    expect(
+      staffConfig({ fields: { personalPhone: false, photo: false, passkey: false } }).fields
+        .passkey,
+    ).toBe(false);
+    expect(
+      staffSetupSchema.safeParse({
+        departments: [],
+        positions: [],
+        fields: { passkey: true },
+        extra: {},
+      }).success,
     ).toBe(true);
     // the start date, the birth date and the address are switches the same way
     expect(

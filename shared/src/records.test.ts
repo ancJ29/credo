@@ -28,6 +28,9 @@ describe('the record keys', () => {
     // a photo is never found by the staff list
     expect(tenant.employeePhoto('p1').startsWith(tenant.employeePrefix)).toBe(false);
     expect(tenant.seed).toBe(`tenant.${id}.seed`);
+    expect(tenant.passkeys('p1')).toBe(`tenant.${id}.passkeys.p1`);
+    expect(tenant.passkeys('p1').startsWith(tenant.all)).toBe(true);
+    expect(tenant.passkeys('p1').startsWith(tenant.employeePrefix)).toBe(false);
     expect(tenant.seed.startsWith(tenant.all)).toBe(true);
     expect(tenant.config.startsWith(tenant.all)).toBe(true);
     expect(recordKeys.client('acme')).toBe('client.acme');

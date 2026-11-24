@@ -57,6 +57,7 @@ describe('the demo data set', () => {
       photo: true,
       email: true,
       qr: false,
+      passkey: true,
       startDate: true,
       birthDate: true,
       address: true,

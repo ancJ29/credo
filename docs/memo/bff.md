@@ -423,6 +423,23 @@ is the one gradation there is.
   `/health` rather than from a record, under a three-second bound, with `cache-control: no-store`.
   A 503 from it is the store, not the console.
 
+## A company's person signs in by a passkey of their own, checked at the company's own address
+
+A person's passkeys are one record under their id (the company's own id for the root), kept in
+the company's box beside the sign-in record and never on it, since each write of the sign-in
+record ends the person's other sessions while each passkey sign-in moves a counter.
+`bff/src/routes/own-passkeys.ts` holds the four routes. The ceremony is checked against the company's
+own address, made from `APP_ORIGIN` and the code the call names (`clientAddress`), never from the
+request's host: a browser refuses a ceremony for another name, and on ridge the operators' address
+is `operator.<Domain>` while a company's is `<code>.<Domain>`. The sign-in answers one 401 for every
+refusal (passkeys off, a spent or foreign challenge, a person who left, a passkey not held, an
+answer the library refuses). The counter, the last use and the challenge's spend go in one write
+over the record's tag; a moved tag reads again, so the same answer sent twice signs in once. The
+add takes a session issued in the last ten minutes, else a 403.
+
+- *Held by:* `bff/src/passkey-sign-in.route.test.ts`.
+- *Rejected:* one relying party for every company. Item 291's fix needs the same address.
+
 ## Where the rest is
 
 - What belongs in this package and the file to copy: [`bff/CLAUDE.md`](../../bff/CLAUDE.md).

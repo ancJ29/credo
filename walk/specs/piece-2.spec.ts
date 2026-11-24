@@ -3,12 +3,12 @@ import { DEMO_CODE, DEMO_CUSTOM_FIELDS, DEMO_EMPLOYEES, DEMO_QR_SECRET } from '@
 import { demoImportFile } from '@credo/ui/import-demo';
 import { DICTIONARIES } from '@credo/ui/words';
 import { expect, type Locator, type Page, test } from '@playwright/test';
-import { required, shot, WIDTHS } from '../support';
+import { required, shot, virtualAuthenticator, WIDTHS } from '../support';
 
 /**
  * Piece 2's groups A, B, C and D, four walks in one run: the staff setup and the staff list, the person's
- * pages, the import, the office's and the phone's, thirty-five screens, each in Vietnamese and in English
- * at the three widths (35 × 2 × 3 = 210). The `fake` project runs it on `pnpm fake -- …`, the UI alone over the data set,
+ * pages, the import, the office's and the phone's, forty screens, each in Vietnamese and in English
+ * at the three widths (40 × 2 × 3 = 240). The `fake` project runs it on `pnpm fake -- …`, the UI alone over the data set,
  * and keeps the pictures as the full run's reference; the `full` project runs it on the stack
  * (`pnpm stack -- …`) and compares them with the bases, or with the fake run's pictures. Each screen opens at an address of its own, so a screen never meets
  * what an earlier one changed. Words come from the app's own dictionaries.
@@ -227,6 +227,12 @@ async function walk(page: Page, language: Language, width: number) {
   const press = (name: string) => page.getByRole('button', { name, exact: true }).click();
   /** A form's heading is clicked, so no field is left focused for the picture. */
   const unfocus = () => page.getByRole('heading', { level: 2 }).click();
+  /** Chromium's virtual authenticator, on the stack alone: the fake lane has its own fake device. */
+  const authenticator = FULL() ? await virtualAuthenticator(page) : null;
+  const ownMenu = async (item: string) => {
+    await page.getByRole('button', { name: 'Trần Văn Hùng', exact: true }).click();
+    await page.getByRole('menuitem', { name: item, exact: true }).click();
+  };
 
   // Group A of the staff setup, and the staff list.
   await open(page, language, { path: '/staff-setup' });
@@ -478,6 +484,49 @@ async function walk(page: Page, language: Language, width: number) {
   await press(words.auth.submit);
   await expect(page.getByRole('heading', { level: 2, name: 'Trần Văn Hùng' })).toBeVisible();
 
+  // 25. A person adds a passkey from the user menu: what it is, and that the password stays.
+  await open(page, language, { path: '/passkey', as: 'EMP-0002' });
+  await expect(title(words.ownPasskey.title)).toBeVisible();
+  await expect(page.getByText(words.ownPasskey.text)).toBeVisible();
+  await at('staff-25-add-passkey');
+
+  // 26. The press and the touch: the passkey is added, and how to use it next time.
+  await open(page, language, { path: '/passkey', as: 'EMP-0002' });
+  await press(words.ownPasskey.submit);
+  await expect(page.getByRole('status')).toHaveText(words.ownPasskey.added);
+  await expect(page.getByText(words.ownPasskey.addedText)).toBeVisible();
+  await at('staff-26-passkey-added');
+
+  // 27. Signed out, the passkey button pressed: the person signed in again as themselves, nothing typed. The stack's
+  // authenticator holds this person's passkey alone.
+  await authenticator?.forget();
+  await open(page, language, { path: '/passkey', as: 'EMP-0002' });
+  await press(words.ownPasskey.submit);
+  await expect(page.getByRole('status')).toHaveText(words.ownPasskey.added);
+  await ownMenu(words.user.signOut);
+  await press(words.auth.passkey);
+  await expect(page.getByRole('button', { name: 'Trần Văn Hùng', exact: true })).toBeVisible();
+  await expect(title(words.ownPasskey.title)).toBeVisible();
+  await at('staff-27-passkey-sign-in');
+
+  // 28. The device gives no passkey: the fake is cued, the stack's authenticator cannot verify the user.
+  await authenticator?.verified(false);
+  await open(page, language, { path: '/staff', out: true, cue: 'passkey:notGiven' });
+  await press(words.auth.passkey);
+  await expect(page.getByRole('alert')).toHaveText(words.passkey.notGiven);
+  await at('staff-28-passkey-not-given');
+  await authenticator?.verified(true);
+
+  // 29. A passkey that opens nothing here: the fake's sign-in is cued to a 401, the stack's
+  // authenticator holds one no one has.
+  await authenticator?.forget();
+  await authenticator?.stranger();
+  await open(page, language, { path: '/staff', out: true, cue: 'passkeySignIn:401' });
+  await press(words.auth.passkey);
+  await expect(page.getByRole('alert')).toHaveText(words.auth.passkeyRefused);
+  await at('staff-29-passkey-refused');
+  await authenticator?.forget();
+
   // The office's walk: people signed in by their code, as their permissions allow.
   await open(page, language, { path: '/staff', as: 'EMP-0001' });
   await expect(title(words.staff.title)).toBeVisible();
@@ -558,7 +607,7 @@ for (const [device, width] of Object.entries(WIDTHS)) {
       ['vi', 'Vietnamese'],
       ['en', 'English'],
     ] as const) {
-      test(`walks all thirty-five screens in ${name}`, async ({ page }) => {
+      test(`walks all forty screens in ${name}`, async ({ page }) => {
         await walk(page, language, width);
       });
     }

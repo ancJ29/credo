@@ -91,7 +91,7 @@ async function walk(page: Page, language: Language, width: number) {
   // 2. Sign-in refused.
   await page.getByLabel(words.auth.username, { exact: true }).fill(ROOT.name);
   await page.getByLabel(words.auth.password, { exact: true }).fill('not the password');
-  await page.getByRole('button', { name: words.auth.submit }).click();
+  await page.getByRole('button', { name: words.auth.submit, exact: true }).click();
   await expect(page.getByRole('alert')).toHaveText(words.auth.refused);
   await at('2-sign-in-refused');
 
@@ -102,18 +102,18 @@ async function walk(page: Page, language: Language, width: number) {
   await page.getByLabel(words.auth.username, { exact: true }).fill(`nobody-${language}-${width}`);
   for (let wrong = 1; wrong <= 5; wrong++) {
     await page.getByLabel(words.auth.password, { exact: true }).fill(`not the password ${wrong}`);
-    await page.getByRole('button', { name: words.auth.submit }).click();
+    await page.getByRole('button', { name: words.auth.submit, exact: true }).click();
     await expect(page.getByRole('alert')).toHaveText(words.auth.refused);
   }
   await page.getByLabel(words.auth.password, { exact: true }).fill('not the password 6');
-  await page.getByRole('button', { name: words.auth.submit }).click();
+  await page.getByRole('button', { name: words.auth.submit, exact: true }).click();
   await expect(page.getByRole('alert')).toHaveText(words.wait.seconds.replace('{{count}}', '30'));
   await at('12-sign-in-wait');
   await page.getByLabel(words.auth.username, { exact: true }).fill(ROOT.name);
 
   // 3. Settings: name, logo, colour, languages.
   await page.getByLabel(words.auth.password, { exact: true }).fill(ROOT.password);
-  await page.getByRole('button', { name: words.auth.submit }).click();
+  await page.getByRole('button', { name: words.auth.submit, exact: true }).click();
   // Signing in lands on the first page of the menu, the orders: Settings is opened from the menu.
   await expect(page.getByRole('heading', { level: 2, name: words.nav.orders })).toBeVisible();
   await page

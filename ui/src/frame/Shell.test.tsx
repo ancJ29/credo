@@ -459,6 +459,47 @@ describe('Shell', () => {
     );
   });
 
+  it('18: The user’s menu lists the add-a-passkey link right after the password’s, only where the app gives the page, and it opens that page', async () => {
+    draw(
+      <Shell
+        brand={brand}
+        user="root"
+        languages={['en']}
+        onLanguage={vi.fn()}
+        onSignOut={vi.fn()}
+        passwordPath="/password"
+      >
+        <p>the page</p>
+      </Shell>,
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'root' }));
+    expect(screen.queryByRole('menuitem', { name: words.user.passkey })).toBeNull();
+    cleanup();
+
+    draw(
+      <Shell
+        brand={brand}
+        user="root"
+        languages={['en']}
+        onLanguage={vi.fn()}
+        onSignOut={vi.fn()}
+        passwordPath="/password"
+        passkeyPath="/passkey"
+      >
+        <p>the page</p>
+      </Shell>,
+    );
+    await userEvent.click(screen.getByRole('button', { name: 'root' }));
+    expect(screen.getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
+      words.user.password,
+      words.user.passkey,
+      words.user.signOut,
+    ]);
+    expect(screen.getByRole('menuitem', { name: words.user.passkey }).getAttribute('href')).toBe(
+      '/passkey',
+    );
+  });
+
   const looked = (look: Look, shown = true) =>
     draw(
       <Shell

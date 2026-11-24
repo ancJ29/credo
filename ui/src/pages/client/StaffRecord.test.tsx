@@ -66,6 +66,7 @@ describe('the company’s optional fields', () => {
         photo: false,
         email: true,
         qr: false,
+        passkey: true,
         startDate: true,
         birthDate: true,
         address: true,
@@ -164,7 +165,12 @@ describe('the company’s optional fields', () => {
 
     await screen.findByText(words.setup.saved);
     const saved = (await api.getStaffSetup()).setup;
-    expect(saved.fields).toEqual({ ...DEMO_STAFF_SETUP.fields, email: true, qr: false });
+    expect(saved.fields).toEqual({
+      ...DEMO_STAFF_SETUP.fields,
+      email: true,
+      qr: false,
+      passkey: true,
+    });
     expect(saved.customFields).toEqual(DEMO_STAFF_SETUP.customFields);
     expect(saved.numbering).toEqual(DEMO_STAFF_SETUP.numbering);
   });

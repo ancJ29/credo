@@ -1,6 +1,6 @@
 import type { Language } from '@credo/shared';
-import { Box, Button, Checkbox, PasswordInput, Stack, TextInput } from '@mantine/core';
-import { IconLock, IconUser } from '@tabler/icons-react';
+import { Box, Button, Checkbox, Divider, PasswordInput, Stack, TextInput } from '@mantine/core';
+import { IconKey, IconLock, IconUser } from '@tabler/icons-react';
 import { type SubmitEvent, type ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Brand } from '../brand';
@@ -14,14 +14,18 @@ import { FormMessage } from '../components/molecules/FormMessage';
 
 type Props = {
   brand: Brand;
-  /** Idle, waiting on the service, the last attempt refused, or the name made to wait. */
-  status: 'idle' | 'busy' | 'refused' | 'wait';
+  /** Idle, waiting on the service, the last attempt refused, or the name made to wait; and for the
+   * passkey: waiting on the touch, the passkey not given, or one that opens nothing here. */
+  status: 'idle' | 'busy' | 'refused' | 'wait' | 'passkeyBusy' | 'notGiven' | 'passkeyRefused';
   /** The seconds a 'wait' asks for. */
   waitSeconds?: number;
   /** What is already typed, for a mock of a half-filled form. */
   initial?: { username: string; password: string };
   /** What was typed, and whether the sign-in is kept on the device (the tick, which starts on). */
   onSubmit: (username: string, password: string, remember: boolean) => void;
+  /** The passkey's press, with the tick as it stands; the button is drawn only where it is given,
+   * the company having passkeys on and the options answered. */
+  onPasskey?: (remember: boolean) => void;
   /** The languages the company offers, and the caller's handler for a chosen one. */
   languages?: readonly Language[];
   onLanguage?: (language: Language) => void;
@@ -65,6 +69,7 @@ export function SignIn({
   waitSeconds = 0,
   initial,
   onSubmit,
+  onPasskey,
   languages,
   onLanguage,
 }: Props) {
@@ -87,6 +92,10 @@ export function SignIn({
     >
       {status === 'wait' && <FormMessage kind="error">{waitWords(t, waitSeconds)}</FormMessage>}
       {status === 'refused' && <FormMessage kind="error">{t('auth.refused')}</FormMessage>}
+      {status === 'notGiven' && <FormMessage kind="error">{t('passkey.notGiven')}</FormMessage>}
+      {status === 'passkeyRefused' && (
+        <FormMessage kind="error">{t('auth.passkeyRefused')}</FormMessage>
+      )}
       <form onSubmit={submit}>
         <Stack gap="lg">
           <TextInput
@@ -126,6 +135,21 @@ export function SignIn({
           >
             {t('auth.submit')}
           </Button>
+          {onPasskey && (
+            <>
+              <Divider label={t('auth.or')} />
+              <Button
+                type="button"
+                variant="default"
+                fullWidth
+                loading={status === 'passkeyBusy'}
+                leftSection={<IconKey size={18} />}
+                onClick={() => onPasskey(remember)}
+              >
+                {t('auth.passkey')}
+              </Button>
+            </>
+          )}
         </Stack>
       </form>
     </SignInFrame>

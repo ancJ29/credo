@@ -213,6 +213,11 @@ const PROOF: Record<string, (w: (typeof DICTIONARIES)['en']) => string> = {
   'admin-staff:staff-23-back-on': (w) => `button: ${w.person.archive}`,
   'admin-staff:staff-24-email-sign-in': (w) =>
     `textbox "${w.auth.username}" = "hung@minh-phat.example" placeholder "${w.auth.usernamePlaceholder}"`,
+  'admin-staff:staff-25-add-passkey': (w) => `heading: ${w.ownPasskey.title}`,
+  'admin-staff:staff-26-passkey-added': (w) => `status: ${w.ownPasskey.added}`,
+  'admin-staff:staff-27-passkey-sign-in': (w) => `heading: ${w.ownPasskey.title}`,
+  'admin-staff:staff-28-passkey-not-given': (w) => `alert: ${w.passkey.notGiven}`,
+  'admin-staff:staff-29-passkey-refused': (w) => `alert: ${w.auth.passkeyRefused}`,
   'office-staff:office-1-menu': (w) => `link: ${w.nav.staff}`,
   'office-staff:office-2-add': (w) => `region: ${w.person.signInNotYet}`,
   'office-staff:office-3-forbidden': (w) => `heading: ${w.forbidden.title}`,

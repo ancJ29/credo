@@ -53,6 +53,41 @@ describe('SignIn', () => {
     expect(shown(900, 'vi')).toBe(waited('vi', 'minutes', 15));
   });
 
+  it('15: draws “or” and the passkey button only where a press is given, and sends the tick as it stands', async () => {
+    const { unmount } = draw(<SignIn brand={brand} status="idle" onSubmit={vi.fn()} />);
+    expect(screen.queryByRole('button', { name: words.auth.passkey })).toBeNull();
+    expect(screen.queryByText(words.auth.or)).toBeNull();
+    unmount();
+
+    const onPasskey = vi.fn();
+    draw(<SignIn brand={brand} status="idle" onSubmit={vi.fn()} onPasskey={onPasskey} />);
+    expect(screen.getByText(words.auth.or)).toBeTruthy();
+    await userEvent.click(screen.getByRole('checkbox', { name: words.auth.remember }));
+    await userEvent.click(screen.getByRole('button', { name: words.auth.passkey }));
+
+    expect(onPasskey).toHaveBeenCalledExactlyOnceWith(false);
+  });
+
+  it('16: tells a passkey not given and one refused as one red line each, and waits on the touch in the passkey button alone', () => {
+    const shown = (status: 'notGiven' | 'passkeyRefused' | 'passkeyBusy') => {
+      draw(<SignIn brand={brand} status={status} onSubmit={vi.fn()} onPasskey={vi.fn()} />);
+      const alert = screen.queryByRole('alert')?.textContent ?? null;
+      const loading = [
+        screen.getByRole('button', { name: words.auth.submit }),
+        screen.getByRole('button', { name: words.auth.passkey }),
+      ].map((button) => button.hasAttribute('data-loading'));
+      cleanup();
+      return { alert, loading };
+    };
+
+    expect(shown('notGiven')).toEqual({ alert: words.passkey.notGiven, loading: [false, false] });
+    expect(shown('passkeyRefused')).toEqual({
+      alert: words.auth.passkeyRefused,
+      loading: [false, false],
+    });
+    expect(shown('passkeyBusy')).toEqual({ alert: null, loading: [false, true] });
+  });
+
   it('sends what was typed', async () => {
     const onSubmit = vi.fn();
     draw(<SignIn brand={brand} status="idle" onSubmit={onSubmit} />);

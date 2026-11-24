@@ -36,7 +36,6 @@ export const SAMPLES: Record<
     aField: string;
     aBadge: string;
     or: string;
-    useLink: string;
     linkTitle: string;
     linkSubtitle: string;
     scanQr: string;
@@ -84,7 +83,6 @@ export const SAMPLES: Record<
     aField: 'A field',
     aBadge: 'A badge',
     or: 'or',
-    useLink: 'Use a sign-in link',
     linkTitle: 'Sign in with a link',
     linkSubtitle: 'Scan the QR code or enter the sign-in code to sign in',
     scanQr: 'Scan the QR code',
@@ -139,7 +137,6 @@ export const SAMPLES: Record<
     aField: 'Một ô nhập',
     aBadge: 'Một nhãn',
     or: 'hoặc',
-    useLink: 'Dùng liên kết đăng nhập',
     linkTitle: 'Đăng nhập bằng liên kết',
     linkSubtitle: 'Quét mã QR hoặc nhập mã đăng nhập để đăng nhập',
     scanQr: 'Quét mã QR',

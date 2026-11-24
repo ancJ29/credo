@@ -66,7 +66,7 @@ export const customFieldsWriteSchema = customFieldsSchema.refine(
 );
 
 /** The person's optional fields the root switches on; `staffConfig` reads an absent one as off,
- * except email, which it reads as on. */
+ * except email and passkey, which it reads as on. */
 export const staffFieldsSchema = z.strictObject({
   personalPhone: z.boolean().default(false),
   photo: z.boolean().default(false),
@@ -75,6 +75,8 @@ export const staffFieldsSchema = z.strictObject({
    * a saved `false` is kept. */
   email: z.boolean().optional(),
   qr: z.boolean().optional(),
+  /** The passkey sign-in; absent reads as on, and a saved `false` is kept, the root's too. */
+  passkey: z.boolean().optional(),
   /** The start date, the birth date and the address: values in `extra` under these same names.
    * Absent from a setup saved before they existed, and read as off. */
   startDate: z.boolean().optional(),

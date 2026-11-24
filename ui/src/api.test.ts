@@ -776,6 +776,71 @@ describe('the API client', () => {
       expect(calls[2]?.init.body).toBe(JSON.stringify({ id, secret: 'a'.repeat(32) }));
     });
 
+    it('C: asks a company for its passkey options, none where the company has them off, and signs in by one, a refusal being a 401 for the page to say', async () => {
+      const offered = { options: { challenge: 'c' }, token: 't' };
+      const session = {
+        authId: 'device-0001.secret',
+        expiresAt: 9,
+        user: { name: 'Lan', root: false, permissions: {} },
+      };
+      const response = {
+        id: 'k',
+        rawId: 'k',
+        type: 'public-key' as const,
+        response: {},
+        clientExtensionResults: {},
+      };
+      const { calls, api } = fake(
+        json(offered),
+        json({}, 404),
+        json({}, 503),
+        json(session),
+        json({}, 401),
+      );
+
+      expect(await api.passkeyOptions()).toEqual(offered);
+      expect(await api.passkeyOptions()).toBeNull();
+      await expect(api.passkeyOptions()).rejects.toMatchObject({ status: 503 });
+      expect(await api.passkeySignIn({ token: 't', response })).toEqual(session);
+      await expect(api.passkeySignIn({ token: 't', response })).rejects.toMatchObject({
+        status: 401,
+      });
+      expect(calls.map((call) => [call.init.method, call.path])).toEqual([
+        ['POST', '/api/auth/passkey/options'],
+        ['POST', '/api/auth/passkey/options'],
+        ['POST', '/api/auth/passkey/options'],
+        ['POST', '/api/auth/passkey/sign-in'],
+        ['POST', '/api/auth/passkey/sign-in'],
+      ]);
+      expect(calls[3]?.init.body).toBe(JSON.stringify({ token: 't', response }));
+    });
+
+    it('C: asks for the options of one’s own passkey and adds it, a 403 being a session too old and a 404 passkeys switched off, for the page to say', async () => {
+      const offered = { options: { challenge: 'c' }, token: 't' };
+      const response = {
+        id: 'k',
+        rawId: 'k',
+        type: 'public-key' as const,
+        response: {},
+        clientExtensionResults: {},
+      };
+      const { calls, api } = fake(json(offered), json({}, 404), json({}), json({}, 403));
+
+      expect(await api.ownPasskeyOptions()).toEqual(offered);
+      await expect(api.ownPasskeyOptions()).rejects.toMatchObject({ status: 404 });
+      await api.ownPasskeyAdd({ token: 't', response });
+      await expect(api.ownPasskeyAdd({ token: 't', response })).rejects.toMatchObject({
+        status: 403,
+      });
+      expect(calls.map((call) => [call.init.method, call.path])).toEqual([
+        ['POST', '/api/auth/passkey/add-options'],
+        ['POST', '/api/auth/passkey/add-options'],
+        ['POST', '/api/auth/passkey/add'],
+        ['POST', '/api/auth/passkey/add'],
+      ]);
+      expect(calls[2]?.init.body).toBe(JSON.stringify({ token: 't', response }));
+    });
+
     it('C: a 429 in the back end’s wait shape is a wait, on the sign-in and on one’s own password, and a 429 of any other shape is an error with no wait', async () => {
       const wait = { error: 'Wait', waitSeconds: 45 };
       const { api } = fake(

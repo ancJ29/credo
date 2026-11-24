@@ -94,6 +94,7 @@ import {
   type PasskeyAddRequest,
   type PasskeyItem,
   passkeyListReplySchema,
+  type OwnPasskeyAddRequest,
   type PasskeySignInRequest,
   passkeyRoutes,
   type RootPasswordReply,
@@ -326,6 +327,36 @@ export function createApi({
       if (response.status === 429) throw new ApiError(429, false, await waitOf(response));
       if (!response.ok) throw new ApiError(response.status);
       return await read(response, sessionReplySchema);
+    },
+
+    /** The options a sign-in by this company's passkey starts from, with the token that binds their
+     * challenge; null on a 404, where the company has passkeys off. */
+    async passkeyOptions(): Promise<OptionsReply | null> {
+      const response = await send('POST', signInRoutes.passkeyOptions);
+      if (response.status === 404) return null;
+      if (!response.ok) throw new ApiError(response.status);
+      return await read(response, optionsReplySchema);
+    },
+
+    /** A 401 means no one here holds that passkey; it does not say which part failed. */
+    async passkeySignIn(request: PasskeySignInRequest): Promise<SessionReply> {
+      const response = await send('POST', signInRoutes.passkeySignIn, request);
+      if (!response.ok) throw new ApiError(response.status);
+      return await read(response, sessionReplySchema);
+    },
+
+    /** The options a person's own add starts from, with the token that binds their challenge; a 404
+     * is passkeys switched off, a 401 no session. */
+    async ownPasskeyOptions(): Promise<OptionsReply> {
+      const response = await send('POST', signInRoutes.ownPasskeyOptions);
+      if (!response.ok) throw new ApiError(response.status);
+      return await read(response, optionsReplySchema);
+    },
+
+    /** Adds the passkey to the signed-in person; a 403 is a session issued too long ago for an add. */
+    async ownPasskeyAdd(request: OwnPasskeyAddRequest): Promise<void> {
+      const response = await send('POST', signInRoutes.ownPasskeyAdd, request);
+      if (!response.ok) throw new ApiError(response.status);
     },
 
     async signOut() {

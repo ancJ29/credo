@@ -120,6 +120,30 @@ describe('the staff setup page', () => {
     expect(again.checked).toBe(false);
   });
 
+  it('The setup page draws the passkey tick ticked where the company never set it, and a save keeps an untick', async () => {
+    const { api } = openApp('/staff-setup');
+    const passkey = await screen.findByRole<HTMLInputElement>('checkbox', {
+      name: words.setup.fieldPasskey,
+    });
+    expect(passkey.checked).toBe(true);
+
+    await user.click(screen.getByRole('button', { name: words.setup.save }));
+    await screen.findByText(words.setup.saved);
+    expect((await api.getStaffSetup()).setup.fields).toMatchObject({ passkey: true });
+
+    // the root unticks it and saves: the choice is kept, and the tick is drawn off
+    const again = screen.getByRole<HTMLInputElement>('checkbox', {
+      name: words.setup.fieldPasskey,
+    });
+    await user.click(again);
+    expect(again.checked).toBe(false);
+    await user.click(screen.getByRole('button', { name: words.setup.save }));
+    await waitFor(async () =>
+      expect((await api.getStaffSetup()).setup.fields).toMatchObject({ passkey: false }),
+    );
+    expect(again.checked).toBe(false);
+  });
+
   it('The setup page names the three switches in Vietnamese', async () => {
     openApp('/staff-setup', { language: 'vi' });
 

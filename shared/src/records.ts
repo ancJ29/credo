@@ -77,6 +77,9 @@ export const recordKeys = {
      * often a password typed into the wrong box, so the key never holds it, and a copy of the
      * store's data without that key cannot reverse it by a dictionary run. */
     signInWait: (nameHash: string) => `tenant.${id}.signin-wait.${nameHash}`,
+    /** One person's passkeys, by the handle the device keeps (the person's minted id, or the company's
+     * own for the root): its own record, so a passkey's use moves no sign-in record. */
+    passkeys: (handle: string) => `tenant.${id}.passkeys.${handle}`,
   }),
 } as const;
 
@@ -192,6 +195,14 @@ export const storedAccountSchema = z.strictObject({
 });
 export type StoredAccount = z.infer<typeof storedAccountSchema>;
 
+/** A company person's passkeys: the same stored passkey as an operator's, and the challenges
+ * answered in the last five minutes; no link and no generation, the sign-in record holding those. */
+export const storedOwnPasskeysSchema = z.strictObject({
+  passkeys: z.array(storedPasskeySchema),
+  spent: z.array(z.strictObject({ hash: z.string(), at: z.number() })),
+});
+export type StoredOwnPasskeys = z.infer<typeof storedOwnPasskeysSchema>;
+
 /** A link: whose it is, whether it makes a first passkey or replaces the ones held, who made it
  * (null for the terminal) and when it ends. */
 export const storedLinkSchema = z.strictObject({
@@ -252,8 +263,8 @@ export const storedSessionSchema = z.strictObject({
   /** The sign-in record's `generation` when this session was issued, equal to the record's while no
    * claim or password has come since. An operator's is its account's `generation`, as a string. */
   generation: z.string(),
-  /** When the session was issued, which an operator's 12-hour cap counts from; a tenant's
-   * session, which has no cap, reads 0. */
+  /** When the session was issued: an operator's 12-hour cap and a company's ten-minute add of a
+   * passkey both count from it; a session stored before it was kept reads 0. */
   issuedAt: z.number().default(0),
 });
 export type StoredSession = z.infer<typeof storedSessionSchema>;

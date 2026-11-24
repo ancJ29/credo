@@ -217,6 +217,40 @@ describe('the walk spec’s email sign-in, replayed on the real router', () => {
   });
 });
 
+describe('the walk spec’s passkey scenes, replayed on the real router', () => {
+  const HUNG = 'Trần Văn Hùng';
+
+  it('WK6: A person opens the add page, adds a passkey, signs out, and the passkey button signs them in as themselves', async () => {
+    openApp('/passkey', { as: 'EMP-0002' });
+    expect(
+      await screen.findByRole('heading', { level: 2, name: words.ownPasskey.title }),
+    ).toBeTruthy();
+    expect(screen.getByText(words.ownPasskey.text)).toBeTruthy();
+
+    await userEvent.click(screen.getByRole('button', { name: words.ownPasskey.submit }));
+    expect((await screen.findByRole('status')).textContent).toContain(words.ownPasskey.added);
+    expect(screen.getByText(words.ownPasskey.addedText)).toBeTruthy();
+
+    await openUserMenu(HUNG);
+    await userEvent.click(screen.getByRole('menuitem', { name: words.user.signOut }));
+    await userEvent.click(await screen.findByRole('button', { name: words.auth.passkey }));
+    expect(await screen.findByRole('button', { name: HUNG })).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 2, name: words.ownPasskey.title })).toBeTruthy();
+    expect(screen.queryByRole('button', { name: words.auth.passkey })).toBeNull();
+  });
+
+  it('WK6: The door’s passkey button tells a device that gives none, and a passkey that opens nothing here', async () => {
+    const notGiven = openApp('/staff', { out: true, cue: 'passkey:notGiven' });
+    await userEvent.click(await screen.findByRole('button', { name: words.auth.passkey }));
+    expect((await screen.findByRole('alert')).textContent).toBe(words.passkey.notGiven);
+    notGiven.unmount();
+
+    openApp('/staff', { out: true, cue: 'passkeySignIn:401' });
+    await userEvent.click(await screen.findByRole('button', { name: words.auth.passkey }));
+    expect((await screen.findByRole('alert')).textContent).toBe(words.auth.passkeyRefused);
+  });
+});
+
 describe('a QR code for a person', () => {
   it('C: The root shows a person a QR code and its link, for one sign-in within 15 minutes; a new code cancels the last', async () => {
     const { api } = openApp(at('EMP-0004'), { signIns: true });

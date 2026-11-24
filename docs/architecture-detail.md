@@ -288,7 +288,7 @@ points here for this and does not word it again.
   `*.<credo-domain>` in `us-east-1` (made by hand, since CloudFront takes no other Region's) and one
   wildcard DNS name; the screens read the code from the address instead of the link, and
   `CLIENT_HEADER` still carries it to the back end. The operator keeps one name of its own,
-  `operator.<credo-domain>`, because every passkey is checked against it (`bff/src/env.ts`'s
+  `operator.<credo-domain>`, because every operator's passkey is checked against it (`bff/src/env.ts`'s
   `originShape`), and `operator` and `www` are kept back from tenants (`shared/src/records.ts`'s
   `KEPT_CODES`). The domain is the stack's `Domain` setting, never in git.
 - **A tenant whose contract needs its keys or its code apart** takes a stack of its own from
@@ -296,7 +296,7 @@ points here for this and does not word it again.
 - **The address.** `<tenant-code>.<credo-domain>` on the one distribution, through one free ACM
   certificate for `*.<credo-domain>` in `us-east-1` and one wildcard DNS name; the screens read the
   code from the address instead of the link, and `CLIENT_HEADER` still carries it to the back end.
-  The operator keeps one name of its own, because every passkey is checked against it
+  The operator keeps one name of its own, because every operator's passkey is checked against it
   (`bff/src/env.ts`'s `originShape`), and a few codes are kept back from tenants. The domain is a
   setting.
 - **The audit store** is routed by the same record, one store a group, the fit being the group's

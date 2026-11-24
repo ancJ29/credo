@@ -52,6 +52,7 @@ const signIn = (
     waitSeconds={waitSeconds}
     initial={initial}
     onSubmit={inert}
+    onPasskey={inert}
   />
 );
 

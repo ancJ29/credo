@@ -16,6 +16,10 @@ export const en = {
     submit: 'Sign in',
     remember: 'Remember me',
     refused: 'Incorrect username or password.',
+    or: 'or',
+    passkey: 'Sign in with a passkey',
+    passkeyRefused:
+      'This passkey does not open an account here. Sign in with your username and password.',
   },
   nav: {
     menu: 'Menu',
@@ -36,7 +40,12 @@ export const en = {
     usage: 'Usage & costs',
     activity: 'Activity log',
   },
-  user: { language: 'Language', signOut: 'Sign out', password: 'Change password' },
+  user: {
+    language: 'Language',
+    signOut: 'Sign out',
+    password: 'Change password',
+    passkey: 'Add a passkey',
+  },
   settings: {
     title: 'Settings',
     basics: 'Basic information',
@@ -339,6 +348,7 @@ export const en = {
       'Staff code and password are enabled by default. Additional methods do not replace existing access.',
     fieldEmail: 'Email (alternative login username; no automated emails are sent)',
     fieldQr: 'One-time mobile QR login (valid for 15 minutes)',
+    fieldPasskey: 'Passkey (sign in with face, fingerprint or phone PIN)',
     ownTitle: 'Custom staff fields',
     ownIntro:
       'Define custom fields to store extra employee data. Field keys cannot be changed once saved.',
@@ -532,6 +542,16 @@ export const en = {
     invalid: 'Password does not meet required security criteria.',
     mismatch: 'New passwords do not match.',
     failed: 'Failed to update password. Please try again.',
+  },
+  ownPasskey: {
+    title: 'Add a passkey',
+    text: 'A passkey lets you sign in with your face, fingerprint or device PIN. Your password keeps working.',
+    submit: 'Add a passkey',
+    added: 'Passkey added.',
+    addedText:
+      'Next time, press Sign in with a passkey on the sign-in page and use your face, fingerprint or device PIN.',
+    tooOld: 'For your safety, sign out and sign in again, then add a passkey.',
+    off: 'Passkeys are switched off for your company.',
   },
   qrSignIn: {
     busyTitle: 'Signing you in...',

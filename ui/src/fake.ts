@@ -341,6 +341,8 @@ export function createFakeApi({
     DEMO_CLIENTS.map((client) => [client.code, { ...client, link: clientLinkPath(client.code) }]),
   );
 
+  /** Whose the company's one passkey is, by session handle: the last to add one; none until then. */
+  let passkeyHandle: string | null = null;
   /** The operator's own passkeys, and whether the data set's join link has been used. */
   let passkeys = DEMO_PASSKEYS.map((passkey) => ({ ...passkey }));
   let added = 0;
@@ -699,6 +701,36 @@ export function createFakeApi({
         },
         () => ({ kind: 'conflict' as const }),
       ),
+
+    passkeyOptions: () =>
+      call('passkeyOptions', () => (staffConfig(setup).fields.passkey ? OPTIONS : null)),
+
+    // The fake's one credential belongs to whoever added it last: a sign-in by it is theirs, and with
+    // none added, or passkeys off, it is refused as a passkey no one holds is.
+    passkeySignIn: () =>
+      call('passkeySignIn', () => {
+        if (passkeyHandle === null || !staffConfig(setup).fields.passkey) throw signedOut();
+        return {
+          authId: passkeyHandle,
+          expiresAt: Date.now() + WEEK,
+          user: signedInUser(passkeyHandle),
+        };
+      }),
+
+    ownPasskeyOptions: () =>
+      call('ownPasskeyOptions', () => {
+        if (!device.authId()) throw signedOut();
+        if (!staffConfig(setup).fields.passkey) throw notFound();
+        return OPTIONS;
+      }),
+
+    ownPasskeyAdd: () =>
+      call('ownPasskeyAdd', () => {
+        const handle = device.authId();
+        if (!handle) throw signedOut();
+        if (!staffConfig(setup).fields.passkey) throw notFound();
+        passkeyHandle = handle;
+      }),
 
     operatorPasskeyOptions: () => call('operatorPasskeyOptions', () => OPTIONS),
 

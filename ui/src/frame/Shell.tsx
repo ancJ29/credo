@@ -58,6 +58,8 @@ type Props = {
   languageMenuOpen?: boolean;
   /** Where a person changes their own password; the user's menu lists it only when this is set. */
   passwordPath?: string;
+  /** Where a person adds their own passkey; the user's menu lists it, after the password, only when this is set. */
+  passkeyPath?: string;
   /** The pages this person's menu lists; every page, for a mock of the whole menu. */
   pages?: readonly MenuPage[];
   /** A word beside the brand, which says whose door this is; a client's app passes none. */
@@ -95,6 +97,7 @@ export function Shell({
   userMenuOpen,
   languageMenuOpen,
   passwordPath,
+  passkeyPath,
   pages = PAGES,
   badge,
   menuLinks = [],
@@ -110,6 +113,7 @@ export function Shell({
   const barPages = pages.slice(0, BAR_PAGES);
   const links = [
     ...(passwordPath === undefined ? [] : [{ to: passwordPath, label: t('user.password') }]),
+    ...(passkeyPath === undefined ? [] : [{ to: passkeyPath, label: t('user.passkey') }]),
     ...menuLinks,
   ];
   /** Set only when on, so the markup of a frame with all three off is the one it always was. */
