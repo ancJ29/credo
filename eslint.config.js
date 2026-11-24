@@ -24,9 +24,11 @@ export default defineConfig(
   // services/c-storage/ is a Go project with its own face and gate (its CLAUDE.md line 2). ui/frame-mock/ is
   // a static look for the human to judge, its data written from the app's own files: no product code;
   // ui/signin-mock/ is the same for the sign-in screens. site/build/ and site/.docusaurus/ are the docs site's
-  // build and Docusaurus's generated files.
+  // build and Docusaurus's generated files. .design-sync/ is the Claude Design sync's own inputs (a
+  // library entry, previews, a build script): not product code, outside every tsconfig.
   {
     ignores: [
+      '.design-sync/',
       '**/dist/',
       '**/node_modules/',
       '**/coverage/',

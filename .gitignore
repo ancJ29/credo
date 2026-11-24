@@ -80,3 +80,11 @@ test-results/
 # The docs site's build and Docusaurus's generated files (site/)
 /site/build/
 /site/.docusaurus/
+
+# design sync
+.ds-sync/
+ds-bundle/
+.design-sync/.cache/
+.design-sync/learnings/
+.design-sync/node_modules
+.design-sync/lib/dist/
