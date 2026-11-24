@@ -250,8 +250,10 @@ Sizes are the last rows of each step's shape in the runs log. Each gate is the t
       for the company's passkeys. A password's sign-in sets the user and navigates nowhere
       (`ui/src/ClientApp.tsx#L233-L240`), as the passkey's does (`#L265-L270`), so both stay on the address the person
       left; the plan's "lands on their first page" (the slice) and scene 27's table row now say that.
-- [ ] **9. Your walk run, then the bases.** The run line below, green; the bases committed alone, each
+- [x] **9. Your walk run, then the bases.** The run line below, green; the bases committed alone, each
       walk's count matching the log; the same walks without flags, 0 moved. **2 min** (241.1's 9b: 1).
+      Done 2026-11-24: the first walk run's bases committed alone (`e29388d5`); your second walk run of 24 November, after the review's
+      fixes, green, its two scenes' 12 pictures (staff-25 and staff-27) committed alone (`2b244396`); the other walks 0 moved.
 - [ ] **10. The recap and the landing.** The recap and its products rows; `pre-merge` taken in, the
       gates again, the landing; the whole check, since the landing touches `shared` and five packages
       (`docs/conventions/qa.md#L262-L267`); `pre-main-review` before `main`, sign-in being worth one
