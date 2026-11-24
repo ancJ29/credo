@@ -171,9 +171,10 @@ is `git diff -U0 -- visual/src/resolved.pinned.txt | grep '^+[a-z]' | cut -d' ' 
       _Done 2026-11-24, build 250.1 step 3, sonnet:_ `visual`'s, `walk`'s and `ui`'s gates each exit 0 (the run of
       16:03 to 16:10); row 13 red on the old counts (16:01), its two cases; the pinned diff `admin-setup/13-preview`
       alone, 10 lines; the new step replayed in jsdom on the real router (16:01), no scripts file touched.
-- [ ] **4. The prose.** `docs/products.md#L35`'s Settings row gains the four blocks and the preview; the
+- [x] **4. The prose.** `docs/products.md#L35`'s Settings row gains the four blocks and the preview; the
       recap's card for the look on ridge comes in step 6. _Done when:_ the citation test. **5 min**
       (241.2's step 8: 5).
+      _Done 2026-11-24, build 250.1 step 4, sonnet:_ the Settings row of `docs/products.md` names the four blocks and the preview; the citation test exit 0 (the run of 16:18).
 - [ ] **5. Your walk run, then the bases.** The run line below, green; the bases committed alone, each
       walk's count matching the log; the same walks without flags, 0 moved. **2 min** (241.1's 9b: 1;
       241.2's bases: 1).
