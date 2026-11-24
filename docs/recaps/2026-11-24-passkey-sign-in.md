@@ -26,7 +26,7 @@ flowchart LR
 
 - Point 1, the gallery: yes.
 - The recheck walk run: your second walk run of 24 November, after the review's fixes, was green; its two scenes' twelve pictures moved and are in the bases, the other walks 0 moved.
-- Point 2, the walks page: still open, asked after the landing.
-- `pre-merge`: <!-- FILL: the landing and the whole check's verdict in words -->
-- The push: <!-- FILL: the push, the app checks, the deploy -->
-- Point 3, on ridge: <!-- FILL: the answer, or still open -->
+- Point 2, the walks page: yes, to all twelve screens asked.
+- `pre-merge`: the branch landed on it and the whole check passed on it; `main` was moved to it.
+- The push: you pushed `main` on 24 November; GitHub's three runs (the app's checks, the docs site, the walks page) passed, and the app's check put the back end and the app on ridge.
+- Point 3, on ridge: yes: an iPhone in Safari and a PC in Chrome each added a passkey, signed out, signed in with it, then signed in as the root; each press worked the first time and read like the legacy's.

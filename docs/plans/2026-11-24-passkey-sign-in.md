@@ -254,10 +254,12 @@ Sizes are the last rows of each step's shape in the runs log. Each gate is the t
       walk's count matching the log; the same walks without flags, 0 moved. **2 min** (241.1's 9b: 1).
       Done 2026-11-24: the first walk run's bases committed alone (`e29388d5`); your second walk run of 24 November, after the review's
       fixes, green, its two scenes' 12 pictures (staff-25 and staff-27) committed alone (`2b244396`); the other walks 0 moved.
-- [ ] **10. The recap and the landing.** The recap and its products rows; `pre-merge` taken in, the
+- [x] **10. The recap and the landing.** The recap and its products rows; `pre-merge` taken in, the
       gates again, the landing; the whole check, since the landing touches `shared` and five packages
       (`docs/conventions/qa.md#L262-L267`); `pre-main-review` before `main`, sign-in being worth one
       (`qa.md#L103-L108`). **43 min** (a recap 3; a whole check and a review about 20 each).
+      Done 2026-11-24: the recap and its products row written; the branch landed on `pre-merge` and the whole check was green on it;
+      `main` moved to it and you pushed; GitHub's three runs passed and ridge has the back end and the app; points 2 and 3 yes.
 
 ## The walk
 
