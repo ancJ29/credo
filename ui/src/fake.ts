@@ -700,6 +700,15 @@ export function createFakeApi({
         () => ({ kind: 'conflict' as const }),
       ),
 
+    passkeyOptions: () =>
+      call('passkeyOptions', () => (staffConfig(setup).fields.passkey ? OPTIONS : null)),
+
+    // None is held until the add page's step: every passkey sign-in is refused, as one with no passkey added is.
+    passkeySignIn: () =>
+      call('passkeySignIn', () => {
+        throw signedOut();
+      }),
+
     operatorPasskeyOptions: () => call('operatorPasskeyOptions', () => OPTIONS),
 
     operatorPasskeySignIn: () =>

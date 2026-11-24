@@ -52,8 +52,10 @@ export const staffCalls = {
   listClients: down,
 };
 
-/** The operator's passkey calls, for a test of something else, failing the same way. */
+/** The passkey calls (a company's sign-in and the operator's), for a test of something else, failing the same way. */
 export const passkeyCalls = {
+  passkeyOptions: down,
+  passkeySignIn: down,
   operatorPasskeyOptions: down,
   operatorPasskeySignIn: down,
   operatorJoinOptions: down,

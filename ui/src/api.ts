@@ -328,6 +328,22 @@ export function createApi({
       return await read(response, sessionReplySchema);
     },
 
+    /** The options a sign-in by this company's passkey starts from, with the token that binds their
+     * challenge; null on a 404, where the company has passkeys off. */
+    async passkeyOptions(): Promise<OptionsReply | null> {
+      const response = await send('POST', signInRoutes.passkeyOptions);
+      if (response.status === 404) return null;
+      if (!response.ok) throw new ApiError(response.status);
+      return await read(response, optionsReplySchema);
+    },
+
+    /** A 401 means no one here holds that passkey; it does not say which part failed. */
+    async passkeySignIn(request: PasskeySignInRequest): Promise<SessionReply> {
+      const response = await send('POST', signInRoutes.passkeySignIn, request);
+      if (!response.ok) throw new ApiError(response.status);
+      return await read(response, sessionReplySchema);
+    },
+
     async signOut() {
       const response = await send('POST', ROUTES.signOut);
       if (!response.ok) throw new ApiError(response.status);

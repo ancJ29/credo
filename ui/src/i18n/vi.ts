@@ -19,6 +19,8 @@ export const vi: Dictionary = {
     refused: 'Tên đăng nhập hoặc mật khẩu không chính xác.',
     or: 'hoặc',
     passkey: 'Đăng nhập bằng khóa truy cập',
+    passkeyRefused:
+      'Khóa truy cập này không mở được tài khoản nào ở đây. Hãy đăng nhập bằng tên đăng nhập và mật khẩu.',
   },
   nav: {
     menu: 'Menu',

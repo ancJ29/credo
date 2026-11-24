@@ -148,6 +148,7 @@ describe('the fake Api', () => {
     );
     parses('me', meReplySchema, await api.me());
     parses('me staff', meReplySchema, await staff.me());
+    parses('passkeyOptions', optionsReplySchema, await api.passkeyOptions());
     parses('operatorPasskeyOptions', optionsReplySchema, await api.operatorPasskeyOptions());
     parses(
       'operatorPasskeySignIn',
@@ -448,6 +449,8 @@ describe('the fake Api', () => {
         'getConfig',
         'signIn',
         'me',
+        'passkeyOptions',
+        'passkeySignIn',
         'operatorPasskeyOptions',
         'operatorPasskeySignIn',
         'operatorJoinOptions',
@@ -796,6 +799,24 @@ describe('the fake Api', () => {
     const leftRead = await api.getEmployee(left.id);
     await api.setEmail(left.id, { version: leftRead.version, email: 'huy@minh-phat.example' });
     expect(await status(api.signIn('huy@minh-phat.example', 'pw'))).toBe(401);
+  });
+
+  it('C: The door’s passkey options come where the company has passkeys on, and are none where it switched them off; no passkey is held yet, so a sign-in by one is refused', async () => {
+    const api = fake('', { client: 'fake.session' });
+
+    expect(await api.passkeyOptions()).toEqual({
+      options: { challenge: 'fake-challenge' },
+      token: 'fake.token',
+    });
+    expect(await status(api.passkeySignIn({ token: 'fake.token', response: CREDENTIAL }))).toBe(
+      401,
+    );
+    const held = await api.getStaffSetup();
+    await api.saveStaffSetup(
+      { ...held.setup, fields: { ...staffConfig(held.setup).fields, passkey: false } },
+      held.version,
+    );
+    expect(await api.passkeyOptions()).toBeNull();
   });
 
   it('C: Two fresh fakes mint the same QR link for the same person, so a screen that shows it reads the same on every build', async () => {

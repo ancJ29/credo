@@ -18,6 +18,8 @@ export const en = {
     refused: 'Incorrect username or password.',
     or: 'or',
     passkey: 'Sign in with a passkey',
+    passkeyRefused:
+      'This passkey does not open an account here. Sign in with your username and password.',
   },
   nav: {
     menu: 'Menu',

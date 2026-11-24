@@ -168,13 +168,22 @@ Sizes are the last rows of each step's shape in the runs log. Each gate is the t
       (`/api/auth/passkey/options`, `/sign-in`, `/add-options`, `/add`); the add's request
       `ownPasskeyAddRequestSchema` is `{ token, response }`, the sign-in's the operators' `passkeySignInRequestSchema`;
       `employee.passkey` is "passkey added"; `setup.fieldPasskey` makes the dictionaries 765 keys.
-- [ ] **3. The door's button, on the fake.** `SignIn` takes the passkey's state and press; `ClientApp`
+- [x] **3. The door's button, on the fake.** `SignIn` takes the passkey's state and press; `ClientApp`
       asks the options as the door opens, keeps them with their time and runs one ceremony a press; the
       two calls in `ui/src/api.ts` and their fake answers (the fake keeps in the tab whose its one
       credential is); the mock's door draws the button (`ui/src/mock/screens.tsx#L44-L56`); piece 1's
       pictures wait on it (WK5); the four finders `exact`. Rows 15 to 17. _Done when:_ `ui`'s, `visual`'s
       and `walk`'s gates, the pinned diff naming `1-sign-in`, `2-sign-in-refused`, `12-sign-in-wait` and
       `staff-24-email-sign-in` alone. **14 min** (241.1's step 5: 14).
+      _Done 2026-11-24 09:31:_ `ui`'s, `visual`'s and `walk`'s gates, the citation test and the scripts' `words.test.ts` and
+      `fake.test.ts` each exit 0; the pinned diff names `1-sign-in`, `2-sign-in-refused`, `12-sign-in-wait`
+      and `staff-24-email-sign-in` alone; rows 15 to 17 each red on the old code (two cases of 15, three of 16
+      and the two of 17 in `App.test.tsx`, then the card's two in `SignIn.test.tsx`), then green. `SignIn` takes
+      `onPasskey` and two more statuses (`notGiven`, `passkeyRefused`, with `passkeyBusy`); `ClientApp` asks the
+      options as the door opens, keeps them with their time, asks again past four minutes inside the press and
+      again after a refusal; `api.passkeyOptions` (null on a 404) and `api.passkeySignIn`, the fake's options
+      following the switch and its sign-in refusing until step 4's add; one new key, `auth.passkeyRefused`
+      (766 keys), since the operators' refusal tells a person to ask for an invite; piece 1's four finders `exact`.
 - [ ] **4. The add page, on the fake.** `ui/src/pages/client/OwnPasskeyPage.tsx` at `/passkey`, of the
       confirm kind; `Shell`'s menu link for everyone signed in; its two api calls and their fake answers.
       Rows 18 to 20. _Done when:_ `ui`'s and `visual`'s gates, the pinned diff naming `lists-9-more`

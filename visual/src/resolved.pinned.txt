@@ -1,5 +1,5 @@
-admin-setup/1-sign-in steel c1fcc680e10c
-admin-setup/2-sign-in-refused steel a935f7bd7cab
+admin-setup/1-sign-in steel 2694b566c0ce
+admin-setup/2-sign-in-refused steel d85e65ed1ab1
 admin-setup/3-settings steel 4ee3dd130222
 admin-setup/4-saved steel 937181a672bf
 admin-setup/5-language-menu steel f981a72722c3
@@ -9,7 +9,7 @@ admin-setup/8-save-conflict steel 4a3d4f55716d
 admin-setup/9-unknown-company steel c8fcb68e09a0
 admin-setup/10-saved-white steel 8dc55a00d8f5
 admin-setup/11-menu-icons steel 5ab58b821ba9
-admin-setup/12-sign-in-wait steel a935f7bd7cab
+admin-setup/12-sign-in-wait steel d85e65ed1ab1
 operator-setup/op-1-sign-in steel 4c94dbf4e3bb
 operator-setup/op-2-new-client steel a99d9da51da2
 operator-setup/op-3-made steel 66db2a88259e
@@ -56,7 +56,7 @@ admin-staff/staff-20-preview steel ff5ccd4a477a
 admin-staff/staff-21-imported steel 4926fc7501d7
 admin-staff/staff-22-no-name steel a513a8550983
 admin-staff/staff-23-back-on steel d175bf26d509
-admin-staff/staff-24-email-sign-in steel 87af0e330b76
+admin-staff/staff-24-email-sign-in steel 5784156191e6
 office-staff/office-1-menu steel 4f7efdd5607f
 office-staff/office-2-add steel ef76fa3a2c2e
 office-staff/office-3-forbidden steel 1c590b72261e
@@ -130,8 +130,8 @@ operator-delete-client/dc-1-page steel 6815db34579b
 operator-delete-client/dc-2-code steel 941022de1c82
 operator-delete-client/dc-3-failed steel 941022de1c82
 operator-delete-client/dc-4-gone steel d1fa6ea19f16
-admin-setup/1-sign-in emerald 7046b26b0280
-admin-setup/2-sign-in-refused emerald e5ecbd1f44e2
+admin-setup/1-sign-in emerald 59ddf49818e9
+admin-setup/2-sign-in-refused emerald 1ecaadb355b8
 admin-setup/3-settings emerald 32c87c12c093
 admin-setup/4-saved emerald c48b2ba80350
 admin-setup/5-language-menu emerald c507ab3abaed
@@ -141,7 +141,7 @@ admin-setup/8-save-conflict emerald ca217905a090
 admin-setup/9-unknown-company emerald c8fcb68e09a0
 admin-setup/10-saved-white emerald 8cb37f771c53
 admin-setup/11-menu-icons emerald eb4c4307a6da
-admin-setup/12-sign-in-wait emerald e5ecbd1f44e2
+admin-setup/12-sign-in-wait emerald 1ecaadb355b8
 operator-setup/op-1-sign-in emerald 33c08326eb29
 operator-setup/op-2-new-client emerald 7c8d72161c24
 operator-setup/op-3-made emerald ccd7325ec497
@@ -188,7 +188,7 @@ admin-staff/staff-20-preview emerald f668d1ef5504
 admin-staff/staff-21-imported emerald febea068a333
 admin-staff/staff-22-no-name emerald acee55355891
 admin-staff/staff-23-back-on emerald e85626cc9711
-admin-staff/staff-24-email-sign-in emerald ff5de9db529d
+admin-staff/staff-24-email-sign-in emerald 40334ccc9235
 office-staff/office-1-menu emerald c17a13ef22b0
 office-staff/office-2-add emerald 49c4c5ed5a7c
 office-staff/office-3-forbidden emerald 1735a01c2b05
@@ -262,8 +262,8 @@ operator-delete-client/dc-1-page emerald 75a3681aa976
 operator-delete-client/dc-2-code emerald 85d8a9b37153
 operator-delete-client/dc-3-failed emerald 85d8a9b37153
 operator-delete-client/dc-4-gone emerald ae69e108d47c
-admin-setup/1-sign-in brick 3bf88782aaea
-admin-setup/2-sign-in-refused brick 14d1d345c176
+admin-setup/1-sign-in brick e8315b39c48e
+admin-setup/2-sign-in-refused brick 9beb6ac6f4be
 admin-setup/3-settings brick ad8a87d8976f
 admin-setup/4-saved brick 4bd18b49555a
 admin-setup/5-language-menu brick 53f9a7baec64
@@ -273,7 +273,7 @@ admin-setup/8-save-conflict brick 6cd3f6562eeb
 admin-setup/9-unknown-company brick c8fcb68e09a0
 admin-setup/10-saved-white brick 97406ebc5765
 admin-setup/11-menu-icons brick 86aa62ea68e3
-admin-setup/12-sign-in-wait brick 14d1d345c176
+admin-setup/12-sign-in-wait brick 9beb6ac6f4be
 operator-setup/op-1-sign-in brick ed7cc7ecffbe
 operator-setup/op-2-new-client brick be451147e35a
 operator-setup/op-3-made brick 1c16e29d0eb9
@@ -320,7 +320,7 @@ admin-staff/staff-20-preview brick 3d8621df113d
 admin-staff/staff-21-imported brick 550cc5e83fa2
 admin-staff/staff-22-no-name brick 9fdc2341ce3f
 admin-staff/staff-23-back-on brick fc5c5dad16b1
-admin-staff/staff-24-email-sign-in brick 25bf7e1eb89b
+admin-staff/staff-24-email-sign-in brick 773c1ae55a30
 office-staff/office-1-menu brick 2ce35f69353b
 office-staff/office-2-add brick 7c14736502c9
 office-staff/office-3-forbidden brick e82395e96d8b
@@ -394,8 +394,8 @@ operator-delete-client/dc-1-page brick 599655fbd347
 operator-delete-client/dc-2-code brick fa5e51d41b80
 operator-delete-client/dc-3-failed brick fa5e51d41b80
 operator-delete-client/dc-4-gone brick e3ea0bfd7be2
-admin-setup/1-sign-in bronze 7e6368c2b351
-admin-setup/2-sign-in-refused bronze 7e2921a98629
+admin-setup/1-sign-in bronze 0053e02a4d11
+admin-setup/2-sign-in-refused bronze eba3bc464a55
 admin-setup/3-settings bronze f3096cb15195
 admin-setup/4-saved bronze eec5aa617845
 admin-setup/5-language-menu bronze 307be6ccbc1d
@@ -405,7 +405,7 @@ admin-setup/8-save-conflict bronze 21ef80cfe3b4
 admin-setup/9-unknown-company bronze c8fcb68e09a0
 admin-setup/10-saved-white bronze 9ef4a105f4a0
 admin-setup/11-menu-icons bronze e3b35b37f76a
-admin-setup/12-sign-in-wait bronze 7e2921a98629
+admin-setup/12-sign-in-wait bronze eba3bc464a55
 operator-setup/op-1-sign-in bronze 78f5a4af7a8b
 operator-setup/op-2-new-client bronze bd617e41e9bd
 operator-setup/op-3-made bronze acd41d142e9e
@@ -452,7 +452,7 @@ admin-staff/staff-20-preview bronze d001c2299ef9
 admin-staff/staff-21-imported bronze e62b60736586
 admin-staff/staff-22-no-name bronze 74bf4421a68a
 admin-staff/staff-23-back-on bronze e41162caa2a4
-admin-staff/staff-24-email-sign-in bronze e40ad312b4f1
+admin-staff/staff-24-email-sign-in bronze 0d83e67ddd9b
 office-staff/office-1-menu bronze 4912a7c062d8
 office-staff/office-2-add bronze 57fce2b9ced7
 office-staff/office-3-forbidden bronze 18c5b0680b95
@@ -526,8 +526,8 @@ operator-delete-client/dc-1-page bronze a5edbdbd81c4
 operator-delete-client/dc-2-code bronze e2905fd6ddca
 operator-delete-client/dc-3-failed bronze e2905fd6ddca
 operator-delete-client/dc-4-gone bronze 2248bf38c036
-admin-setup/1-sign-in plum 3d1e35204bda
-admin-setup/2-sign-in-refused plum 92b00aa27dea
+admin-setup/1-sign-in plum a65e2061e4b8
+admin-setup/2-sign-in-refused plum 3091eaee486c
 admin-setup/3-settings plum 8d2a799832b6
 admin-setup/4-saved plum f89cfc9f4ab5
 admin-setup/5-language-menu plum 80970e748e1d
@@ -537,7 +537,7 @@ admin-setup/8-save-conflict plum 31832c7fcdcb
 admin-setup/9-unknown-company plum c8fcb68e09a0
 admin-setup/10-saved-white plum 658bb87a2033
 admin-setup/11-menu-icons plum e47aa5c3b934
-admin-setup/12-sign-in-wait plum 92b00aa27dea
+admin-setup/12-sign-in-wait plum 3091eaee486c
 operator-setup/op-1-sign-in plum f6758d288ddd
 operator-setup/op-2-new-client plum 28b34ebe4b86
 operator-setup/op-3-made plum 1a1c5072fe2a
@@ -584,7 +584,7 @@ admin-staff/staff-20-preview plum f4efbd619f93
 admin-staff/staff-21-imported plum c8c95316f6e0
 admin-staff/staff-22-no-name plum 07980ea2675f
 admin-staff/staff-23-back-on plum cc9829fe0cd2
-admin-staff/staff-24-email-sign-in plum 7540d4842415
+admin-staff/staff-24-email-sign-in plum 6e88272b644c
 office-staff/office-1-menu plum c72450eaa780
 office-staff/office-2-add plum de1dcd2005eb
 office-staff/office-3-forbidden plum 5fff547bf4e5
@@ -658,8 +658,8 @@ operator-delete-client/dc-1-page plum f7d1bc6d2706
 operator-delete-client/dc-2-code plum 4d9102d56d70
 operator-delete-client/dc-3-failed plum 4d9102d56d70
 operator-delete-client/dc-4-gone plum 3f732f5a9be6
-admin-setup/1-sign-in indigo ed71f14af0be
-admin-setup/2-sign-in-refused indigo 897f7cea1e2b
+admin-setup/1-sign-in indigo 282911f9b5f0
+admin-setup/2-sign-in-refused indigo 6fca4cb6954b
 admin-setup/3-settings indigo 18390b0d723e
 admin-setup/4-saved indigo ee97987e19e0
 admin-setup/5-language-menu indigo ef9d2ca82798
@@ -669,7 +669,7 @@ admin-setup/8-save-conflict indigo 283aaec99804
 admin-setup/9-unknown-company indigo c8fcb68e09a0
 admin-setup/10-saved-white indigo 7d1f8e1cb70d
 admin-setup/11-menu-icons indigo 4234dadf878e
-admin-setup/12-sign-in-wait indigo 897f7cea1e2b
+admin-setup/12-sign-in-wait indigo 6fca4cb6954b
 operator-setup/op-1-sign-in indigo 0474bc4c62e6
 operator-setup/op-2-new-client indigo 00306c65f33d
 operator-setup/op-3-made indigo 8ed1c72dbd5b
@@ -716,7 +716,7 @@ admin-staff/staff-20-preview indigo a29f00b9a00e
 admin-staff/staff-21-imported indigo 334e92ff43fb
 admin-staff/staff-22-no-name indigo d4da57c22416
 admin-staff/staff-23-back-on indigo f5bbd4bffa5e
-admin-staff/staff-24-email-sign-in indigo 30ebac91b3c3
+admin-staff/staff-24-email-sign-in indigo 1681f75c6cf6
 office-staff/office-1-menu indigo 43910b80c513
 office-staff/office-2-add indigo a67d814bacc4
 office-staff/office-3-forbidden indigo e7b495c39242
@@ -790,8 +790,8 @@ operator-delete-client/dc-1-page indigo b10630d5f25f
 operator-delete-client/dc-2-code indigo aec1c8b48269
 operator-delete-client/dc-3-failed indigo aec1c8b48269
 operator-delete-client/dc-4-gone indigo e40c71408db5
-admin-setup/1-sign-in company cd4e31ca5607
-admin-setup/2-sign-in-refused company b53a6c16dacd
+admin-setup/1-sign-in company 16a1b55ad357
+admin-setup/2-sign-in-refused company fa120719a166
 admin-setup/3-settings company 41c584e9375f
 admin-setup/4-saved company be9be491c41e
 admin-setup/5-language-menu company 275d4c771e30
@@ -801,7 +801,7 @@ admin-setup/8-save-conflict company 942133fb23af
 admin-setup/9-unknown-company company c8fcb68e09a0
 admin-setup/10-saved-white company 95c4f85bebb8
 admin-setup/11-menu-icons company 4fc6e9633330
-admin-setup/12-sign-in-wait company b53a6c16dacd
+admin-setup/12-sign-in-wait company fa120719a166
 operator-setup/op-1-sign-in company 4d73a3d05a55
 operator-setup/op-2-new-client company d5e16aaae30e
 operator-setup/op-3-made company f545ac907573
@@ -848,7 +848,7 @@ admin-staff/staff-20-preview company 0cfa2de7cb06
 admin-staff/staff-21-imported company cd99ba1453f2
 admin-staff/staff-22-no-name company dfae8233636b
 admin-staff/staff-23-back-on company 37338a95730f
-admin-staff/staff-24-email-sign-in company e28208ce9df7
+admin-staff/staff-24-email-sign-in company 65bb0a83ce2a
 office-staff/office-1-menu company 8b80e4d2e773
 office-staff/office-2-add company 42f7a588ff2f
 office-staff/office-3-forbidden company 6a1860193a07
@@ -922,8 +922,8 @@ operator-delete-client/dc-1-page company 9503ea99682a
 operator-delete-client/dc-2-code company cd80d210dc24
 operator-delete-client/dc-3-failed company cd80d210dc24
 operator-delete-client/dc-4-gone company 2f27ee8b7332
-admin-setup/1-sign-in terracotta 1ba25aad92fa
-admin-setup/2-sign-in-refused terracotta 4502a4a3b551
+admin-setup/1-sign-in terracotta 88914e1253e4
+admin-setup/2-sign-in-refused terracotta 6d4aad8532ef
 admin-setup/3-settings terracotta da9a6de7f5bc
 admin-setup/4-saved terracotta 8f11588a0a42
 admin-setup/5-language-menu terracotta 53f463f3bbe9
@@ -933,7 +933,7 @@ admin-setup/8-save-conflict terracotta e3e82de5eea5
 admin-setup/9-unknown-company terracotta c8fcb68e09a0
 admin-setup/10-saved-white terracotta 18cbdaceb090
 admin-setup/11-menu-icons terracotta a4b3d8707f62
-admin-setup/12-sign-in-wait terracotta 4502a4a3b551
+admin-setup/12-sign-in-wait terracotta 6d4aad8532ef
 operator-setup/op-1-sign-in terracotta 2096b5419ad5
 operator-setup/op-2-new-client terracotta 37bb9bb37489
 operator-setup/op-3-made terracotta c2809f5417bd
@@ -980,7 +980,7 @@ admin-staff/staff-20-preview terracotta 3ffbbd8b8c27
 admin-staff/staff-21-imported terracotta b04351412e0d
 admin-staff/staff-22-no-name terracotta 21e549d0b52b
 admin-staff/staff-23-back-on terracotta 9fe34c452b64
-admin-staff/staff-24-email-sign-in terracotta 7af9766be0b2
+admin-staff/staff-24-email-sign-in terracotta f83840eba1fe
 office-staff/office-1-menu terracotta ba200e403b61
 office-staff/office-2-add terracotta 07e02bfd2154
 office-staff/office-3-forbidden terracotta 9747302115d9
@@ -1054,8 +1054,8 @@ operator-delete-client/dc-1-page terracotta 922b49d7a7d7
 operator-delete-client/dc-2-code terracotta e0d156df7cd9
 operator-delete-client/dc-3-failed terracotta e0d156df7cd9
 operator-delete-client/dc-4-gone terracotta 0b6214be64c4
-admin-setup/1-sign-in red 5dd1651ff5c7
-admin-setup/2-sign-in-refused red 1db96d70174e
+admin-setup/1-sign-in red 513cc9c58cca
+admin-setup/2-sign-in-refused red e8f2adfc00ad
 admin-setup/3-settings red c4d8c47c2db8
 admin-setup/4-saved red c75108d9b718
 admin-setup/5-language-menu red 68c192a5f6ac
@@ -1065,7 +1065,7 @@ admin-setup/8-save-conflict red ee4d25e8b4a9
 admin-setup/9-unknown-company red c8fcb68e09a0
 admin-setup/10-saved-white red f0d31e2806db
 admin-setup/11-menu-icons red 6dd2caa6a98b
-admin-setup/12-sign-in-wait red 1db96d70174e
+admin-setup/12-sign-in-wait red e8f2adfc00ad
 operator-setup/op-1-sign-in red ab419333dcc4
 operator-setup/op-2-new-client red 62009853805b
 operator-setup/op-3-made red 09840814543e
@@ -1112,7 +1112,7 @@ admin-staff/staff-20-preview red 333d48ec257d
 admin-staff/staff-21-imported red 866abf83ddd7
 admin-staff/staff-22-no-name red c6e5d1d10b08
 admin-staff/staff-23-back-on red 5d27332062c9
-admin-staff/staff-24-email-sign-in red 3b7cd81153f0
+admin-staff/staff-24-email-sign-in red 2e70416334c5
 office-staff/office-1-menu red 9aef6b2bf69c
 office-staff/office-2-add red 7475f6eb5ee8
 office-staff/office-3-forbidden red c4c58e95a8e3
@@ -1186,8 +1186,8 @@ operator-delete-client/dc-1-page red d2d093aeff2b
 operator-delete-client/dc-2-code red b6a91b48ffe6
 operator-delete-client/dc-3-failed red b6a91b48ffe6
 operator-delete-client/dc-4-gone red ec7e0a7a9db8
-admin-setup/1-sign-in amber 5e7106af6d1b
-admin-setup/2-sign-in-refused amber 44b195e0d70a
+admin-setup/1-sign-in amber 3f3e0828971d
+admin-setup/2-sign-in-refused amber 1f8b0d23e6a5
 admin-setup/3-settings amber 21cb8f732c0d
 admin-setup/4-saved amber 6a03385323e8
 admin-setup/5-language-menu amber ae07b0cd0cdb
@@ -1197,7 +1197,7 @@ admin-setup/8-save-conflict amber d0d456ec836f
 admin-setup/9-unknown-company amber c8fcb68e09a0
 admin-setup/10-saved-white amber 4f0143e00a6e
 admin-setup/11-menu-icons amber 2342fd827a84
-admin-setup/12-sign-in-wait amber 44b195e0d70a
+admin-setup/12-sign-in-wait amber 1f8b0d23e6a5
 operator-setup/op-1-sign-in amber 705bd4ea3d32
 operator-setup/op-2-new-client amber ef1ae8addd0e
 operator-setup/op-3-made amber b085b84487c7
@@ -1244,7 +1244,7 @@ admin-staff/staff-20-preview amber ac064dd941dd
 admin-staff/staff-21-imported amber 3b3d02ca873c
 admin-staff/staff-22-no-name amber 53d48b7cb7f8
 admin-staff/staff-23-back-on amber b23d5aaac158
-admin-staff/staff-24-email-sign-in amber ae23f58da337
+admin-staff/staff-24-email-sign-in amber 4e808e846c04
 office-staff/office-1-menu amber 0c3d43f0fd45
 office-staff/office-2-add amber cdd1fc096485
 office-staff/office-3-forbidden amber 9e22db41a740

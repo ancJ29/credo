@@ -8,6 +8,7 @@ import { type Api, ApiError } from './api';
 import { App } from './App';
 import { DICTIONARIES, LANGUAGE_NAMES } from './i18n';
 import { createDeviceStore, type DeviceStore } from './device';
+import { PasskeyNotGiven, type Passkeys } from './passkeys';
 
 const words = DICTIONARIES.en;
 const wordsVi = DICTIONARIES.vi;
@@ -49,6 +50,7 @@ function setup(
   path = '/',
   address?: string,
   tab?: ReturnType<typeof memory>,
+  passkeys: Passkeys = noPasskeys,
 ) {
   const initial = Object.entries({ ...linked, ...kept }).flatMap(([key, value]) =>
     value === null ? [] : [[key, value] as const],
@@ -80,7 +82,7 @@ function setup(
     ...(typeof overrides === 'function' ? overrides(device) : overrides),
   } satisfies Api;
   const drawn = drawApp(
-    <App api={api} device={device} passkeys={noPasskeys} build="dev" test address={address} />,
+    <App api={api} device={device} passkeys={passkeys} build="dev" test address={address} />,
     path,
   );
   return { api, device, storage, tab, ...drawn };
@@ -737,5 +739,163 @@ describe('the app', () => {
       expect(getConfig).toHaveBeenCalledTimes(path.endsWith('nobody') ? 1 : 0);
       view.unmount();
     }
+  });
+
+  describe('the sign-in by passkey on the door', () => {
+    const offered = { options: { challenge: 'c' }, token: 't' };
+    const answer = {
+      id: 'k',
+      rawId: 'k',
+      type: 'public-key' as const,
+      response: {},
+      clientExtensionResults: {},
+    };
+    /** A door whose company answers its passkey options, and a device that gives `answer`. */
+    const door = (overrides: Partial<Api> = {}, tab = memory()) => {
+      const passkeys = {
+        register: vi.fn(),
+        authenticate: vi.fn(() => Promise.resolve(answer)),
+      } satisfies Passkeys;
+      const api = {
+        passkeyOptions: vi.fn(() => Promise.resolve(offered)),
+        passkeySignIn: vi.fn(() => Promise.resolve({ authId: 'p.s', expiresAt: 1, user: root })),
+        ...overrides,
+      };
+      const drawn = setup(api, {}, '/', undefined, tab, passkeys);
+      return { passkeys, ...drawn, api: { ...drawn.api, ...api } };
+    };
+    const press = async () =>
+      await userEvent.click(await screen.findByRole('button', { name: words.auth.passkey }));
+
+    it('15: draws “or” and the button where the options came, and nothing where they answered 404 or failed', async () => {
+      const { api } = door();
+      expect(await screen.findByRole('button', { name: words.auth.passkey })).toBeTruthy();
+      expect(screen.getByText(words.auth.or)).toBeTruthy();
+      expect(api.passkeyOptions).toHaveBeenCalledOnce();
+      cleanup();
+
+      const off = door({ passkeyOptions: vi.fn(() => Promise.resolve(null)) });
+      await screen.findByLabelText(labelled(words.auth.username));
+      await waitFor(() => expect(off.api.passkeyOptions).toHaveBeenCalledOnce());
+      expect(screen.queryByRole('button', { name: words.auth.passkey })).toBeNull();
+      expect(screen.queryByText(words.auth.or)).toBeNull();
+      cleanup();
+
+      const down = door({ passkeyOptions: vi.fn(() => Promise.reject(new ApiError(null))) });
+      await screen.findByLabelText(labelled(words.auth.username));
+      await waitFor(() => expect(down.api.passkeyOptions).toHaveBeenCalledOnce());
+      expect(screen.queryByRole('button', { name: words.auth.passkey })).toBeNull();
+    });
+
+    it('16: a press gives the options to the device, sends its answer, keeps the handle and lands signed in', async () => {
+      const tab = memory();
+      const { api, passkeys, device, storage } = door({}, tab);
+      await press();
+
+      expect((await screen.findAllByText(words.nav.settings)).length).toBeGreaterThan(0);
+      expect(passkeys.authenticate).toHaveBeenCalledExactlyOnceWith(offered.options);
+      expect(api.passkeySignIn).toHaveBeenCalledExactlyOnceWith({
+        token: offered.token,
+        response: answer,
+      });
+      expect(device.authId()).toBe('p.s');
+      expect(storage.getItem('credo.session')).toBe('p.s');
+      expect(tab.getItem('credo.session')).toBeNull();
+      expect(api.passkeyOptions).toHaveBeenCalledOnce();
+    });
+
+    it('16: a passkey not given is told with the form kept and the options held for the next press', async () => {
+      const { api, passkeys } = door();
+      passkeys.authenticate.mockRejectedValueOnce(new PasskeyNotGiven());
+      await userEvent.type(await screen.findByLabelText(labelled(words.auth.username)), 'bao');
+      await press();
+
+      expect((await screen.findByRole('alert')).textContent).toBe(words.passkey.notGiven);
+      expect(screen.getByLabelText<HTMLInputElement>(labelled(words.auth.username)).value).toBe(
+        'bao',
+      );
+      expect(api.passkeySignIn).not.toHaveBeenCalled();
+      await press();
+      expect((await screen.findAllByText(words.nav.settings)).length).toBeGreaterThan(0);
+      expect(api.passkeyOptions).toHaveBeenCalledOnce();
+    });
+
+    it('16: a passkey that opens nothing here is told with the form kept, and the options are asked again', async () => {
+      const { api } = door({
+        passkeySignIn: vi.fn(() => Promise.reject(new ApiError(401))),
+      });
+      await userEvent.type(await screen.findByLabelText(labelled(words.auth.username)), 'bao');
+      await press();
+
+      expect((await screen.findByRole('alert')).textContent).toBe(words.auth.passkeyRefused);
+      expect(screen.getByLabelText<HTMLInputElement>(labelled(words.auth.username)).value).toBe(
+        'bao',
+      );
+      await waitFor(() => expect(api.passkeyOptions).toHaveBeenCalledTimes(2));
+      expect(screen.getByRole('button', { name: words.auth.passkey })).toBeTruthy();
+    });
+
+    it('16: a device or a service that fails says the service is unavailable, never “no passkey”', async () => {
+      const { passkeys, unmount } = door();
+      passkeys.authenticate.mockRejectedValueOnce(new Error('the library failed'));
+      await press();
+      expect((await screen.findByRole('alert')).textContent).toContain(
+        DICTIONARIES.vi.common.unavailable,
+      );
+      unmount();
+
+      door({ passkeySignIn: vi.fn(() => Promise.reject(new ApiError(503))) });
+      await press();
+      expect((await screen.findByRole('alert')).textContent).toContain(
+        DICTIONARIES.vi.common.unavailable,
+      );
+    });
+
+    it('17: options older than four minutes are asked again within the press, and held ones are not', async () => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      try {
+        const fresh = { options: { challenge: 'later' }, token: 't2' };
+        const passkeyOptions = vi
+          .fn<Api['passkeyOptions']>()
+          .mockResolvedValueOnce(offered)
+          .mockResolvedValueOnce(fresh);
+        const { api, passkeys } = door({ passkeyOptions });
+        await screen.findByRole('button', { name: words.auth.passkey });
+        vi.setSystemTime(Date.now() + 4 * 60_000 + 1);
+        await press();
+
+        expect((await screen.findAllByText(words.nav.settings)).length).toBeGreaterThan(0);
+        expect(api.passkeyOptions).toHaveBeenCalledTimes(2);
+        expect(passkeys.authenticate).toHaveBeenCalledExactlyOnceWith(fresh.options);
+        expect(api.passkeySignIn).toHaveBeenCalledExactlyOnceWith({
+          token: fresh.token,
+          response: answer,
+        });
+      } finally {
+        vi.useRealTimers();
+      }
+    });
+
+    it('17: where the options now answer 404, the press ends with the button gone', async () => {
+      vi.useFakeTimers({ toFake: ['Date'] });
+      try {
+        const passkeyOptions = vi
+          .fn<Api['passkeyOptions']>()
+          .mockResolvedValueOnce(offered)
+          .mockResolvedValueOnce(null);
+        const { passkeys } = door({ passkeyOptions });
+        await screen.findByRole('button', { name: words.auth.passkey });
+        vi.setSystemTime(Date.now() + 5 * 60_000);
+        await press();
+
+        await waitFor(() =>
+          expect(screen.queryByRole('button', { name: words.auth.passkey })).toBeNull(),
+        );
+        expect(passkeys.authenticate).not.toHaveBeenCalled();
+        expect(screen.queryByRole('alert')).toBeNull();
+      } finally {
+        vi.useRealTimers();
+      }
+    });
   });
 });

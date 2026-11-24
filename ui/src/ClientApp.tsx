@@ -5,6 +5,7 @@ import {
   type ConfigDoc,
   type Language,
   normaliseClientCode,
+  type OptionsReply,
   parseQr,
   type SessionReply,
   type UserView,
@@ -44,11 +45,14 @@ import { Shell } from './frame/Shell';
 import { StaffListPage } from './pages/client/StaffListPage';
 import { StaffSetupPage } from './pages/client/StaffSetupPage';
 import { SignIn } from './pages/SignIn';
+import { PasskeyNotGiven, type Passkeys } from './passkeys';
 import { UnknownClient } from './pages/client/UnknownClient';
 
 type Props = {
   api: Api;
   device: DeviceStore;
+  /** The device's passkeys: the browser's, or the fake that answers as one would. */
+  passkeys: Passkeys;
   /** Tests switch Mantine's transitions off. */
   test?: boolean;
   /** The web address's name, when the page gives it: a company's address wins over a link and the device. */
@@ -63,6 +67,19 @@ type Props = {
 
 /** Every list kind there is: a kind added to `LISTS` gets its list, add and import routes here. */
 const KINDS = Object.keys(LISTS) as ListKind[];
+
+/** How long the door keeps the options it asked for a passkey sign-in: a challenge lives five
+ * minutes at the BFF, so options older than four are asked again inside the press. */
+const OPTIONS_LIFE = 4 * 60_000;
+
+/** The options a passkey sign-in starts from, with the time they were asked; null where the company
+ * has passkeys off (a 404) or the service did not answer, and the door keeps today's shape. */
+type Asked = { reply: OptionsReply; at: number };
+const askOptions = (api: Api): Promise<Asked | null> =>
+  api.passkeyOptions().then(
+    (reply) => (reply ? { reply, at: Date.now() } : null),
+    () => null,
+  );
 
 const SIGNED_OUT = 401;
 const NOT_FOUND = 404;
@@ -114,6 +131,7 @@ async function boot(api: Api, device: DeviceStore, linked: string | null) {
 export function ClientApp({
   api,
   device,
+  passkeys,
   test,
   address,
   look,
@@ -125,7 +143,11 @@ export function ClientApp({
   const [user, setUser] = useState<UserView | null>(null);
   const [chosen, setChosen] = useState<Language | null>(() => device.language());
   const [shown] = useState<Language | null>(() => device.shownLanguage());
-  const [signIn, setSignIn] = useState<'idle' | 'busy' | 'refused' | 'wait'>('idle');
+  const [signIn, setSignIn] = useState<
+    'idle' | 'busy' | 'refused' | 'wait' | 'passkeyBusy' | 'notGiven' | 'passkeyRefused'
+  >('idle');
+  /** What the door's passkey button signs in with: asked as the door opens, kept with its time. */
+  const [asked, setAsked] = useState<Asked | null>(null);
   const [waitSeconds, setWaitSeconds] = useState(0);
   /** What the address named when the app opened; the sign-in's own navigation does not change it. */
   const { search } = useLocation();
@@ -174,6 +196,11 @@ export function ClientApp({
     );
   }, [api, device, doc, qr, navigate]);
 
+  useEffect(() => {
+    if (!doc || user) return;
+    void askOptions(api).then(setAsked);
+  }, [api, doc, user]);
+
   const retry = () => {
     // A sign-in that failed on the service left its status busy: the form it returns to is idle.
     setSignIn('idle');
@@ -215,6 +242,36 @@ export function ClientApp({
       else if (error instanceof ApiError && error.waitSeconds !== null) {
         setWaitSeconds(error.waitSeconds);
         setSignIn('wait');
+      } else {
+        setDoc(null);
+        setPhase('unavailable');
+      }
+    }
+  }
+
+  /** One ceremony a press, on the options the door holds; options past their life are asked again
+   * inside the press. Only the device's "not given" and the BFF's 401 are told apart from the
+   * service failing, which never reads as "no passkey". */
+  async function pressPasskey(held: Asked, remember: boolean) {
+    setSignIn('passkeyBusy');
+    let current: Asked | null = held;
+    if (Date.now() - held.at > OPTIONS_LIFE) {
+      current = await askOptions(api);
+      setAsked(current);
+      if (!current) return setSignIn('idle');
+    }
+    try {
+      const response = await passkeys.authenticate(current.reply.options);
+      const session = await api.passkeySignIn({ token: current.reply.token, response });
+      device.setAuthId(session.authId, remember);
+      setSignIn('idle');
+      setUser(session.user);
+    } catch (error) {
+      if (error instanceof PasskeyNotGiven) setSignIn('notGiven');
+      else if (error instanceof ApiError && error.status === SIGNED_OUT) {
+        // The challenge may be spent: the next press has fresh options.
+        setSignIn('passkeyRefused');
+        void askOptions(api).then(setAsked);
       } else {
         setDoc(null);
         setPhase('unavailable');
@@ -444,6 +501,7 @@ export function ClientApp({
           languages={config.languages}
           onLanguage={chooseLanguage}
           onSubmit={(n, p, r) => void submit(n, p, r)}
+          onPasskey={asked ? (remember) => void pressPasskey(asked, remember) : undefined}
         />
       )}
     </Providers>
