@@ -10,6 +10,7 @@ admin-setup/9-unknown-company steel c8fcb68e09a0
 admin-setup/10-saved-white steel 91bc6e4bdaf4
 admin-setup/11-menu-icons steel 76d4d2f74f52
 admin-setup/12-sign-in-wait steel d85e65ed1ab1
+admin-setup/13-preview steel f34ac880a889
 operator-setup/op-1-sign-in steel 4c94dbf4e3bb
 operator-setup/op-2-new-client steel a99d9da51da2
 operator-setup/op-3-made steel 66db2a88259e
@@ -147,6 +148,7 @@ admin-setup/9-unknown-company emerald c8fcb68e09a0
 admin-setup/10-saved-white emerald e560f037f181
 admin-setup/11-menu-icons emerald cb72f3cb6030
 admin-setup/12-sign-in-wait emerald 1ecaadb355b8
+admin-setup/13-preview emerald 4d14a6a49894
 operator-setup/op-1-sign-in emerald 33c08326eb29
 operator-setup/op-2-new-client emerald 7c8d72161c24
 operator-setup/op-3-made emerald ccd7325ec497
@@ -284,6 +286,7 @@ admin-setup/9-unknown-company brick c8fcb68e09a0
 admin-setup/10-saved-white brick a8c8ec729370
 admin-setup/11-menu-icons brick 62ff68adf537
 admin-setup/12-sign-in-wait brick 9beb6ac6f4be
+admin-setup/13-preview brick 41f7f3dee901
 operator-setup/op-1-sign-in brick ed7cc7ecffbe
 operator-setup/op-2-new-client brick be451147e35a
 operator-setup/op-3-made brick 1c16e29d0eb9
@@ -421,6 +424,7 @@ admin-setup/9-unknown-company bronze c8fcb68e09a0
 admin-setup/10-saved-white bronze c6aae8f9ae12
 admin-setup/11-menu-icons bronze f8c48043047f
 admin-setup/12-sign-in-wait bronze eba3bc464a55
+admin-setup/13-preview bronze 77cc656d07d7
 operator-setup/op-1-sign-in bronze 78f5a4af7a8b
 operator-setup/op-2-new-client bronze bd617e41e9bd
 operator-setup/op-3-made bronze acd41d142e9e
@@ -558,6 +562,7 @@ admin-setup/9-unknown-company plum c8fcb68e09a0
 admin-setup/10-saved-white plum 24e0d6546efa
 admin-setup/11-menu-icons plum 16fc7d1592e7
 admin-setup/12-sign-in-wait plum 3091eaee486c
+admin-setup/13-preview plum b41f5a916518
 operator-setup/op-1-sign-in plum f6758d288ddd
 operator-setup/op-2-new-client plum 28b34ebe4b86
 operator-setup/op-3-made plum 1a1c5072fe2a
@@ -695,6 +700,7 @@ admin-setup/9-unknown-company indigo c8fcb68e09a0
 admin-setup/10-saved-white indigo 99ffd2b682a8
 admin-setup/11-menu-icons indigo 6e6042b5747f
 admin-setup/12-sign-in-wait indigo 6fca4cb6954b
+admin-setup/13-preview indigo 4c35da60f8d4
 operator-setup/op-1-sign-in indigo 0474bc4c62e6
 operator-setup/op-2-new-client indigo 00306c65f33d
 operator-setup/op-3-made indigo 8ed1c72dbd5b
@@ -832,6 +838,7 @@ admin-setup/9-unknown-company company c8fcb68e09a0
 admin-setup/10-saved-white company 3c439fcf23a8
 admin-setup/11-menu-icons company be8e60090fca
 admin-setup/12-sign-in-wait company fa120719a166
+admin-setup/13-preview company 5bf0c39dfb86
 operator-setup/op-1-sign-in company 4d73a3d05a55
 operator-setup/op-2-new-client company d5e16aaae30e
 operator-setup/op-3-made company f545ac907573
@@ -969,6 +976,7 @@ admin-setup/9-unknown-company terracotta c8fcb68e09a0
 admin-setup/10-saved-white terracotta b655284fd0c9
 admin-setup/11-menu-icons terracotta 7b35407ef445
 admin-setup/12-sign-in-wait terracotta 6d4aad8532ef
+admin-setup/13-preview terracotta bd0e5941a83f
 operator-setup/op-1-sign-in terracotta 2096b5419ad5
 operator-setup/op-2-new-client terracotta 37bb9bb37489
 operator-setup/op-3-made terracotta c2809f5417bd
@@ -1106,6 +1114,7 @@ admin-setup/9-unknown-company red c8fcb68e09a0
 admin-setup/10-saved-white red 730585e9d5ac
 admin-setup/11-menu-icons red ec6da4aa55c0
 admin-setup/12-sign-in-wait red e8f2adfc00ad
+admin-setup/13-preview red 376f702f0e5a
 operator-setup/op-1-sign-in red ab419333dcc4
 operator-setup/op-2-new-client red 62009853805b
 operator-setup/op-3-made red 09840814543e
@@ -1243,6 +1252,7 @@ admin-setup/9-unknown-company amber c8fcb68e09a0
 admin-setup/10-saved-white amber 1e97749d6e74
 admin-setup/11-menu-icons amber 786356313742
 admin-setup/12-sign-in-wait amber 1f8b0d23e6a5
+admin-setup/13-preview amber 1c6a66569a6f
 operator-setup/op-1-sign-in amber 705bd4ea3d32
 operator-setup/op-2-new-client amber ef1ae8addd0e
 operator-setup/op-3-made amber b085b84487c7

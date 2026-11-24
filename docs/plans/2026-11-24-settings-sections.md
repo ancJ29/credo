@@ -165,9 +165,12 @@ is `git diff -U0 -- visual/src/resolved.pinned.txt | grep '^+[a-z]' | cut -d' ' 
       14; 241.2's step 3: 13).
       _Done 2026-11-24, build 250.1 step 2, sonnet:_ `ui`'s and `visual`'s gates each exit 0 (the run of 15:38 to 15:46), the pinned diff the eight screens and 80 lines, the Settings test's diff with no removed
       line; rows 1, 2, 3, 4 and 6 red first on the old code (15:36), row 5 the old 21 cases green beside.
-- [ ] **3. The walk.** As "The walk" below; row 13. _Done when:_ `visual`'s, `walk`'s and `ui`'s gates;
+- [x] **3. The walk.** As "The walk" below; row 13. _Done when:_ `visual`'s, `walk`'s and `ui`'s gates;
       row 13 red on the old counts; the pinned diff naming `13-preview` alone. **14 min** (241.1's step 8:
       14, one scene).
+      _Done 2026-11-24, build 250.1 step 3, sonnet:_ `visual`'s, `walk`'s and `ui`'s gates each exit 0 (the run of
+      16:03 to 16:10); row 13 red on the old counts (16:01), its two cases; the pinned diff `admin-setup/13-preview`
+      alone, 10 lines; the new step replayed in jsdom on the real router (16:01), no scripts file touched.
 - [ ] **4. The prose.** `docs/products.md#L35`'s Settings row gains the four blocks and the preview; the
       recap's card for the look on ridge comes in step 6. _Done when:_ the citation test. **5 min**
       (241.2's step 8: 5).

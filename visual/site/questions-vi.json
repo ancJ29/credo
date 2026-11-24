@@ -1,7 +1,8 @@
 {
   "Would the admin know this is their app, and how to sign in?": "Quản trị có biết đây là ứng dụng của mình, và cách đăng nhập không?",
   "Does this say what to do?": "Màn hình này có nói phải làm gì không?",
-  "Is this what an admin sets up first?": "Đây có phải là thứ quản trị thiết lập đầu tiên không?",
+  "Does the page read in clear sections, the preview showing the header and the sign-in card?": "Trang có chia thành các mục rõ ràng, và phần xem trước có hiện đầu trang và thẻ đăng nhập không?",
+  "Do the preview’s header and card show the new name and colour before the save, while the rest keeps the saved look?": "Trước khi lưu, đầu trang và thẻ trong phần xem trước có hiện tên và màu mới, trong khi phần còn lại vẫn giữ giao diện đã lưu không?",
   "Does the change show where the admin expects?": "Thay đổi có hiện ở chỗ quản trị mong đợi không?",
   "Is the switch where a user would look?": "Nút chuyển có ở chỗ người dùng sẽ tìm không?",
   "Would the admin know it is not their fault, and to try again?": "Quản trị có biết đây không phải lỗi của mình, và cần thử lại không?",

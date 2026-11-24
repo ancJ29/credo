@@ -368,7 +368,8 @@ export const WALKS: Walk[] = [
           en: 'Settings: name, logo, colour, languages',
           vi: 'Cài đặt: tên, logo, màu, ngôn ngữ',
         },
-        question: 'Is this what an admin sets up first?',
+        question:
+          'Does the page read in clear sections, the preview showing the header and the sign-in card?',
       },
       {
         id: '4-saved',
@@ -466,6 +467,18 @@ export const WALKS: Walk[] = [
         },
         question:
           'Would someone who mistyped their password know from it how long to wait before trying again?',
+      },
+      {
+        id: '13-preview',
+        number: 13,
+        path: 'main',
+        mock: { screen: 3, state: 'typed' },
+        sentence: {
+          en: 'A name typed and Brick picked, not yet saved',
+          vi: 'Đã nhập tên và chọn màu gạch, chưa lưu',
+        },
+        question:
+          'Do the preview’s header and card show the new name and colour before the save, while the rest keeps the saved look?',
       },
     ],
   },
