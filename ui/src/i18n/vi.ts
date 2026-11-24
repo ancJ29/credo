@@ -350,6 +350,7 @@ export const vi: Dictionary = {
       'Đăng nhập bằng mã nhân viên và mật khẩu luôn hoạt động. Các phương thức bổ sung không làm mất quyền hiện có.',
     fieldEmail: 'Email (tên đăng nhập phụ; hệ thống không gửi email tự động)',
     fieldQr: 'Mã QR đăng nhập trên điện thoại (hiệu lực 15 phút, dùng 1 lần)',
+    fieldPasskey: 'Khóa truy cập (đăng nhập bằng khuôn mặt, vân tay hoặc mã PIN điện thoại)',
     ownTitle: 'Trường thông tin tùy chỉnh',
     ownIntro:
       'Thêm các trường thông tin riêng cho công ty. Khóa định danh không thể đổi sau khi lưu.',

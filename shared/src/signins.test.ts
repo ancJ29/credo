@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   changeOwnPasswordRequestSchema,
   issueQrReplySchema,
+  ownPasskeyAddRequestSchema,
   parseQr,
   qrLink,
   qrSecretSchema,
@@ -102,6 +103,25 @@ describe('the ways to sign in', () => {
     expect(signInRoutes.issueQr(ID)).toBe(`/api/employees/${ID}/qr`);
     expect(signInRoutes.qr).toBe('/api/auth/sign-in-qr');
     expect(signInRoutes.password).toBe('/api/auth/password');
+    expect(signInRoutes.passkeyOptions).toBe('/api/auth/passkey/options');
+    expect(signInRoutes.passkeySignIn).toBe('/api/auth/passkey/sign-in');
+    expect(signInRoutes.ownPasskeyOptions).toBe('/api/auth/passkey/add-options');
+    expect(signInRoutes.ownPasskeyAdd).toBe('/api/auth/passkey/add');
+  });
+
+  it('C: A person’s own passkey add is the challenge’s token and the device’s answer, and nothing more', () => {
+    const response = {
+      id: 'a',
+      rawId: 'a',
+      type: 'public-key',
+      response: {},
+      clientExtensionResults: {},
+    };
+    expect(ownPasskeyAddRequestSchema.safeParse({ token: 't', response }).success).toBe(true);
+    expect(ownPasskeyAddRequestSchema.safeParse({ response }).success).toBe(false);
+    expect(
+      ownPasskeyAddRequestSchema.safeParse({ token: 't', response, confirm: {} }).success,
+    ).toBe(false);
   });
 
   it('C: Five wrong tries wait nothing, the sixth waits 30 seconds, and the wait doubles', () => {

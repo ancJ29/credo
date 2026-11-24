@@ -32,6 +32,7 @@ export const ACTIONS = {
   'employee.photo': 'photo changed',
   'employee.email': 'email changed',
   'employee.qr': 'QR sign-in issued',
+  'employee.passkey': 'passkey added',
   'staff.setup': 'staff setup saved',
   'config.save': 'settings saved',
   'client.create': 'client made',

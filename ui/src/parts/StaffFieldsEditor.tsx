@@ -176,6 +176,13 @@ export function FieldsEditor({ draft, onChange, nextKey }: Props) {
             change({ fields: { ...draft.fields, qr: event.currentTarget.checked } })
           }
         />
+        <Checkbox
+          label={t('setup.fieldPasskey')}
+          checked={draft.fields.passkey}
+          onChange={(event) =>
+            change({ fields: { ...draft.fields, passkey: event.currentTarget.checked } })
+          }
+        />
       </Stack>
 
       <Stack gap="md">

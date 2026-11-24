@@ -346,6 +346,7 @@ export const en = {
       'Staff code and password are enabled by default. Additional methods do not replace existing access.',
     fieldEmail: 'Email (alternative login username; no automated emails are sent)',
     fieldQr: 'One-time mobile QR login (valid for 15 minutes)',
+    fieldPasskey: 'Passkey (sign in with face, fingerprint or phone PIN)',
     ownTitle: 'Custom staff fields',
     ownIntro:
       'Define custom fields to store extra employee data. Field keys cannot be changed once saved.',

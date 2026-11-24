@@ -156,12 +156,18 @@ Sizes are the last rows of each step's shape in the runs log. Each gate is the t
       keys (`auth.or`, `auth.passkey`, `user.passkey`, `ownPasskey.title`, `text`, `submit`, `added`,
       `addedText`): 764 words; the gallery's `useLink` sample gone with its button, the card's key icon is
       `IconKey`; the menu's line links to `/passkey`.
-- [ ] **2. The wire and the switch.** In `shared`: four routes in `signInRoutes` (the sign-in's options
+- [x] **2. The wire and the switch.** In `shared`: four routes in `signInRoutes` (the sign-in's options
       and sign-in, the add's options and add), the add's request `{ token, response }`, `passkey` in the
       fields, `employee.passkey` in `ACTIONS` (`shared/src/activity.ts#L30-L34`); the setup's third tick.
       Rows 1 and 2 red first. _Done when:_ `shared`'s, `ui`'s and `visual`'s gates, the pinned diff
       naming `setup-1-departments-positions` and `setup-2-fields` alone. **15 min** (piece 151's red-first
       fix steps: 7, 13, 15; 241.1's step 6 took 35, most of it item 671's timeouts, fixed since).
+      _Done 2026-11-24 09:23:_ `shared`'s, `ui`'s and `visual`'s gates and the citation test (with the scripts' `words.test.ts`)
+      each exit 0; the pinned diff names `setup-1-departments-positions` and `setup-2-fields` alone; rows 1
+      and 2 each red on the old code (two cases, one case), then green. Four routes under `signInRoutes`
+      (`/api/auth/passkey/options`, `/sign-in`, `/add-options`, `/add`); the add's request
+      `ownPasskeyAddRequestSchema` is `{ token, response }`, the sign-in's the operators' `passkeySignInRequestSchema`;
+      `employee.passkey` is "passkey added"; `setup.fieldPasskey` makes the dictionaries 765 keys.
 - [ ] **3. The door's button, on the fake.** `SignIn` takes the passkey's state and press; `ClientApp`
       asks the options as the door opens, keeps them with their time and runs one ceremony a press; the
       two calls in `ui/src/api.ts` and their fake answers (the fake keeps in the tab whose its one
@@ -242,7 +248,8 @@ You will see "== verdict: green": 42 pictures moved, all named, 30 listed new, t
 ## Your points
 
 1. **The parts in the gallery** (after step 1; it stops nothing). In this piece's worktree run
-   `pnpm fake`, open the address it prints with `/48b74d079/gallery` after it: Organisms, `DoorCard`'s
+   `pnpm fake`, open the address on the first line it prints (the second ends in `/?fake`, which the
+   gallery path cannot follow) with `/48b74d079/gallery` after it: Organisms, `DoorCard`'s
    Sign-in state; Menus; Pages, the menu page and the confirm page's two new states. Does the button
    read like the legacy's "Use login link", and would a person know what "Add a passkey" does? A no
    reopens the part before any screen takes it.
