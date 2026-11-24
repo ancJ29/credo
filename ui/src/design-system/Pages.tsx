@@ -785,6 +785,7 @@ function MenuPage({ others }: { others: boolean }) {
       <Panel>
         <Stack gap={0}>
           <MenuRow to="/password">{t('user.password')}</MenuRow>
+          <MenuRow to="/passkey">{t('user.passkey')}</MenuRow>
           <MenuRow>{t('user.signOut')}</MenuRow>
         </Stack>
       </Panel>
@@ -872,11 +873,41 @@ function ConfirmMade() {
   );
 }
 
-/** The confirm page's three states: a delete, a change, and made. */
+/** The add-a-passkey page before the press: what a passkey is and that the password stays, then the one press. */
+function PasskeyToAdd() {
+  const { t } = useTranslation();
+  return (
+    <Stack p="md" gap="lg">
+      <PageHeader title={t('ownPasskey.title')} />
+      <Text c="dimmed">{t('ownPasskey.text')}</Text>
+      <ActionRow>
+        <ActionButton meaning="main" submit>
+          {t('ownPasskey.submit')}
+        </ActionButton>
+      </ActionRow>
+    </Stack>
+  );
+}
+
+/** The add-a-passkey page after the touch: the success, and how to use the passkey next time. */
+function PasskeyAdded() {
+  const { t } = useTranslation();
+  return (
+    <Stack p="md" gap="lg">
+      <PageHeader title={t('ownPasskey.title')} />
+      <FormMessage kind="success">{t('ownPasskey.added')}</FormMessage>
+      <Text>{t('ownPasskey.addedText')}</Text>
+    </Stack>
+  );
+}
+
+/** The confirm page's five states: a delete, a change, and made, then the add-a-passkey page's two at the phone's width. */
 export const ConfirmPageStates = [
   { name: 'A delete', node: <Confirm erase /> },
   { name: 'A change', node: <Confirm erase={false} /> },
   { name: 'Made', node: <ConfirmMade /> },
+  { name: 'A passkey to add', node: <PasskeyToAdd />, phone: true as const },
+  { name: 'A passkey added', node: <PasskeyAdded />, phone: true as const },
 ];
 
 /** The settings page as the company's own draws it: titled blocks, the logo from the photos with its choose and remove, the colour from a palette, the languages; `saved` says so above the blocks, `refused` says why above them and under the logo. */

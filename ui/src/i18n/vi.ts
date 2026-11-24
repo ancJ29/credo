@@ -17,6 +17,8 @@ export const vi: Dictionary = {
     submit: 'Đăng nhập',
     remember: 'Ghi nhớ đăng nhập',
     refused: 'Tên đăng nhập hoặc mật khẩu không chính xác.',
+    or: 'hoặc',
+    passkey: 'Đăng nhập bằng khóa truy cập',
   },
   nav: {
     menu: 'Menu',
@@ -37,7 +39,12 @@ export const vi: Dictionary = {
     usage: 'Mức dùng & chi phí',
     activity: 'Nhật ký hoạt động',
   },
-  user: { language: 'Ngôn ngữ', signOut: 'Đăng xuất', password: 'Đổi mật khẩu' },
+  user: {
+    language: 'Ngôn ngữ',
+    signOut: 'Đăng xuất',
+    password: 'Đổi mật khẩu',
+    passkey: 'Thêm khóa truy cập',
+  },
   settings: {
     title: 'Cài đặt',
     basics: 'Thông tin cơ bản',
@@ -534,6 +541,14 @@ export const vi: Dictionary = {
     invalid: 'Mật khẩu mới không đáp ứng yêu cầu bảo mật.',
     mismatch: 'Mật khẩu mới nhập lại không khớp.',
     failed: 'Không thể đổi mật khẩu. Vui lòng thử lại.',
+  },
+  ownPasskey: {
+    title: 'Thêm khóa truy cập',
+    text: 'Khóa truy cập cho phép bạn đăng nhập bằng khuôn mặt, vân tay hoặc mã PIN của thiết bị. Mật khẩu của bạn vẫn dùng được.',
+    submit: 'Thêm khóa truy cập',
+    added: 'Đã thêm khóa truy cập.',
+    addedText:
+      'Lần sau, hãy nhấn Đăng nhập bằng khóa truy cập ở trang đăng nhập rồi dùng khuôn mặt, vân tay hoặc mã PIN của thiết bị.',
   },
   qrSignIn: {
     busyTitle: 'Đang đăng nhập...',

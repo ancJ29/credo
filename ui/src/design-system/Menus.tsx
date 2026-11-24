@@ -59,6 +59,7 @@ function PersonMenu() {
         </Menu.Target>
         <Menu.Dropdown>
           <Menu.Item>{t('user.password')}</Menu.Item>
+          <Menu.Item>{t('user.passkey')}</Menu.Item>
           <Menu.Item>{t('user.signOut')}</Menu.Item>
         </Menu.Dropdown>
       </Menu>

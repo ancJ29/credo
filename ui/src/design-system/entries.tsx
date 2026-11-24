@@ -15,7 +15,14 @@ import {
 import type { ReactNode } from 'react';
 import type { Language } from '@credo/shared';
 import { useTranslation } from 'react-i18next';
-import { IconBuilding, IconKeyboard, IconLock, IconQrcode, IconUser } from '@tabler/icons-react';
+import {
+  IconBuilding,
+  IconKey,
+  IconKeyboard,
+  IconLock,
+  IconQrcode,
+  IconUser,
+} from '@tabler/icons-react';
 import { BackLink } from '../components/atoms/BackLink';
 import { DoorHeading } from '../components/atoms/DoorHeading';
 import { FieldLabel } from '../components/atoms/FieldLabel';
@@ -119,9 +126,9 @@ function SignInState() {
         <Button variant="gradient" size="md" fullWidth>
           {t('auth.submit')}
         </Button>
-        <Divider label={words.or} />
-        <Button variant="default" fullWidth leftSection={<IconQrcode size={18} />}>
-          {words.useLink}
+        <Divider label={t('auth.or')} />
+        <Button variant="default" fullWidth leftSection={<IconKey size={18} />}>
+          {t('auth.passkey')}
         </Button>
       </Stack>
     </DoorCard>

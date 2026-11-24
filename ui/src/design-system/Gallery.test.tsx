@@ -506,6 +506,80 @@ describe('Gallery', () => {
     window.localStorage.clear();
   });
 
+  it('241.2 case 21: the gallery draws the card’s passkey button under or, the menu’s line and the add page’s two states in the dictionary’s words', async () => {
+    window.localStorage.clear();
+    const { vi: words, en } = DICTIONARIES;
+    // 1. The card: the dictionary’s "or" and passkey button, no sample link button, in Vietnamese.
+    const card = open(`${BASE}/organisms/door-card`);
+    const signIn = () => within(part().getByRole('figure', { name: 'Sign-in' }));
+    expect(words.auth.passkey).toBe('Đăng nhập bằng khóa truy cập');
+    expect(en.auth.passkey).toBe('Sign in with a passkey');
+    expect(signIn().getByText(words.auth.or)).toBeDefined();
+    const press = signIn().getByRole('button', { name: words.auth.passkey });
+    expect(press.getAttribute('data-variant')).toBe('default');
+    expect(signIn().queryByRole('button', { name: 'Dùng liên kết đăng nhập' })).toBeNull();
+    card.unmount();
+    // 2. The menu: "Add a passkey" after "Change password", before sign-out, on the person menu.
+    open(`${BASE}/foundations/menus`);
+    const person = within(part().getByRole('figure', { name: 'Person menu' }));
+    await userEvent.click(person.getByRole('button', { name: SAMPLES.vi.person }));
+    expect(person.getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
+      words.user.password,
+      words.user.passkey,
+      words.user.signOut,
+    ]);
+    cleanup();
+    // 3. The menu page: the same line, a row to /passkey, in English.
+    const menu = ENTRIES.find((each) => each.name === 'The menu page')!;
+    drawn(menu);
+    const frame = part().getByTitle<HTMLIFrameElement>('The company’s More, at the phone’s width');
+    act(() => {
+      fireEvent.load(frame);
+    });
+    expect(
+      [...frame.contentDocument!.body.querySelectorAll('a[href], button')].map((row) => [
+        row.textContent,
+        row.getAttribute('href'),
+      ]),
+    ).toContainEqual([en.user.passkey, '/passkey']);
+    cleanup();
+    // 4. The confirm page: two phone states, the one press to add, then the added message.
+    const confirm = ENTRIES.find((each) => each.name === 'The confirm page')!;
+    expect(confirm.states.map((state) => state.name)).toEqual([
+      'A delete',
+      'A change',
+      'Made',
+      'A passkey to add',
+      'A passkey added',
+    ]);
+    expect(confirm.states.slice(3).map((state) => 'phone' in state && state.phone)).toEqual([
+      true,
+      true,
+    ]);
+    drawn(confirm);
+    const bodyOf = (name: string) => {
+      const phone = part().getByTitle<HTMLIFrameElement>(`${name}, at the phone’s width`);
+      act(() => {
+        fireEvent.load(phone);
+      });
+      return within(phone.contentDocument!.body);
+    };
+    const toAdd = bodyOf('A passkey to add');
+    expect(toAdd.getByRole('heading', { level: 2, name: en.ownPasskey.title })).toBeDefined();
+    expect(toAdd.getByText(en.ownPasskey.text)).toBeDefined();
+    const add = toAdd.getByRole('button', { name: en.ownPasskey.submit });
+    expect(add.getAttribute('data-variant')).toBe('filled');
+    expect(toAdd.getAllByRole('button')).toHaveLength(1);
+    expect(toAdd.queryByRole('status')).toBeNull();
+    const added = bodyOf('A passkey added');
+    expect(added.getByRole('status').textContent).toContain(en.ownPasskey.added);
+    expect(added.getByText(en.ownPasskey.addedText)).toBeDefined();
+    expect(added.queryByRole('button', { name: en.ownPasskey.submit })).toBeNull();
+    expect(words.ownPasskey.submit).toBe('Thêm khóa truy cập');
+    expect(words.user.passkey).toBe('Thêm khóa truy cập');
+    expect(en.user.passkey).toBe('Add a passkey');
+  });
+
   it('241.1 case 18: DoorCard and DoorPage say they are built and in use, and no line says a screen draws a card of its own', () => {
     for (const [slug, name] of [
       ['door-card', 'DoorCard'],
@@ -545,6 +619,7 @@ describe('Gallery', () => {
     await userEvent.click(person.getByRole('button', { name: SAMPLES.vi.person }));
     expect(person.getAllByRole('menuitem').map((item) => item.textContent)).toEqual([
       words.user.password,
+      words.user.passkey,
       words.user.signOut,
     ]);
   });
@@ -2043,19 +2118,30 @@ describe('Gallery', () => {
       { words: 'Customers', href: '/customers', arrow: true },
       { words: 'Products', href: '/products', arrow: true },
       { words: 'Change password', href: '/password', arrow: true },
+      { words: 'Add a passkey', href: '/passkey', arrow: true },
       { words: 'Sign out', href: null, arrow: false },
     ]);
     expect(more.panels[1].lastElementChild!.textContent).toContain('Sign out');
     // 2. No other pages: the one panel of the person's link and sign-out.
     const bare = rowsOf('No other pages');
     expect(bare.panels).toHaveLength(1);
-    expect(bare.rows.map((row) => row.words)).toEqual(['Change password', 'Sign out']);
+    expect(bare.rows.map((row) => row.words)).toEqual([
+      'Change password',
+      'Add a passkey',
+      'Sign out',
+    ]);
   });
 
   it('236 case 11: the confirm page draws the warning first, red only on a delete, the made value with its copy button', () => {
     const entry = ENTRIES.find((each) => each.name === 'The confirm page')!;
     expect(entry.kind).toBe(KIND_OF_PAGE);
-    expect(entry.states.map((state) => state.name)).toEqual(['A delete', 'A change', 'Made']);
+    expect(entry.states.map((state) => state.name)).toEqual([
+      'A delete',
+      'A change',
+      'Made',
+      'A passkey to add',
+      'A passkey added',
+    ]);
     drawn(entry);
     const figure = (name: string) => within(part().getByRole('figure', { name }));
     const reds = (name: string) =>

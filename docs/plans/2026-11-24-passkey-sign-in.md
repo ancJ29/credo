@@ -144,13 +144,18 @@ Sizes are the last rows of each step's shape in the runs log. Each gate is the t
 `pnpm --filter @credo/<pkg> check`, exit 0 by its own code, plus the citation test. "The pinned diff" is
 `git diff -U0 -- visual/src/resolved.pinned.txt | grep '^+[a-z]' | cut -d' ' -f1 | sort -u`.
 
-- [ ] **1. The gallery.** The card's Sign-in state gets "or" and "Sign in with a passkey" in the
+- [x] **1. The gallery.** The card's Sign-in state gets "or" and "Sign in with a passkey" in the
       dictionary's words (`auth.or`, `auth.passkey`), the sample link button gone (milestone 3 brings its
       own); the user menu sample (`ui/src/design-system/Menus.tsx#L61`) and the menu page sample
       (`Pages.tsx#L787`) gain `user.passkey`; the confirm page's entry gains two states at the phone's
       width, "A passkey to add" and "A passkey added" (`ownPasskey.*`); both dictionaries, the count in
       `scripts/src/words.test.ts`. Row 21 red first. _Done when:_ `ui`'s and `visual`'s gates, the pinned
       diff empty. **10 min** (241.1's steps 1 and 2: 10, 7). Then point 1.
+      _Done 2026-11-24 08:58:_ `ui`'s and `visual`'s gates, the citation test and the scripts' `words.test.ts` and
+      `fake.test.ts` each exit 0; the pinned diff empty; row 21 red on the old dictionary, then green. Eight
+      keys (`auth.or`, `auth.passkey`, `user.passkey`, `ownPasskey.title`, `text`, `submit`, `added`,
+      `addedText`): 764 words; the gallery's `useLink` sample gone with its button, the card's key icon is
+      `IconKey`; the menu's line links to `/passkey`.
 - [ ] **2. The wire and the switch.** In `shared`: four routes in `signInRoutes` (the sign-in's options
       and sign-in, the add's options and add), the add's request `{ token, response }`, `passkey` in the
       fields, `employee.passkey` in `ACTIONS` (`shared/src/activity.ts#L30-L34`); the setup's third tick.
