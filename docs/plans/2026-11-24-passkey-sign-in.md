@@ -228,9 +228,19 @@ Sizes are the last rows of each step's shape in the runs log. Each gate is the t
       the challenge in one write over the tag, reading again on a moved tag; `holder` in `app.ts` names the
       root or the person and issues the session as the QR sign-in's is; the route-list pins read declared 33,
       exempt 18, total 51.
-- [ ] **7. The walk.** As "The walk" below; rows 22 and 23. _Done when:_ `visual`'s, `walk`'s and `ui`'s
+- [x] **7. The walk.** As "The walk" below; rows 22 and 23. _Done when:_ `visual`'s, `walk`'s and `ui`'s
       gates, row 22 red on the old counts, row 23 replayed. **20 min** (241.1's step 8: 14 for one scene;
       five here, the full lane's authenticator copied from the passkeys walk).
+      _Done 2026-11-24 10:49:_ `visual`'s, `walk`'s and `ui`'s gates and the citation test each exit 0; row 22 red on the old counts
+      (six cases of `visual/src/walks.test.ts`, then green on 29 and 40); row 23 replayed in `SignIns.test.tsx`
+      (WK6, two cases: the add, the sign-out and the button, then the two failures) and drawn by `words.test.tsx`;
+      no walk run. Five scenes `staff-25` to `staff-29` after `staff-24` in `visual/src/walks.ts` and
+      `walk/specs/piece-2.spec.ts` (the stack's virtual authenticator, forgotten before scene 27 and 29), their
+      questions in `visual/site/questions-vi.json`, five pinned lines (the pinned diff names the five and no other);
+      the door question and `lists-9-more`'s sentence gain the passkey. Two things the plan did not foresee:
+      scene 27 ends on the add page, signed in as the person (a sign-in returns to the address the person left,
+      so it is not their first page), its question reads "sign the person in as themselves"; scene 28 and 29
+      are on the wrong path, which the walks test pins as 9, 10, 11, 16, 22, 28, 29.
 - [ ] **8. The prose.** As "Prose that goes false"; items 674 and 675 marked fixed. _Done when:_ the
       citation test. **5 min** (241.1's step 7: 1; piece 142's three pages: 2).
 - [ ] **9. Your walk run, then the bases.** The run line below, green; the bases committed alone, each

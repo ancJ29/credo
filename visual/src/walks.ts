@@ -322,7 +322,7 @@ const PRODUCTS_CHOSEN: Step[] = [{ attach: 'import.file', file: 'products' }];
  * legacy app's look): the colour over the whole screen, the logo and the name atop the card, the switch in the corner.
  */
 export const SIGN_IN_LOOK =
-  'Do the doors read like the legacy app’s: the colour sweeping the whole screen, the logo and the name atop the card, the language switch in the corner, and on a company’s door “Remember me” ticked?';
+  'Do the doors read like the legacy app’s: the colour sweeping the whole screen, the logo and the name atop the card, the language switch in the corner, and on a company’s door “Remember me” ticked and “Sign in with a passkey” under “or”?';
 
 /**
  * The walks: piece 1's, the client's admin on a PC, whose screens keep the app frame plan's
@@ -1141,6 +1141,86 @@ export const WALKS: Walk[] = [
         question:
           'Would a person whose root gave them an email sign in by it here, in the box where others type their code?',
       },
+      {
+        id: 'staff-25-add-passkey',
+        number: 25,
+        path: 'main',
+        scene: { path: '/passkey', as: 'EMP-0002', steps: [{ see: 'ownPasskey.title' }] },
+        sentence: {
+          en: 'A person adds a passkey from the user menu: what it is, and that the password stays',
+          vi: 'Người dùng thêm khóa truy cập từ menu người dùng: khóa là gì, và mật khẩu vẫn dùng được',
+        },
+        question:
+          'Would a person know from this page what a passkey is, and that their password stays?',
+      },
+      {
+        id: 'staff-26-passkey-added',
+        number: 26,
+        path: 'main',
+        scene: {
+          path: '/passkey',
+          as: 'EMP-0002',
+          steps: [{ press: 'ownPasskey.submit' }, { see: 'ownPasskey.title' }],
+        },
+        sentence: {
+          en: 'The passkey added, after the touch, and how to use it next time',
+          vi: 'Khóa truy cập đã được thêm sau khi chạm, và cách dùng lần sau',
+        },
+        question: 'Does it say plainly that the passkey is added, and how to use it next time?',
+      },
+      {
+        id: 'staff-27-passkey-sign-in',
+        number: 27,
+        path: 'main',
+        scene: {
+          path: '/passkey',
+          as: 'EMP-0002',
+          steps: [
+            { press: 'ownPasskey.submit' },
+            { press: 'Trần Văn Hùng', text: true },
+            { press: 'user.signOut' },
+            { press: 'auth.passkey' },
+            { see: 'ownPasskey.title' },
+          ],
+        },
+        sentence: {
+          en: 'Signed out, the passkey button pressed: the person is signed in again as themselves, nothing typed',
+          vi: 'Đã đăng xuất, bấm nút khóa truy cập: người đó đăng nhập lại đúng tài khoản của mình, không gõ gì',
+        },
+        question: 'Did the passkey sign the person in as themselves, with nothing typed?',
+      },
+      {
+        id: 'staff-28-passkey-not-given',
+        number: 28,
+        path: 'wrong',
+        scene: {
+          path: '/staff',
+          out: true,
+          cue: 'passkey:notGiven',
+          steps: [{ press: 'auth.passkey' }, { see: 'passkey.notGiven' }],
+        },
+        sentence: {
+          en: 'The door, the device giving no passkey: told, and the form kept',
+          vi: 'Cửa đăng nhập, thiết bị không đưa khóa truy cập: được báo, và biểu mẫu được giữ',
+        },
+        question: 'Would a person know to try again?',
+      },
+      {
+        id: 'staff-29-passkey-refused',
+        number: 29,
+        path: 'wrong',
+        scene: {
+          path: '/staff',
+          out: true,
+          cue: 'passkeySignIn:401',
+          steps: [{ press: 'auth.passkey' }, { see: 'auth.passkeyRefused' }],
+        },
+        sentence: {
+          en: 'The door, a passkey that opens nothing here: told to use the password',
+          vi: 'Cửa đăng nhập, khóa truy cập không mở được tài khoản nào ở đây: được báo dùng mật khẩu',
+        },
+        question: 'Would a person whose passkey is not taken know to use their password?',
+      },
     ],
   },
   {
@@ -1395,8 +1475,8 @@ export const WALKS: Walk[] = [
         path: 'main',
         scene: { path: '/more' },
         sentence: {
-          en: 'More: the pages the phone’s bar leaves out, then the password and sign-out',
-          vi: 'Thêm: các trang thanh dưới của điện thoại không có, rồi đổi mật khẩu và đăng xuất',
+          en: 'More: the pages the phone’s bar leaves out, then the password, the passkey and sign-out',
+          vi: 'Thêm: các trang thanh dưới của điện thoại không có, rồi đổi mật khẩu, thêm khóa truy cập và đăng xuất',
         },
         question: 'Would a person on a phone find the other pages and sign-out here?',
       },
