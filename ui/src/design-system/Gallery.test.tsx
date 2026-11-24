@@ -1404,7 +1404,7 @@ describe('Gallery', () => {
   });
 
   it('213 case 1: every entry carries one to three use lines and one to three don’t-use lines', () => {
-    expect(ENTRIES).toHaveLength(45);
+    expect(ENTRIES).toHaveLength(46);
     for (const entry of ENTRIES) {
       for (const lines of [entry.useWhen, entry.dontUseWhen]) {
         expect(lines.length, entry.name).toBeGreaterThanOrEqual(1);
@@ -1658,6 +1658,7 @@ describe('Gallery', () => {
       'The menu page',
       'The confirm page',
       'The settings page',
+      'BrandPreview',
     ]);
     for (const name of SLOTS) {
       const entry = ENTRIES.find((each) => each.name === name);
@@ -1743,7 +1744,7 @@ describe('Gallery', () => {
         entry.kind !== KIND_OF_PAGE,
     );
     // A set that found nothing would quiet the loop.
-    expect(parts.length).toBe(26);
+    expect(parts.length).toBe(27);
     expect(GUIDELINE.contracts.map((contract) => contract.part).sort()).toEqual(
       parts.map((entry) => entry.name).sort(),
     );
@@ -2176,22 +2177,25 @@ describe('Gallery', () => {
     expect(made.getByRole('status').textContent).toContain('Share this password');
   });
 
-  it('236 case 12: the settings page draws its block’s fields and choices, saved, and a refusal as a message', () => {
+  it('236 case 12: the settings page draws its fields and choices in four titled blocks beside a preview, saved, and a refusal as a message', () => {
     const entry = ENTRIES.find((each) => each.name === 'The settings page')!;
     expect(entry.kind).toBe(KIND_OF_PAGE);
     expect(entry.states.map((state) => state.name)).toEqual(['The basics', 'Saved', 'Refused']);
     drawn(entry);
     const figure = (name: string) => within(part().getByRole('figure', { name }));
-    // 1. The basics: a titled block of fields and choices, one main, no message.
+    // 1. The basics: four titled blocks in order and a preview, one main, no message.
     const basics = figure('The basics');
-    expect(basics.getByRole('heading', { level: 3, name: 'Basic information' })).toBeDefined();
+    expect(
+      basics.getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent),
+    ).toEqual(['Identity', 'Pictures', 'Color and frame', 'Languages', 'Preview']);
     expect(basics.getByRole('textbox', { name: /Company name/ })).toBeDefined();
     expect(basics.getByRole('textbox', { name: 'Brand color' })).toBeDefined();
     expect(basics.getAllByRole('radio')).toHaveLength(6);
     expect(basics.getAllByRole('checkbox')).toHaveLength(2);
-    expect(basics.getAllByRole('switch')).toHaveLength(2);
+    expect(basics.getAllByRole('switch')).toHaveLength(3);
+    // the logo's picture, not the preview's, which is hidden from a reader
     expect(part().getByRole('figure', { name: 'The basics' }).querySelectorAll('img')).toHaveLength(
-      1,
+      2,
     );
     expect(basics.getByRole('button', { name: 'Upload logo' })).toBeDefined();
     expect(basics.queryByRole('status')).toBeNull();
@@ -2202,20 +2206,61 @@ describe('Gallery', () => {
     expect(saved.getByRole('status').textContent).toContain('Settings saved successfully');
     expect(saved.getByRole('textbox', { name: /Company name/ })).toBeDefined();
     expect(saved.getByRole('button', { name: 'Save changes' })).toBeDefined();
-    // 3. Refused: the whole form's message above the block, the logo's under the logo, both errors.
+    // 3. Refused: the whole form's message above the blocks, the logo's under the logo, both errors.
     const refused = figure('Refused');
     const alerts = refused.getAllByRole('alert');
     expect(alerts.map((one) => one.textContent)).toEqual([
       'Settings could not be validated. Please check the logo, name, and color.',
       'File exceeds 200 KB and was not uploaded.',
     ]);
-    const block = refused.getByRole('heading', { level: 3, name: 'Basic information' });
+    const block = refused.getByRole('heading', { level: 3, name: 'Pictures' });
     expect(
       alerts[0].compareDocumentPosition(block) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
     expect(
       block.compareDocumentPosition(alerts[1]) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
+  });
+
+  it('250.1 case 10: BrandPreview draws a coloured header, a white one and a card with no logo, hidden from a reader', () => {
+    const entry = ENTRIES.find((each) => each.name === 'BrandPreview')!;
+    expect(entry.group).toBe('Pages');
+    expect(entry.states.map((state) => state.name)).toEqual([
+      'A coloured header',
+      'A white header',
+      'A card with no logo',
+    ]);
+    drawn(entry);
+    const figures = ['A coloured header', 'A white header', 'A card with no logo'].map((name) =>
+      part().getByRole('figure', { name }),
+    );
+    const [coloured, white, noLogo] = figures;
+    expect(coloured.querySelector('[data-preview="header"]')?.hasAttribute('data-white')).toBe(
+      false,
+    );
+    expect(white.querySelector('[data-preview="header"]')?.getAttribute('data-white')).toBe('true');
+    expect(coloured.querySelector('[data-preview="card"] img')).not.toBeNull();
+    expect(noLogo.querySelector('[data-preview="card"] img')).toBeNull();
+    for (const each of figures) {
+      expect(
+        within(each)
+          .getAllByRole('heading')
+          .map((one) => one.textContent),
+      ).toEqual(['Preview']);
+    }
+  });
+
+  it('250.1 case 10: DetailColumns draws a state with the side first', () => {
+    const entry = ENTRIES.find((each) => each.name === 'DetailColumns')!;
+    expect(entry.props).toContain('sideFirst?: boolean');
+    expect(entry.states.map((state) => state.name)).toEqual([
+      'Main and side',
+      'Main only',
+      'Side first',
+    ]);
+    drawn(entry);
+    const side = part().getByRole('figure', { name: 'Side first' });
+    expect(side.querySelector('[class*="stuck"]')).not.toBeNull();
   });
 
   it('236 case 13: Panel’s new take, the address its block opens, is a content in its contract and drawn on its entry', () => {

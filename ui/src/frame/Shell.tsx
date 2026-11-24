@@ -75,6 +75,35 @@ type Props = {
   children: ReactNode;
 };
 
+/** A frame class of the bar, with its twin from the look's file after it when the header is white. */
+const headerClass = (white: boolean, base: string | undefined, twin: string) =>
+  [base, white ? looks[twin] : undefined].filter(Boolean).join(' ');
+
+/** The bar's look: its classes, `data-white` and gradient, as the header and the settings preview draw it. */
+export const headerLook = (white: boolean) => ({
+  className: headerClass(white, classes.header, 'header'),
+  'data-white': white ? ('true' as const) : undefined,
+  style: white ? undefined : { background: BRAND_GRADIENT, color: 'var(--credo-on-header)' },
+});
+
+/** The header's brand: the stand-in icon and the company's name as the first heading. */
+export function HeaderBrand({ name, white }: { name: string; white: boolean }) {
+  return (
+    <Group gap="sm" wrap="nowrap" className={headerClass(white, classes.brand, 'brand')}>
+      <IconBrandAdobe size={36} stroke={1.5} aria-hidden />
+      <Title
+        order={1}
+        size="h4"
+        fw={WEIGHTS.emphasis}
+        c={white ? undefined : 'inherit'}
+        className={white ? looks.brandName : undefined}
+      >
+        {name}
+      </Title>
+    </Group>
+  );
+}
+
 /** A name's initials, up to two, for the user's mark in the header. */
 const initialsOf = (name: string) =>
   name
@@ -141,27 +170,10 @@ export function Shell({
       footer={{ height: { base: 64, sm: 0 } }}
       padding="md"
     >
-      <AppShell.Header
-        className={head(classes.header, 'header')}
-        data-white={whiteHeader}
-        style={
-          whiteHeader ? undefined : { background: BRAND_GRADIENT, color: 'var(--credo-on-header)' }
-        }
-      >
+      <AppShell.Header {...headerLook(!!whiteHeader)}>
         <Group h="100%" px="md" justify="space-between" wrap="nowrap">
           <Group wrap="nowrap" gap="sm">
-            <Group gap="sm" wrap="nowrap" className={head(classes.brand, 'brand')}>
-              <IconBrandAdobe size={36} stroke={1.5} aria-hidden />
-              <Title
-                order={1}
-                size="h4"
-                fw={WEIGHTS.emphasis}
-                c={whiteHeader ? undefined : 'inherit'}
-                className={whiteHeader ? looks.brandName : undefined}
-              >
-                {brand.name}
-              </Title>
-            </Group>
+            <HeaderBrand name={brand.name} white={!!whiteHeader} />
             {badge && (
               <Badge variant="filled" className={head(classes.badge, 'badge')}>
                 {badge}

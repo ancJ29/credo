@@ -15,13 +15,16 @@ import {
   TextInput,
 } from '@mantine/core';
 import {
-  IconBuilding,
   IconBuildingStore,
+  IconId,
+  IconLanguage,
   IconLock,
   IconLogin,
   IconNote,
   IconPackage,
+  IconPalette,
   IconPhone,
+  IconPhoto,
   IconUser,
 } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
@@ -40,7 +43,8 @@ import { LANGUAGE_NAMES } from '../i18n';
 import { LISTS } from '../listSheet';
 import { numberOf, priceOf } from '../number';
 import { ListTable } from '../parts/ListTable';
-import { FieldPair } from '../parts/DetailCards';
+import { BrandPreview } from '../parts/BrandPreview';
+import { DetailColumns, FieldPair } from '../parts/DetailCards';
 import { PageShell } from '../parts/PageShell';
 import { SectionCard } from '../components/organisms/SectionCard';
 import { MAX_LOGO_BYTES } from '@credo/shared';
@@ -910,7 +914,7 @@ export const ConfirmPageStates = [
   { name: 'A passkey added', node: <PasskeyAdded />, phone: true as const },
 ];
 
-/** The settings page as the company's own draws it: titled blocks, the logo from the photos with its choose and remove, the colour from a palette, the languages; `saved` says so above the blocks, `refused` says why above them and under the logo. */
+/** The settings page as the company's own draws it: four titled blocks (the name, the logo from the photos with its choose and remove, the palette, the colour and the three switches, the languages) beside a preview of the header and the sign-in card, which comes first on a phone; `saved` says so above the blocks, `refused` says why above them and under the logo. */
 function SettingsPage({ state }: { state: 'basics' | 'saved' | 'refused' }) {
   const { t } = useTranslation();
   const words = SAMPLES[useLanguage()];
@@ -922,64 +926,84 @@ function SettingsPage({ state }: { state: 'basics' | 'saved' | 'refused' }) {
       </div>
       {state === 'saved' && <FormMessage kind="saved">{t('settings.saved')}</FormMessage>}
       {state === 'refused' && <FormMessage kind="error">{t('settings.saveRefused')}</FormMessage>}
-      <SectionCard icon={<IconBuilding size={14} />} title={t('settings.basics')}>
-        <Stack gap="lg">
-          <FieldPair>
-            <TextInput label={t('settings.name')} required defaultValue={words.shop} />
-            <Stack gap={6}>
-              <Text size="sm" fw={WEIGHTS.label}>
-                {t('settings.logo')}
-              </Text>
-              <Group>
-                <Image src={PICTURE} alt="" h={48} w={48} fit="contain" />
-                <ActionButton meaning="other">{t('settings.logoChoose')}</ActionButton>
-                <ActionButton meaning="quiet">{t('settings.logoRemove')}</ActionButton>
-              </Group>
-              {state === 'refused' && (
-                <FormMessage kind="error">
-                  {t('settings.logoTooLarge', { max: MAX_LOGO_BYTES / 1024 })}
-                </FormMessage>
-              )}
-            </Stack>
-          </FieldPair>
-          <Radio.Group label={t('settings.palette')} defaultValue={PALETTES[0].name}>
-            <Group mt="xs" gap="lg">
-              {PALETTES.map((palette) => (
-                <Radio
-                  key={palette.name}
-                  value={palette.name}
-                  label={t(`settings.palettes.${palette.name}`)}
-                />
-              ))}
-            </Group>
-          </Radio.Group>
-          <FieldPair>
-            <Stack gap="md">
-              <ColorInput
-                label={t('settings.colour')}
-                format="hex"
-                withEyeDropper={false}
-                defaultValue={PALETTES[0].shades[7]}
-              />
-              <Switch label={t('settings.whiteHeader')} />
-              <Switch label={t('settings.menuIcons')} defaultChecked />
-            </Stack>
-            <Checkbox.Group label={t('settings.languages')} defaultValue={['vi', 'en']}>
-              <Group mt="xs">
-                <Checkbox value="vi" label={LANGUAGE_NAMES.vi} />
-                <Checkbox value="en" label={LANGUAGE_NAMES.en} />
-              </Group>
-            </Checkbox.Group>
-          </FieldPair>
-          <NativeSelect
-            label={t('settings.defaultLanguage')}
-            data={[LANGUAGE_NAMES.vi, LANGUAGE_NAMES.en]}
+      <DetailColumns
+        sideFirst
+        side={
+          <BrandPreview
+            name={words.shop}
+            logo={PICTURE}
+            brand={PALETTES[0].shades[7]}
+            whiteHeader
           />
-        </Stack>
-      </SectionCard>
-      <ActionButton meaning="main" submit>
-        {t('settings.save')}
-      </ActionButton>
+        }
+        main={
+          <Stack gap="lg">
+            <SectionCard icon={<IconId size={14} />} title={t('settings.identity')}>
+              <TextInput label={t('settings.name')} required defaultValue={words.shop} />
+            </SectionCard>
+            <SectionCard icon={<IconPhoto size={14} />} title={t('settings.pictures')}>
+              <Stack gap={6}>
+                <Text size="sm" fw={WEIGHTS.label}>
+                  {t('settings.logo')}
+                </Text>
+                <Group>
+                  <Image src={PICTURE} alt="" h={48} w={48} fit="contain" />
+                  <ActionButton meaning="other">{t('settings.logoChoose')}</ActionButton>
+                  <ActionButton meaning="quiet">{t('settings.logoRemove')}</ActionButton>
+                </Group>
+                {state === 'refused' && (
+                  <FormMessage kind="error">
+                    {t('settings.logoTooLarge', { max: MAX_LOGO_BYTES / 1024 })}
+                  </FormMessage>
+                )}
+              </Stack>
+            </SectionCard>
+            <SectionCard icon={<IconPalette size={14} />} title={t('settings.frame')}>
+              <Stack gap="lg">
+                <Radio.Group label={t('settings.palette')} defaultValue={PALETTES[0].name}>
+                  <Group mt="xs" gap="lg">
+                    {PALETTES.map((palette) => (
+                      <Radio
+                        key={palette.name}
+                        value={palette.name}
+                        label={t(`settings.palettes.${palette.name}`)}
+                      />
+                    ))}
+                  </Group>
+                </Radio.Group>
+                <ColorInput
+                  label={t('settings.colour')}
+                  format="hex"
+                  withEyeDropper={false}
+                  defaultValue={PALETTES[0].shades[7]}
+                />
+                <Stack gap="md">
+                  <Switch label={t('settings.whiteHeader')} defaultChecked />
+                  <Switch label={t('settings.whiteMenu')} />
+                  <Switch label={t('settings.menuIcons')} />
+                </Stack>
+              </Stack>
+            </SectionCard>
+            <SectionCard icon={<IconLanguage size={14} />} title={t('settings.languagesSection')}>
+              <FieldPair>
+                <Checkbox.Group label={t('settings.languages')} defaultValue={['vi', 'en']}>
+                  <Group mt="xs">
+                    <Checkbox value="vi" label={LANGUAGE_NAMES.vi} />
+                    <Checkbox value="en" label={LANGUAGE_NAMES.en} />
+                  </Group>
+                </Checkbox.Group>
+                <NativeSelect
+                  label={t('settings.defaultLanguage')}
+                  data={[LANGUAGE_NAMES.vi, LANGUAGE_NAMES.en]}
+                />
+              </FieldPair>
+            </SectionCard>
+            <ActionButton meaning="main" submit>
+              {t('settings.save')}
+            </ActionButton>
+          </Stack>
+        }
+      />
     </Stack>
   );
 }
@@ -989,4 +1013,32 @@ export const SettingsPageStates = [
   { name: 'The basics', node: <SettingsPage state="basics" /> },
   { name: 'Saved', node: <SettingsPage state="saved" /> },
   { name: 'Refused', node: <SettingsPage state="refused" /> },
+];
+
+/** The preview of the header and the sign-in card, in a brick colour with a logo, with the white header, and with no logo. */
+export const BrandPreviewStates = [
+  {
+    name: 'A coloured header',
+    node: (
+      <Stack w={480} maw="100%">
+        <BrandPreview name="An Phat" logo={PICTURE} brand={PALETTES[2].shades[7]} />
+      </Stack>
+    ),
+  },
+  {
+    name: 'A white header',
+    node: (
+      <Stack w={480} maw="100%">
+        <BrandPreview name="An Phat" logo={PICTURE} brand={PALETTES[1].shades[7]} whiteHeader />
+      </Stack>
+    ),
+  },
+  {
+    name: 'A card with no logo',
+    node: (
+      <Stack w={480} maw="100%">
+        <BrandPreview name="An Phat" brand={PALETTES[0].shades[7]} />
+      </Stack>
+    ),
+  },
 ];

@@ -49,6 +49,7 @@ import { OnTheBrand, OnTheLinks } from './OnTheBrand';
 import {
   ConfirmPageStates,
   SettingsPageStates,
+  BrandPreviewStates,
   DaySheetStates,
   FormPageStates,
   ImportPageStates,
@@ -587,7 +588,7 @@ export const ENTRIES: Entry[] = [
     kind: 'Layout',
     description:
       'The two columns of a detail page: what identifies the record, and what acts on it beside; one column on a phone.',
-    props: 'main: ReactNode · side?: ReactNode',
+    props: 'main: ReactNode · side?: ReactNode · sideFirst?: boolean',
     useWhen: ['A record’s page holds its details and its actions in separate blocks.'],
     dontUseWhen: ['Two fields in a row: that is FieldPair’s.'],
     instead: 'FieldPair',
@@ -814,6 +815,20 @@ export const ENTRIES: Entry[] = [
       'A refusal through a message, the logo’s too.',
     ],
     states: SettingsPageStates,
+  },
+  {
+    group: 'Pages',
+    name: 'BrandPreview',
+    kind: 'Layout',
+    description:
+      'A block titled Preview that shows a company header and the title of its sign-in card in the colour given, before anything is saved; both pictures are hidden from a reader and take no focus, only the title and two captions are read.',
+    props: 'name: string · logo?: string · brand: string · whiteHeader?: boolean',
+    useWhen: ['A page sets a company look and shows it before the save, beside its fields.'],
+    dontUseWhen: [
+      'The real header or a real door: those are Shell and DoorCard, which the app draws.',
+    ],
+    instead: 'DoorCard',
+    states: BrandPreviewStates,
   },
   {
     group: 'Atoms',

@@ -777,6 +777,11 @@ export const GUIDELINE: {
           is: 'content',
           line: 'The blocks that act on it; none for a page without.',
         },
+        {
+          prop: 'sideFirst',
+          is: 'meaning',
+          line: 'Whether the side comes first on a phone and stays in view.',
+        },
       ],
       decides: [{ what: 'The gap between its columns.', from: [{ table: 'SPACING', key: 'lg' }] }],
       fixes: [
@@ -786,6 +791,10 @@ export const GUIDELINE: {
       states: [
         { name: 'Main and side', line: 'Two columns on a wide window.' },
         { name: 'Main only', line: 'The main takes the whole width.' },
+        {
+          name: 'Side first',
+          line: 'The side above the main on a phone, in view beside it on a wide window.',
+        },
       ],
       serves: 'A screen picks parts, never a style',
       heldBy: { check: 'ui/src/design-system/guideline.test.ts' },
@@ -801,6 +810,38 @@ export const GUIDELINE: {
       ],
       serves: 'A screen picks parts, never a style',
       heldBy: { check: 'ui/src/design-system/guideline.test.ts' },
+      followed: 'yes',
+    },
+    {
+      part: 'BrandPreview',
+      takes: [
+        { prop: 'name', is: 'content', line: 'The company’s name, in the header and on the card.' },
+        { prop: 'logo', is: 'content', line: 'The company’s logo on the card; none draws none.' },
+        { prop: 'brand', is: 'content', line: 'The brand colour the two pictures wear.' },
+        { prop: 'whiteHeader', is: 'meaning', line: 'Whether the header is drawn white.' },
+      ],
+      decides: [
+        { what: 'The gap between its two pictures.', from: [{ table: 'SPACING', key: 'lg' }] },
+        {
+          what: 'The gap between a caption and its picture.',
+          from: [{ table: 'SPACING', key: 'xs' }],
+        },
+      ],
+      fixes: [
+        'Its block: a titled section card, the header over the sign-in card, each under its caption.',
+        'Its pictures: hidden from a reader and out of the tab order; only the title and the two captions are read.',
+        'The card stops at its title: the fields under it carry nothing the settings set.',
+      ],
+      states: [
+        {
+          name: 'A coloured header',
+          line: 'The header in the brand colour, the card with its logo.',
+        },
+        { name: 'A white header', line: 'The header white, as the switch says.' },
+        { name: 'A card with no logo', line: 'The card with the name alone.' },
+      ],
+      serves: 'A screen picks parts, never a style',
+      heldBy: { check: 'ui/src/parts/BrandPreview.test.tsx' },
       followed: 'yes',
     },
     {

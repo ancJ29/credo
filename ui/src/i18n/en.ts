@@ -78,6 +78,13 @@ export const en = {
     saveRefused: 'Settings could not be validated. Please check the logo, name, and color.',
     conflict: 'Settings were updated by another session. Your changes were not saved.',
     conflictReload: 'View latest settings',
+    identity: 'Identity',
+    pictures: 'Pictures',
+    frame: 'Color and frame',
+    languagesSection: 'Languages',
+    preview: 'Preview',
+    previewHeader: "The header, as the company's people see it",
+    previewCard: "The sign-in card, as the company's people see it",
   },
   operator: {
     badge: 'Operator',

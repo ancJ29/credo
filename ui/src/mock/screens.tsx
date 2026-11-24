@@ -18,12 +18,14 @@ const settings = (
   config: TenantConfig,
   more: Partial<SettingsProps> = {},
   shell: { userMenuOpen?: boolean; languageMenuOpen?: boolean; shown?: boolean } = {},
+  /** What the frame around the page wears, where it is not the form's: the saved look. */
+  frame: TenantConfig = config,
 ) => (
   <Shell
-    brand={config}
-    look={config}
+    brand={frame}
+    look={frame}
     user={ROOT.username}
-    languages={config.languages}
+    languages={frame.languages}
     onLanguage={inert}
     onSignOut={inert}
     {...shell}
@@ -147,6 +149,12 @@ export const SCREENS: MockScreen[] = [
         label: 'failed: a newer save exists',
         colour: FILLED.colour,
         screen: settings(TYPED, { outcome: 'conflict' }),
+      },
+      {
+        id: 'typed',
+        label: 'typed: a name and colour not yet saved, the frame keeps the saved look',
+        colour: FILLED.colour,
+        screen: settings(TYPED, {}, {}, FILLED),
       },
     ],
   },

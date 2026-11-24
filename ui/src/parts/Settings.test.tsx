@@ -3,6 +3,7 @@ import { screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { draw } from '../../tests/render';
+import { themeOf } from '../design-system/appTheme';
 import { PALETTES } from '../design-system/palettes';
 import { DICTIONARIES, LANGUAGE_NAMES } from '../i18n';
 import { Settings } from './Settings';
@@ -320,5 +321,98 @@ describe('Settings', () => {
       whiteHeader: true,
       menuIcons: true,
     });
+  });
+});
+
+/** The preview's two pictures, as the page draws them. */
+const picture = (which: 'header' | 'card') =>
+  document.querySelector<HTMLElement>(`[data-preview="${which}"]`)!;
+const scopeBrand = () =>
+  document
+    .querySelector<HTMLElement>('[data-colour-scope]')!
+    .style.getPropertyValue('--mantine-color-brand-7');
+
+describe('Settings in four blocks beside a preview', () => {
+  it('1: draws its fields in four titled blocks, Identity, Pictures, Color and frame, Languages, in that order, and one save after them, in both languages', () => {
+    const order = (dictionary: typeof words) => [
+      dictionary.identity,
+      dictionary.pictures,
+      dictionary.frame,
+      dictionary.languagesSection,
+    ];
+    const { unmount } = draw(<Settings {...props()} />);
+    const titles = () =>
+      screen.getAllByRole('heading', { level: 3 }).map((heading) => heading.textContent);
+    expect(titles().slice(0, 4)).toEqual(order(words));
+    const last = screen.getByRole('heading', { level: 3, name: words.languagesSection });
+    expect(screen.getAllByRole('button', { name: words.save })).toHaveLength(1);
+    expect(last.compareDocumentPosition(save()) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    const block = (name: string) =>
+      screen.getByRole('heading', { level: 3, name }).closest('section');
+    expect(block(words.identity)?.contains(screen.getByLabelText(labelled(words.name)))).toBe(true);
+    expect(block(words.frame)?.contains(screen.getByLabelText(words.colour))).toBe(true);
+    expect(block(words.frame)?.querySelectorAll('[role="switch"]')).toHaveLength(3);
+    expect(block(words.languagesSection)?.querySelectorAll('input[type="checkbox"]')).toHaveLength(
+      2,
+    );
+    unmount();
+
+    draw(<Settings {...props()} />, 'vi');
+    expect(titles().slice(0, 4)).toEqual(order(wordsVi));
+  });
+
+  it('2: the preview’s header and card draw the name, the logo, the colour and the white header as typed and chosen, before any save', async () => {
+    const onSave = vi.fn();
+    draw(<Settings {...props({ onSave })} />);
+    expect(picture('header').textContent).toContain('Minh Phát');
+    expect(picture('card').querySelector('img')?.getAttribute('src')).toBe(config.logo);
+    expect(picture('header').getAttribute('data-white')).toBeNull();
+
+    await userEvent.clear(screen.getByLabelText(labelled(words.name)));
+    await userEvent.type(screen.getByLabelText(labelled(words.name)), 'New name');
+    await userEvent.clear(screen.getByLabelText(words.colour));
+    await userEvent.type(screen.getByLabelText(words.colour), '#9e2d20');
+    await userEvent.click(screen.getByRole('switch', { name: words.whiteHeader }));
+    await userEvent.click(screen.getByRole('button', { name: words.logoRemove }));
+
+    expect(picture('header').textContent).toContain('New name');
+    expect(picture('card').textContent).toContain('New name');
+    expect(picture('header').getAttribute('data-white')).toBe('true');
+    expect(picture('card').querySelector('img')).toBeNull();
+    expect(scopeBrand()).toBe(themeOf('#9e2d20').colors?.['brand']?.[7]);
+    expect(onSave).not.toHaveBeenCalled();
+  });
+
+  it('3: while the colour field holds no #rrggbb the preview wears the saved colour', async () => {
+    draw(<Settings {...props()} />);
+    const saved = themeOf(config.colour).colors?.['brand']?.[7];
+    expect(scopeBrand()).toBe(saved);
+
+    await userEvent.clear(screen.getByLabelText(words.colour));
+    await userEvent.type(screen.getByLabelText(words.colour), '#12');
+    expect(scopeBrand()).toBe(saved);
+    await userEvent.type(screen.getByLabelText(words.colour), '3456');
+    expect(scopeBrand()).toBe(themeOf('#123456').colors?.['brand']?.[7]);
+  });
+
+  it('6: the preview is hidden from a reader and takes no focus: no heading, alert, status or header of its own', () => {
+    draw(<Settings {...props()} />);
+
+    expect(screen.getAllByRole('heading').map((heading) => heading.textContent)).toEqual([
+      words.title,
+      words.identity,
+      words.pictures,
+      words.frame,
+      words.languagesSection,
+      words.preview,
+    ]);
+    expect(screen.queryByRole('alert')).toBeNull();
+    expect(screen.queryByRole('status')).toBeNull();
+    expect(screen.queryByRole('banner')).toBeNull();
+    for (const which of ['header', 'card'] as const) {
+      expect(picture(which).getAttribute('aria-hidden')).toBe('true');
+      expect(picture(which).hasAttribute('inert')).toBe(true);
+    }
+    expect(screen.getAllByRole('textbox').length).toBe(2);
   });
 });

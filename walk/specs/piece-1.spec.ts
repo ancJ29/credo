@@ -13,9 +13,9 @@ import { type APIRequestContext, expect, type Page, test } from '@playwright/tes
 import { required, shot, WIDTHS } from '../support';
 
 /**
- * Piece 1's walk, the client's admin: twelve screens, each in Vietnamese and in English, each at
+ * Piece 1's walk, the client's admin: thirteen screens, each in Vietnamese and in English, each at
  * the PC, tablet and phone widths the visual report draws, each saved with Playwright's own
- * screenshot check against its committed base image (12 × 2 × 3 = 72). The stack
+ * screenshot check against its committed base image (13 × 2 × 3 = 78). The stack
  * (`pnpm stack -- …`) gives the address, the demo client's code and the root's sign-in in the
  * environment, and the walk opens the client's link, as its root would. Words come from the app's
  * own dictionaries, so a renamed label turns this red where it was renamed.
@@ -127,6 +127,9 @@ async function walk(page: Page, language: Language, width: number) {
   await page.getByLabel(words.settings.name).fill(NEW_NAME);
   await page.getByRole('radio', { name: words.settings.palettes.brick }).check();
   await page.getByRole('heading', { level: 2 }).click();
+  // 13. The preview wears the typed name and Brick before any save, the header still the saved one.
+  await expect(page.getByRole('heading', { level: 1, name: 'Minh Phát' })).toBeVisible();
+  await at('13-preview');
   await page.route(ROUTES.config, (route) =>
     route.request().method() === 'PUT'
       ? route.fulfill({ status: 503, json: { error: 'Service unavailable' } })
@@ -232,11 +235,11 @@ for (const [device, width] of Object.entries(WIDTHS)) {
   test.describe(`piece 1: the client's admin, on a ${device} (${width})`, () => {
     test.use({ viewport: { width, height: 800 } });
 
-    test('walks all twelve screens in Vietnamese', async ({ page }) => {
+    test('walks all thirteen screens in Vietnamese', async ({ page }) => {
       await walk(page, 'vi', width);
     });
 
-    test('walks all twelve screens in English', async ({ page }) => {
+    test('walks all thirteen screens in English', async ({ page }) => {
       await walk(page, 'en', width);
     });
   });

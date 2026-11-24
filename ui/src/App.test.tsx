@@ -423,6 +423,34 @@ describe('the app', () => {
     expect((await screen.findAllByText(words.nav.settings)).length).toBeGreaterThan(0);
   });
 
+  it('4: until the save the app around the settings page keeps the saved name and colour, the preview wears the typed ones, and after it the app wears them', async () => {
+    const saved = {
+      config: { ...config, name: 'Minh Phát Sài Gòn', colour: '#b4532a' },
+      version: 'v2',
+    };
+    const saveConfig = vi.fn<Api['saveConfig']>(() =>
+      Promise.resolve({ kind: 'saved', doc: saved }),
+    );
+    setup({ saveConfig }, { ...signedIn, 'credo.language': 'en' }, '/settings');
+
+    const name = await screen.findByLabelText(labelled(words.settings.name));
+    await userEvent.clear(name);
+    await userEvent.type(name, 'Minh Phát Sài Gòn');
+    await userEvent.clear(screen.getByLabelText(words.settings.colour));
+    await userEvent.type(screen.getByLabelText(words.settings.colour), '#b4532a');
+
+    const header = document.querySelector('[data-preview="header"]')!;
+    expect(header.textContent).toContain('Minh Phát Sài Gòn');
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Minh Phát');
+    expect(brandColour()).toBe('#2f7d6d');
+    expect(saveConfig).not.toHaveBeenCalled();
+
+    await userEvent.click(screen.getByRole('button', { name: words.settings.save }));
+    expect((await screen.findByRole('status')).textContent).toBe(words.settings.saved);
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Minh Phát Sài Gòn');
+    expect(brandColour()).toBe('#b4532a');
+  });
+
   it('The root sets the company’s name and colour; every screen shows them', async () => {
     const saved = {
       config: { ...config, name: 'Minh Phát Sài Gòn', colour: '#b4532a' },

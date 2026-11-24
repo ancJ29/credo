@@ -167,6 +167,14 @@ export const DetailColumnsStates = [
       </Sample>
     ),
   },
+  {
+    name: 'Side first',
+    node: (
+      <Sample wide>
+        <DetailColumns sideFirst main={<Block title="Basics" />} side={<Block title="Preview" />} />
+      </Sample>
+    ),
+  },
 ];
 
 /** A row of two fields. */
