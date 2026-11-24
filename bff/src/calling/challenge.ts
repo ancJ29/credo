@@ -6,6 +6,7 @@ export type Purpose =
   | 'sign-in'
   | 'join'
   | 'add'
+  | 'own-add'
   | 'confirm-add'
   | 'confirm-remove'
   | 'confirm-root-password'

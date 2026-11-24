@@ -387,6 +387,8 @@ describe('The operator never reads or changes a client, never sees a root’s pa
         '│   └── -qr (POST)',
         '├── /api/auth/sign-out (POST)',
         '├── /api/auth/password (PUT)',
+        '├── /api/auth/passkey/add (POST)',
+        '│   └── -options (POST)',
         '├── /api/auth/me (GET, HEAD)',
         '├── /api/operator/passkey/options (POST)',
         '├── /api/operator/passkey/sign-in (POST)',

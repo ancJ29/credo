@@ -77,6 +77,9 @@ export const recordKeys = {
      * often a password typed into the wrong box, so the key never holds it, and a copy of the
      * store's data without that key cannot reverse it by a dictionary run. */
     signInWait: (nameHash: string) => `tenant.${id}.signin-wait.${nameHash}`,
+    /** One person's passkeys, by the handle the device keeps (the person's minted id, or the company's
+     * own for the root): its own record, so a passkey's use moves no sign-in record. */
+    passkeys: (handle: string) => `tenant.${id}.passkeys.${handle}`,
   }),
 } as const;
 
@@ -191,6 +194,14 @@ export const storedAccountSchema = z.strictObject({
   spent: z.array(z.strictObject({ hash: z.string(), at: z.number() })),
 });
 export type StoredAccount = z.infer<typeof storedAccountSchema>;
+
+/** A company person's passkeys: the same stored passkey as an operator's, and the challenges
+ * answered in the last five minutes; no link and no generation, the sign-in record holding those. */
+export const storedOwnPasskeysSchema = z.strictObject({
+  passkeys: z.array(storedPasskeySchema),
+  spent: z.array(z.strictObject({ hash: z.string(), at: z.number() })),
+});
+export type StoredOwnPasskeys = z.infer<typeof storedOwnPasskeysSchema>;
 
 /** A link: whose it is, whether it makes a first passkey or replaces the ones held, who made it
  * (null for the terminal) and when it ends. */

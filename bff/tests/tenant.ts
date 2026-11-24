@@ -139,6 +139,8 @@ export async function bffOn(
     photoStore?: PhotoStore | null;
     logger?: Parameters<typeof buildApp>[0]['logger'];
     build?: string;
+    /** The operator's address (`APP_ORIGIN`); a test of ridge's names passes `operator.<domain>`. */
+    origin?: string;
   } = {},
 ) {
   const service = await freshTenant(cs);
@@ -150,7 +152,7 @@ export async function bffOn(
     ...(options.activity === undefined ? {} : { activity: options.activity }),
     photoStore: options.photoStore === undefined ? TEST_PHOTO_STORE : options.photoStore,
     now: options.now ?? time.now,
-    origin: ORIGIN,
+    origin: options.origin ?? ORIGIN,
     serviceKey: service.accessKey,
     logger: options.logger ?? forgottenEntryFails,
     ...(options.build === undefined ? {} : { build: options.build }),

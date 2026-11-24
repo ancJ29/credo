@@ -1,12 +1,5 @@
 import { exempt } from '../audit';
-import {
-  generateAuthenticationOptions,
-  generateRegistrationOptions,
-  verifyAuthenticationResponse,
-  verifyRegistrationResponse,
-  type AuthenticationResponseJSON,
-  type RegistrationResponseJSON,
-} from '@simplewebauthn/server';
+import type { AuthenticationResponseJSON } from '@simplewebauthn/server';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
 import {
@@ -35,15 +28,18 @@ import {
   type StoredPasskey,
 } from '@credo/shared';
 import { type Purpose, createChallenges, CHALLENGE_MS } from '../calling/challenge';
+import {
+  authenticationOptions,
+  registrationOptions,
+  relyingOn,
+  storedPasskey,
+  verifiedAuthentication,
+  verifiedRegistration,
+} from '../calling/passkeys';
 import { HttpError, parse } from '../errors';
 import { readAccount, readLiveLink, readRoster } from '../records/operators';
 import { createSessions, OPERATOR_SESSION } from '../calling/sessions';
 
-const RP_NAME = 'Credo';
-/** The COSE algorithms a passkey may use (EdDSA, ES256, RS256), named so the library's default is
- * never read: it asks the runtime about ML-DSA-44, which Node 24 and later warn about as
- * experimental. Held by operator-algorithms.route.test.ts. */
-const PASSKEY_ALGORITHMS = [-8, -7, -257];
 /** What a sign-in answer's user handle may be: a string, or left out. */
 const userHandleSchema = z.string().optional();
 const unauthorized = () => new HttpError(401, 'Unauthorized');
@@ -62,7 +58,6 @@ export type OperatorAuthDeps = {
   serviceKey: string;
 };
 
-const bytesOf = (base64url: string) => new Uint8Array(Buffer.from(base64url, 'base64url'));
 const listOf = (account: StoredAccount): PasskeyListReply => ({
   passkeys: account.passkeys.map(({ id, addedAt, lastUsedAt }) => ({ id, addedAt, lastUsedAt })),
 });
@@ -74,7 +69,7 @@ const listOf = (account: StoredAccount): PasskeyListReply => ({
  */
 export function registerOperatorAuth(app: FastifyInstance, deps: OperatorAuthDeps) {
   const { storage, now, origin } = deps;
-  const rpID = new URL(origin).hostname;
+  const relying = relyingOn(origin);
   const challenges = createChallenges({ serviceKey: deps.serviceKey, now });
   const sessions = createSessions({
     storage,
@@ -152,55 +147,21 @@ export function registerOperatorAuth(app: FastifyInstance, deps: OperatorAuthDep
     throw moved('the operator’s account');
   }
 
-  const addedPasskey = (info: {
-    id: string;
-    publicKey: Uint8Array;
-    counter: number;
-    transports?: string[];
-  }): StoredPasskey => ({
-    id: info.id,
-    publicKey: Buffer.from(info.publicKey).toString('base64url'),
-    counter: info.counter,
-    transports: info.transports ?? [],
-    addedAt: now(),
-    lastUsedAt: null,
-  });
-
-  async function registrationOptions(
+  async function registrationOptionsFor(
     operator: { id: string; name: string },
     held: StoredPasskey[],
     purpose: Extract<Purpose, 'join' | 'add'>,
     subject: string,
   ) {
-    const options = await generateRegistrationOptions({
-      rpName: RP_NAME,
-      rpID,
-      userName: operator.name,
-      userID: new TextEncoder().encode(operator.id),
-      attestationType: 'none',
-      excludeCredentials: held.map(({ id, transports }) => ({ id, transports })),
-      supportedAlgorithmIDs: PASSKEY_ALGORITHMS,
-      authenticatorSelection: { residentKey: 'required', userVerification: 'required' },
-    });
+    const options = await registrationOptions(relying, operator, held);
     return { options, token: challenges.mint(options.challenge, purpose, subject) };
   }
 
   /** The key a registration made, or a 400: a response the library refuses is the caller's. */
-  async function verifiedRegistration(response: unknown, expectedChallenge: string) {
-    try {
-      const result = await verifyRegistrationResponse({
-        response: response as RegistrationResponseJSON,
-        expectedChallenge,
-        expectedOrigin: origin,
-        expectedRPID: rpID,
-        requireUserVerification: true,
-        supportedAlgorithmIDs: PASSKEY_ALGORITHMS,
-      });
-      if (result.verified) return addedPasskey(result.registrationInfo.credential);
-    } catch {
-      // The library throws for what it refuses; which part is not said.
-    }
-    throw new HttpError(400, 'Bad request');
+  async function addedRegistration(response: unknown, expectedChallenge: string) {
+    const credential = await verifiedRegistration(relying, response, expectedChallenge);
+    if (!credential) throw new HttpError(400, 'Bad request');
+    return storedPasskey(credential, now());
   }
 
   /** A passkey's answer to a challenge, checked against the operator's own passkeys, the origin
@@ -222,26 +183,8 @@ export function registerOperatorAuth(app: FastifyInstance, deps: OperatorAuthDep
       const passkey = held?.account.passkeys.find((candidate) => candidate.id === answer.id);
       if (!held || !passkey) throw refuse();
       if (held.account.spent.some((spent) => spent.hash === spentHash)) throw refuse();
-      let counter: number;
-      try {
-        const result = await verifyAuthenticationResponse({
-          response: answer,
-          expectedChallenge: challenge,
-          expectedOrigin: origin,
-          expectedRPID: rpID,
-          credential: {
-            id: passkey.id,
-            publicKey: bytesOf(passkey.publicKey),
-            counter: passkey.counter,
-            transports: passkey.transports,
-          },
-          requireUserVerification: true,
-        });
-        if (!result.verified) throw refuse();
-        counter = result.authenticationInfo.newCounter;
-      } catch {
-        throw refuse();
-      }
+      const counter = await verifiedAuthentication(relying, answer, challenge, passkey);
+      if (counter === null) throw refuse();
       const account: StoredAccount = {
         ...held.account,
         signedInAt: signsIn ? now() : held.account.signedInAt,
@@ -280,7 +223,7 @@ export function registerOperatorAuth(app: FastifyInstance, deps: OperatorAuthDep
     ROUTES.operatorPasskeyOptions,
     exempt('the operator’s sign-in ceremony changes no client’s data'),
     async () => {
-      const options = await generateAuthenticationOptions({ rpID, userVerification: 'required' });
+      const options = await authenticationOptions(relying);
       return { options, token: challenges.mint(options.challenge, 'sign-in') };
     },
   );
@@ -317,7 +260,7 @@ export function registerOperatorAuth(app: FastifyInstance, deps: OperatorAuthDep
       if (!live || !operator) throw gone();
       const madeBy = roster.operators.find((line) => line.id === live.link.madeBy)?.name ?? null;
       return {
-        ...(await registrationOptions(operator, [], 'join', live.hash)),
+        ...(await registrationOptionsFor(operator, [], 'join', live.hash)),
         name: operator.name,
         madeBy,
         // A link the terminal made names no maker at all; one whose maker is gone names one that is not there.
@@ -336,7 +279,7 @@ export function registerOperatorAuth(app: FastifyInstance, deps: OperatorAuthDep
       if (!live) throw gone();
       const challenge = challenges.open(body.token, 'join', live.hash);
       if (!challenge) throw new HttpError(400, 'Bad request');
-      const passkey = await verifiedRegistration(body.response, challenge);
+      const passkey = await addedRegistration(body.response, challenge);
       // The link goes first, with its tag: of two openings at once, one removes it and the other
       // finds it moved.
       const removed = await storage.removeRecord(recordKeys.operatorLink(live.hash), live.tag);
@@ -402,14 +345,7 @@ export function registerOperatorAuth(app: FastifyInstance, deps: OperatorAuthDep
     async (request) => {
       const operator = await operatorSignedIn(request);
       const { act } = parse(confirmOptionsRequestSchema, request.body);
-      const options = await generateAuthenticationOptions({
-        rpID,
-        userVerification: 'required',
-        allowCredentials: operator.account.passkeys.map(({ id, transports }) => ({
-          id,
-          transports,
-        })),
-      });
+      const options = await authenticationOptions(relying, operator.account.passkeys);
       return { options, token: challenges.mint(options.challenge, `confirm-${act}`, operator.id) };
     },
   );
@@ -419,7 +355,7 @@ export function registerOperatorAuth(app: FastifyInstance, deps: OperatorAuthDep
     exempt('the operator’s own account is not a client’s data'),
     async (request) => {
       const operator = await operatorSignedIn(request);
-      return await registrationOptions(operator, operator.account.passkeys, 'add', operator.id);
+      return await registrationOptionsFor(operator, operator.account.passkeys, 'add', operator.id);
     },
   );
 
@@ -432,7 +368,7 @@ export function registerOperatorAuth(app: FastifyInstance, deps: OperatorAuthDep
       await confirmed(operator, 'add', body.confirm);
       const challenge = challenges.open(body.token, 'add', operator.id);
       if (!challenge) throw new HttpError(400, 'Bad request');
-      const passkey = await verifiedRegistration(body.response, challenge);
+      const passkey = await addedRegistration(body.response, challenge);
       const outcome = await updateAccount<'duplicate' | PasskeyListReply>(
         operator.id,
         unauthorized(),

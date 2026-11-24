@@ -55,6 +55,7 @@ import {
   readSignIn,
 } from './records/staff-records';
 import { registerOperatorAuth } from './routes/operator-auth';
+import { registerOwnPasskeyRoutes } from './routes/own-passkeys';
 import { registerListRoutes } from './routes/lists';
 import { registerDeliveryPhotoRoutes } from './routes/delivery-photo';
 import { registerOrderRoutes } from './routes/orders';
@@ -279,7 +280,7 @@ export function buildApp({
     if (!session || !found || session.generation !== found.user.generation) throw unauthorized();
     const view = await viewOf(request.storage, session.user, found.user);
     if (!view) throw unauthorized();
-    return { ...view, signInName: session.user, signIn: found };
+    return { ...view, signInName: session.user, signIn: found, issuedAt: session.issuedAt };
   }
 
   /** The answer for a person's own view: no more than the app shows. */
@@ -515,6 +516,8 @@ export function buildApp({
   app.get(ROUTES.me, forClient, async (request): Promise<MeReplyBody> => ({
     user: userViewOf(await signedIn(request)),
   }));
+
+  registerOwnPasskeyRoutes(app, { now, origin, serviceKey, forClient, signedIn });
 
   const { operatorSignedIn, confirmed } = registerOperatorAuth(app, {
     storage,

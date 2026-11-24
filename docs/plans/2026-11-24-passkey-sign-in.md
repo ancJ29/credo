@@ -127,7 +127,7 @@ Rows 1 to 13 are business rows, each seen red before its code.
 | 11 | A passkey already held is not added again | the same |
 | 12 | A company's ceremony is checked against its own address, `<code>.<Domain>` beside the operators' `operator.<Domain>`, and one made at the operators' address is refused | the same, the software authenticator claiming each origin |
 | 13 | An add is written in the company's activity as "passkey added"; a sign-in writes nothing | the same, `shared/src/activity.ts` |
-| 14 | The operators' sign-in, join, add and remove answer as before | BFF, the operator route tests, unchanged |
+| 14 | The operators' sign-in, join, add and remove answer as before | BFF, the operator route tests: their own cases unchanged, and the route-list pin (`bff/src/operator.route.test.ts`, "serves exactly these routes") gains only each new route's lines |
 | 15 | The door draws "or" and "Sign in with a passkey" where the options came, and nothing where they answered 404 | ui, `SignIn.test.tsx`, `App.test.tsx` |
 | 16 | A press signs in; not given, refused and unavailable are each told, the form kept | ui, `App.test.tsx` |
 | 17 | Options older than four minutes are asked again within the press | ui, `App.test.tsx` |
@@ -196,16 +196,29 @@ Sizes are the last rows of each step's shape in the runs log. Each gate is the t
       `Shell` takes `passkeyPath` after `passwordPath`; `api.ownPasskeyOptions` and `api.ownPasskeyAdd`; the
       fake keeps the one credential for whoever added it last, 404 where passkeys are off; one new key,
       `ownPasskey.tooOld` (767 keys), the page's other outcomes reusing the operators' `passkey.*` words.
-- [ ] **5. The add, in the BFF.** `bff/src/calling/passkeys.ts`, the library's four calls taking an
+- [x] **5. The add, in the BFF.** `bff/src/calling/passkeys.ts`, the library's four calls taking an
       origin and a relying party, `registerOperatorAuth` calling them with its own; `bff/src/records/passkeys.ts`,
       the owner's record over its tag; the add's two routes behind `forClient`, the sign-in check handing on
       the session's `issuedAt`; the company's origin by `clientAddress`; the route list
       (`bff/tests/route-list.test.ts#L75-L85`). Rows 3's add half, 5, 6's add half, 11, 12 and 13 red first.
-      _Done when:_ `bff`'s gate, and `git diff --stat pre-merge -- bff/src/operator.route.test.ts 'bff/src/routes/operator-*.route.test.ts'`
-      prints nothing (row 14). **20 min** (piece 125's step 4: 20; piece 127's route step: 18).
+      _Done when:_ `bff`'s gate, and `git diff -U0 pre-merge -- bff/src/operator.route.test.ts 'bff/src/routes/operator-*.route.test.ts'`
+      shows only the added route-list lines (row 14: the operators' own cases unchanged; the route-list pin
+      `operator.route.test.ts` prints every route the app serves, so each new route adds its lines there).
+      **20 min** (piece 125's step 4: 20; piece 127's route step: 18).
+      _Done 2026-11-24 10:11:_ `bff`'s gate (typecheck, eslint, prettier, tests at 100 %, knip), `shared`'s gate and the
+      citation test each exit 0; the operators' test diff is two added lines in the route-list pin and nothing
+      else; rows 3's add half, 5, 6's add half, 11, 12 and 13 each red on the old code (every new case at its
+      first assertion, a 404 where a 200 or 401 stood; the age check and the switch check each also reddened
+      once by a mutation), then green. The library's four calls moved to `bff/src/calling/passkeys.ts`
+      (`registerOperatorAuth` calls them with its own origin); `bff/src/records/passkeys.ts` keeps one record
+      an owner (`recordKeys.tenant(id).passkeys(handle)`, `storedOwnPasskeysSchema`, both new in `shared`);
+      `bff/src/routes/own-passkeys.ts` holds the add's two routes (`/api/auth/passkey/add-options`, `/add`)
+      behind `forClient`, the company's origin made by `clientAddress`; `signedIn` hands on `issuedAt`;
+      the route-list pins read declared 33, exempt 16, total 49.
 - [ ] **6. The sign-in by passkey, in the BFF.** Its two routes, the one 401, the spend and the counter
       in one write with its tag, the session issued as a password's is. Rows 3's sign-in half, 4, 6 to 10
-      red first. _Done when:_ `bff`'s gate. **18 min** (piece 127's route step: 18; piece 128's step 4: 15).
+      red first. _Done when:_ `bff`'s gate; the route-list pin in `bff/src/operator.route.test.ts` gains the
+      two routes' lines, and nothing else of the operators' tests moves. **18 min** (piece 127's route step: 18; piece 128's step 4: 15).
 - [ ] **7. The walk.** As "The walk" below; rows 22 and 23. _Done when:_ `visual`'s, `walk`'s and `ui`'s
       gates, row 22 red on the old counts, row 23 replayed. **20 min** (241.1's step 8: 14 for one scene;
       five here, the full lane's authenticator copied from the passkeys walk).
