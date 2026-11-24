@@ -175,9 +175,10 @@ is `git diff -U0 -- visual/src/resolved.pinned.txt | grep '^+[a-z]' | cut -d' ' 
       recap's card for the look on ridge comes in step 6. _Done when:_ the citation test. **5 min**
       (241.2's step 8: 5).
       _Done 2026-11-24, build 250.1 step 4, sonnet:_ the Settings row of `docs/products.md` names the four blocks and the preview; the citation test exit 0 (the run of 16:18).
-- [ ] **5. Your walk run, then the bases.** The run line below, green; the bases committed alone, each
+- [x] **5. Your walk run, then the bases.** The run line below, green; the bases committed alone, each
       walk's count matching the log; the same walks without flags, 0 moved. **2 min** (241.1's 9b: 1;
       241.2's bases: 1).
+      _Done 2026-11-24, build 250.1 step 5, sonnet:_ the human's walk run of 17:09 green (full-1 to full-2, 0 moved, both walks); the bases commit holds 54 pictures alone, piece 1's 42 moved and 6 new, piece 2's 6 moved, as the run's comparison lines say; a desk check in place of the second run: all 318 committed bases equal, by `cmp`, the pictures the run wrote them from (`full-1`), none differ.
 - [ ] **6. The recap and the landing.** The recap and its products row; `pre-merge` taken in, the
       gates again, the landing; the whole check, four packages touched (`qa.md#L262`);
       `pre-main-review` before `main` (`qa.md#L106`), at most once a push. **43 min** (241.2's step 10:
