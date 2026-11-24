@@ -3,7 +3,7 @@ import { Stack, Text, TextInput } from '@mantine/core';
 import { ActionRow } from '../components/molecules/ActionRow';
 import { ActionButton } from '../components/atoms/ActionButton';
 import { IconMail, IconQrcode } from '@tabler/icons-react';
-import { type FormEvent, useState } from 'react';
+import { type SubmitEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DetailCard } from './DetailCards';
 import { type PageProps, refusal } from '../page';
@@ -53,7 +53,7 @@ export function EmailPanel({
     }
   }
 
-  const submit = (event: FormEvent) => {
+  const submit = (event: SubmitEvent) => {
     event.preventDefault();
     if (!emailSchema.safeParse(typed).success) return setProblem('invalid');
     void change(typed);

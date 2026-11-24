@@ -2,7 +2,7 @@ import { addCustomerRequestSchema, type CustomerDoc } from '@credo/shared';
 import { Stack, Textarea, TextInput } from '@mantine/core';
 import { ActionButton } from '../components/atoms/ActionButton';
 import { IconAddressBook, IconInfoCircle, IconMapPin, IconNote } from '@tabler/icons-react';
-import { type FormEvent, useState } from 'react';
+import { type SubmitEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { textIn } from '../listSheet';
 import { DetailCard, DetailColumns, FieldPair } from './DetailCards';
@@ -43,7 +43,7 @@ export function CustomerForm({
       ? t('lists.customers.codeInvalid')
       : adding.taken || undefined;
 
-  const submit = (event: FormEvent) => {
+  const submit = (event: SubmitEvent) => {
     event.preventDefault();
     setTried(true);
     if (!name.trim() || (adding && !codeValue.success)) return;

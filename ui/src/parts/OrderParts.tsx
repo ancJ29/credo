@@ -3,7 +3,7 @@ import { Image, NativeSelect, Paper, Stack, Table, Text, TextInput, Title } from
 import { ActionRow } from '../components/molecules/ActionRow';
 import { TableScroll } from '../components/molecules/TableScroll';
 import { ActionButton } from '../components/atoms/ActionButton';
-import { type FormEvent, useState } from 'react';
+import { type SubmitEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Loaded } from '../frame/Loaded';
 import { type PageProps, useLoad } from '../page';
@@ -153,7 +153,7 @@ export function SendPanel({
   });
   // A day cleared is '', which is before any order's day.
   const ready = driverId !== '' && day >= minDay && !disabled;
-  const send = (event: FormEvent) => {
+  const send = (event: SubmitEvent) => {
     event.preventDefault();
     if (ready) onSend(driverId, day);
   };

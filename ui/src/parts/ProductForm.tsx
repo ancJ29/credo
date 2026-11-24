@@ -16,7 +16,7 @@ import {
   IconNote,
   IconPackage,
 } from '@tabler/icons-react';
-import { type FormEvent, useState } from 'react';
+import { type SubmitEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { textIn } from '../listSheet';
 import { marksOf } from '../number';
@@ -71,7 +71,7 @@ export function ProductForm({
       ? t('lists.products.codeInvalid')
       : adding.taken || undefined;
 
-  const submit = (event: FormEvent) => {
+  const submit = (event: SubmitEvent) => {
     event.preventDefault();
     setTried(true);
     if (

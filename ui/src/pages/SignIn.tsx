@@ -1,7 +1,7 @@
 import type { Language } from '@credo/shared';
 import { Box, Button, Checkbox, PasswordInput, Stack, TextInput } from '@mantine/core';
 import { IconLock, IconUser } from '@tabler/icons-react';
-import { type FormEvent, type ReactNode, useState } from 'react';
+import { type SubmitEvent, type ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Brand } from '../brand';
 import { LANGUAGE_NAMES } from '../i18n';
@@ -73,7 +73,7 @@ export function SignIn({
   const [password, setPassword] = useState(initial?.password ?? '');
   const [remember, setRemember] = useState(true);
 
-  const submit = (event: FormEvent) => {
+  const submit = (event: SubmitEvent) => {
     event.preventDefault();
     onSubmit(username, password, remember);
   };

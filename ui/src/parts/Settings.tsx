@@ -21,7 +21,7 @@ import {
   TextInput,
 } from '@mantine/core';
 import { IconBuilding } from '@tabler/icons-react';
-import { type FormEvent, useState } from 'react';
+import { type SubmitEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { LANGUAGE_NAMES } from '../i18n';
 import { Loaded } from '../frame/Loaded';
@@ -84,7 +84,7 @@ function SettingsForm({ config, outcome, saving, onSave, onReload, logoRefusal }
     });
   };
 
-  const submit = (event: FormEvent) => {
+  const submit = (event: SubmitEvent) => {
     event.preventDefault();
     onSave(draft);
   };

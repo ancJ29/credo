@@ -1,6 +1,6 @@
 import { passwordIsValid, type SessionReply } from '@credo/shared';
 import { Paper, PasswordInput, Stack, Text } from '@mantine/core';
-import { type FormEvent, useState } from 'react';
+import { type SubmitEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { type PageProps, refusal } from '../../page';
 import { waitWords } from '../waitWords';
@@ -28,7 +28,7 @@ export function OwnPasswordPage(props: Props) {
   const [outcome, setOutcome] = useState<keyof typeof OUTCOME_WORDS | 'wait' | null>(null);
   const [waitSeconds, setWaitSeconds] = useState(0);
 
-  async function change(event: FormEvent) {
+  async function change(event: SubmitEvent) {
     event.preventDefault();
     if (typed.current === '') return setOutcome('wrong');
     if (!passwordIsValid(typed.next)) return setOutcome('invalid');

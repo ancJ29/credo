@@ -6,7 +6,7 @@ import {
 } from '@credo/shared';
 import { Paper, Stack, Text, TextInput } from '@mantine/core';
 import { ActionButton } from '../components/atoms/ActionButton';
-import { type FormEvent, useState } from 'react';
+import { type SubmitEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { BoxChoice } from './BoxChoice';
 import { FormMessage } from '../components/molecules/FormMessage';
@@ -34,7 +34,7 @@ export function NewClient({ status, boxes = [], onSubmit }: Props) {
     name: false,
   });
 
-  const submit = (event: FormEvent) => {
+  const submit = (event: SubmitEvent) => {
     event.preventDefault();
     const checked = createClientRequestSchema.safeParse({
       code: normaliseClientCode(code),
