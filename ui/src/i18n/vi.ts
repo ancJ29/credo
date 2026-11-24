@@ -553,6 +553,7 @@ export const vi: Dictionary = {
     addedText:
       'Lần sau, hãy nhấn Đăng nhập bằng khóa truy cập ở trang đăng nhập rồi dùng khuôn mặt, vân tay hoặc mã PIN của thiết bị.',
     tooOld: 'Để an toàn, hãy đăng xuất và đăng nhập lại, rồi thêm khóa truy cập.',
+    off: 'Công ty của bạn đã tắt khóa truy cập.',
   },
   qrSignIn: {
     busyTitle: 'Đang đăng nhập...',

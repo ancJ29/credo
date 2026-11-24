@@ -1,4 +1,4 @@
-import { screen, waitFor } from '@testing-library/react';
+import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { openApp, person } from '../../../tests/open';
@@ -98,10 +98,10 @@ describe('19: the add-a-passkey page', () => {
     expect(api.ownPasskeyOptions).toHaveBeenCalledTimes(2);
   });
 
-  it('Where passkeys are off the options come as a 404: the page says it could not load, with no button to add', async () => {
+  it('Where passkeys are off the options come as a 404: the page says so, as a company’s choice and not a failure to load, with no button to add', async () => {
     openApp('/passkey', { cue: 'ownPasskeyOptions:404' });
 
-    await waitFor(() => expect(screen.getByRole('alert')).toBeTruthy());
+    expect((await screen.findByRole('alert')).textContent).toBe(words.ownPasskey.off);
     expect(screen.queryByRole('button', { name: words.ownPasskey.submit })).toBeNull();
   });
 

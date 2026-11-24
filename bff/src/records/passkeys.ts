@@ -48,8 +48,8 @@ export async function addOwnPasskey(
   throw new CStorageError(412, 'a person’s passkeys moved on every attempt to add one');
 }
 
-/** What a spend reads of the passkeys a person holds: the passkey the answer names, and whether the
- * challenge was answered before. */
+/** The library's verdict on an answer for one passkey: the counter it moves on to, or null where it
+ * refuses. */
 export type SpendCheck = (passkey: StoredPasskey) => Promise<number | null>;
 
 /** A passkey's answer to a challenge, taken once: the passkey the answer names is found, `check`

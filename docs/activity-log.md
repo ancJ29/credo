@@ -110,8 +110,8 @@ found by its own test.
    an exemption.**
 
 **A mutating route that declares no audit intent is a test failure, and it is one now:**
-`bff/tests/route-list.test.ts` reads Fastify's own route list and pins 30 routes that declare and 15 that
-name their exemption, 45 in all. A route therefore either names what it logs or declares itself exempt
+`bff/tests/route-list.test.ts` reads Fastify's own route list and pins 33 routes that declare and 18 that
+name their exemption, 51 in all. A route therefore either names what it logs or declares itself exempt
 on the record. *Why:* a check that passes by staying silent is
 exactly what this repository spent 2026-11-09 removing. *Price:* one line on every new mutating
 route, and a named reason on every exemption.
