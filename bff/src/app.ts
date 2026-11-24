@@ -517,7 +517,40 @@ export function buildApp({
     user: userViewOf(await signedIn(request)),
   }));
 
-  registerOwnPasskeyRoutes(app, { now, origin, serviceKey, forClient, signedIn });
+  /** The session a passkey signs in, as the QR sign-in's is: the root by the company's own id, a
+   * person by their id, each still named by their sign-in record; null otherwise. */
+  async function holder(request: FastifyRequest, handle: string) {
+    const { tenantId, storage } = request;
+    const device = deviceOf(request);
+    const person = handle === tenantId ? null : await readEmployee(storage, tenantId, handle);
+    if (handle !== tenantId && !person) return null;
+    const name = person ? normaliseSignInName(person.employee.code) : ROOT_NAME;
+    const found = await readSignIn(storage, tenantId, name);
+    const view = found ? await viewOf(storage, name, found.user, { person }) : null;
+    if (
+      !found ||
+      !view ||
+      (person ? found.user.employeeId !== person.employee.id : !found.user.root)
+    ) {
+      return null;
+    }
+    return async (): Promise<SessionReplyBody> => {
+      const sessions = sessionsOf(storage);
+      await endKept(request, sessions);
+      const { authId, expiresAt } = await sessions.issue(device, name, found.user.generation);
+      return { authId, expiresAt, user: userViewOf(view) };
+    };
+  }
+
+  registerOwnPasskeyRoutes(app, {
+    now,
+    origin,
+    serviceKey,
+    forClient,
+    signedIn,
+    deviceOf,
+    holder,
+  });
 
   const { operatorSignedIn, confirmed } = registerOperatorAuth(app, {
     storage,

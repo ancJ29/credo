@@ -3,25 +3,37 @@ import {
   CLIENT_HEADER,
   clientCodeSchema,
   ownPasskeyAddRequestSchema,
+  passkeySignInRequestSchema,
+  sha256Hex,
+  type SessionReplyBody,
   signInRoutes,
   staffConfig,
 } from '@credo/shared';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
+import type { AuthenticationResponseJSON } from '@simplewebauthn/server';
+import { z } from 'zod';
 import { declare, exempt, personOf } from '../audit';
 import { createChallenges } from '../calling/challenge';
 import {
+  authenticationOptions,
   registrationOptions,
   relyingOn,
   storedPasskey,
+  verifiedAuthentication,
   verifiedRegistration,
 } from '../calling/passkeys';
 import { HttpError, parse } from '../errors';
-import { addOwnPasskey, readOwnPasskeys } from '../records/passkeys';
+import { addOwnPasskey, readOwnPasskeys, spendOwnPasskey } from '../records/passkeys';
 import { readSetup } from '../records/staff-records';
 
 /** How long after its issue a session may still add a passkey: a first passkey has nothing to
  * touch, so the sign-in itself must be recent. */
 const ADD_FRESH_MS = 10 * 60 * 1000;
+
+/** The user handle a passkey keeps is the person's minted id, or the company's own for the root:
+ * a UUID, read under a schema so anything else is the one 401 and never a record key. */
+const handleSchema = z.uuid();
+const unauthorized = () => new HttpError(401, 'Unauthorized');
 
 type Deps = {
   now: () => number;
@@ -36,6 +48,15 @@ type Deps = {
     employeeId: string | null;
     issuedAt: number;
   }>;
+  /** The device a call names, a 400 where it names none. */
+  deviceOf: (request: FastifyRequest) => string;
+  /** The session a passkey's handle is to be signed in with, or null where it names no person who
+   * may sign in (the root, or a person there, not archived and still named by their sign-in
+   * record); the session is issued as a password's is, when the closure is called. */
+  holder: (
+    request: FastifyRequest,
+    handle: string,
+  ) => Promise<(() => Promise<SessionReplyBody>) | null>;
 };
 
 /**
@@ -47,7 +68,7 @@ type Deps = {
  */
 export function registerOwnPasskeyRoutes(
   app: FastifyInstance,
-  { now, origin, serviceKey, forClient, signedIn }: Deps,
+  { now, origin, serviceKey, forClient, signedIn, deviceOf, holder }: Deps,
 ) {
   const challenges = createChallenges({ serviceKey, now });
 
@@ -59,9 +80,61 @@ export function registerOwnPasskeyRoutes(
 
   /** A 404 where the company has passkeys switched off. */
   async function mustBeOn(request: FastifyRequest) {
-    const { setup } = await readSetup(request.storage, request.tenantId);
-    if (!staffConfig(setup).fields.passkey) throw new HttpError(404, 'Not found');
+    if (!(await isOn(request))) throw new HttpError(404, 'Not found');
   }
+
+  /** Whether the company has passkeys on. */
+  async function isOn(request: FastifyRequest) {
+    const { setup } = await readSetup(request.storage, request.tenantId);
+    return staffConfig(setup).fields.passkey;
+  }
+
+  app.post(
+    signInRoutes.passkeyOptions,
+    exempt('a sign-in changes no client’s data', forClient),
+    async (request) => {
+      await mustBeOn(request);
+      const options = await authenticationOptions(relyingOf(request));
+      return { options, token: challenges.mint(options.challenge, 'sign-in', request.tenantId) };
+    },
+  );
+
+  /**
+   * A passkey signs in the person it was made for, nothing typed. Every refusal is the same 401:
+   * no company switch on, a challenge spent, ended or made for another company or purpose, a handle
+   * naming no person who may sign in, a passkey the person does not hold, an answer the library
+   * refuses. The challenge is spent and the counter moved in one write over the record's tag, before
+   * the session is issued.
+   */
+  app.post(
+    signInRoutes.passkeySignIn,
+    exempt('a sign-in changes no client’s data', forClient),
+    async (request): Promise<SessionReplyBody> => {
+      deviceOf(request);
+      const body = parse(passkeySignInRequestSchema, request.body);
+      const answer = body.response as unknown as AuthenticationResponseJSON;
+      const challenge = challenges.open(body.token, 'sign-in', request.tenantId);
+      const given = z.string().safeParse(answer.response.userHandle);
+      const handle = handleSchema.safeParse(
+        given.success ? Buffer.from(given.data, 'base64url').toString() : '',
+      );
+      if (!challenge || !handle.success || !(await isOn(request))) throw unauthorized();
+      const issue = await holder(request, handle.data);
+      if (!issue) throw unauthorized();
+      const relying = relyingOf(request);
+      const spent = await spendOwnPasskey(
+        request.storage,
+        request.tenantId,
+        handle.data,
+        answer.id,
+        await sha256Hex(challenge),
+        now,
+        (passkey) => verifiedAuthentication(relying, answer, challenge, passkey),
+      );
+      if (spent === 'refused') throw unauthorized();
+      return await issue();
+    },
+  );
 
   app.post(
     signInRoutes.ownPasskeyOptions,

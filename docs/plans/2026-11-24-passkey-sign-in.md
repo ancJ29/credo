@@ -215,10 +215,19 @@ Sizes are the last rows of each step's shape in the runs log. Each gate is the t
       `bff/src/routes/own-passkeys.ts` holds the add's two routes (`/api/auth/passkey/add-options`, `/add`)
       behind `forClient`, the company's origin made by `clientAddress`; `signedIn` hands on `issuedAt`;
       the route-list pins read declared 33, exempt 16, total 49.
-- [ ] **6. The sign-in by passkey, in the BFF.** Its two routes, the one 401, the spend and the counter
+- [x] **6. The sign-in by passkey, in the BFF.** Its two routes, the one 401, the spend and the counter
       in one write with its tag, the session issued as a password's is. Rows 3's sign-in half, 4, 6 to 10
       red first. _Done when:_ `bff`'s gate; the route-list pin in `bff/src/operator.route.test.ts` gains the
       two routes' lines, and nothing else of the operators' tests moves. **18 min** (piece 127's route step: 18; piece 128's step 4: 15).
+      _Done 2026-11-24 10:30:_ `bff`'s gate (typecheck, eslint, prettier, tests at 100 %, knip) and the citation test
+      each exit 0; the operators' test diff is four added lines in the route-list pin and nothing else; the
+      new cases of rows 3's sign-in half, 4, 6 to 10 each red on the old code (eleven cases, a 404 at the
+      options call), then green. `signInRoutes.passkeyOptions` (404 where passkeys are off; its token is
+      bound to the company) and `passkeySignIn` live in `bff/src/routes/own-passkeys.ts`; every refusal is
+      one 401; `spendOwnPasskey` in `bff/src/records/passkeys.ts` moves the counter and last use and spends
+      the challenge in one write over the tag, reading again on a moved tag; `holder` in `app.ts` names the
+      root or the person and issues the session as the QR sign-in's is; the route-list pins read declared 33,
+      exempt 18, total 51.
 - [ ] **7. The walk.** As "The walk" below; rows 22 and 23. _Done when:_ `visual`'s, `walk`'s and `ui`'s
       gates, row 22 red on the old counts, row 23 replayed. **20 min** (241.1's step 8: 14 for one scene;
       five here, the full lane's authenticator copied from the passkeys walk).

@@ -1,6 +1,8 @@
+import { randomUUID } from 'node:crypto';
 import {
   type CStorageClient,
   optionsReplySchema,
+  ROUTES,
   signInRoutes,
   storedOwnPasskeysSchema,
   type StoredPasskey,
@@ -312,5 +314,282 @@ describe('The add meets a rival write to the same record, and a record that is n
     expect((await t.client.getRecord(t.keys.passkeys(person.employee.id)))?.data).toEqual({
       not: 'a record',
     });
+  });
+});
+
+describe('A person signs in by the passkey they added, nothing typed', () => {
+  const asked = async (t: Tenant) => {
+    const reply = await send(t, signInRoutes.passkeyOptions, '');
+    expect(reply.statusCode).toBe(200);
+    return optionsReplySchema.parse(reply.json());
+  };
+  /** The sign-in as a browser does it: options with no session, then `authenticator`'s answer. */
+  async function signInWith(
+    t: Tenant,
+    authenticator: SoftwareAuthenticator,
+    claim: Parameters<SoftwareAuthenticator['authenticate']>[1] = {},
+  ) {
+    const { options, token } = await asked(t);
+    const body = { token, response: authenticator.authenticate(options, claim) };
+    return { reply: await send(t, signInRoutes.passkeySignIn, '', body), body };
+  }
+  const who = async (t: Tenant, authId: string) =>
+    await t.app.inject({ method: 'GET', url: '/api/auth/me', headers: withAuth(authId) });
+  const sessionOf = (reply: { json: () => unknown }) =>
+    z.object({ authId: z.string(), expiresAt: z.number() }).parse(reply.json());
+  /** A person with a passkey added, signed in only for the add. */
+  async function holding(t: Tenant, code = 'EMP-1') {
+    const person = await t.staff(code, {}, { name: 'Lan Anh' });
+    const authenticator = new SoftwareAuthenticator(ORIGIN);
+    expect((await addWith(t, person.authId, authenticator)).added.statusCode).toBe(201);
+    return { person, authenticator };
+  }
+
+  it('signs a person in as themselves, moving the passkey’s counter and last use and spending the challenge', async () => {
+    const t = await staffTenant(cs);
+    const { person, authenticator } = await holding(t);
+    t.time.advance(MINUTE);
+
+    const { reply } = await signInWith(t, authenticator);
+
+    expect(reply.statusCode).toBe(200);
+    const session = sessionOf(reply);
+    expect(session.expiresAt).toBeGreaterThan(t.time.now());
+    const view = await who(t, session.authId);
+    expect(view.json()).toMatchObject({ user: { name: 'Lan Anh', root: false } });
+    const held = await heldBy(t, person.employee.id);
+    expect(held?.passkeys[0]).toMatchObject({ counter: 1, lastUsedAt: t.time.now() });
+    expect(held?.spent).toHaveLength(1);
+  });
+
+  it('moves only the passkey that answered, and signs no one in whose sign-in record is gone', async () => {
+    const t = await staffTenant(cs);
+    const { person, authenticator } = await holding(t);
+    const second = new SoftwareAuthenticator(ORIGIN);
+    await addWith(t, person.authId, second);
+
+    expect((await signInWith(t, second)).reply.statusCode).toBe(200);
+    const held = await heldBy(t, person.employee.id);
+    const found = await t.client.getRecord(t.keys.user('emp-1'));
+    await t.client.removeRecord(t.keys.user('emp-1'), found?.tag ?? '');
+    const gone = await signInWith(t, authenticator);
+
+    expect(held?.passkeys.map((passkey) => passkey.counter)).toEqual([0, 1]);
+    expect(gone.reply.statusCode).toBe(401);
+  });
+
+  it('signs the root in by their own passkey as the root', async () => {
+    const t = await staffTenant(cs);
+    const authenticator = new SoftwareAuthenticator(ORIGIN);
+    await addWith(t, t.root, authenticator);
+
+    const { reply } = await signInWith(t, authenticator);
+
+    expect(reply.statusCode).toBe(200);
+    expect((await who(t, sessionOf(reply).authId)).json()).toMatchObject({
+      user: { root: true },
+    });
+  });
+
+  it('ends the session the device kept, as a password’s sign-in does', async () => {
+    const t = await staffTenant(cs);
+    const { person, authenticator } = await holding(t);
+    const { options, token } = await asked(t);
+
+    const reply = await send(t, signInRoutes.passkeySignIn, person.authId, {
+      token,
+      response: authenticator.authenticate(options),
+    });
+
+    expect(reply.statusCode).toBe(200);
+    expect((await who(t, person.authId)).statusCode).toBe(401);
+    expect((await who(t, sessionOf(reply).authId)).statusCode).toBe(200);
+  });
+
+  it('answers 404 to the options where passkeys are off, and 401 to a passkey held, switched back on it signs in', async () => {
+    const t = await staffTenant(cs);
+    const { person, authenticator } = await holding(t);
+    const before = await asked(t);
+    await t.setup({ fields: { passkey: false } });
+
+    const options = await send(t, signInRoutes.passkeyOptions, '');
+    const refused = await send(t, signInRoutes.passkeySignIn, '', {
+      token: before.token,
+      response: authenticator.authenticate(before.options),
+    });
+    const spentBefore = (await heldBy(t, person.employee.id))?.spent;
+    await t.setup({ fields: { passkey: true } });
+    const again = await signInWith(t, authenticator);
+
+    expect(options.statusCode).toBe(404);
+    expect(refused.statusCode).toBe(401);
+    expect(spentBefore).toEqual([]);
+    expect(again.reply.statusCode).toBe(200);
+  });
+
+  it('refuses a person who has left, and signs them in again once back', async () => {
+    const t = await staffTenant(cs);
+    const { person, authenticator } = await holding(t);
+    const read = await t.rootCall.get(`/api/employees/${person.employee.id}`);
+    const off = await t.rootCall.send('POST', `/api/employees/${person.employee.id}/archive`, {
+      version: read.json<{ version: string }>().version,
+    });
+    expect(off.statusCode).toBe(200);
+
+    const gone = await signInWith(t, authenticator);
+    const on = await t.rootCall.send('POST', `/api/employees/${person.employee.id}/restore`, {
+      version: off.json<{ version: string }>().version,
+    });
+    const back = await signInWith(t, authenticator);
+
+    expect(gone.reply.statusCode).toBe(401);
+    expect(on.statusCode).toBe(200);
+    expect(back.reply.statusCode).toBe(200);
+    expect((await heldBy(t, person.employee.id))?.passkeys[0]?.counter).toBe(2);
+  });
+
+  it('refuses a person whose sign-in record no longer names them, and a handle that names no one', async () => {
+    const t = await staffTenant(cs);
+    const { person, authenticator } = await holding(t);
+    const found = await t.client.getRecord(t.keys.user('emp-1'));
+    await t.client.putRecord(
+      t.keys.user('emp-1'),
+      { ...(found?.data as object), employeeId: randomUUID() },
+      found?.tag ?? null,
+    );
+    const stranger = new SoftwareAuthenticator(ORIGIN);
+    await addWith(t, t.root, stranger);
+
+    const named = await signInWith(t, authenticator);
+    const nobody = await signInWith(t, stranger, { userHandle: randomUUID() });
+    const notAHandle = await signInWith(t, stranger, { userHandle: 'not-a-uuid' });
+    const none = await signInWith(t, stranger, { userHandle: null });
+
+    expect([named, nobody, notAHandle, none].map(({ reply }) => reply.statusCode)).toEqual([
+      401, 401, 401, 401,
+    ]);
+    expect((await heldBy(t, person.employee.id))?.passkeys[0]?.counter).toBe(0);
+  });
+
+  it('signs in no one at another company by a passkey or a token of this one', async () => {
+    const mine = await staffTenant(cs, { code: 'acme-co' });
+    const other = await staffTenant(cs, { code: 'other-co' });
+    const { authenticator } = await holding(mine);
+    const theirs = await holding(other, 'EMP-9');
+    const fromMine = await asked(mine);
+
+    const passkey = await signInWith(other, authenticator);
+    const token = await send(other, signInRoutes.passkeySignIn, '', {
+      token: fromMine.token,
+      response: theirs.authenticator.authenticate(fromMine.options),
+    });
+
+    expect(passkey.reply.statusCode).toBe(401);
+    expect(token.statusCode).toBe(401);
+    expect((await signInWith(other, theirs.authenticator)).reply.statusCode).toBe(200);
+  });
+
+  it('signs in no company’s person by an operator’s passkey, nor an operator by a company’s', async () => {
+    const t = await staffTenant(cs);
+    const { authenticator } = await holding(t);
+    const operatorOptions = optionsReplySchema.parse(
+      (await t.app.inject({ method: 'POST', url: ROUTES.operatorPasskeyOptions })).json(),
+    );
+    const operator = new SoftwareAuthenticator(ORIGIN);
+    const company = await asked(t);
+
+    const operatorsAtCompany = await send(t, signInRoutes.passkeySignIn, '', {
+      token: operatorOptions.token,
+      response: operator.authenticate(operatorOptions.options, { userHandle: 'AA' }),
+    });
+    const companyAtOperators = await t.app.inject({
+      method: 'POST',
+      url: ROUTES.operatorPasskeySignIn,
+      headers: { 'x-device-id': DEVICE },
+      payload: {
+        token: company.token,
+        response: authenticator.authenticate(company.options),
+      },
+    });
+
+    expect(operatorsAtCompany.statusCode).toBe(401);
+    expect(companyAtOperators.statusCode).toBe(401);
+  });
+
+  it('signs in once by the same answer sent twice', async () => {
+    const t = await staffTenant(cs);
+    const { authenticator } = await holding(t);
+    const { reply, body } = await signInWith(t, authenticator);
+
+    const again = await send(t, signInRoutes.passkeySignIn, '', body);
+
+    expect(reply.statusCode).toBe(200);
+    expect(again.statusCode).toBe(401);
+  });
+
+  it('refuses an answer the library refuses, an unknown passkey and a token not for a sign-in, 401', async () => {
+    const t = await staffTenant(cs);
+    const { person, authenticator } = await holding(t);
+    const cases = [
+      await signInWith(t, authenticator, { tamper: true }),
+      await signInWith(t, authenticator, { verified: false }),
+      await signInWith(t, authenticator, { origin: RIDGE_OPERATORS }),
+      await signInWith(t, new SoftwareAuthenticator(ORIGIN), {
+        userHandle: authenticator.userHandle,
+      }),
+    ];
+    const add = await optionsFor(t, person.authId);
+    const wrongPurpose = await send(t, signInRoutes.passkeySignIn, '', {
+      token: add.token,
+      response: authenticator.authenticate(add.options),
+    });
+    const noDevice = await t.app.inject({
+      method: 'POST',
+      url: signInRoutes.passkeySignIn,
+      payload: {},
+    });
+
+    expect(cases.map(({ reply }) => reply.statusCode)).toEqual([401, 401, 401, 401]);
+    expect(wrongPurpose.statusCode).toBe(401);
+    expect(noDevice.statusCode).toBe(400);
+    expect((await heldBy(t, person.employee.id))?.passkeys[0]?.counter).toBe(0);
+    expect((await signInWith(t, authenticator)).reply.statusCode).toBe(200);
+  });
+
+  it('answers 500 for a record that does not parse, and 503 when the record moved on every try', async () => {
+    const racing = { times: 0 };
+    const t = await staffTenant(cs, {
+      wrap: (client) => ({
+        ...client,
+        putRecord: async (key, data, tag) => {
+          if (racing.times > 0 && key.includes('.passkeys.')) {
+            racing.times--;
+            const current = await client.getRecord(key);
+            await client.putRecord(
+              key,
+              { ...(current?.data as object), spent: [{ hash: `rival-${racing.times}`, at: 0 }] },
+              current?.tag ?? null,
+            );
+          }
+          return await client.putRecord(key, data, tag);
+        },
+      }),
+    });
+    const { person, authenticator } = await holding(t);
+    racing.times = 3;
+    const moved = await signInWith(t, authenticator);
+    racing.times = 1;
+    const recovered = await signInWith(t, authenticator);
+    const current = await t.client.getRecord(t.keys.passkeys(person.employee.id));
+    await t.client.putRecord(
+      t.keys.passkeys(person.employee.id),
+      { not: 'a record' },
+      current?.tag ?? null,
+    );
+    const broken = await signInWith(t, authenticator);
+
+    expect(moved.reply.statusCode).toBe(503);
+    expect(recovered.reply.statusCode).toBe(200);
+    expect(broken.reply.statusCode).toBe(500);
   });
 });
