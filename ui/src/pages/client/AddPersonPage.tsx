@@ -1,7 +1,7 @@
 import { can, type EmployeeDoc, employeeCodeIsValid, staffConfig } from '@credo/shared';
 import { NativeSelect, Stack, Text, Textarea, TextInput } from '@mantine/core';
 import { IconLogin, IconNote, IconPhone, IconUser } from '@tabler/icons-react';
-import { type FormEvent, useState } from 'react';
+import { type SubmitEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router';
 import { DetailCard, FieldPair } from '../../parts/DetailCards';
@@ -66,7 +66,7 @@ export function AddPersonPage(page: PageProps) {
   const refused = codeShown ? refusedFields(customFields, own) : [];
   const refusedDates = codeShown ? refusedPersonal(fields, personal) : [];
 
-  async function submit(event: FormEvent) {
+  async function submit(event: SubmitEvent) {
     event.preventDefault();
     setCodeShown(true);
     if (

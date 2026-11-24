@@ -22,7 +22,7 @@ import {
   IconShieldCheck,
   IconUser,
 } from '@tabler/icons-react';
-import { type FormEvent, useState } from 'react';
+import { type SubmitEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useParams } from 'react-router';
 import { DetailCard, DetailColumns, FieldPair } from '../../parts/DetailCards';
@@ -84,7 +84,7 @@ function PasswordPanel({
     }
   }
 
-  const submit = (event: FormEvent) => {
+  const submit = (event: SubmitEvent) => {
     event.preventDefault();
     if (!passwordIsValid(typed.first)) return setProblem('invalid');
     if (typed.first !== typed.again) return setProblem('mismatch');
@@ -168,7 +168,7 @@ function CodePanel({
   const [typed, setTyped] = useState('');
   const [problem, setProblem] = useState<'invalid' | 'taken' | 'failed' | null>(null);
 
-  async function change(event: FormEvent) {
+  async function change(event: SubmitEvent) {
     event.preventDefault();
     if (!employeeCodeIsValid(typed)) return setProblem('invalid');
     setProblem(null);
@@ -336,7 +336,7 @@ function PersonForm({
   // their own (an empty one adds nothing).
   const below = layersOf(setup, { departmentId: department, positionId: position, own: {} });
 
-  const submit = (event: FormEvent) => {
+  const submit = (event: SubmitEvent) => {
     event.preventDefault();
     setTried(true);
     if (

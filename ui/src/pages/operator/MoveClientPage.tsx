@@ -1,7 +1,7 @@
 import { HOME_BOX, type MoveClientReply, type MoveClientRequest } from '@credo/shared';
 import { Paper, Stack, Text } from '@mantine/core';
 import { ActionRow } from '../../components/molecules/ActionRow';
-import { type FormEvent, useEffect, useState } from 'react';
+import { type SubmitEvent, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router';
 import { type Api } from '../../api';
@@ -122,7 +122,7 @@ export function MoveClientPage({ api, passkeys, onSignedOut, wait = sleep }: Pro
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [sweepOn]);
 
-  const submit = (event: FormEvent) => {
+  const submit = (event: SubmitEvent) => {
     event.preventDefault();
     if (picked !== '') void begin(picked);
   };

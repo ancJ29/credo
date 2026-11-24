@@ -1,7 +1,7 @@
 import { normaliseClientCode } from '@credo/shared';
 import { Paper, Stack, Text, TextInput } from '@mantine/core';
 import { ActionRow } from '../../components/molecules/ActionRow';
-import { type FormEvent, useState } from 'react';
+import { type SubmitEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router';
 import { ApiError, type Api } from '../../api';
@@ -89,7 +89,7 @@ export function DeleteClientPage({ api, passkeys, onSignedOut }: Props) {
     setBusy(false);
   }
 
-  const submit = (event: FormEvent) => {
+  const submit = (event: SubmitEvent) => {
     event.preventDefault();
     setProblem(null);
     if (normaliseClientCode(typed) !== code) return setProblem('code');

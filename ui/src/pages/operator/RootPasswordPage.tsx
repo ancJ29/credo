@@ -1,7 +1,7 @@
 import { normaliseClientCode, passwordIsValid } from '@credo/shared';
 import { Paper, PasswordInput, Stack, Text, TextInput } from '@mantine/core';
 import { ActionRow } from '../../components/molecules/ActionRow';
-import { type FormEvent, useState } from 'react';
+import { type SubmitEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useParams } from 'react-router';
 import type { Api } from '../../api';
@@ -61,7 +61,7 @@ export function RootPasswordPage({ api, passkeys, onSignedOut }: Props) {
     setBusy(false);
   }
 
-  const submit = (event: FormEvent) => {
+  const submit = (event: SubmitEvent) => {
     event.preventDefault();
     setProblem(null);
     const none = typed.first === '' && typed.again === '';

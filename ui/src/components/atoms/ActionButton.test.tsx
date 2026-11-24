@@ -79,7 +79,7 @@ describe('ActionButton', () => {
     expect(off).not.toHaveBeenCalled();
     held.unmount();
 
-    const sent = vi.fn((event: React.FormEvent) => event.preventDefault());
+    const sent = vi.fn((event: React.SubmitEvent) => event.preventDefault());
     draw(
       <form onSubmit={sent}>
         <ActionButton meaning="main" submit>
