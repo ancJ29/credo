@@ -169,10 +169,11 @@ is `git diff -U0 -- visual/src/resolved.pinned.txt | grep '^+[a-z]' | cut -d' ' 
       17 red first; row 16 the null proof. _Done when:_ `ui`'s, `visual`'s and `scripts`' gates; the
       pinned diff empty. **29 min** (250.1's step 1: 29). Then point 1.
       _Done 2026-11-25, build 250.2 step 1, sonnet:_ `ui`'s, `visual`'s and `scripts`' gates each exit 0 (the runs of 11:59 to 12:17); rows 3, 5 to 8, 12, 15 and 17 seen red first on the old code in one run (11:49), row 8 by a planted `innerHTML` file; row 16 the null proof, the pinned diff empty; `HeaderBrand` takes `formatted`, `BrandBand` and `DoorCard` `formatted` and `description`, `BrandPreview` both; `DoorCard` gains no state, so its two-state tests stand.
-- [ ] **2. The record.** The two fields and their bounds in `shared`; both empty in `startingConfig`,
+- [x] **2. The record.** The two fields and their bounds in `shared`; both empty in `startingConfig`,
       the seed's company, `DEMO_CONFIG`, the mock's fixtures and the test literals. Rows 9 and 10 red
       first. _Done when:_ `shared`'s, `bff`'s, `scripts`', `ui`'s and `visual`'s gates; the pinned diff
       empty. **17 min** (241.2's step 2: 17, a shared shape through three gates).
+      _Done 2026-11-25, build 250.2 step 2, sonnet:_ `shared`'s, `bff`'s, `scripts`', `ui`'s and `visual`'s gates each exit 0 (the runs of 12:22 to 12:44, much of it waiting on the lock and the load); rows 9 and 10 seen red first in `shared` (12:21, five cases), the `bff` cases written beside them and read green by the gate; the pinned diff empty.
 - [ ] **3. The screens, on the fake.** `Brand` takes the fields; `Shell` and `SignInFrame` pass them;
       `Settings` draws `IdentityFields` and `BrandPreview` from the draft; `ClientApp` draws the tab's
       title in both branches; `Providers` marks the language; the mock's `FORMATTED` and three states

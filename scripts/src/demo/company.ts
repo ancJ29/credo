@@ -25,6 +25,8 @@ export function companyConfig(client: string, name: string): TenantConfig {
     menuIcons: false,
     languages: ['vi', 'en'],
     defaultLanguage: 'vi',
+    formattedName: '',
+    description: '',
   };
 }
 

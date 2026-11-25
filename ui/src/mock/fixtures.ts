@@ -15,6 +15,8 @@ export const FILLED: TenantConfig = {
   menuIcons: false,
   languages: ['vi', 'en'],
   defaultLanguage: 'vi',
+  formattedName: '',
+  description: '',
 };
 
 /** A company just made: no logo, one language, credo's own colour. */
@@ -27,6 +29,8 @@ export const FRESH: TenantConfig = {
   menuIcons: false,
   languages: ['vi'],
   defaultLanguage: 'vi',
+  formattedName: '',
+  description: '',
 };
 
 /** What the root typed before a save failed. */

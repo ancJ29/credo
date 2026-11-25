@@ -24,6 +24,8 @@ const config: TenantConfig = {
   menuIcons: false,
   languages: ['vi', 'en'],
   defaultLanguage: 'en',
+  formattedName: '',
+  description: '',
 };
 const doc: ConfigDoc = { config, version: 'v1' };
 const root = { name: 'root', root: true, permissions: {} };
