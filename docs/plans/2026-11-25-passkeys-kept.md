@@ -142,10 +142,18 @@ test. "The pinned diff" is
       `user.passkey` changed; the gallery's menu row links to `/passkeys`. The pinned diff is empty, not
       `lists-9-more`: the hash holds resolved styles, never text, so the word's move shows in the walk's
       pixels alone.
-- [ ] **2. The wire, the device's name, the data set.** In `shared`: the four routes, the list's item,
+- [x] **2. The wire, the device's name, the data set.** In `shared`: the four routes, the list's item,
       `device` on a company's stored passkey, `deviceNameOf` and its tests, the two actions, Lan's two
       passkeys. Row 2's names red first. _Done when:_ `shared`'s, `ui`'s and `visual`'s gates, the
       pinned diff empty. **17 min** (241.2's step 2: 17).
+      _Done 2026-11-25 12:45:_ `shared`'s, `ui`'s and `visual`'s gates and the citation test each exit 0; the pinned
+      diff empty; row 2's names red (no `devices` module, no device on a stored passkey, no Lan's two), then
+      green. New: `shared/src/devices.ts`; `ownPasskeys`, `ownPasskey(id)` and `employeePasskeys(id)` in
+      `signInRoutes`; `ownPasskeyItemSchema`, `ownPasskeyListReplySchema` and `personPasskeysReplySchema`
+      (the root's reply is `{ count }`, for the count and after the removal); `storedOwnPasskeySchema` with
+      `device` optional, so no BFF line moves; `employee.passkeyRemove` and `employee.passkeysRemove`;
+      `DEMO_PERSON_PASSKEYS` (iPhone, added 5 October, used 3 November; PC, added 29 October, never), which
+      the generator writes in step 7.
 - [ ] **3. Your passkeys, on the fake.** `ui/src/pages/client/OwnPasskeysPage.tsx` at `/passkeys`; the
       menu's path; the add page's way back; two api calls and their fake answers, each person's list
       in the tab, the fake's add naming its device, its sign-in refusing a removed credential. Rows 13

@@ -195,10 +195,18 @@ export const storedAccountSchema = z.strictObject({
 });
 export type StoredAccount = z.infer<typeof storedAccountSchema>;
 
-/** A company person's passkeys: the same stored passkey as an operator's, and the challenges
+/** A company person's passkey: an operator's, and the device it was added on, named by
+ * `deviceNameOf` from the browser's header; null where none was named, and absent where the passkey
+ * was stored before devices were named. An operator's passkey takes none. */
+export const storedOwnPasskeySchema = storedPasskeySchema.extend({
+  device: z.string().nullable().optional(),
+});
+export type StoredOwnPasskey = z.infer<typeof storedOwnPasskeySchema>;
+
+/** A company person's passkeys: those, and the challenges
  * answered in the last five minutes; no link and no generation, the sign-in record holding those. */
 export const storedOwnPasskeysSchema = z.strictObject({
-  passkeys: z.array(storedPasskeySchema),
+  passkeys: z.array(storedOwnPasskeySchema),
   spent: z.array(z.strictObject({ hash: z.string(), at: z.number() })),
 });
 export type StoredOwnPasskeys = z.infer<typeof storedOwnPasskeysSchema>;

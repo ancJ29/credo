@@ -61,6 +61,31 @@ export const DEMO_PASSKEYS: { id: string; addedAt: number; lastUsedAt: number | 
   { id: 'demo-passkey-phone', addedAt: Date.UTC(2026, 9, 25, 12), lastUsedAt: null },
 ];
 
+/** The code of the data set's person who holds passkeys, the office's manager. */
+export const DEMO_PERSON_PASSKEYS_CODE = 'EMP-0001';
+
+/** That person's two passkeys, an iPhone's used on 3 November and a PC's never, each made at noon
+ * UTC before the data set's today, as the person's own list shows them. */
+export const DEMO_PERSON_PASSKEYS: {
+  id: string;
+  device: string;
+  addedAt: number;
+  lastUsedAt: number | null;
+}[] = [
+  {
+    id: 'demo-person-passkey-iphone',
+    device: 'iPhone · Safari',
+    addedAt: Date.UTC(2026, 9, 5, 12),
+    lastUsedAt: Date.UTC(2026, 10, 3, 12),
+  },
+  {
+    id: 'demo-person-passkey-pc',
+    device: 'Windows · Chrome',
+    addedAt: Date.UTC(2026, 9, 29, 12),
+    lastUsedAt: null,
+  },
+];
+
 /** The operators the roster page shows, as the operator is shown them: the operator themselves, made
  * by the command line; a colleague added by an operator since deleted (no adder shown); and the
  * invited one the join link is for. Each time is noon UTC, like every time here. */

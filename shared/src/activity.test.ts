@@ -1,12 +1,20 @@
 import { describe, expect, it } from 'vitest';
 import {
   ActivityError,
+  ACTIONS,
   AUDIT_TIMEOUT_MS,
   createActivityClient,
   entryLine,
   readEntriesByTarget,
   type ReadEntry,
 } from './activity';
+
+describe('the actions of a removed passkey', () => {
+  it('11: one’s own removal and the root’s removal of all each read in words', () => {
+    expect(ACTIONS['employee.passkeyRemove']).toBe('passkey removed');
+    expect(ACTIONS['employee.passkeysRemove']).toBe('passkeys removed');
+  });
+});
 
 type Call = { url: string; init: RequestInit };
 

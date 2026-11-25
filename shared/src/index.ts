@@ -1,6 +1,7 @@
 export * from './activity';
 export * from './c-storage';
 export * from './config';
+export * from './devices';
 export * from './env';
 export * from './extra';
 export * from './fields';

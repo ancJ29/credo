@@ -68,6 +68,26 @@ export const ownPasskeyAddRequestSchema = z.strictObject({
 });
 export type OwnPasskeyAddRequest = z.infer<typeof ownPasskeyAddRequestSchema>;
 
+/** A person's passkey as they are shown it: its device (null for none named), the day added and
+ * the day last used, and no secret. */
+export const ownPasskeyItemSchema = z.strictObject({
+  id: z.string(),
+  device: z.string().nullable(),
+  addedAt: z.number(),
+  lastUsedAt: z.number().nullable(),
+});
+export type OwnPasskeyItem = z.infer<typeof ownPasskeyItemSchema>;
+
+/** One's own list, and what is left after a removal. */
+export const ownPasskeyListReplySchema = z.strictObject({
+  passkeys: z.array(ownPasskeyItemSchema),
+});
+export type OwnPasskeyListReply = z.infer<typeof ownPasskeyListReplySchema>;
+
+/** The root's view of a person's passkeys: how many they hold, and after the removal of all, none. */
+export const personPasskeysReplySchema = z.strictObject({ count: z.number().int().min(0) });
+export type PersonPasskeysReply = z.infer<typeof personPasskeysReplySchema>;
+
 /** The routes of these ways, beside `ROUTES` and `employeeRoutes`. */
 export const signInRoutes = {
   qr: '/api/auth/sign-in-qr',
@@ -80,6 +100,11 @@ export const signInRoutes = {
   /** One's own passkey add, behind a session: its options, then the add. */
   ownPasskeyOptions: '/api/auth/passkey/add-options',
   ownPasskeyAdd: '/api/auth/passkey/add',
+  /** One's own passkeys: the list (GET), and one removed (DELETE) by its id. */
+  ownPasskeys: '/api/auth/passkeys',
+  ownPasskey: (id: string) => `/api/auth/passkeys/${id}`,
+  /** The root's: a person's count (GET) and all of theirs removed (DELETE). */
+  employeePasskeys: (id: string) => `${ROUTES.employees}/${id}/passkeys`,
 };
 
 /** Wrong tries a name has free before any wait. */

@@ -2,8 +2,11 @@ import { describe, expect, it } from 'vitest';
 import {
   changeOwnPasswordRequestSchema,
   issueQrReplySchema,
+  ownPasskeyItemSchema,
+  ownPasskeyListReplySchema,
   ownPasskeyAddRequestSchema,
   parseQr,
+  personPasskeysReplySchema,
   qrLink,
   qrSecretSchema,
   setEmailRequestSchema,
@@ -107,6 +110,32 @@ describe('the ways to sign in', () => {
     expect(signInRoutes.passkeySignIn).toBe('/api/auth/passkey/sign-in');
     expect(signInRoutes.ownPasskeyOptions).toBe('/api/auth/passkey/add-options');
     expect(signInRoutes.ownPasskeyAdd).toBe('/api/auth/passkey/add');
+  });
+
+  it('C: The routes of one’s own passkeys and of the root’s sit beside the add', () => {
+    expect(signInRoutes.ownPasskeys).toBe('/api/auth/passkeys');
+    expect(signInRoutes.ownPasskey('abc')).toBe('/api/auth/passkeys/abc');
+    expect(signInRoutes.employeePasskeys(ID)).toBe(`/api/employees/${ID}/passkeys`);
+  });
+
+  it('C: A person’s passkey is shown as its id, device, day added and day last used, and nothing of its key', () => {
+    const item = { id: 'a', device: 'iPhone · Safari', addedAt: 1, lastUsedAt: null };
+    expect(ownPasskeyItemSchema.parse(item)).toEqual(item);
+    expect(ownPasskeyItemSchema.parse({ ...item, device: null }).device).toBeNull();
+    expect(ownPasskeyItemSchema.safeParse({ ...item, publicKey: 'k' }).success).toBe(false);
+    expect(ownPasskeyItemSchema.safeParse({ id: 'a', addedAt: 1, lastUsedAt: null }).success).toBe(
+      false,
+    );
+    expect(ownPasskeyListReplySchema.safeParse({ passkeys: [item] }).success).toBe(true);
+    expect(ownPasskeyListReplySchema.safeParse({ passkeys: [] }).success).toBe(true);
+  });
+
+  it('C: The root’s count is a whole number, and nothing more', () => {
+    expect(personPasskeysReplySchema.parse({ count: 2 })).toEqual({ count: 2 });
+    expect(personPasskeysReplySchema.parse({ count: 0 })).toEqual({ count: 0 });
+    expect(personPasskeysReplySchema.safeParse({ count: -1 }).success).toBe(false);
+    expect(personPasskeysReplySchema.safeParse({ count: 1.5 }).success).toBe(false);
+    expect(personPasskeysReplySchema.safeParse({ count: 1, ids: [] }).success).toBe(false);
   });
 
   it('C: A person’s own passkey add is the challenge’s token and the device’s answer, and nothing more', () => {
