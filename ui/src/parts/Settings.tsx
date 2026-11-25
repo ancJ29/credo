@@ -17,7 +17,6 @@ import {
   Stack,
   Switch,
   Text,
-  TextInput,
 } from '@mantine/core';
 import { IconId, IconLanguage, IconPalette, IconPhoto } from '@tabler/icons-react';
 import { type SubmitEvent, useState } from 'react';
@@ -27,6 +26,7 @@ import { Loaded } from '../frame/Loaded';
 import { ActionButton } from '../components/atoms/ActionButton';
 import { FormMessage } from '../components/molecules/FormMessage';
 import { BrandPreview } from './BrandPreview';
+import { IdentityFields } from './IdentityFields';
 import { DetailCard, DetailColumns } from './DetailCards';
 import { PALETTES, paletteOfColour } from '../design-system/palettes';
 import { TYPE, WEIGHTS } from '../design-system/tokens';
@@ -117,6 +117,8 @@ function SettingsForm({ config, outcome, saving, onSave, onReload, logoRefusal }
             <BrandPreview
               name={draft.name}
               logo={draft.logo ?? undefined}
+              formatted={draft.formattedName}
+              description={draft.description}
               brand={isHexColour(draft.colour) ? draft.colour : config.colour}
               whiteHeader={draft.whiteHeader}
             />
@@ -124,11 +126,11 @@ function SettingsForm({ config, outcome, saving, onSave, onReload, logoRefusal }
           main={
             <Stack gap="lg">
               <DetailCard icon={<IconId size={14} />} title={t('settings.identity')}>
-                <TextInput
-                  label={t('settings.name')}
-                  required
-                  value={draft.name}
-                  onChange={(event) => change({ name: event.currentTarget.value })}
+                <IdentityFields
+                  name={draft.name}
+                  formattedName={draft.formattedName}
+                  description={draft.description}
+                  onChange={(field, value) => change({ [field]: value })}
                 />
               </DetailCard>
               <DetailCard icon={<IconPhoto size={14} />} title={t('settings.pictures')}>

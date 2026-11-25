@@ -33,6 +33,8 @@ export const DEMO_CONFIG: TenantConfig = {
   menuIcons: false,
   languages: ['vi', 'en'],
   defaultLanguage: 'vi',
+  formattedName: '',
+  description: '',
 };
 
 export const DEMO_CODE = 'demo';

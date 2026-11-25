@@ -17,6 +17,8 @@ const config: TenantConfig = {
   menuIcons: false,
   languages: ['vi', 'en'],
   defaultLanguage: 'vi',
+  formattedName: '',
+  description: '',
 };
 const doc = { config, version: 'v1' };
 

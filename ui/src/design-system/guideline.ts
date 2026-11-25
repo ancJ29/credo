@@ -817,6 +817,16 @@ export const GUIDELINE: {
       takes: [
         { prop: 'name', is: 'content', line: 'The company’s name, in the header and on the card.' },
         { prop: 'logo', is: 'content', line: 'The company’s logo on the card; none draws none.' },
+        {
+          prop: 'formatted',
+          is: 'content',
+          line: 'The name typed as HTML, drawn in the header and on the card; none draws the name.',
+        },
+        {
+          prop: 'description',
+          is: 'content',
+          line: 'The short line under the name on the card; none draws none.',
+        },
         { prop: 'brand', is: 'content', line: 'The brand colour the two pictures wear.' },
         { prop: 'whiteHeader', is: 'meaning', line: 'Whether the header is drawn white.' },
       ],
@@ -839,9 +849,44 @@ export const GUIDELINE: {
         },
         { name: 'A white header', line: 'The header white, as the switch says.' },
         { name: 'A card with no logo', line: 'The card with the name alone.' },
+        {
+          name: 'A formatted name',
+          line: 'The formatted name, its colours given way on the coloured header and shown on the card, with the description.',
+        },
       ],
       serves: 'A screen picks parts, never a style',
       heldBy: { check: 'ui/src/parts/BrandPreview.test.tsx' },
+      followed: 'yes',
+    },
+    {
+      part: 'IdentityFields',
+      takes: [
+        { prop: 'name', is: 'content', line: 'The company’s name as typed.' },
+        { prop: 'formattedName', is: 'content', line: 'The name with formatting as typed, HTML.' },
+        { prop: 'description', is: 'content', line: 'The short description as typed.' },
+        { prop: 'onChange', is: 'content', line: 'The act of each typed change, with its field.' },
+      ],
+      decides: [
+        { what: 'The gap between its fields.', from: [{ table: 'SPACING', key: 'md' }] },
+        {
+          what: 'The gap between the formatted name, its preview and the preview’s caption.',
+          from: [{ table: 'SPACING', key: 'xs' }],
+        },
+        { what: 'The preview’s weight.', from: [{ table: 'WEIGHTS', key: 'title' }] },
+      ],
+      fixes: [
+        'Its fields: the name, a growing text area with its hint for the formatted name, then the description with its hint.',
+        'Its preview: the name as BrandName draws it, redrawn with each key typed, under a caption.',
+      ],
+      states: [
+        { name: 'Empty', line: 'The name alone, the preview showing it plain.' },
+        {
+          name: 'A formatted name',
+          line: 'The formatted name and the description, the preview formatted.',
+        },
+      ],
+      serves: 'A screen picks parts, never a style',
+      heldBy: { check: 'ui/src/parts/IdentityFields.test.tsx' },
       followed: 'yes',
     },
     {
@@ -1191,6 +1236,16 @@ export const GUIDELINE: {
       takes: [
         { prop: 'name', is: 'content', line: 'The company’s name.' },
         { prop: 'logo', is: 'content', line: 'The company’s logo, if it has one.' },
+        {
+          prop: 'formatted',
+          is: 'content',
+          line: 'The name typed as HTML, drawn as the heading; none draws the name.',
+        },
+        {
+          prop: 'description',
+          is: 'content',
+          line: 'The short line under the name; none draws none.',
+        },
       ],
       decides: [
         {
@@ -1202,9 +1257,50 @@ export const GUIDELINE: {
         { what: 'The gap between the logo and the name.', from: [{ table: 'SPACING', key: 'md' }] },
       ],
       fixes: ['Its padding, 28 px above and below and 40 at the sides, and its centring.'],
-      states: [{ name: 'Default', line: 'The logo tile beside the name.' }],
+      states: [
+        { name: 'Default', line: 'The logo tile beside the name.' },
+        {
+          name: 'Formatted, with a description',
+          line: 'The formatted name, the description in a caption under it.',
+        },
+      ],
       serves: 'A screen picks parts, never a style',
       heldBy: { check: 'ui/src/design-system/guideline.test.ts' },
+      followed: 'yes',
+    },
+    {
+      part: 'BrandName',
+      takes: [
+        {
+          prop: 'name',
+          is: 'content',
+          line: 'The company’s name, plain: what a reader hears and what shows where nothing is formatted.',
+        },
+        {
+          prop: 'formatted',
+          is: 'content',
+          line: 'The name typed as HTML; cleaned at each draw, and where nothing but space is left the name is drawn.',
+        },
+        {
+          prop: 'colours',
+          is: 'meaning',
+          line: 'Whether the typed colours show, or the text colour wins.',
+        },
+      ],
+      decides: [],
+      fixes: [
+        'What it keeps: bold, strong, a line break and a span with one #rrggbb colour; every other element is unwrapped to its text, and a script, a style, a template and a comment are dropped with their text.',
+        'No attribute but that colour survives, and nothing is set as markup: what it keeps is built as elements.',
+        'Its drawing is hidden from a reader, the plain name read beside it.',
+      ],
+      states: [
+        { name: 'Plain', line: 'The name as bare text.' },
+        { name: 'Formatted', line: 'The bold part, the colour and the break.' },
+        { name: 'On the coloured header', line: 'The colours given way to the text colour.' },
+        { name: 'Nothing left', line: 'A formatted name that cleans to nothing draws the name.' },
+      ],
+      serves: 'A screen picks parts, never a style',
+      heldBy: { check: 'ui/src/components/atoms/BrandName.test.tsx' },
       followed: 'yes',
     },
     {
@@ -1248,6 +1344,16 @@ export const GUIDELINE: {
       takes: [
         { prop: 'name', is: 'content', line: 'The company’s name.' },
         { prop: 'logo', is: 'content', line: 'The company’s logo, if it has one.' },
+        {
+          prop: 'formatted',
+          is: 'content',
+          line: 'The name typed as HTML, drawn in the band; none draws the name.',
+        },
+        {
+          prop: 'description',
+          is: 'content',
+          line: 'The short line under the name in the band; none draws none.',
+        },
         { prop: 'children', is: 'content', line: 'What the card holds.' },
       ],
       decides: [

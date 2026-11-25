@@ -24,6 +24,8 @@ const config: TenantConfig = {
   menuIcons: false,
   languages: ['vi', 'en'],
   defaultLanguage: 'en',
+  formattedName: '',
+  description: '',
 };
 const doc: ConfigDoc = { config, version: 'v1' };
 const root = { name: 'root', root: true, permissions: {} };
@@ -942,5 +944,99 @@ describe('the app', () => {
         vi.useRealTimers();
       }
     });
+  });
+});
+
+describe('the tab and the page’s language', () => {
+  const tab = () => document.title;
+  const headTitle = (text: string) => {
+    const title = document.createElement('title');
+    title.textContent = text;
+    document.head.append(title);
+    return title;
+  };
+
+  it('1: the tab says Credo while the settings load, then the plain name, over a title already in the head', async () => {
+    const first = headTitle('From the page');
+    let release: (value: ConfigDoc) => void = () => {};
+    const wait = new Promise<ConfigDoc>((resolve) => (release = resolve));
+    setup({ getConfig: () => wait });
+
+    await waitFor(() => expect(tab()).toBe('Credo'));
+    release(doc);
+    await waitFor(() => expect(tab()).toBe('Minh Phát'));
+    first.remove();
+  });
+
+  it('1: the tab says Credo when the service fails, and the plain name signed in', async () => {
+    const first = headTitle('From the page');
+    const { unmount } = setup({ getConfig: () => Promise.reject(new ApiError(null)) });
+    await screen.findByRole('alert');
+    expect(tab()).toBe('Credo');
+    unmount();
+
+    setup({}, signedIn);
+    expect((await screen.findAllByText(words.nav.settings)).length).toBeGreaterThan(0);
+    expect(tab()).toBe('Minh Phát');
+    first.remove();
+  });
+
+  it('1: the tab says Credo for an unknown company', async () => {
+    const first = headTitle('From the page');
+    setup({}, unlinked);
+    await screen.findByRole('heading', { name: wordsVi.unknownClient.title });
+    expect(tab()).toBe('Credo');
+    first.remove();
+  });
+
+  it('2: the page is marked in the language shown, and again when a person switches', async () => {
+    setup({}, signedIn);
+    expect((await screen.findAllByText(words.nav.settings)).length).toBeGreaterThan(0);
+    expect(document.documentElement.getAttribute('lang')).toBe('en');
+
+    await userEvent.click(screen.getByRole('button', { name: words.user.language }));
+    await userEvent.click(screen.getByRole('menuitem', { name: LANGUAGE_NAMES.vi }));
+
+    await waitFor(() => expect(document.documentElement.getAttribute('lang')).toBe('vi'));
+  });
+
+  it('2: the walk’s formatted steps: the root types both fields, saves, the header shows the name formatted, and signing out shows the card with the description', async () => {
+    const formattedName = '<b>Minh</b><br><span style="color:#1d3557">Phát</span>';
+    const description = 'Vật liệu xây dựng';
+    const saved = { config: { ...config, formattedName, description }, version: 'v2' };
+    const saveConfig = vi.fn<Api['saveConfig']>(() =>
+      Promise.resolve({ kind: 'saved', doc: saved }),
+    );
+    setup({ saveConfig }, { ...signedIn, 'credo.language': 'en' }, '/settings');
+
+    await userEvent.click(
+      await screen.findByRole('textbox', { name: words.settings.formattedName }),
+    );
+    await userEvent.paste(formattedName);
+    await userEvent.type(
+      screen.getByRole('textbox', { name: words.settings.description }),
+      description,
+    );
+    expect(document.querySelector('[data-preview="card"]')?.textContent).toContain(description);
+    await userEvent.click(screen.getByRole('button', { name: words.settings.save }));
+
+    expect((await screen.findByRole('status')).textContent).toBe(words.settings.saved);
+    expect(saveConfig).toHaveBeenCalledExactlyOnceWith(saved.config, 'v1');
+    expect(document.querySelector('header [aria-hidden="true"] b')?.textContent).toBe('Minh');
+    expect(screen.getAllByRole('heading', { level: 1 })[0].textContent).toContain('Minh Phát');
+
+    await userEvent.click(screen.getByRole('button', { name: 'root' }));
+    await userEvent.click(screen.getByRole('menuitem', { name: words.user.signOut }));
+
+    expect(await screen.findByText(description)).toBeTruthy();
+    expect(document.querySelector('h1 [aria-hidden="true"] b')?.textContent).toBe('Minh');
+
+    // Signing in again, as the spec's step 16 does, returns to the Settings page at its address.
+    await userEvent.type(screen.getByLabelText(labelled(words.auth.username)), 'root');
+    await userEvent.type(screen.getByLabelText(labelled(words.auth.password)), 'pw');
+    await userEvent.click(screen.getByRole('button', { name: words.auth.submit }));
+    expect(
+      await screen.findByRole('heading', { level: 2, name: words.settings.title }),
+    ).toBeTruthy();
   });
 });

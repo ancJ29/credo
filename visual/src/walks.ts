@@ -480,6 +480,41 @@ export const WALKS: Walk[] = [
         question:
           'Do the preview’s header and card show the new name and colour before the save, while the rest keeps the saved look?',
       },
+      {
+        id: '14-formatted-typed',
+        number: 14,
+        path: 'main',
+        mock: { screen: 3, state: 'formatted' },
+        sentence: {
+          en: 'The formatted name and a description typed, not yet saved',
+          vi: 'Đã nhập tên có định dạng và mô tả, chưa lưu',
+        },
+        question:
+          'Do the previews show the name with its bold part, second colour and line break before the save?',
+      },
+      {
+        id: '15-formatted-saved',
+        number: 15,
+        path: 'main',
+        mock: { screen: 4, state: 'formatted' },
+        sentence: {
+          en: 'Saved: the header shows the formatted name',
+          vi: 'Đã lưu: đầu trang hiện tên có định dạng',
+        },
+        question: 'Does the header show the company’s formatted name, readable on its colour?',
+      },
+      {
+        id: '16-formatted-card',
+        number: 16,
+        path: 'main',
+        mock: { screen: 1, state: 'formatted' },
+        sentence: {
+          en: 'Signed out: the card shows the formatted name and the description',
+          vi: 'Đã đăng xuất: thẻ hiện tên có định dạng và mô tả',
+        },
+        question:
+          'Does the card show the formatted name and the description as the company would want them?',
+      },
     ],
   },
   {

@@ -85,6 +85,12 @@ export const en = {
     preview: 'Preview',
     previewHeader: "The header, as the company's people see it",
     previewCard: "The sign-in card, as the company's people see it",
+    formattedName: 'Name with formatting',
+    formattedNameHint:
+      'Optional, in HTML: bold <b>, a colour <span style="color:#rrggbb"> and a line break <br> are kept, the rest dropped; the tab and screen readers keep the name above.',
+    formattedNamePreview: 'Shown as',
+    description: 'Description',
+    descriptionHint: 'A short line under the name on the sign-in card.',
   },
   operator: {
     badge: 'Operator',

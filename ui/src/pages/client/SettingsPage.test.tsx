@@ -19,6 +19,8 @@ const config: TenantConfig = {
   menuIcons: false,
   languages: ['vi', 'en'],
   defaultLanguage: 'vi',
+  formattedName: '',
+  description: '',
 };
 
 describe('a save the BFF refuses on the settings page', () => {

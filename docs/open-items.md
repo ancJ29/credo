@@ -2318,6 +2318,10 @@ One's own password change ends every other session (`bff/src/app.ts#L475-L501`) 
 
 `clientLinkPath` (`shared/src/wire.ts#L196`) opens a company's door at any host, while the sign-in's options name the company's own address (`bff/src/routes/own-passkeys.ts#L76-L79`). A browser at `operator.<Domain>` refuses that relying party, `ui/src/browserPasskeys.ts#L18-L26` passes the error on, and `ui/src/ClientApp.tsx#L278` turns the door into the "unavailable" page. Beside item 291, whose fix needs the same address. *Fix:* draw the button only where the host is the company's own, or send the link there. *Trigger:* item 291's fix, or the first company opened by its link on ridge's operator address.
 
-## 681. The walk's scene 13 finds the header's title without an exact name, so it does not prove the header kept the saved name — the machine; `[DEFERRED]` (piece 250.1's review before main, 2026-11-24, Low)
+## 681. The walk's scene 13 finds the header's title without an exact name, so it does not prove the header kept the saved name — the machine; `[FIXED]` in piece 250.2's step 4 (2026-11-25; found in piece 250.1's review before main, 2026-11-24, Low)
 
 `walk/specs/piece-1.spec.ts#L131` finds the h1 by `name: 'Minh Phát'` with no `exact: true`, a substring match, so it would also match the typed name "Minh Phát Sài Gòn" and does not prove its comment's "the header still the saved one"; the base picture and `ui/src/App.test.tsx#L445` hold that claim. *Fix:* `exact: true` on that finder. *Trigger:* the next change to the walk's spec, since a walk change needs a walk run.
+
+## 683. A company's new passkey is made for the relying party "Credo", the machine's, not for the company's own name — the machine; `[DEFERRED]` to the branding campaign's fourth milestone (piece 250.2's plan, 2026-11-25, Low)
+
+`bff/src/calling/passkeys.ts#L17` and `#L42` name the relying party "Credo" for every passkey a company's person adds (from `bff/src/routes/own-passkeys.ts#L147-L151`), so the device's passkey list shows "Credo" under a company's own name. The settings are read only in `app.ts`'s closure (`bff/src/app.ts#L313-L317`), not in the passkey routes, until the fourth milestone's manifest reads them in the BFF. *Fix:* give the passkey calls the company's plain name from the settings. *Trigger:* milestone 4's plan.

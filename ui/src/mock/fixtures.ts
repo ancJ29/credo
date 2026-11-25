@@ -15,6 +15,8 @@ export const FILLED: TenantConfig = {
   menuIcons: false,
   languages: ['vi', 'en'],
   defaultLanguage: 'vi',
+  formattedName: '',
+  description: '',
 };
 
 /** A company just made: no logo, one language, credo's own colour. */
@@ -27,6 +29,8 @@ export const FRESH: TenantConfig = {
   menuIcons: false,
   languages: ['vi'],
   defaultLanguage: 'vi',
+  formattedName: '',
+  description: '',
 };
 
 /** What the root typed before a save failed. */
@@ -34,6 +38,13 @@ export const TYPED: TenantConfig = {
   ...FILLED,
   name: 'Minh Phát Sài Gòn',
   colour: '#9e2d20',
+};
+
+/** A company that set a formatted name and a description, as the walk's root types them. */
+export const FORMATTED: TenantConfig = {
+  ...FILLED,
+  formattedName: '<b>Minh Phát</b><br><span style="color:#1d3557">Sài Gòn</span>',
+  description: 'Vật liệu xây dựng, giao tận công trình',
 };
 
 /** What the root typed with the header and the menu on white. */
