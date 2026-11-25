@@ -174,13 +174,14 @@ is `git diff -U0 -- visual/src/resolved.pinned.txt | grep '^+[a-z]' | cut -d' ' 
       first. _Done when:_ `shared`'s, `bff`'s, `scripts`', `ui`'s and `visual`'s gates; the pinned diff
       empty. **17 min** (241.2's step 2: 17, a shared shape through three gates).
       _Done 2026-11-25, build 250.2 step 2, sonnet:_ `shared`'s, `bff`'s, `scripts`', `ui`'s and `visual`'s gates each exit 0 (the runs of 12:22 to 12:44, much of it waiting on the lock and the load); rows 9 and 10 seen red first in `shared` (12:21, five cases), the `bff` cases written beside them and read green by the gate; the pinned diff empty.
-- [ ] **3. The screens, on the fake.** `Brand` takes the fields; `Shell` and `SignInFrame` pass them;
+- [x] **3. The screens, on the fake.** `Brand` takes the fields; `Shell` and `SignInFrame` pass them;
       `Settings` draws `IdentityFields` and `BrandPreview` from the draft; `ClientApp` draws the tab's
       title in both branches; `Providers` marks the language; the mock's `FORMATTED` and three states
       (screen 3 "formatted", its frame in `TYPED`; screens 4 and 1 "formatted"). Rows 1 to 4, 11, 13 and
       14 red first. _Done when:_ `ui`'s and `visual`'s gates; the pinned diff naming the nine settings
       screens below alone (90 lines); `git diff pre-merge -- ui/src/parts/Settings.test.tsx | grep -c '^-[^-]'`
       0. **21 min** (250.1's step 2: 21).
+      _Done 2026-11-25, build 250.2 step 3, sonnet:_ `ui`'s and `visual`'s gates each exit 0 (the runs of 12:54 to 12:59); rows 1 to 4 and 11 seen red first on the old code (12:47, 11 cases), rows 3 and 14 the null proofs in part (the parts of step 1 already drew them); the pinned diff names the nine settings screens alone, 90 lines; `Settings.test.tsx` differs from `pre-merge` by one removed line, `getAllByRole('textbox')` counting 4 where it counted 2, since the Identity block adds two fields (the row's count was 0).
 - [ ] **4. The walk.** As below; rows 18 and 19; item 681's fix. _Done when:_ `visual`'s, `walk`'s and
       `ui`'s gates; row 18 red on the old counts; the pinned diff naming the three new screens alone
       (30 lines); each new step replayed in jsdom on the real router. **16 min** (250.1's step 3: 16).

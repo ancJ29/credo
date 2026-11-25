@@ -370,3 +370,27 @@ describe('the join page in the same frame', () => {
     expect(screen.getByRole('group', { name: words.user.language })).toBeTruthy();
   });
 });
+
+describe('SignIn, the formatted name and the description', () => {
+  const company = { ...brand, formattedName: '<b>Minh</b> Phát', description: 'Vật liệu xây dựng' };
+
+  it('3, 4: the sign-in and the QR landing draw the formatted name and the description under it', () => {
+    for (const door of [
+      <SignIn key="s" brand={company} status="idle" onSubmit={vi.fn()} />,
+      <QrLanding key="q" brand={company} status="busy" onPassword={vi.fn()} />,
+    ]) {
+      const { container } = draw(door);
+      expect(container.querySelector('h1 [aria-hidden="true"] b')?.textContent).toBe('Minh');
+      expect(screen.getByRole('heading', { level: 1, name: 'Minh Phát' })).toBeDefined();
+      expect(screen.getByText('Vật liệu xây dựng')).toBeDefined();
+      cleanup();
+    }
+  });
+
+  it('4: draws no description where none is set', () => {
+    const { container } = draw(<SignIn brand={brand} status="idle" onSubmit={vi.fn()} />);
+
+    expect(container.querySelector('h1')?.innerHTML).toBe('Minh Phát');
+    expect(screen.queryByText('Vật liệu xây dựng')).toBeNull();
+  });
+});

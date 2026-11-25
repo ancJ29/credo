@@ -946,3 +946,57 @@ describe('the app', () => {
     });
   });
 });
+
+describe('the tab and the page’s language', () => {
+  const tab = () => document.title;
+  const headTitle = (text: string) => {
+    const title = document.createElement('title');
+    title.textContent = text;
+    document.head.append(title);
+    return title;
+  };
+
+  it('1: the tab says Credo while the settings load, then the plain name, over a title already in the head', async () => {
+    const first = headTitle('From the page');
+    let release: (value: ConfigDoc) => void = () => {};
+    const wait = new Promise<ConfigDoc>((resolve) => (release = resolve));
+    setup({ getConfig: () => wait });
+
+    await waitFor(() => expect(tab()).toBe('Credo'));
+    release(doc);
+    await waitFor(() => expect(tab()).toBe('Minh Phát'));
+    first.remove();
+  });
+
+  it('1: the tab says Credo when the service fails, and the plain name signed in', async () => {
+    const first = headTitle('From the page');
+    const { unmount } = setup({ getConfig: () => Promise.reject(new ApiError(null)) });
+    await screen.findByRole('alert');
+    expect(tab()).toBe('Credo');
+    unmount();
+
+    setup({}, signedIn);
+    expect((await screen.findAllByText(words.nav.settings)).length).toBeGreaterThan(0);
+    expect(tab()).toBe('Minh Phát');
+    first.remove();
+  });
+
+  it('1: the tab says Credo for an unknown company', async () => {
+    const first = headTitle('From the page');
+    setup({}, unlinked);
+    await screen.findByRole('heading', { name: wordsVi.unknownClient.title });
+    expect(tab()).toBe('Credo');
+    first.remove();
+  });
+
+  it('2: the page is marked in the language shown, and again when a person switches', async () => {
+    setup({}, signedIn);
+    expect((await screen.findAllByText(words.nav.settings)).length).toBeGreaterThan(0);
+    expect(document.documentElement.getAttribute('lang')).toBe('en');
+
+    await userEvent.click(screen.getByRole('button', { name: words.user.language }));
+    await userEvent.click(screen.getByRole('menuitem', { name: LANGUAGE_NAMES.vi }));
+
+    await waitFor(() => expect(document.documentElement.getAttribute('lang')).toBe('vi'));
+  });
+});

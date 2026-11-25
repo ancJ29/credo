@@ -638,3 +638,28 @@ describe('HeaderBrand', () => {
     expect(container.querySelector('h1')!.innerHTML).toBe('Minh Phát');
   });
 });
+
+describe('Shell, the formatted name', () => {
+  it('3: the header draws the company’s formatted name, read by the plain name, and the plain name where none is set', () => {
+    const formatted = { ...brand, formattedName: '<b>Minh</b><br>Phát', description: '' };
+    const first = draw(
+      <Shell
+        brand={formatted}
+        user="root"
+        languages={['en']}
+        onLanguage={vi.fn()}
+        onSignOut={vi.fn()}
+      >
+        <p>the page</p>
+      </Shell>,
+    );
+    expect(first.container.querySelector('header [aria-hidden="true"] b')?.textContent).toBe(
+      'Minh',
+    );
+    expect(screen.getByRole('heading', { level: 1, name: 'Minh Phát' })).toBeDefined();
+    cleanup();
+
+    const plain = shell(['en']);
+    expect(plain.container.querySelector('header h1')?.innerHTML).toBe('Minh Phát');
+  });
+});

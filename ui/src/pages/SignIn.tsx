@@ -54,7 +54,12 @@ export function SignInFrame({ brand, title, languages = [], onLanguage, children
       languages={languages.map((language) => ({ language, name: LANGUAGE_NAMES[language] }))}
       onLanguage={onLanguage}
     >
-      <DoorCard name={brand.name} logo={brand.logo ?? undefined}>
+      <DoorCard
+        name={brand.name}
+        logo={brand.logo ?? undefined}
+        formatted={brand.formattedName}
+        description={brand.description}
+      >
         <DoorHeading title={title} />
         <Box mt="md">{children}</Box>
       </DoorCard>

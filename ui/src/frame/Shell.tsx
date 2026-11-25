@@ -182,7 +182,7 @@ export function Shell({
       <AppShell.Header {...headerLook(!!whiteHeader)}>
         <Group h="100%" px="md" justify="space-between" wrap="nowrap">
           <Group wrap="nowrap" gap="sm">
-            <HeaderBrand name={brand.name} white={!!whiteHeader} />
+            <HeaderBrand name={brand.name} formatted={brand.formattedName} white={!!whiteHeader} />
             {badge && (
               <Badge variant="filled" className={head(classes.badge, 'badge')}>
                 {badge}

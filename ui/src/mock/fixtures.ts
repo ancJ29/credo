@@ -40,6 +40,13 @@ export const TYPED: TenantConfig = {
   colour: '#9e2d20',
 };
 
+/** A company that set a formatted name and a description, as the walk's root types them. */
+export const FORMATTED: TenantConfig = {
+  ...FILLED,
+  formattedName: '<b>Minh Phát</b><br><span style="color:#1d3557">Sài Gòn</span>',
+  description: 'Vật liệu xây dựng, giao tận công trình',
+};
+
 /** What the root typed with the header and the menu on white. */
 export const WHITE: TenantConfig = { ...TYPED, whiteHeader: true, whiteMenu: true };
 

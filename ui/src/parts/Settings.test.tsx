@@ -415,6 +415,43 @@ describe('Settings in four blocks beside a preview', () => {
       expect(picture(which).getAttribute('aria-hidden')).toBe('true');
       expect(picture(which).hasAttribute('inert')).toBe(true);
     }
-    expect(screen.getAllByRole('textbox').length).toBe(2);
+    expect(screen.getAllByRole('textbox').length).toBe(4);
+  });
+});
+
+const FORMATTED = '<b>Minh</b><br><span style="color:#1d3557">Phát</span>';
+
+describe('Settings, the identity fields', () => {
+  it('11: the Identity block holds the name, the formatted name with its hint and preview, and the description', () => {
+    draw(<Settings {...props()} />);
+
+    expect(screen.getByRole('heading', { level: 3, name: words.identity })).toBeDefined();
+    expect(screen.getByRole('textbox', { name: labelled(words.name) })).toBeDefined();
+    expect(screen.getByRole('textbox', { name: words.formattedName })).toBeDefined();
+    expect(screen.getByText(words.formattedNameHint)).toBeDefined();
+    expect(screen.getByText(words.formattedNamePreview)).toBeDefined();
+    expect(screen.getByRole('textbox', { name: words.description })).toBeDefined();
+  });
+
+  it('11: typing redraws the field’s preview and the preview’s header and card before any save, the description on the card', async () => {
+    const onSave = vi.fn();
+    draw(<Settings {...props({ onSave })} />);
+
+    await userEvent.click(screen.getByRole('textbox', { name: words.formattedName }));
+    await userEvent.paste(FORMATTED);
+    await userEvent.type(screen.getByRole('textbox', { name: words.description }), 'Vật liệu');
+
+    for (const where of [picture('header'), picture('card')])
+      expect(where.querySelector('[aria-hidden="true"] b')?.textContent).toBe('Minh');
+    expect(picture('card').textContent).toContain('Vật liệu');
+    expect(picture('header').textContent).not.toContain('Vật liệu');
+    expect(onSave).not.toHaveBeenCalled();
+
+    await userEvent.click(save());
+    expect(onSave).toHaveBeenCalledWith({
+      ...config,
+      formattedName: FORMATTED,
+      description: 'Vật liệu',
+    });
   });
 });

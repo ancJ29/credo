@@ -118,6 +118,8 @@ describe('the operator’s page', () => {
     expect(
       getComputedStyle(document.documentElement).getPropertyValue('--mantine-color-brand-7'),
     ).toBe('#3e618c');
+    expect(document.querySelector('[aria-hidden="true"] b')).toBeNull();
+    expect(document.title).not.toBe('Minh Phát');
     expect(api.getConfig).not.toHaveBeenCalled();
     expect(api.operatorMe).not.toHaveBeenCalled();
   });
