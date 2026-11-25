@@ -1,4 +1,6 @@
 import {
+  type ConfigDoc,
+  type PictureKind,
   addCustomerRequestSchema,
   addDays,
   addedNewestFirst,
@@ -224,6 +226,20 @@ export function createFakeApi({
 }: Options): Api {
   let config: TenantConfig = structuredClone(DEMO_CONFIG);
   let version = 1;
+  /** The company's pictures, each as the data URL itself, with the tick it was last saved at. */
+  const held: Record<PictureKind, { picture: string | null; tick: number }> = {
+    logo: { picture: config.logo, tick: 1 },
+    'logo-on-colour': { picture: null, tick: 1 },
+  };
+  const viewOf = (kind: PictureKind) => {
+    const one = held[kind];
+    return one.picture === null ? null : { address: one.picture, version: `q${one.tick}` };
+  };
+  const docNow = (): ConfigDoc => ({
+    config,
+    version: `v${version}`,
+    pictures: { logo: viewOf('logo'), 'logo-on-colour': viewOf('logo-on-colour') },
+  });
   let pending = cue;
   let setup: StaffSetup = structuredClone(DEMO_STAFF_SETUP);
   if (signIns) setup.fields = { ...staffConfig(setup).fields, email: true, qr: true };
@@ -646,7 +662,7 @@ export function createFakeApi({
   const waits = new Map<string, { wrong: number; until: number }>();
 
   const fake: Api = {
-    getConfig: () => call('getConfig', () => ({ config, version: `v${version}` })),
+    getConfig: () => call('getConfig', docNow),
 
     signIn: (name) =>
       call('signIn', () => {
@@ -697,9 +713,22 @@ export function createFakeApi({
           if (readAt !== `v${version}`) return { kind: 'conflict' as const };
           config = structuredClone(next);
           version += 1;
-          return { kind: 'saved' as const, doc: { config, version: `v${version}` } };
+          return { kind: 'saved' as const, doc: docNow() };
         },
         () => ({ kind: 'conflict' as const }),
+      ),
+
+    savePicture: (kind, picture, readAt) =>
+      call(
+        'savePicture',
+        () => {
+          if ((viewOf(kind)?.version ?? null) !== readAt) {
+            return { kind: 'conflict' as const, doc: docNow() };
+          }
+          held[kind] = { picture, tick: held[kind].tick + 1 };
+          return { kind: 'saved' as const, doc: docNow() };
+        },
+        () => ({ kind: 'conflict' as const, doc: docNow() }),
       ),
 
     passkeyOptions: () =>

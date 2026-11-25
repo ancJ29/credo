@@ -15,7 +15,7 @@ import { HeaderBrand, type Look, Shell } from './Shell';
 
 const frameCss = readFileSync(join(import.meta.dirname, 'frameLook.module.css'), 'utf8');
 const words = DICTIONARIES.en;
-const brand = { name: 'Minh Phát', logo: 'data:image/png;base64,AAAA' };
+const brand = { name: 'Minh Phát', logo: 'data:image/png;base64,AAAA', logoOnColour: null };
 
 const shell = (
   languages: ('vi' | 'en')[],
@@ -124,13 +124,29 @@ describe('Shell', () => {
     expect(screen.getByText('the page')).toBeTruthy();
   });
 
-  it('10: The header shows the company’s name beside the stand-in logo, never the stored one', () => {
+  it('10: The header shows the company’s name beside its logo, the stand-in where it has none', () => {
     shell(['en']);
 
     const header = document.querySelector('header')!;
-    expect(header.querySelector('img')).toBeNull();
-    expect(header.querySelector('svg.tabler-icon-brand-adobe')?.getAttribute('width')).toBe('36');
+    expect(header.querySelector('img')?.getAttribute('src')).toBe(brand.logo);
+    expect(header.querySelector('svg.tabler-icon-brand-adobe')).toBeNull();
     expect(within(header).getByRole('heading', { level: 1 }).textContent).toBe('Minh Phát');
+    cleanup();
+
+    draw(
+      <Shell
+        brand={{ name: 'Minh Phát', logo: null }}
+        user="root"
+        languages={['en']}
+        onLanguage={vi.fn()}
+        onSignOut={vi.fn()}
+      >
+        <p>the page</p>
+      </Shell>,
+    );
+    const bare = document.querySelector('header')!;
+    expect(bare.querySelector('img')).toBeNull();
+    expect(bare.querySelector('svg.tabler-icon-brand-adobe')?.getAttribute('width')).toBe('36');
   });
 
   it('The brand stays at 600 beside the bold page titles', () => {

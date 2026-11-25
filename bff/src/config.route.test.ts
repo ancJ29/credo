@@ -56,6 +56,11 @@ describe('The root sets the company’s name, logo and brand colour; every scree
 
     const read = await t.read();
     expect(read.statusCode).toBe(200);
+    // 21: until the picture route answers, each picture is named null, in the reply itself
+    expect(read.json<{ pictures: unknown }>().pictures).toEqual({
+      logo: null,
+      'logo-on-colour': null,
+    });
     const doc = configDocSchema.parse(read.json());
     expect(doc.config).toEqual({ ...company, logo });
     expect(doc.version).toBe(configDocSchema.parse(saved.json()).version);
@@ -253,6 +258,7 @@ describe('A department, a position or a person may be allowed to change the comp
     ).toEqual({
       config: company,
       version,
+      pictures: { logo: null, 'logo-on-colour': null },
     });
 
     let latest = version;

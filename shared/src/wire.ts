@@ -1,10 +1,12 @@
 import { z } from 'zod';
-import { tenantConfigSchema } from './config';
+import { logoIsValid, type PictureKind, tenantConfigSchema } from './config';
 import { permissionLayerSchema } from './permissions';
 import { boxNameSchema, clientCodeSchema, KEPT_CODES } from './records';
 
 export const ROUTES = {
   config: '/api/config',
+  /** A picture's save, under it: `PUT /api/pictures/<kind>`, the company in the header. */
+  pictures: '/api/pictures',
   signIn: '/api/auth/sign-in',
   signOut: '/api/auth/sign-out',
   me: '/api/auth/me',
@@ -126,10 +128,27 @@ export const meReplySchema = z.strictObject({ user: userViewSchema });
 export type MeReply = z.infer<typeof meReplySchema>;
 export type MeReplyBody = z.input<typeof meReplySchema>;
 
-/** The settings with the version they were read at; a save sends it back. */
+/** A picture as the settings' reply names it: where it is served, and the tag it is at, which the
+ * save sends back. */
+export const pictureViewSchema = z.strictObject({ address: z.string(), version: z.string() });
+export type PictureView = z.infer<typeof pictureViewSchema>;
+
+/** Each kind's picture, or null where none is held. */
+export const picturesSchema = z.strictObject({
+  logo: pictureViewSchema.nullable(),
+  'logo-on-colour': pictureViewSchema.nullable(),
+}) satisfies z.ZodType<Record<PictureKind, PictureView | null>>;
+export type Pictures = z.infer<typeof picturesSchema>;
+
+/** No picture of any kind: what a reply that predates the field means. */
+export const NO_PICTURES: Pictures = { logo: null, 'logo-on-colour': null };
+
+/** The settings with the version they were read at, and the company's pictures; a save sends the
+ * version back. */
 export const configDocSchema = z.strictObject({
   config: tenantConfigSchema,
   version: z.string(),
+  pictures: picturesSchema.default(NO_PICTURES),
 });
 export type ConfigDoc = z.infer<typeof configDocSchema>;
 
@@ -144,6 +163,14 @@ export const saveConfigRequestSchema = z.strictObject({
   version: tagSchema.nullable(),
 });
 export type SaveConfigRequest = z.infer<typeof saveConfigRequestSchema>;
+
+/** A picture's save: the image as a data URL within the bound, or null to remove it, with the tag
+ * the picture was read at (null where there is none). */
+export const savePictureRequestSchema = z.strictObject({
+  picture: z.string().refine(logoIsValid, 'an image of at most 200 KB').nullable(),
+  version: tagSchema.nullable(),
+});
+export type SavePictureRequest = z.infer<typeof savePictureRequestSchema>;
 
 export const errorReplySchema = z.strictObject({
   error: z.string(),

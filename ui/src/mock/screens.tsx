@@ -14,6 +14,12 @@ const inert = () => {};
 
 type SettingsProps = Parameters<typeof Settings>[0];
 
+/** The pictures a mock company holds: its logo, if it has one, as the data URL itself. */
+const picturesOf = (config: TenantConfig): SettingsProps['pictures'] => ({
+  logo: config.logo === null ? null : { address: config.logo, version: 'mock' },
+  'logo-on-colour': null,
+});
+
 const settings = (
   config: TenantConfig,
   more: Partial<SettingsProps> = {},
@@ -38,6 +44,9 @@ const settings = (
       onSave={inert}
       onRetry={inert}
       onReload={inert}
+      pictures={picturesOf(config)}
+      onPicture={inert}
+      pictureOutcome={null}
       {...more}
     />
   </Shell>

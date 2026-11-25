@@ -10,6 +10,7 @@ import {
   type ClientListReply,
   type ServicesReply,
   type ConfigDoc,
+  NO_PICTURES,
   createClientRequestSchema,
   type CreateClientReply,
   type CStorageClient,
@@ -313,7 +314,11 @@ export function buildApp({
   async function readConfig(storage: TenantStorage): Promise<ConfigDoc | null> {
     const found = await storage.getRecord(recordKeys.tenant(storage.tenantId).config);
     // A config that does not parse throws: the boot stops with a 500, never on another's defaults.
-    return found ? { config: tenantConfigSchema.parse(found.data), version: found.tag } : null;
+    // The pictures are each null until the picture route answers (the route's step): no reply
+    // names one.
+    return found
+      ? { config: tenantConfigSchema.parse(found.data), version: found.tag, pictures: NO_PICTURES }
+      : null;
   }
 
   /** A sign-in ends the session the device's kept handle still names, which the app sends on

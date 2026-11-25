@@ -1,5 +1,5 @@
-import type { ConfigDoc, TenantConfig } from '@credo/shared';
-import { useState } from 'react';
+import type { ConfigDoc, PictureKind, TenantConfig } from '@credo/shared';
+import { type ComponentProps, useState } from 'react';
 import { type Api, ApiError } from '../../api';
 import { refusal } from '../../page';
 import { Settings } from '../../parts/Settings';
@@ -20,6 +20,8 @@ export function SettingsPage({ api, doc, onDoc, onSignedOut, onForbidden }: Prop
   const [status, setStatus] = useState<'loading' | 'failed' | 'ready'>('ready');
   const [outcome, setOutcome] = useState<'saved' | 'failed' | 'refused' | 'conflict' | null>(null);
   const [saving, setSaving] = useState(false);
+  const [pictureOutcome, setPictureOutcome] =
+    useState<ComponentProps<typeof Settings>['pictureOutcome']>(null);
 
   async function save(config: TenantConfig) {
     setSaving(true);
@@ -36,6 +38,23 @@ export function SettingsPage({ api, doc, onDoc, onSignedOut, onForbidden }: Prop
       setOutcome(error instanceof ApiError && error.status === 400 ? 'refused' : 'failed');
     } finally {
       setSaving(false);
+    }
+  }
+
+  /** A picture saved at its choice, by its own call: the settings' version is not moved, so what is
+   * typed and not yet saved stays. */
+  async function savePicture(kind: PictureKind, picture: string | null) {
+    setPictureOutcome(null);
+    try {
+      const result = await api.savePicture(kind, picture, doc.pictures[kind]?.version ?? null);
+      if (result.doc) onDoc(result.doc);
+      setPictureOutcome({ kind, outcome: result.kind === 'saved' ? 'saved' : 'conflict' });
+    } catch (error) {
+      refusal(error, { onSignedOut, onForbidden });
+      setPictureOutcome({
+        kind,
+        outcome: error instanceof ApiError && error.status === 400 ? 'refused' : 'failed',
+      });
     }
   }
 
@@ -59,6 +78,9 @@ export function SettingsPage({ api, doc, onDoc, onSignedOut, onForbidden }: Prop
       outcome={outcome}
       saving={saving}
       onSave={(config) => void save(config)}
+      pictures={doc.pictures}
+      onPicture={(kind, picture) => void savePicture(kind, picture)}
+      pictureOutcome={pictureOutcome}
       onRetry={() => void reload()}
       onReload={() => void reload()}
     />

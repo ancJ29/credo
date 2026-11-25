@@ -1,5 +1,5 @@
-import { MAX_LOGO_BYTES, type TenantConfig } from '@credo/shared';
-import { screen, waitFor } from '@testing-library/react';
+import { MAX_LOGO_BYTES, NO_PICTURES, type TenantConfig } from '@credo/shared';
+import { screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
 import { draw } from '../../tests/render';
@@ -31,6 +31,9 @@ const props = (more: Partial<Props> = {}): Props => ({
   onSave: vi.fn(),
   onRetry: vi.fn(),
   onReload: vi.fn(),
+  pictures: NO_PICTURES,
+  onPicture: vi.fn(),
+  pictureOutcome: null,
   ...more,
 });
 
@@ -45,6 +48,8 @@ const checked = () =>
   screen.getAllByRole<HTMLInputElement>('radio').filter((radio) => radio.checked);
 
 const save = () => screen.getByRole('button', { name: words.save });
+/** A picture field by its label: the block the label, the picture and the buttons sit in. */
+const field = (label: string) => screen.getByText(label, { selector: 'p' }).parentElement!;
 
 describe('Settings', () => {
   it('waits while the settings load', () => {
@@ -147,41 +152,89 @@ describe('Settings', () => {
     expect(onSave).toHaveBeenCalledWith({ ...config, defaultLanguage: 'en' });
   });
 
-  it('shows the logo, lets it be replaced by an image, and removed', async () => {
-    draw(<Settings {...props({ config: { ...config, logo: null } })} />);
-    expect(screen.getByText(words.logoNone)).toBeTruthy();
-
-    const input = document.querySelector<HTMLInputElement>('input[type=file]')!;
-    await userEvent.upload(input, new File(['x'], 'logo.png', { type: 'image/png' }));
-    await waitFor(() =>
-      expect(screen.getByRole('button', { name: words.logoRemove })).toBeTruthy(),
+  it('17: draws the two pictures of the Pictures block as the reply names them, each with its choose and remove', () => {
+    draw(
+      <Settings
+        {...props({
+          pictures: { logo: { address: '/api/a', version: 't' }, 'logo-on-colour': null },
+        })}
+      />,
     );
-    expect(document.querySelector('img')!.getAttribute('src')).toMatch(/^data:image\/png;base64,/);
 
-    await userEvent.click(screen.getByRole('button', { name: words.logoRemove }));
-    expect(screen.getByText(words.logoNone)).toBeTruthy();
+    const logo = field(words.logo);
+    expect(logo.querySelector('img')?.getAttribute('src')).toBe('/api/a');
+    expect(within(logo).getByRole('button', { name: words.logoRemove })).toBeTruthy();
+    const light = field(words.logoOnColour);
+    expect(light.querySelector('img')).toBeNull();
+    expect(within(light).getByText(words.logoOnColourNone)).toBeTruthy();
+    expect(within(light).getByText(words.logoOnColourHint)).toBeTruthy();
+    expect(within(light).getByRole('button', { name: words.logoOnColourChoose })).toBeTruthy();
+    expect(within(light).queryByRole('button', { name: words.logoOnColourRemove })).toBeNull();
   });
 
-  it('refuses a logo over the limit at the chooser, says why, and keeps the draft’s logo', async () => {
-    draw(<Settings {...props()} />);
-    const input = document.querySelector<HTMLInputElement>('input[type=file]')!;
+  it('17: a chosen image is told at once, by its kind, as a data URL, and a remove as none; the draft is as it was', async () => {
+    const onPicture = vi.fn();
+    const onSave = vi.fn();
+    draw(
+      <Settings
+        {...props({
+          onPicture,
+          onSave,
+          pictures: { logo: { address: '/api/a', version: 't' }, 'logo-on-colour': null },
+        })}
+      />,
+    );
+    const inputs = document.querySelectorAll<HTMLInputElement>('input[type=file]');
 
-    await userEvent.upload(
-      input,
+    await userEvent.upload(inputs[1], new File(['x'], 'light.png', { type: 'image/png' }));
+    await waitFor(() => expect(onPicture).toHaveBeenCalledTimes(1));
+    expect(onPicture).toHaveBeenCalledWith(
+      'logo-on-colour',
+      expect.stringMatching(/^data:image\/png;base64,/),
+    );
+    await userEvent.upload(inputs[0], new File(['x'], 'logo.png', { type: 'image/png' }));
+    await waitFor(() => expect(onPicture).toHaveBeenCalledTimes(2));
+    expect(onPicture).toHaveBeenLastCalledWith(
+      'logo',
+      expect.stringMatching(/^data:image\/png;base64,/),
+    );
+    await userEvent.click(
+      within(field(words.logo)).getByRole('button', { name: words.logoRemove }),
+    );
+    expect(onPicture).toHaveBeenLastCalledWith('logo', null);
+    await userEvent.click(save());
+    expect(onSave).toHaveBeenCalledWith(config);
+  });
+
+  it('17: a file over the limit or not an image is refused at the chooser, under its own field, in either language, and told to no one', async () => {
+    const user = userEvent.setup({ applyAccept: false });
+    const onPicture = vi.fn();
+    const { unmount } = draw(<Settings {...props({ onPicture })} />);
+    const input = (at: number) =>
+      document.querySelectorAll<HTMLInputElement>('input[type=file]')[at];
+
+    await user.upload(
+      input(1),
       new File([new Uint8Array(MAX_LOGO_BYTES + 1)], 'big.png', { type: 'image/png' }),
     );
-
-    const alert = await screen.findByRole('alert');
-    expect(alert.classList.contains('mantine-Alert-root')).toBe(true);
-    expect(alert.textContent).toBe(
+    expect(within(field(words.logoOnColour)).getByRole('alert').textContent).toBe(
       words.logoTooLarge.replace('{{max}}', String(MAX_LOGO_BYTES / 1024)),
     );
-    expect(document.querySelector('img')!.getAttribute('src')).toBe(config.logo);
+    expect(within(field(words.logo)).queryByRole('alert')).toBeNull();
+    await user.upload(input(0), new File(['hello'], 'notes.txt', { type: 'text/plain' }));
+    expect(within(field(words.logo)).getByRole('alert').textContent).toBe(words.logoNotImage);
+    expect(onPicture).not.toHaveBeenCalled();
+    unmount();
+
+    draw(<Settings {...props()} />, 'vi');
+    await user.upload(input(0), new File(['hello'], 'notes.txt', { type: 'text/plain' }));
+    expect((await screen.findByRole('alert')).textContent).toBe(wordsVi.logoNotImage);
   });
 
-  it('takes a logo of exactly the limit, and the refusal goes with it', async () => {
-    draw(<Settings {...props()} />);
-    const input = document.querySelector<HTMLInputElement>('input[type=file]')!;
+  it('17: a file of exactly the limit is taken and its refusal goes', async () => {
+    const onPicture = vi.fn();
+    draw(<Settings {...props({ onPicture })} />);
+    const input = document.querySelectorAll<HTMLInputElement>('input[type=file]')[0];
     const choose = (bytes: number) =>
       userEvent.upload(input, new File([new Uint8Array(bytes)], 'logo.png', { type: 'image/png' }));
 
@@ -189,29 +242,43 @@ describe('Settings', () => {
     expect(await screen.findByRole('alert')).toBeTruthy();
     await choose(MAX_LOGO_BYTES);
 
-    await waitFor(() => expect(screen.queryByRole('alert')).toBeNull());
-    await waitFor(() =>
-      expect(document.querySelector('img')!.getAttribute('src')).not.toBe(config.logo),
-    );
+    await waitFor(() => expect(onPicture).toHaveBeenCalledOnce());
+    expect(screen.queryByRole('alert')).toBeNull();
   });
 
-  it('refuses a file that is not an image at the chooser, in either language', async () => {
-    const user = userEvent.setup({ applyAccept: false });
-    const { unmount } = draw(<Settings {...props()} />);
-    const choose = () =>
-      user.upload(
-        document.querySelector<HTMLInputElement>('input[type=file]')!,
-        new File(['hello'], 'notes.txt', { type: 'text/plain' }),
-      );
+  it('17: a picture’s save says how it ended under its own field only', () => {
+    const outcome = (
+      kind: 'logo' | 'logo-on-colour',
+      how: 'saved' | 'failed' | 'refused' | 'conflict',
+    ) => draw(<Settings {...props({ pictureOutcome: { kind, outcome: how } })} />);
+    const saved = outcome('logo-on-colour', 'saved');
+    expect(within(field(words.logoOnColour)).getByRole('status').textContent).toBe(words.saved);
+    expect(within(field(words.logo)).queryByRole('status')).toBeNull();
+    saved.unmount();
+    const failed = outcome('logo', 'failed');
+    expect(within(field(words.logo)).getByRole('alert').textContent).toBe(words.saveFailed);
+    failed.unmount();
+    const refused = outcome('logo', 'refused');
+    expect(within(field(words.logo)).getByRole('alert').textContent).toBe(words.saveRefused);
+    refused.unmount();
+    outcome('logo', 'conflict');
+    expect(within(field(words.logo)).getByRole('alert').textContent).toContain(words.conflict);
+  });
 
-    await choose();
-    expect((await screen.findByRole('alert')).textContent).toBe(words.logoNotImage);
-    expect(document.querySelector('img')!.getAttribute('src')).toBe(config.logo);
-    unmount();
+  it('17: the preview’s header and card wear the pictures of the reply, the header choosing as the app’s does', () => {
+    draw(
+      <Settings
+        {...props({
+          pictures: {
+            logo: { address: '/api/a', version: 't' },
+            'logo-on-colour': { address: '/api/b', version: 'u' },
+          },
+        })}
+      />,
+    );
 
-    draw(<Settings {...props()} />, 'vi');
-    await choose();
-    expect((await screen.findByRole('alert')).textContent).toBe(wordsVi.logoNotImage);
+    expect(picture('card').querySelector('img')?.getAttribute('src')).toBe('/api/a');
+    expect(picture('header').querySelector('img')?.getAttribute('src')).toBe('/api/b');
   });
 
   it('says a refused save was refused, in its own words', () => {
@@ -221,11 +288,13 @@ describe('Settings', () => {
   });
 
   it('ignores a file chooser closed without a file', () => {
-    draw(<Settings {...props({ config: { ...config, logo: null } })} />);
+    const onPicture = vi.fn();
+    draw(<Settings {...props({ onPicture })} />);
     const input = document.querySelector<HTMLInputElement>('input[type=file]')!;
 
     input.dispatchEvent(new Event('change', { bubbles: true }));
 
+    expect(onPicture).not.toHaveBeenCalled();
     expect(screen.getByText(words.logoNone)).toBeTruthy();
   });
 
@@ -365,9 +434,16 @@ describe('Settings in four blocks beside a preview', () => {
 
   it('2: the preview’s header and card draw the name, the logo, the colour and the white header as typed and chosen, before any save', async () => {
     const onSave = vi.fn();
-    draw(<Settings {...props({ onSave })} />);
+    draw(
+      <Settings
+        {...props({
+          onSave,
+          pictures: { logo: { address: '/api/a', version: 't' }, 'logo-on-colour': null },
+        })}
+      />,
+    );
     expect(picture('header').textContent).toContain('Minh Phát');
-    expect(picture('card').querySelector('img')?.getAttribute('src')).toBe(config.logo);
+    expect(picture('card').querySelector('img')?.getAttribute('src')).toBe('/api/a');
     expect(picture('header').getAttribute('data-white')).toBeNull();
 
     await userEvent.clear(screen.getByLabelText(labelled(words.name)));
@@ -375,12 +451,10 @@ describe('Settings in four blocks beside a preview', () => {
     await userEvent.clear(screen.getByLabelText(words.colour));
     await userEvent.type(screen.getByLabelText(words.colour), '#9e2d20');
     await userEvent.click(screen.getByRole('switch', { name: words.whiteHeader }));
-    await userEvent.click(screen.getByRole('button', { name: words.logoRemove }));
 
     expect(picture('header').textContent).toContain('New name');
     expect(picture('card').textContent).toContain('New name');
     expect(picture('header').getAttribute('data-white')).toBe('true');
-    expect(picture('card').querySelector('img')).toBeNull();
     expect(scopeBrand()).toBe(themeOf('#9e2d20').colors?.['brand']?.[7]);
     expect(onSave).not.toHaveBeenCalled();
   });

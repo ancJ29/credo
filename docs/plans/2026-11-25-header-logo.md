@@ -198,12 +198,19 @@ is `git diff -U0 -- visual/src/resolved.pinned.txt | grep '^+[a-z]' | cut -d' ' 
       diff empty. `BrandPreview` takes the header's logos as `headerLogo` and `headerLogoOnColour`,
       beside `logo` for the card, since the settings page passes it the logo and one prop for both
       would have moved its 11 screens; step 2 passes them. Citation test at 18:48.
-- [ ] **2. The screens, on the fake.** In `shared` the kinds and the reply's `pictures`; `Brand` from
+- [x] **2. The screens, on the fake.** In `shared` the kinds and the reply's `pictures`; `Brand` from
       it; `Shell`, `SignInFrame` and the QR landing pass both; `Settings` draws two `PictureField`s,
       saving at choice; the fake's pictures; the BFF answering each null until step 3. Rows 16 to 18,
       20 and 21 red first. _Done when:_ `shared`'s, `bff`'s, `ui`'s and `visual`'s gates; the pinned
       diff naming the 96 signed-in company screens, no door or console one (960 lines). **13 min**
       (250.2's step 3: 13).
+      Done 25 November: `shared`'s gate 19:01, `bff`'s 19:14, `ui`'s 19:19, `visual`'s 19:42, each exit
+      0; the pinned diff names 96 screens, 960 lines, no door or console one. The settings' own `logo`
+      stays in the settings until step 4, and the screens draw the pictures of the reply alone; the
+      fake holds the data set's logo as its `logo` picture. `Settings` passes `BrandPreview` the
+      pictures as `logo`, `headerLogo` and `headerLogoOnColour`. Rows 16 and 20 held on the old code
+      and were seen red by a mutation (the card taking the coloured header's logo, the console's brand
+      given a logo). Citation test at 19:50.
 - [ ] **3. The route and the save, in the BFF.** As 3 above, copied from the photo's; the Lambda
       handler's `enforceBase64`. Rows 7 to 12 red first. _Done when:_ `shared`'s and `bff`'s gates.
       **14 min** (241.2's step 5: 10, its fix 4).
