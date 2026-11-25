@@ -154,12 +154,19 @@ test. "The pinned diff" is
       `device` optional, so no BFF line moves; `employee.passkeyRemove` and `employee.passkeysRemove`;
       `DEMO_PERSON_PASSKEYS` (iPhone, added 5 October, used 3 November; PC, added 29 October, never), which
       the generator writes in step 7.
-- [ ] **3. Your passkeys, on the fake.** `ui/src/pages/client/OwnPasskeysPage.tsx` at `/passkeys`; the
+- [x] **3. Your passkeys, on the fake.** `ui/src/pages/client/OwnPasskeysPage.tsx` at `/passkeys`; the
       menu's path; the add page's way back; two api calls and their fake answers, each person's list
       in the tab, the fake's add naming its device, its sign-in refusing a removed credential. Rows 13
       to 15, 17's first half. _Done when:_ `ui`'s and `visual`'s gates, the pinned diff naming
       `staff-25-add-passkey`, `staff-26-passkey-added` and `staff-27-passkey-sign-in` alone. **13
       min** (241.2's step 3: 13).
+      _Done 2026-11-25 13:01:_ `shared`'s, `ui`'s and `visual`'s gates and the citation test each exit 0; the pinned
+      diff names `staff-25-add-passkey`, `staff-26-passkey-added` and `staff-27-passkey-sign-in` alone; rows
+      13 to 15 and 17's first half red (no `ownPasskeys` call, no page), then green. Two things the row left
+      out: the removal's answer holds the session that replaces the held one, so `ownPasskeyRemovedReplySchema`
+      joins `shared` (`signins.ts`); and the list and the gallery's list states lead to the add page, since
+      the menu's line no longer does. A 404 on the list is passkeys off, thrown by `api.ownPasskeys`, as the
+      options' is.
 - [ ] **4. The person's panel, on the fake.** `PasskeysPanel` in `ui/src/parts/SignInPanels.tsx`; the
       person's page reads the count for the root where passkeys are on (`PersonPage.tsx#L597-L602`);
       two api calls and their fake answers. Rows 16, 17's second half. _Done when:_ `ui`'s and

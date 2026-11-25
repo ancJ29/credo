@@ -95,6 +95,10 @@ import {
   type PasskeyItem,
   passkeyListReplySchema,
   type OwnPasskeyAddRequest,
+  type OwnPasskeyItem,
+  ownPasskeyListReplySchema,
+  type OwnPasskeyRemovedReply,
+  ownPasskeyRemovedReplySchema,
   type PasskeySignInRequest,
   passkeyRoutes,
   type RootPasswordReply,
@@ -357,6 +361,22 @@ export function createApi({
     async ownPasskeyAdd(request: OwnPasskeyAddRequest): Promise<void> {
       const response = await send('POST', signInRoutes.ownPasskeyAdd, request);
       if (!response.ok) throw new ApiError(response.status);
+    },
+
+    /** The signed-in person's own passkeys; a 404 is passkeys switched off, a 401 no session. */
+    async ownPasskeys(): Promise<OwnPasskeyItem[]> {
+      const response = await send('GET', signInRoutes.ownPasskeys);
+      if (!response.ok) throw new ApiError(response.status);
+      return (await read(response, ownPasskeyListReplySchema)).passkeys;
+    },
+
+    /** Removes one of one's own by its id; the answer holds the list left and the session that
+     * replaces the one held, since every other of the person's is signed out. A 404 is a passkey
+     * not theirs, or gone. */
+    async ownPasskeyRemove(id: string): Promise<OwnPasskeyRemovedReply> {
+      const response = await send('DELETE', signInRoutes.ownPasskey(id));
+      if (!response.ok) throw new ApiError(response.status);
+      return await read(response, ownPasskeyRemovedReplySchema);
     },
 
     async signOut() {

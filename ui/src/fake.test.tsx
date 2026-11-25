@@ -27,6 +27,8 @@ import {
   issueQrReplySchema,
   joinOptionsReplySchema,
   meReplySchema,
+  ownPasskeyListReplySchema,
+  ownPasskeyRemovedReplySchema,
   operatorMeReplySchema,
   operatorSessionReplySchema,
   servicesReplySchema,
@@ -62,6 +64,7 @@ import {
   DEMO_JOIN_TOKEN,
   DEMO_OPERATOR_ID,
   DEMO_PASSKEYS,
+  DEMO_PERSON_PASSKEYS,
   DEMO_ORDERS,
   DEMO_PRODUCTS,
   DEMO_TODAY,
@@ -150,6 +153,13 @@ describe('the fake Api', () => {
     parses('me staff', meReplySchema, await staff.me());
     parses('passkeyOptions', optionsReplySchema, await api.passkeyOptions());
     parses('ownPasskeyOptions', optionsReplySchema, await api.ownPasskeyOptions());
+    const lan = fake('', { client: `fake.session.${DEMO_EMPLOYEES[0]?.id}` });
+    parses('ownPasskeys', ownPasskeyListReplySchema, { passkeys: await lan.ownPasskeys() });
+    parses(
+      'ownPasskeyRemove',
+      ownPasskeyRemovedReplySchema,
+      await lan.ownPasskeyRemove(DEMO_PERSON_PASSKEYS[1]?.id ?? ''),
+    );
     parses('operatorPasskeyOptions', optionsReplySchema, await api.operatorPasskeyOptions());
     parses(
       'operatorPasskeySignIn',
@@ -454,6 +464,8 @@ describe('the fake Api', () => {
         'passkeySignIn',
         'ownPasskeyOptions',
         'ownPasskeyAdd',
+        'ownPasskeys',
+        'ownPasskeyRemove',
         'operatorPasskeyOptions',
         'operatorPasskeySignIn',
         'operatorJoinOptions',
@@ -857,6 +869,61 @@ describe('the fake Api', () => {
     expect(await status(root.ownPasskeyOptions())).toBe(404);
     expect(await status(root.ownPasskeyAdd(response))).toBe(404);
     expect(await status(root.passkeySignIn(response))).toBe(401);
+  });
+
+  it('17: The fake lists a person’s passkeys, names the device an add was made on, removes one, and then refuses its sign-in while the other still signs in', async () => {
+    const lanId = DEMO_EMPLOYEES[0]?.id ?? '';
+    const lan = fake('', { client: `fake.session.${lanId}` });
+    expect((await lan.ownPasskeys()).map((one) => one.id)).toEqual(
+      DEMO_PERSON_PASSKEYS.map((one) => one.id),
+    );
+    // another person holds none, and each list is the person's own
+    const other = fake('', { client: `fake.session.${DEMO_EMPLOYEES[3]?.id}` });
+    expect(await other.ownPasskeys()).toEqual([]);
+
+    // an add names the browser's device, or none; the passkey is listed and signs in
+    vi.spyOn(window.navigator, 'userAgent', 'get').mockReturnValue(
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+    );
+    await other.ownPasskeyAdd({ token: 'fake.token', response: CREDENTIAL });
+    expect(await other.ownPasskeys()).toEqual([
+      {
+        id: CREDENTIAL.id,
+        device: 'Windows · Chrome',
+        addedAt: expect.any(Number) as number,
+        lastUsedAt: null,
+      },
+    ]);
+    expect((await other.passkeySignIn(CONFIRM)).user.root).toBe(false);
+    // the same credential added again is the one passkey
+    await other.ownPasskeyAdd({ token: 'fake.token', response: CREDENTIAL });
+    expect(await other.ownPasskeys()).toHaveLength(1);
+    vi.restoreAllMocks();
+
+    // a removal answers the list left and the session that replaces the held one
+    const removed = await other.ownPasskeyRemove(CREDENTIAL.id);
+    expect(removed.passkeys).toEqual([]);
+    expect(removed.session.authId).toBe(`fake.session.${DEMO_EMPLOYEES[3]?.id}`);
+    expect(await status(other.passkeySignIn(CONFIRM))).toBe(401);
+    expect(await status(other.ownPasskeyRemove(CREDENTIAL.id))).toBe(404);
+
+    // one of two removed leaves the other, and a person’s list is untouched by another’s removal
+    const left = await lan.ownPasskeyRemove(DEMO_PERSON_PASSKEYS[1]?.id ?? '');
+    expect(left.passkeys.map((one) => one.id)).toEqual([DEMO_PERSON_PASSKEYS[0]?.id]);
+    expect(await status(lan.ownPasskeyRemove('someone-elses'))).toBe(404);
+
+    // signed out, and where passkeys are off, the list and the removal are refused
+    const out = fake('');
+    expect(await status(out.ownPasskeys())).toBe(401);
+    expect(await status(out.ownPasskeyRemove('x'))).toBe(401);
+    const root = fake('', { client: 'fake.session' });
+    const held = await root.getStaffSetup();
+    await root.saveStaffSetup(
+      { ...held.setup, fields: { ...staffConfig(held.setup).fields, passkey: false } },
+      held.version,
+    );
+    expect(await status(root.ownPasskeys())).toBe(404);
+    expect(await status(root.ownPasskeyRemove('x'))).toBe(404);
   });
 
   it('C: Two fresh fakes mint the same QR link for the same person, so a screen that shows it reads the same on every build', async () => {

@@ -105,6 +105,15 @@ describe('19: the add-a-passkey page', () => {
     expect(screen.queryByRole('button', { name: words.ownPasskey.submit })).toBeNull();
   });
 
+  it('Options that cannot be read say so and offer a retry, which asks again', async () => {
+    const { api } = openApp('/passkey', { cue: 'ownPasskeyOptions:503' });
+
+    await userEvent.click(await screen.findByRole('button', { name: words.common.retry }));
+
+    await opened();
+    expect(api.ownPasskeyOptions).toHaveBeenCalledTimes(2);
+  });
+
   it('A session the service no longer knows signs the person out', async () => {
     openApp('/passkey', { cue: 'ownPasskeyAdd:401' });
     await opened();
@@ -113,10 +122,26 @@ describe('19: the add-a-passkey page', () => {
     expect(await screen.findByLabelText(new RegExp(words.auth.username))).toBeTruthy();
   });
 
-  it('18: More lists Add a passkey for a person, after Change password', async () => {
+  it('18: More lists Passkeys for a person, after Change password, and the line opens the list', async () => {
     openApp('/more', { as: person('EMP-0002').code });
 
     const link = await screen.findByRole('link', { name: words.user.passkey });
-    expect(link.getAttribute('href')).toBe('/passkey');
+    expect(link.getAttribute('href')).toBe('/passkeys');
+  });
+
+  it('13: the page leads back to the list, before the press and after the add', async () => {
+    openApp('/passkey', { as: person('EMP-0002').code });
+    await opened();
+    const back = () => screen.getByRole('link', { name: words.ownPasskeys.title });
+    expect(back().getAttribute('href')).toBe('/passkeys');
+    await press();
+    await screen.findByText(words.ownPasskey.added);
+    expect(back().getAttribute('href')).toBe('/passkeys');
+    await userEvent.click(back());
+
+    expect(
+      await screen.findByRole('heading', { level: 2, name: words.ownPasskeys.title }),
+    ).toBeTruthy();
+    expect((await screen.findAllByRole('row')).length).toBe(2);
   });
 });

@@ -4,6 +4,7 @@ import {
   issueQrReplySchema,
   ownPasskeyItemSchema,
   ownPasskeyListReplySchema,
+  ownPasskeyRemovedReplySchema,
   ownPasskeyAddRequestSchema,
   parseQr,
   personPasskeysReplySchema,
@@ -128,6 +129,21 @@ describe('the ways to sign in', () => {
     );
     expect(ownPasskeyListReplySchema.safeParse({ passkeys: [item] }).success).toBe(true);
     expect(ownPasskeyListReplySchema.safeParse({ passkeys: [] }).success).toBe(true);
+  });
+
+  it('C: A removal of one’s own answers the passkeys left and the session that replaces the one held', () => {
+    const session = {
+      authId: 'a',
+      expiresAt: 1,
+      user: { name: 'x', root: false, permissions: {} },
+    };
+    const left = [{ id: 'a', device: null, addedAt: 1, lastUsedAt: null }];
+    expect(ownPasskeyRemovedReplySchema.parse({ passkeys: left, session })).toEqual({
+      passkeys: left,
+      session,
+    });
+    expect(ownPasskeyRemovedReplySchema.safeParse({ passkeys: left }).success).toBe(false);
+    expect(ownPasskeyRemovedReplySchema.safeParse({ session }).success).toBe(false);
   });
 
   it('C: The root’s count is a whole number, and nothing more', () => {

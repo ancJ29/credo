@@ -484,7 +484,7 @@ describe('Shell', () => {
         onLanguage={vi.fn()}
         onSignOut={vi.fn()}
         passwordPath="/password"
-        passkeyPath="/passkey"
+        passkeyPath="/passkeys"
       >
         <p>the page</p>
       </Shell>,
@@ -496,7 +496,7 @@ describe('Shell', () => {
       words.user.signOut,
     ]);
     expect(screen.getByRole('menuitem', { name: words.user.passkey }).getAttribute('href')).toBe(
-      '/passkey',
+      '/passkeys',
     );
   });
 

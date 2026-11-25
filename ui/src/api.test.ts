@@ -841,6 +841,32 @@ describe('the API client', () => {
       expect(calls[2]?.init.body).toBe(JSON.stringify({ token: 't', response }));
     });
 
+    it('C: lists one’s own passkeys, a 404 being passkeys switched off, and removes one by its id, the answer holding the session that replaces the one held', async () => {
+      const item = { id: 'k', device: 'iPhone · Safari', addedAt: 1, lastUsedAt: null };
+      const session = {
+        authId: 'a',
+        expiresAt: 2,
+        user: { name: 'x', root: false, permissions: {} },
+      };
+      const { calls, api } = fake(
+        json({ passkeys: [item] }),
+        json({}, 404),
+        json({ passkeys: [], session }),
+        json({}, 404),
+      );
+
+      expect(await api.ownPasskeys()).toEqual([item]);
+      await expect(api.ownPasskeys()).rejects.toMatchObject({ status: 404 });
+      expect(await api.ownPasskeyRemove('k')).toEqual({ passkeys: [], session });
+      await expect(api.ownPasskeyRemove('k')).rejects.toMatchObject({ status: 404 });
+      expect(calls.map((call) => [call.init.method, call.path])).toEqual([
+        ['GET', '/api/auth/passkeys'],
+        ['GET', '/api/auth/passkeys'],
+        ['DELETE', '/api/auth/passkeys/k'],
+        ['DELETE', '/api/auth/passkeys/k'],
+      ]);
+    });
+
     it('C: a 429 in the back end’s wait shape is a wait, on the sign-in and on one’s own password, and a 429 of any other shape is an error with no wait', async () => {
       const wait = { error: 'Wait', waitSeconds: 45 };
       const { api } = fake(

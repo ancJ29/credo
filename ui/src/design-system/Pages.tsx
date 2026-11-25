@@ -982,6 +982,13 @@ function PasskeyList({ state }: { state: 'list' | 'asked' | 'removed' | 'empty' 
           </Table>
         </TableScroll>
       )}
+      {state !== 'empty' && (
+        <ActionRow>
+          <ActionButton meaning="other" to="/passkey">
+            {t('ownPasskey.submit')}
+          </ActionButton>
+        </ActionRow>
+      )}
       {state === 'asked' && (
         <Panel>
           <Stack gap="sm">

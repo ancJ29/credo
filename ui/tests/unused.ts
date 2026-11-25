@@ -58,6 +58,8 @@ export const passkeyCalls = {
   passkeySignIn: down,
   ownPasskeyOptions: down,
   ownPasskeyAdd: down,
+  ownPasskeys: down,
+  ownPasskeyRemove: down,
   operatorPasskeyOptions: down,
   operatorPasskeySignIn: down,
   operatorJoinOptions: down,

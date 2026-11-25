@@ -1,7 +1,13 @@
 import { z } from 'zod';
 import { emailSchema } from './records';
 import { passwordIsValid } from './staff';
-import { passkeySignInRequestSchema, registrationResponseSchema, ROUTES, tagSchema } from './wire';
+import {
+  passkeySignInRequestSchema,
+  registrationResponseSchema,
+  ROUTES,
+  sessionReplySchema,
+  tagSchema,
+} from './wire';
 
 // The ways to sign in beyond a code and a password: an email, a QR code, and one's own password.
 // The email is a second sign-in name the root gives, and no mail is ever sent to it.
@@ -83,6 +89,14 @@ export const ownPasskeyListReplySchema = z.strictObject({
   passkeys: z.array(ownPasskeyItemSchema),
 });
 export type OwnPasskeyListReply = z.infer<typeof ownPasskeyListReplySchema>;
+
+/** A removal of one's own: the passkeys left, and the session that replaces the one held, since
+ * every other of the person's is signed out. */
+export const ownPasskeyRemovedReplySchema = z.strictObject({
+  passkeys: z.array(ownPasskeyItemSchema),
+  session: sessionReplySchema,
+});
+export type OwnPasskeyRemovedReply = z.infer<typeof ownPasskeyRemovedReplySchema>;
 
 /** The root's view of a person's passkeys: how many they hold, and after the removal of all, none. */
 export const personPasskeysReplySchema = z.strictObject({ count: z.number().int().min(0) });

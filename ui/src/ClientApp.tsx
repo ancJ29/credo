@@ -39,6 +39,7 @@ import { Notice } from './pages/client/Notice';
 import { NewOrderPage, OrderPage } from './pages/client/OrderPage';
 import { OrdersPage } from './pages/client/OrdersPage';
 import { OwnPasskeyPage } from './pages/client/OwnPasskeyPage';
+import { OwnPasskeysPage } from './pages/client/OwnPasskeysPage';
 import { OwnPasswordPage } from './pages/client/OwnPasswordPage';
 import { QrLanding } from './pages/client/QrLanding';
 import { SettingsPage } from './pages/client/SettingsPage';
@@ -315,6 +316,10 @@ export function ClientApp({
         element={<OwnPasswordPage {...pageFor(who)} onSession={replaced} />}
       />
       <Route path="/passkey" element={<OwnPasskeyPage {...pageFor(who)} passkeys={passkeys} />} />
+      <Route
+        path="/passkeys"
+        element={<OwnPasskeysPage {...pageFor(who)} onSession={replaced} />}
+      />
       <Route path="/more" element={<MorePage />} />
     </>
   );
@@ -353,7 +358,7 @@ export function ClientApp({
           user={user.name}
           pages={pages}
           passwordPath="/password"
-          passkeyPath="/passkey"
+          passkeyPath="/passkeys"
           shown={device.menuShown()}
           onShown={device.setMenuShown}
           languages={config.languages}

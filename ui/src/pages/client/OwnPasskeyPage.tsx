@@ -102,6 +102,11 @@ function Adder({
     <>
       <FormMessage kind="success">{t('ownPasskey.added')}</FormMessage>
       <Text>{t('ownPasskey.addedText')}</Text>
+      <ActionRow>
+        <ActionButton meaning="other" to="/passkeys">
+          {t('ownPasskeys.title')}
+        </ActionButton>
+      </ActionRow>
     </>
   ) : (
     <>
@@ -110,6 +115,9 @@ function Adder({
       <ActionRow>
         <ActionButton meaning="main" busy={busy} onClick={() => void add()}>
           {t('ownPasskey.submit')}
+        </ActionButton>
+        <ActionButton meaning="other" to="/passkeys">
+          {t('ownPasskeys.title')}
         </ActionButton>
       </ActionRow>
     </>

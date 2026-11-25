@@ -1,6 +1,8 @@
 import {
   addCustomerRequestSchema,
   addDays,
+  deviceNameOf,
+  type OwnPasskeyItem,
   addedNewestFirst,
   addOperatorRequestSchema,
   deleteClientRequestSchema,
@@ -88,6 +90,8 @@ import {
   DEMO_JOIN_TOKEN,
   DEMO_OPERATOR_ID,
   DEMO_PASSKEYS,
+  DEMO_PERSON_PASSKEYS,
+  DEMO_PERSON_PASSKEYS_CODE,
   DEMO_PHOTOS,
   DEMO_RECONCILIATIONS,
   DEMO_ROOT_NAME,
@@ -341,8 +345,23 @@ export function createFakeApi({
     DEMO_CLIENTS.map((client) => [client.code, { ...client, link: clientLinkPath(client.code) }]),
   );
 
-  /** Whose the company's one passkey is, by session handle: the last to add one; none until then. */
-  let passkeyHandle: string | null = null;
+  /** Whose the fake's one credential is, by session handle, and its id: the last to add one; none
+   * until then. A sign-in by it holds only while that person still lists it. */
+  let signInCredential: { handle: string; id: string } | null = null;
+  /** Each person's passkeys by session handle, the data set's manager holding hers as it opens. */
+  const ownLists = new Map<string, OwnPasskeyItem[]>();
+  const ownList = (handle: string) => {
+    let held = ownLists.get(handle);
+    if (!held) {
+      const mine = people.get(handle.slice(STAFF_HANDLE.length));
+      held =
+        handle.startsWith(STAFF_HANDLE) && mine?.code === DEMO_PERSON_PASSKEYS_CODE
+          ? DEMO_PERSON_PASSKEYS.map((one) => ({ ...one }))
+          : [];
+      ownLists.set(handle, held);
+    }
+    return held;
+  };
   /** The operator's own passkeys, and whether the data set's join link has been used. */
   let passkeys = DEMO_PASSKEYS.map((passkey) => ({ ...passkey }));
   let added = 0;
@@ -709,11 +728,18 @@ export function createFakeApi({
     // none added, or passkeys off, it is refused as a passkey no one holds is.
     passkeySignIn: () =>
       call('passkeySignIn', () => {
-        if (passkeyHandle === null || !staffConfig(setup).fields.passkey) throw signedOut();
+        const held = signInCredential;
+        if (
+          held === null ||
+          !staffConfig(setup).fields.passkey ||
+          !ownList(held.handle).some((one) => one.id === held.id)
+        ) {
+          throw signedOut();
+        }
         return {
-          authId: passkeyHandle,
+          authId: held.handle,
           expiresAt: Date.now() + WEEK,
-          user: signedInUser(passkeyHandle),
+          user: signedInUser(held.handle),
         };
       }),
 
@@ -724,12 +750,44 @@ export function createFakeApi({
         return OPTIONS;
       }),
 
-    ownPasskeyAdd: () =>
+    ownPasskeyAdd: ({ response }) =>
       call('ownPasskeyAdd', () => {
         const handle = device.authId();
         if (!handle) throw signedOut();
         if (!staffConfig(setup).fields.passkey) throw notFound();
-        passkeyHandle = handle;
+        const held = ownList(handle);
+        if (!held.some((one) => one.id === response.id)) {
+          held.push({
+            id: response.id,
+            device: deviceNameOf(window.navigator.userAgent),
+            addedAt: Date.now(),
+            lastUsedAt: null,
+          });
+        }
+        signInCredential = { handle, id: response.id };
+      }),
+
+    ownPasskeys: () =>
+      call('ownPasskeys', () => {
+        const handle = device.authId();
+        if (!handle) throw signedOut();
+        if (!staffConfig(setup).fields.passkey) throw notFound();
+        return ownList(handle).map((one) => ({ ...one }));
+      }),
+
+    ownPasskeyRemove: (id) =>
+      call('ownPasskeyRemove', () => {
+        const handle = device.authId();
+        if (!handle) throw signedOut();
+        if (!staffConfig(setup).fields.passkey) throw notFound();
+        const held = ownList(handle);
+        if (!held.some((one) => one.id === id)) throw notFound();
+        const left = held.filter((one) => one.id !== id);
+        ownLists.set(handle, left);
+        return {
+          passkeys: left.map((one) => ({ ...one })),
+          session: { authId: handle, expiresAt: Date.now() + WEEK, user: signedInUser(handle) },
+        };
       }),
 
     operatorPasskeyOptions: () => call('operatorPasskeyOptions', () => OPTIONS),
