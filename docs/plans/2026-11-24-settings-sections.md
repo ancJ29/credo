@@ -183,7 +183,7 @@ is `git diff -U0 -- visual/src/resolved.pinned.txt | grep '^+[a-z]' | cut -d' ' 
       gates again, the landing; the whole check, four packages touched (`qa.md#L262`);
       `pre-main-review` before `main` (`qa.md#L106`), at most once a push. **43 min** (241.2's step 10:
       a recap 3; a whole check and a review about 20 each).
-      _Done 2026-11-25, build 250.1 step 6, sonnet:_ the recap and its products row written (the recap's markers filled at the closing); the landing on `pre-merge` of 24 November, the whole check of that evening green on four packages touched, the review red on three findings that were words in documents, fixed in one pass and landed again; `main` moved, pushed by the human, looks 1 to 3 yes (point 3 on 25 November); the citation test and prettier run at the closing.
+      _Done 2026-11-25, build 250.1 step 6, sonnet:_ the recap and its products row written (the recap's markers filled at the closing); the landing on `pre-merge` of 24 November, the whole check of that evening green on four packages touched, the review red on three findings that were words in documents, fixed in one pass and landed again; `main` moved, pushed by the human, looks 1 to 3 yes (point 3 on 25 November); the citation test and `@credo/scripts`' tests green at the closing, the markdown outside prettier's reach.
 
 Total: 93 minutes, 43 of them the landing's.
 
