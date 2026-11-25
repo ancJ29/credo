@@ -8,15 +8,19 @@ import { ColourScope } from '../design-system/ColourScope';
 import { TYPE } from '../design-system/tokens';
 import { headerLook, HeaderBrand } from '../frame/Shell';
 
-/** A block titled Preview that shows a company header and the title of its sign-in card in the colour given, before anything is saved; both pictures are hidden from a reader and take no focus, only the title and two captions are read. */
+/** A block titled Preview that shows a company header and the title of its sign-in card in the colour given, with the formatted name and the description where given, before anything is saved; both pictures are hidden from a reader and take no focus, only the title and two captions are read. */
 export function BrandPreview({
   name,
   logo,
+  formatted,
+  description,
   brand,
   whiteHeader,
 }: {
   name: string;
   logo?: string;
+  formatted?: string;
+  description?: string;
   brand: string;
   whiteHeader?: boolean;
 }) {
@@ -30,14 +34,14 @@ export function BrandPreview({
             <Text {...TYPE.caption}>{t('settings.previewHeader')}</Text>
             <div aria-hidden inert data-preview="header" {...headerLook(white)}>
               <Group h={56} px="md" wrap="nowrap">
-                <HeaderBrand name={name} white={white} />
+                <HeaderBrand name={name} formatted={formatted} white={white} />
               </Group>
             </div>
           </Stack>
           <Stack gap="xs">
             <Text {...TYPE.caption}>{t('settings.previewCard')}</Text>
             <div aria-hidden inert data-preview="card">
-              <DoorCard name={name} logo={logo}>
+              <DoorCard name={name} logo={logo} formatted={formatted} description={description}>
                 <DoorHeading title={t('auth.title')} />
               </DoorCard>
             </div>

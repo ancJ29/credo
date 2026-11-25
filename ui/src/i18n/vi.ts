@@ -86,6 +86,12 @@ export const vi: Dictionary = {
     preview: 'Xem trước',
     previewHeader: 'Thanh tiêu đề, như người dùng thấy',
     previewCard: 'Thẻ đăng nhập, như người dùng thấy',
+    formattedName: 'Tên có định dạng',
+    formattedNameHint:
+      'Không bắt buộc, bằng HTML: giữ chữ đậm <b>, một màu <span style="color:#rrggbb"> và xuống dòng <br>, phần khác bị bỏ; tab trình duyệt và trình đọc màn hình dùng tên ở trên.',
+    formattedNamePreview: 'Hiển thị',
+    description: 'Mô tả',
+    descriptionHint: 'Một dòng ngắn dưới tên trên thẻ đăng nhập.',
   },
   operator: {
     badge: 'Quản trị viên',

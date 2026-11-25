@@ -21,6 +21,7 @@ import { createContext, type ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation } from 'react-router';
 import type { Brand } from '../brand';
+import { BrandName } from '../components/atoms/BrandName';
 import classes from './frame.module.css';
 import looks from './frameLook.module.css';
 import { LANGUAGE_NAMES } from '../i18n';
@@ -86,8 +87,16 @@ export const headerLook = (white: boolean) => ({
   style: white ? undefined : { background: BRAND_GRADIENT, color: 'var(--credo-on-header)' },
 });
 
-/** The header's brand: the stand-in icon and the company's name as the first heading. */
-export function HeaderBrand({ name, white }: { name: string; white: boolean }) {
+/** The header's brand: the stand-in icon and the company's name as the first heading, the formatted name where given, its colours showing only on the white header. */
+export function HeaderBrand({
+  name,
+  formatted,
+  white,
+}: {
+  name: string;
+  formatted?: string;
+  white: boolean;
+}) {
   return (
     <Group gap="sm" wrap="nowrap" className={headerClass(white, classes.brand, 'brand')}>
       <IconBrandAdobe size={36} stroke={1.5} aria-hidden />
@@ -98,7 +107,7 @@ export function HeaderBrand({ name, white }: { name: string; white: boolean }) {
         c={white ? undefined : 'inherit'}
         className={white ? looks.brandName : undefined}
       >
-        {name}
+        <BrandName name={name} formatted={formatted} colours={white} />
       </Title>
     </Group>
   );

@@ -163,11 +163,12 @@ Sizes are the last rows of each step's shape in the runs log. Each gate is the t
 `pnpm --filter @credo/<pkg> check`, exit 0 by its own code, plus the citation test. "The pinned diff"
 is `git diff -U0 -- visual/src/resolved.pinned.txt | grep '^+[a-z]' | cut -d' ' -f1 | sort -u`.
 
-- [ ] **1. The gallery.** `BrandName` with its cleaning; `HeaderBrand`, `BrandBand`, `DoorCard` and
+- [x] **1. The gallery.** `BrandName` with its cleaning; `HeaderBrand`, `BrandBand`, `DoorCard` and
       `BrandPreview` taking the new contents as strings, so `shared` waits; `IdentityFields`; the
       gallery's states, contracts and entries; the five keys. Rows 3 and 5 to 8 at the parts, 12, 15 and
       17 red first; row 16 the null proof. _Done when:_ `ui`'s, `visual`'s and `scripts`' gates; the
       pinned diff empty. **29 min** (250.1's step 1: 29). Then point 1.
+      _Done 2026-11-25, build 250.2 step 1, sonnet:_ `ui`'s, `visual`'s and `scripts`' gates each exit 0 (the runs of 11:59 to 12:17); rows 3, 5 to 8, 12, 15 and 17 seen red first on the old code in one run (11:49), row 8 by a planted `innerHTML` file; row 16 the null proof, the pinned diff empty; `HeaderBrand` takes `formatted`, `BrandBand` and `DoorCard` `formatted` and `description`, `BrandPreview` both; `DoorCard` gains no state, so its two-state tests stand.
 - [ ] **2. The record.** The two fields and their bounds in `shared`; both empty in `startingConfig`,
       the seed's company, `DEMO_CONFIG`, the mock's fixtures and the test literals. Rows 9 and 10 red
       first. _Done when:_ `shared`'s, `bff`'s, `scripts`', `ui`'s and `visual`'s gates; the pinned diff

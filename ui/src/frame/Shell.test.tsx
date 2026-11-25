@@ -11,7 +11,7 @@ import { MemoryRouter } from 'react-router';
 import { shadesOf } from '../design-system/appTheme';
 import { onBrand } from '../design-system/onBrand';
 import { HEADER_WASHES } from '../design-system/tokens';
-import { type Look, Shell } from './Shell';
+import { HeaderBrand, type Look, Shell } from './Shell';
 
 const frameCss = readFileSync(join(import.meta.dirname, 'frameLook.module.css'), 'utf8');
 const words = DICTIONARIES.en;
@@ -606,5 +606,35 @@ describe('Shell', () => {
     expect(within(sideMenu()).getByRole('link', { name: words.nav.settings }).textContent).toBe(
       words.nav.settings,
     );
+  });
+});
+
+describe('HeaderBrand', () => {
+  const FORMATTED = '<b>Minh</b><br><span style="color:#1d3557">Phát</span>';
+  const drawn = (white: boolean) =>
+    draw(
+      <HeaderBrand name="Minh Phát" formatted={FORMATTED} white={white} />,
+    ).container.querySelector('h1')!;
+
+  it('12: on the coloured header the formatted name’s colours give way to its text colour, bold and break kept', () => {
+    const title = drawn(false);
+
+    expect(title.querySelector('[aria-hidden="true"]')!.innerHTML).toBe('<b>Minh</b><br>Phát');
+    expect(title.querySelector('[style*="color: rgb(29, 53, 87)"]')).toBeNull();
+    expect(screen.getByRole('heading', { level: 1, name: 'Minh Phát' })).toBeDefined();
+  });
+
+  it('12: on the white header the formatted name is drawn as typed', () => {
+    const title = drawn(true);
+
+    expect(title.querySelector('[aria-hidden="true"]')!.innerHTML).toBe(
+      '<b>Minh</b><br><span style="color: rgb(29, 53, 87);">Phát</span>',
+    );
+  });
+
+  it('3: where no formatted name is set the plain name is drawn as bare text, as before', () => {
+    const { container } = draw(<HeaderBrand name="Minh Phát" white={false} />);
+
+    expect(container.querySelector('h1')!.innerHTML).toBe('Minh Phát');
   });
 });
