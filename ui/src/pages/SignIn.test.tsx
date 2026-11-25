@@ -68,6 +68,25 @@ describe('SignIn', () => {
     expect(onPasskey).toHaveBeenCalledExactlyOnceWith(false);
   });
 
+  it('8: draws “Use a QR code” under “or” where a press is given, “or” where either button is, and nothing where neither', async () => {
+    const { unmount } = draw(<SignIn brand={brand} status="idle" onSubmit={vi.fn()} />);
+    expect(screen.queryByRole('button', { name: words.qrScan.button })).toBeNull();
+    unmount();
+
+    const onQr = vi.fn();
+    const alone = draw(<SignIn brand={brand} status="idle" onSubmit={vi.fn()} onQr={onQr} />);
+    expect(screen.getByText(words.auth.or)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: words.auth.passkey })).toBeNull();
+    await userEvent.click(screen.getByRole('button', { name: words.qrScan.button }));
+    expect(onQr).toHaveBeenCalledOnce();
+    alone.unmount();
+
+    draw(<SignIn brand={brand} status="idle" onSubmit={vi.fn()} onPasskey={vi.fn()} onQr={onQr} />);
+    expect(screen.getAllByText(words.auth.or)).toHaveLength(1);
+    expect(screen.getByRole('button', { name: words.auth.passkey })).toBeTruthy();
+    expect(screen.getByRole('button', { name: words.qrScan.button })).toBeTruthy();
+  });
+
   it('16: tells a passkey not given and one refused as one red line each, and waits on the touch in the passkey button alone', () => {
     const shown = (status: 'notGiven' | 'passkeyRefused' | 'passkeyBusy') => {
       draw(<SignIn brand={brand} status={status} onSubmit={vi.fn()} onPasskey={vi.fn()} />);

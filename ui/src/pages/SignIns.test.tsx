@@ -385,6 +385,34 @@ describe('a QR code for a person', () => {
   });
 });
 
+describe('the door’s QR button', () => {
+  it('8: the card offers “Use a QR code” where the company has it on, and it opens the scan page', async () => {
+    const { api } = openApp('/', { out: true });
+    await userEvent.click(await screen.findByRole('button', { name: words.qrScan.button }));
+    expect(await screen.findByRole('heading', { level: 2, name: words.qrScan.title })).toBeTruthy();
+    expect(api.signInMethods).toHaveBeenCalled();
+  });
+
+  it('8: and none where it is off or the read fails', async () => {
+    const off = openApp('/', {
+      out: true,
+      override: (spied) => spied.signInMethods.mockResolvedValue({ qr: false }),
+    });
+    await screen.findByRole('heading', { level: 2, name: words.auth.title });
+    await waitFor(() => expect(off.api.signInMethods).toHaveBeenCalled());
+    expect(screen.queryByRole('button', { name: words.qrScan.button })).toBeNull();
+    off.unmount();
+
+    const down = openApp('/', {
+      out: true,
+      override: (spied) => spied.signInMethods.mockRejectedValue(new ApiError(503)),
+    });
+    await screen.findByRole('heading', { level: 2, name: words.auth.title });
+    await waitFor(() => expect(down.api.signInMethods).toHaveBeenCalled());
+    expect(screen.queryByRole('button', { name: words.qrScan.button })).toBeNull();
+  });
+});
+
 describe('the phone that opens a QR code', () => {
   const link = (secret: string, id = person('EMP-0004').id) =>
     `/login?client-code=demo&qr=${id}.${secret}`;

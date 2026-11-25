@@ -10,7 +10,7 @@ import {
   type SessionReply,
   type UserView,
 } from '@credo/shared';
-import { type ReactElement, useEffect, useRef, useState } from 'react';
+import { type ReactElement, Suspense, lazy, useCallback, useEffect, useRef, useState } from 'react';
 import { Navigate, Route, Routes, useLocation, useNavigate } from 'react-router';
 import { AddRecordPage } from './pages/client/AddRecordPage';
 import { AddPersonPage } from './pages/client/AddPersonPage';
@@ -83,6 +83,11 @@ const askOptions = (api: Api): Promise<Asked | null> =>
     () => null,
   );
 
+/** The scan page and the QR reader it loads are fetched only when someone opens the page. */
+const QrScanPage = lazy(() =>
+  import('./pages/client/QrScanPage').then((m) => ({ default: m.QrScanPage })),
+);
+
 const SIGNED_OUT = 401;
 const NOT_FOUND = 404;
 
@@ -151,6 +156,8 @@ export function ClientApp({
   /** What the door's passkey button signs in with: asked as the door opens, kept with its time. */
   const [asked, setAsked] = useState<Asked | null>(null);
   const [waitSeconds, setWaitSeconds] = useState(0);
+  /** Whether the company has the QR sign-in on, asked as the door opens; the button draws only where it says so. */
+  const [qrOn, setQrOn] = useState(false);
   /** What the address named when the app opened; the sign-in's own navigation does not change it. */
   const { search } = useLocation();
   const [linked] = useState(
@@ -176,17 +183,25 @@ export function ClientApp({
     // A retry runs the boot again; nothing else does.
   }, [api, device, linked, attempt]);
 
+  /** A session a QR code gave: its device keeps it, as a phone's code is its own, the code is spent
+   * so the address is cleared of it, and the first page opens. The camera link's boot and the scan
+   * page both sign in by it. */
+  const enterByQr = useCallback(
+    (session: SessionReply) => {
+      device.setAuthId(session.authId, true);
+      setUser(session.user);
+      void navigate('/', { replace: true });
+    },
+    [device, navigate],
+  );
+
   useEffect(() => {
     if (!doc || !qr || qrAsked.current) return;
     qrAsked.current = true;
     void api.signInQr(qr.id, qr.secret).then(
       (session) => {
-        // A phone's code is its own: kept on the device, as it always was.
-        device.setAuthId(session.authId, true);
-        setUser(session.user);
         setQrStatus('done');
-        // The code is spent: the address is cleared of it, and the first page opens.
-        void navigate('/', { replace: true });
+        enterByQr(session);
       },
       (error: unknown) => {
         if (error instanceof ApiError && error.status === SIGNED_OUT) return setQrStatus('refused');
@@ -196,11 +211,15 @@ export function ClientApp({
         setPhase('unavailable');
       },
     );
-  }, [api, device, doc, qr, navigate]);
+  }, [api, device, doc, qr, enterByQr]);
 
   useEffect(() => {
     if (!doc || user) return;
     void askOptions(api).then(setAsked);
+    void api.signInMethods().then(
+      (methods) => setQrOn(methods.qr),
+      () => setQrOn(false),
+    );
   }, [api, doc, user]);
 
   const retry = () => {
@@ -504,15 +523,37 @@ export function ClientApp({
           )}
         </Shell>
       ) : (
-        <SignIn
-          brand={config}
-          status={signIn}
-          waitSeconds={waitSeconds}
-          languages={config.languages}
-          onLanguage={chooseLanguage}
-          onSubmit={(n, p, r) => void submit(n, p, r)}
-          onPasskey={asked ? (remember) => void pressPasskey(asked, remember) : undefined}
-        />
+        <Routes>
+          <Route
+            path="/login/qr"
+            element={
+              <Suspense fallback={null}>
+                <QrScanPage
+                  brand={config}
+                  api={api}
+                  onSession={enterByQr}
+                  languages={config.languages}
+                  onLanguage={chooseLanguage}
+                />
+              </Suspense>
+            }
+          />
+          <Route
+            path="*"
+            element={
+              <SignIn
+                brand={config}
+                status={signIn}
+                waitSeconds={waitSeconds}
+                languages={config.languages}
+                onLanguage={chooseLanguage}
+                onSubmit={(n, p, r) => void submit(n, p, r)}
+                onPasskey={asked ? (remember) => void pressPasskey(asked, remember) : undefined}
+                onQr={qrOn ? () => void navigate('/login/qr') : undefined}
+              />
+            }
+          />
+        </Routes>
       )}
     </Providers>
   );

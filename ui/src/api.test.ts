@@ -778,6 +778,19 @@ describe('the API client', () => {
       expect(calls[2]?.init.body).toBe(JSON.stringify({ id, secret: 'a'.repeat(32) }));
     });
 
+    it('C: asks the door whether the company has the QR sign-in on, with no session, and says nothing else', async () => {
+      const { calls, api } = fake(json({ qr: true }), json({ qr: false }), json({}, 503));
+
+      expect(await api.signInMethods()).toEqual({ qr: true });
+      expect(await api.signInMethods()).toEqual({ qr: false });
+      await expect(api.signInMethods()).rejects.toMatchObject({ status: 503 });
+      expect(calls.map((call) => [call.init.method, call.path])).toEqual([
+        ['GET', '/api/auth/methods'],
+        ['GET', '/api/auth/methods'],
+        ['GET', '/api/auth/methods'],
+      ]);
+    });
+
     it('C: asks a company for its passkey options, none where the company has them off, and signs in by one, a refusal being a 401 for the page to say', async () => {
       const offered = { options: { challenge: 'c' }, token: 't' };
       const session = {

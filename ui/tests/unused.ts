@@ -54,6 +54,7 @@ export const staffCalls = {
 
 /** The passkey calls (a company's sign-in and the operator's), for a test of something else, failing the same way. */
 export const passkeyCalls = {
+  signInMethods: down,
   passkeyOptions: down,
   passkeySignIn: down,
   ownPasskeyOptions: down,

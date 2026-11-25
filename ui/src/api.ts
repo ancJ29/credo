@@ -89,6 +89,8 @@ import {
   NO_RENEW_QUERY,
   type OptionsReply,
   optionsReplySchema,
+  signInMethodsReplySchema,
+  type SignInMethodsReply,
   type ConfirmAct,
   type Confirmation,
   type PasskeyAddRequest,
@@ -332,6 +334,13 @@ export function createApi({
       if (response.status === 429) throw new ApiError(429, false, await waitOf(response));
       if (!response.ok) throw new ApiError(response.status);
       return await read(response, sessionReplySchema);
+    },
+
+    /** What the door may know before anyone signs in: whether the company has the QR sign-in on. */
+    async signInMethods(): Promise<SignInMethodsReply> {
+      const response = await send('GET', signInRoutes.methods);
+      if (!response.ok) throw new ApiError(response.status);
+      return await read(response, signInMethodsReplySchema);
     },
 
     /** The options a sign-in by this company's passkey starts from, with the token that binds their

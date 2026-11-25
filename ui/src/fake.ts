@@ -721,6 +721,8 @@ export function createFakeApi({
         () => ({ kind: 'conflict' as const }),
       ),
 
+    signInMethods: () => call('signInMethods', () => ({ qr: staffConfig(setup).fields.qr })),
+
     passkeyOptions: () =>
       call('passkeyOptions', () => (staffConfig(setup).fields.passkey ? OPTIONS : null)),
 

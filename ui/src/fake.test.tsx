@@ -34,6 +34,7 @@ import {
   operatorSessionReplySchema,
   servicesReplySchema,
   optionsReplySchema,
+  signInMethodsReplySchema,
   passkeyListReplySchema,
   photoAddressReplySchema,
   photoAddressRequestOf,
@@ -152,6 +153,7 @@ describe('the fake Api', () => {
     );
     parses('me', meReplySchema, await api.me());
     parses('me staff', meReplySchema, await staff.me());
+    parses('signInMethods', signInMethodsReplySchema, await api.signInMethods());
     parses('passkeyOptions', optionsReplySchema, await api.passkeyOptions());
     parses('ownPasskeyOptions', optionsReplySchema, await api.ownPasskeyOptions());
     parses('personPasskeys', personPasskeysReplySchema, {
@@ -527,6 +529,7 @@ describe('the fake Api', () => {
         'setEmail',
         'issueQr',
         'signInQr',
+        'signInMethods',
         'changePassword',
         'getPhoto',
         'savePhoto',
@@ -1020,6 +1023,17 @@ describe('the fake Api', () => {
     );
     expect(await status(off.issueQr(bao.id))).toBe(403);
     expect(await status(off.signInQr(bao.id, DEMO_QR_SECRET))).toBe(401);
+  });
+
+  it('10: the door’s read answers whether QR is on by the setup’s switch, on until the root saves it off', async () => {
+    const api = fake('', { client: 'fake.session' });
+    expect(await api.signInMethods()).toEqual({ qr: true });
+    const held = await api.getStaffSetup();
+    await api.saveStaffSetup(
+      { ...held.setup, fields: { ...staffConfig(held.setup).fields, qr: false } },
+      held.version,
+    );
+    expect(await api.signInMethods()).toEqual({ qr: false });
   });
 
   it('C: Anyone signed in changes their own password, a wrong current one is said and not an error, and a password off the rule is a 400', async () => {
