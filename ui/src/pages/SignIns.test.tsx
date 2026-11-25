@@ -251,6 +251,106 @@ describe('the walk spec’s passkey scenes, replayed on the real router', () => 
   });
 });
 
+/** A company whose root saved the passkey sign-in off: the setup read says so. */
+const passkeysOff = (spied: Spied, original: Api) =>
+  spied.getStaffSetup.mockImplementation(async () => {
+    const read = await original.getStaffSetup();
+    const fields = { ...staffConfig(read.setup).fields, passkey: false };
+    return { ...read, setup: { ...read.setup, fields } };
+  });
+
+describe('16: the passkeys panel on a person’s page', () => {
+  const lan = person('EMP-0001');
+  const heldWords = (count: number) => filled(words.person.passkeysHeld, { count: String(count) });
+
+  it('shows the root how many passkeys a person holds and why to remove them all, and a press asks first', async () => {
+    const { api } = openApp(at('EMP-0001'));
+
+    expect(
+      await screen.findByRole('heading', { level: 3, name: words.person.passkeysTitle }),
+    ).toBeTruthy();
+    expect(screen.getByText(heldWords(2))).toBeTruthy();
+    expect(screen.getByText(filled(words.person.passkeysText, { name: lan.name }))).toBeTruthy();
+    expect(api.personPasskeys).toHaveBeenCalledExactlyOnceWith(lan.id);
+
+    await userEvent.click(screen.getByRole('button', { name: words.person.passkeysRemove }));
+    expect(screen.queryByRole('button', { name: words.person.passkeysRemove })).toBeNull();
+    expect(
+      screen.getByRole('button', {
+        name: filled(words.person.passkeysConfirm, { name: lan.name }),
+      }),
+    ).toBeTruthy();
+    expect(api.removePersonPasskeys).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByRole('button', { name: words.person.passkeysCancel }));
+
+    expect(screen.getByRole('button', { name: words.person.passkeysRemove })).toBeTruthy();
+    expect(screen.getByText(heldWords(2))).toBeTruthy();
+    expect(api.removePersonPasskeys).not.toHaveBeenCalled();
+  });
+
+  it('a confirmed removal tells the outcome by the person’s name and leaves none to remove', async () => {
+    const { api } = openApp(at('EMP-0001'));
+    await userEvent.click(await screen.findByRole('button', { name: words.person.passkeysRemove }));
+    await userEvent.click(
+      screen.getByRole('button', {
+        name: filled(words.person.passkeysConfirm, { name: lan.name }),
+      }),
+    );
+
+    expect((await screen.findByRole('status')).textContent).toContain(
+      filled(words.person.passkeysRemoved, { name: lan.name }),
+    );
+    expect(api.removePersonPasskeys).toHaveBeenCalledExactlyOnceWith(lan.id);
+    expect(screen.queryByText(heldWords(2))).toBeNull();
+    expect(screen.queryByRole('button', { name: words.person.passkeysRemove })).toBeNull();
+  });
+
+  it('a failed removal is told and the person’s passkeys stay to remove', async () => {
+    openApp(at('EMP-0001'), { cue: 'removePersonPasskeys:503' });
+    await userEvent.click(await screen.findByRole('button', { name: words.person.passkeysRemove }));
+    await userEvent.click(
+      screen.getByRole('button', {
+        name: filled(words.person.passkeysConfirm, { name: lan.name }),
+      }),
+    );
+
+    expect((await screen.findByRole('alert')).textContent).toBe(words.person.passkeysFailed);
+    expect(screen.getByText(heldWords(2))).toBeTruthy();
+    await userEvent.click(screen.getByRole('button', { name: words.person.passkeysRemove }));
+  });
+
+  it('shows no panel where none is held, where passkeys are off, to anyone but the root, or for a person who left', async () => {
+    const none = openApp(at('EMP-0002'));
+    await screen.findByRole('heading', { level: 2, name: 'Trần Văn Hùng' });
+    expect(screen.queryByRole('heading', { name: words.person.passkeysTitle })).toBeNull();
+    expect(none.api.personPasskeys).toHaveBeenCalledOnce();
+    none.unmount();
+
+    const off = openApp(at('EMP-0001'), { override: passkeysOff });
+    await screen.findByRole('heading', { level: 2, name: lan.name });
+    expect(screen.queryByRole('heading', { name: words.person.passkeysTitle })).toBeNull();
+    expect(off.api.personPasskeys).not.toHaveBeenCalled();
+    off.unmount();
+
+    const other = openApp(at('EMP-0001'), { as: 'EMP-0001' });
+    await screen.findByRole('heading', { level: 2, name: lan.name });
+    expect(screen.queryByRole('heading', { name: words.person.passkeysTitle })).toBeNull();
+    expect(other.api.personPasskeys).not.toHaveBeenCalled();
+    other.unmount();
+
+    const left = openApp(at('EMP-0008'));
+    await screen.findByRole('heading', { level: 2, name: 'Hoàng Gia Huy' });
+    expect(screen.queryByRole('heading', { name: words.person.passkeysTitle })).toBeNull();
+    expect(left.api.personPasskeys).not.toHaveBeenCalled();
+  });
+
+  it('a person’s page that cannot read the count says the page could not load, as for any other read', async () => {
+    openApp(at('EMP-0001'), { cue: 'personPasskeys:503' });
+
+    expect(await screen.findByRole('button', { name: words.common.retry })).toBeTruthy();
+  });
+});
+
 describe('a QR code for a person', () => {
   it('C: The root shows a person a QR code and its link, for one sign-in within 15 minutes; a new code cancels the last', async () => {
     const { api } = openApp(at('EMP-0004'), { signIns: true });

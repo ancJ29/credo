@@ -29,6 +29,7 @@ import {
   meReplySchema,
   ownPasskeyListReplySchema,
   ownPasskeyRemovedReplySchema,
+  personPasskeysReplySchema,
   operatorMeReplySchema,
   operatorSessionReplySchema,
   servicesReplySchema,
@@ -153,6 +154,12 @@ describe('the fake Api', () => {
     parses('me staff', meReplySchema, await staff.me());
     parses('passkeyOptions', optionsReplySchema, await api.passkeyOptions());
     parses('ownPasskeyOptions', optionsReplySchema, await api.ownPasskeyOptions());
+    parses('personPasskeys', personPasskeysReplySchema, {
+      count: await api.personPasskeys(DEMO_EMPLOYEES[0]?.id ?? ''),
+    });
+    parses('removePersonPasskeys', personPasskeysReplySchema, {
+      count: await api.removePersonPasskeys(DEMO_EMPLOYEES[0]?.id ?? ''),
+    });
     const lan = fake('', { client: `fake.session.${DEMO_EMPLOYEES[0]?.id}` });
     parses('ownPasskeys', ownPasskeyListReplySchema, { passkeys: await lan.ownPasskeys() });
     parses(
@@ -466,6 +473,8 @@ describe('the fake Api', () => {
         'ownPasskeyAdd',
         'ownPasskeys',
         'ownPasskeyRemove',
+        'personPasskeys',
+        'removePersonPasskeys',
         'operatorPasskeyOptions',
         'operatorPasskeySignIn',
         'operatorJoinOptions',
@@ -924,6 +933,45 @@ describe('the fake Api', () => {
     );
     expect(await status(root.ownPasskeys())).toBe(404);
     expect(await status(root.ownPasskeyRemove('x'))).toBe(404);
+  });
+
+  it('17: The fake counts a person’s passkeys for the root, removes them all so none signs in, and refuses anyone else, an unknown person and a company with passkeys off', async () => {
+    const lanId = DEMO_EMPLOYEES[0]?.id ?? '';
+    const baoId = DEMO_EMPLOYEES[3]?.id ?? '';
+    // one fake, signed in as whoever `held` says, as a tab is
+    const held: { client?: string } = { client: 'fake.session' };
+    const api = fake('', held);
+    expect(await api.personPasskeys(lanId)).toBe(DEMO_PERSON_PASSKEYS.length);
+    expect(await api.personPasskeys(baoId)).toBe(0);
+
+    // only the root counts and removes; the removal empties the person's list
+    held.client = `fake.session.${lanId}`;
+    expect(await status(api.personPasskeys(lanId))).toBe(403);
+    expect(await status(api.removePersonPasskeys(lanId))).toBe(403);
+    held.client = 'fake.session';
+    expect(await api.removePersonPasskeys(lanId)).toBe(0);
+    expect(await api.personPasskeys(lanId)).toBe(0);
+
+    // a sign-in by a credential removed this way is refused
+    held.client = `fake.session.${baoId}`;
+    await api.ownPasskeyAdd({ token: 'fake.token', response: CREDENTIAL });
+    expect((await api.passkeySignIn(CONFIRM)).user.root).toBe(false);
+    held.client = 'fake.session';
+    expect(await api.personPasskeys(baoId)).toBe(1);
+    expect(await api.removePersonPasskeys(baoId)).toBe(0);
+    expect(await status(api.passkeySignIn(CONFIRM))).toBe(401);
+
+    expect(await status(api.personPasskeys('no-one'))).toBe(404);
+    expect(await status(api.removePersonPasskeys('no-one'))).toBe(404);
+    expect(await status(fake('').personPasskeys(lanId))).toBe(401);
+    expect(await status(fake('').removePersonPasskeys(lanId))).toBe(401);
+    const setup = await api.getStaffSetup();
+    await api.saveStaffSetup(
+      { ...setup.setup, fields: { ...staffConfig(setup.setup).fields, passkey: false } },
+      setup.version,
+    );
+    expect(await status(api.personPasskeys(lanId))).toBe(404);
+    expect(await status(api.removePersonPasskeys(lanId))).toBe(404);
   });
 
   it('C: Two fresh fakes mint the same QR link for the same person, so a screen that shows it reads the same on every build', async () => {

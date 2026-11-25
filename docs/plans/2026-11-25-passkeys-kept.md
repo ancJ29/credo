@@ -167,10 +167,15 @@ test. "The pinned diff" is
       joins `shared` (`signins.ts`); and the list and the gallery's list states lead to the add page, since
       the menu's line no longer does. A 404 on the list is passkeys off, thrown by `api.ownPasskeys`, as the
       options' is.
-- [ ] **4. The person's panel, on the fake.** `PasskeysPanel` in `ui/src/parts/SignInPanels.tsx`; the
+- [x] **4. The person's panel, on the fake.** `PasskeysPanel` in `ui/src/parts/SignInPanels.tsx`; the
       person's page reads the count for the root where passkeys are on (`PersonPage.tsx#L597-L602`);
       two api calls and their fake answers. Rows 16, 17's second half. _Done when:_ `ui`'s and
       `visual`'s gates, the pinned diff empty. **11 min** (241.2's step 4: 11).
+      _Done 2026-11-25 13:17:_ `ui`'s and `visual`'s gates, each run after the last edit, and the citation test each
+      exit 0; the pinned diff empty; rows 16 and 17's second half red (no `personPasskeys` call, no panel), then
+      green. The two api calls are `personPasskeys(id)` and `removePersonPasskeys(id)`, each answering the count
+      (`personPasskeysReplySchema`, step 2's); the page reads the count for the root where passkeys are on and the
+      person has not left, and the panel shows while one is held, and after a removal says so.
 - [ ] **5. One's own, in the BFF.** The two routes in `own-passkeys.ts`; the add names the device; the
       removal writes the record, then the sign-in record's new generation and the device's new
       session, the password change's lines made one function both call. Rows 1 to 6, 10 and 11's own

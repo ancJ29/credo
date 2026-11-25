@@ -98,6 +98,7 @@ import {
   type OwnPasskeyItem,
   ownPasskeyListReplySchema,
   type OwnPasskeyRemovedReply,
+  personPasskeysReplySchema,
   ownPasskeyRemovedReplySchema,
   type PasskeySignInRequest,
   passkeyRoutes,
@@ -377,6 +378,22 @@ export function createApi({
       const response = await send('DELETE', signInRoutes.ownPasskey(id));
       if (!response.ok) throw new ApiError(response.status);
       return await read(response, ownPasskeyRemovedReplySchema);
+    },
+
+    /** How many passkeys a person holds, for the root alone; a 404 is passkeys switched off or no
+     * such person here. */
+    async personPasskeys(id: string): Promise<number> {
+      const response = await send('GET', signInRoutes.employeePasskeys(id));
+      if (!response.ok) throw new ApiError(response.status);
+      return (await read(response, personPasskeysReplySchema)).count;
+    },
+
+    /** Removes every passkey of a person, for the root alone, and ends their sessions; the answer is
+     * the count left, none. */
+    async removePersonPasskeys(id: string): Promise<number> {
+      const response = await send('DELETE', signInRoutes.employeePasskeys(id));
+      if (!response.ok) throw new ApiError(response.status);
+      return (await read(response, personPasskeysReplySchema)).count;
     },
 
     async signOut() {

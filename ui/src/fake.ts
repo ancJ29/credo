@@ -790,6 +790,23 @@ export function createFakeApi({
         };
       }),
 
+    personPasskeys: (id) =>
+      call('personPasskeys', () => {
+        if (!device.authId()) throw signedOut();
+        rootOnly();
+        if (!staffConfig(setup).fields.passkey) throw notFound();
+        return ownList(`${STAFF_HANDLE}${person(id).id}`).length;
+      }),
+
+    removePersonPasskeys: (id) =>
+      call('removePersonPasskeys', () => {
+        if (!device.authId()) throw signedOut();
+        rootOnly();
+        if (!staffConfig(setup).fields.passkey) throw notFound();
+        ownLists.set(`${STAFF_HANDLE}${person(id).id}`, []);
+        return 0;
+      }),
+
     operatorPasskeyOptions: () => call('operatorPasskeyOptions', () => OPTIONS),
 
     operatorPasskeySignIn: () =>

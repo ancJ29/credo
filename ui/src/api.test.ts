@@ -867,6 +867,27 @@ describe('the API client', () => {
       ]);
     });
 
+    it('C: reads a person’s passkey count and removes all of them, for the root, the answer being the count left', async () => {
+      const id = '7f0c9a52-5b2e-4a39-9d5f-0c6a8e1b2d34';
+      const { calls, api } = fake(
+        json({ count: 2 }),
+        json({ count: 0 }),
+        json({}, 403),
+        json({}, 403),
+      );
+
+      expect(await api.personPasskeys(id)).toBe(2);
+      expect(await api.removePersonPasskeys(id)).toBe(0);
+      await expect(api.personPasskeys(id)).rejects.toMatchObject({ status: 403 });
+      await expect(api.removePersonPasskeys(id)).rejects.toMatchObject({ status: 403 });
+      expect(calls.map((call) => [call.init.method, call.path])).toEqual([
+        ['GET', `/api/employees/${id}/passkeys`],
+        ['DELETE', `/api/employees/${id}/passkeys`],
+        ['GET', `/api/employees/${id}/passkeys`],
+        ['DELETE', `/api/employees/${id}/passkeys`],
+      ]);
+    });
+
     it('C: a 429 in the back end’s wait shape is a wait, on the sign-in and on one’s own password, and a 429 of any other shape is an error with no wait', async () => {
       const wait = { error: 'Wait', waitSeconds: 45 };
       const { api } = fake(

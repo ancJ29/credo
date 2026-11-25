@@ -2,13 +2,13 @@ import { emailSchema, type EmployeeDoc } from '@credo/shared';
 import { Stack, Text, TextInput } from '@mantine/core';
 import { ActionRow } from '../components/molecules/ActionRow';
 import { ActionButton } from '../components/atoms/ActionButton';
-import { IconMail, IconQrcode } from '@tabler/icons-react';
+import { IconFingerprint, IconMail, IconQrcode } from '@tabler/icons-react';
 import { type SubmitEvent, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { DetailCard } from './DetailCards';
 import { type PageProps, refusal } from '../page';
 import { QrCode } from './QrCode';
-import { TYPE } from '../design-system/tokens';
+import { TYPE, WEIGHTS } from '../design-system/tokens';
 import { FormMessage } from '../components/molecules/FormMessage';
 
 const READ_ONLY = { input: { fontFamily: 'ui-monospace, monospace' } };
@@ -101,6 +101,75 @@ export function EmailPanel({
           </ActionRow>
         </Stack>
       </form>
+    </DetailCard>
+  );
+}
+
+/** A person's passkeys, the root's alone: how many they hold, and one press, asked first, that
+ * removes them all, signing the person out everywhere, for a lost phone. It shows while one is
+ * held, and after a removal says so, by name. */
+export function PasskeysPanel({
+  page,
+  id,
+  name,
+  held,
+  onRemoved,
+}: {
+  page: PageProps;
+  id: string;
+  name: string;
+  /** How many passkeys the person holds now. */
+  held: number;
+  onRemoved: () => void;
+}) {
+  const { t } = useTranslation();
+  const [asking, setAsking] = useState(false);
+  const [outcome, setOutcome] = useState<'removed' | 'failed' | null>(null);
+
+  async function removeAll() {
+    setOutcome(null);
+    try {
+      await page.api.removePersonPasskeys(id);
+      setAsking(false);
+      setOutcome('removed');
+      onRemoved();
+    } catch (error) {
+      refusal(error, page);
+      setAsking(false);
+      setOutcome('failed');
+    }
+  }
+
+  if (held === 0 && outcome !== 'removed') return null;
+  return (
+    <DetailCard icon={<IconFingerprint size={14} />} title={t('person.passkeysTitle')}>
+      <Stack gap="sm" align="flex-start">
+        {outcome === 'removed' ? (
+          <FormMessage kind="success">{t('person.passkeysRemoved', { name })}</FormMessage>
+        ) : (
+          <>
+            <Text fw={WEIGHTS.label}>{t('person.passkeysHeld', { count: held })}</Text>
+            <Text c="dimmed">{t('person.passkeysText', { name })}</Text>
+            {outcome === 'failed' && (
+              <FormMessage kind="error">{t('person.passkeysFailed')}</FormMessage>
+            )}
+            {asking ? (
+              <ActionRow>
+                <ActionButton meaning="main" onClick={() => void removeAll()}>
+                  {t('person.passkeysConfirm', { name })}
+                </ActionButton>
+                <ActionButton meaning="other" onClick={() => setAsking(false)}>
+                  {t('person.passkeysCancel')}
+                </ActionButton>
+              </ActionRow>
+            ) : (
+              <ActionButton meaning="other" onClick={() => setAsking(true)}>
+                {t('person.passkeysRemove')}
+              </ActionButton>
+            )}
+          </>
+        )}
+      </Stack>
     </DetailCard>
   );
 }
