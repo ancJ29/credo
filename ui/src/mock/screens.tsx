@@ -1,11 +1,11 @@
 import type { ReactNode } from 'react';
-import { BEFORE_CONFIG } from '../brand';
+import { BEFORE_CONFIG, type Brand } from '../brand';
 import { Boot } from '../frame/Boot';
 import { Settings } from '../parts/Settings';
 import { Shell } from '../frame/Shell';
 import { SignIn } from '../pages/SignIn';
 import { UnknownClient } from '../pages/client/UnknownClient';
-import { FILLED, FORMATTED, FRESH, ROOT, TYPED, WHITE, WHITE_ICONS } from './fixtures';
+import { FILLED, FORMATTED, FRESH, LOGO, ROOT, TYPED, WHITE, WHITE_ICONS } from './fixtures';
 import type { TenantConfig } from '@credo/shared';
 
 /** The mock's handlers do nothing: no screen here calls a service. */
@@ -13,6 +13,18 @@ import type { TenantConfig } from '@credo/shared';
 const inert = () => {};
 
 type SettingsProps = Parameters<typeof Settings>[0];
+
+/** What a mock company draws: every one has the logo but the fresh one, a company just made. */
+const brandOf = (config: TenantConfig): Brand => ({
+  ...config,
+  logo: config === FRESH ? null : LOGO,
+});
+
+/** The pictures a mock company holds: its logo, if it has one, as the data URL itself. */
+const picturesOf = (config: TenantConfig): SettingsProps['pictures'] => ({
+  logo: config === FRESH ? null : { address: LOGO, version: 'mock' },
+  'logo-on-colour': null,
+});
 
 const settings = (
   config: TenantConfig,
@@ -22,7 +34,7 @@ const settings = (
   frame: TenantConfig = config,
 ) => (
   <Shell
-    brand={frame}
+    brand={brandOf(frame)}
     look={frame}
     user={ROOT.username}
     languages={frame.languages}
@@ -38,6 +50,9 @@ const settings = (
       onSave={inert}
       onRetry={inert}
       onReload={inert}
+      pictures={picturesOf(config)}
+      onPicture={inert}
+      pictureOutcome={null}
       {...more}
     />
   </Shell>
@@ -50,7 +65,7 @@ const signIn = (
   brand: TenantConfig = FILLED,
 ) => (
   <SignIn
-    brand={brand}
+    brand={brandOf(brand)}
     status={status}
     waitSeconds={waitSeconds}
     initial={initial}

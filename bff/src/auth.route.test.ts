@@ -92,7 +92,6 @@ describe("The root is the tenant's first user, made with the tenant: it may do e
         version: null,
         config: {
           name: 'Công ty A',
-          logo: null,
           colour: '#2f7d6d',
           languages: ['vi'],
           defaultLanguage: 'vi',
@@ -115,7 +114,6 @@ describe("The root is the tenant's first user, made with the tenant: it may do e
         version: null,
         config: {
           name: 'X',
-          logo: null,
           colour: '#000000',
           languages: ['en'],
           defaultLanguage: 'en',
@@ -464,7 +462,6 @@ describe('A session that cannot be read (c-storage down or erroring) answers 503
         version: null,
         config: {
           name: 'X',
-          logo: null,
           colour: '#000000',
           languages: ['en'],
           defaultLanguage: 'en',

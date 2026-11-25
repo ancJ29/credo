@@ -47,7 +47,6 @@ describe('The BFF is handed its other boxes by STORAGE_BOXES and routes a compan
     );
     await second.putRecord(recordKeys.tenant(id).config, {
       name: 'On b2',
-      logo: null,
       colour: '#2f7d6d',
       languages: ['vi'],
       defaultLanguage: 'vi',

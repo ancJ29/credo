@@ -19,6 +19,9 @@ import {
   companyOfAddress,
   conflictReplySchema,
   configDocSchema,
+  NO_PICTURES,
+  pictureAddress,
+  savePictureRequestSchema,
   createClientReplySchema,
   createClientRequestSchema,
   errorReplySchema,
@@ -59,7 +62,6 @@ import {
 
 const config = {
   name: 'A',
-  logo: null,
   colour: '#000000',
   languages: ['vi'],
   defaultLanguage: 'vi',
@@ -101,6 +103,34 @@ describe('the wire contract', () => {
     expect(saveConfigRequestSchema.safeParse({ config }).success).toBe(false);
     expect(conflictReplySchema.safeParse({ error: 'Conflict', current: null }).success).toBe(true);
     expect(errorReplySchema.safeParse({ error: 'Bad request', details: 'x' }).success).toBe(true);
+  });
+
+  it('21: the settings’ reply names each picture, and none where an older reply names none', () => {
+    const parsed = configDocSchema.parse({ config, version: 'tag' });
+    expect(parsed.pictures).toEqual(NO_PICTURES);
+    expect(NO_PICTURES).toEqual({ logo: null, 'logo-on-colour': null });
+    const named = {
+      logo: { address: '/api/pictures/an/logo?v=t', version: 't' },
+      'logo-on-colour': null,
+    };
+    expect(configDocSchema.parse({ config, version: 'tag', pictures: named }).pictures).toEqual(
+      named,
+    );
+    expect(
+      configDocSchema.safeParse({ config, version: 'tag', pictures: { logo: null } }).success,
+    ).toBe(false);
+    expect(ROUTES.pictures).toBe('/api/pictures');
+    expect(pictureAddress('an-phat', 'logo', 'tag')).toBe('/api/pictures/an-phat/logo?v=tag');
+  });
+
+  it('21: a picture’s save takes an image within the bound or null, and a tag or null', () => {
+    const png = 'data:image/png;base64,iVBORw0KGgo=';
+    const save = (picture: unknown, version: unknown) =>
+      savePictureRequestSchema.safeParse({ picture, version }).success;
+    expect(save(png, null)).toBe(true);
+    expect(save(null, TAG)).toBe(true);
+    expect(save('not an image', null)).toBe(false);
+    expect(save(png, 'v1')).toBe(false);
   });
 
   it('takes a save’s version only as a c-storage tag or null: anything else can never match', () => {

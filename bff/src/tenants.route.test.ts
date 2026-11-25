@@ -24,7 +24,6 @@ afterAll(async () => {
 
 const company = (name: string) => ({
   name,
-  logo: null,
   colour: '#2f7d6d',
   languages: ['vi'],
   defaultLanguage: 'vi',

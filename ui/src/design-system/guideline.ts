@@ -818,6 +818,16 @@ export const GUIDELINE: {
         { prop: 'name', is: 'content', line: 'The company’s name, in the header and on the card.' },
         { prop: 'logo', is: 'content', line: 'The company’s logo on the card; none draws none.' },
         {
+          prop: 'headerLogo',
+          is: 'content',
+          line: 'The logo the header draws, as the app header does; none draws the stand-in.',
+        },
+        {
+          prop: 'headerLogoOnColour',
+          is: 'content',
+          line: 'The logo for the coloured header, drawn bare there in place of the header’s logo; none draws that logo on a white tile.',
+        },
+        {
           prop: 'formatted',
           is: 'content',
           line: 'The name typed as HTML, drawn in the header and on the card; none draws the name.',
@@ -841,6 +851,7 @@ export const GUIDELINE: {
         'Its block: a titled section card, the header over the sign-in card, each under its caption.',
         'Its pictures: hidden from a reader and out of the tab order; only the title and the two captions are read.',
         'The card stops at its title: the fields under it carry nothing the settings set.',
+        'Its header’s logo: chosen by HeaderLogo, as the app’s header chooses it.',
       ],
       states: [
         {
@@ -852,6 +863,10 @@ export const GUIDELINE: {
         {
           name: 'A formatted name',
           line: 'The formatted name, its colours given way on the coloured header and shown on the card, with the description.',
+        },
+        {
+          name: 'A logo for the coloured header',
+          line: 'The coloured header wearing the logo for it bare, the card the logo.',
         },
       ],
       serves: 'A screen picks parts, never a style',
@@ -925,6 +940,48 @@ export const GUIDELINE: {
       ],
       serves: 'A screen picks parts, never a style',
       heldBy: { check: 'ui/src/parts/IdentityFields.test.tsx' },
+      followed: 'yes',
+    },
+    {
+      part: 'PictureField',
+      takes: [
+        { prop: 'label', is: 'content', line: 'The field’s name, above the picture.' },
+        { prop: 'hint', is: 'content', line: 'A line under the name; none draws none.' },
+        {
+          prop: 'picture',
+          is: 'content',
+          line: 'The picture as it stands; none draws the words for none.',
+        },
+        { prop: 'none', is: 'content', line: 'The words said where there is no picture.' },
+        { prop: 'choose', is: 'content', line: 'The words of the button that chooses a file.' },
+        {
+          prop: 'remove',
+          is: 'content',
+          line: 'The words of the button that removes the picture, drawn only with one.',
+        },
+        {
+          prop: 'message',
+          is: 'content',
+          line: 'The outcome of the last try, saved or an error, with its words; none draws none.',
+        },
+        { prop: 'onChoose', is: 'content', line: 'The act of a file chosen, told its file.' },
+        { prop: 'onRemove', is: 'content', line: 'The act of the picture removed.' },
+      ],
+      decides: [{ what: 'The weight of its label.', from: [{ table: 'WEIGHTS', key: 'label' }] }],
+      fixes: [
+        'Its gap between parts: 6 px, as the settings page had it.',
+        'Its order: the label, the hint, then the picture beside its buttons, then the message.',
+        'Its picture: 48 px square, fitted inside, hidden from a reader.',
+        'Its buttons: choose is another meaning, remove is a quiet one.',
+      ],
+      states: [
+        { name: 'With a picture', line: 'The picture beside its choose and remove.' },
+        { name: 'None', line: 'The words for none beside the choose.' },
+        { name: 'Refused', line: 'The picture, with the refusal under it as an error.' },
+        { name: 'Saved', line: 'The picture, with the saved message under it.' },
+      ],
+      serves: 'A screen picks parts, never a style',
+      heldBy: { check: 'ui/src/parts/PictureField.test.tsx' },
       followed: 'yes',
     },
     {
@@ -1267,6 +1324,51 @@ export const GUIDELINE: {
       ],
       serves: 'A screen picks parts, never a style',
       heldBy: { check: 'ui/src/design-system/guideline.test.ts' },
+      followed: 'yes',
+    },
+    {
+      part: 'HeaderLogo',
+      takes: [
+        {
+          prop: 'logo',
+          is: 'content',
+          line: 'The company’s logo; none, or one that fails to load, draws the next choice.',
+        },
+        {
+          prop: 'logoOnColour',
+          is: 'content',
+          line: 'The logo for the coloured header; none draws the logo on a tile there.',
+        },
+        { prop: 'white', is: 'meaning', line: 'Whether the header is white.' },
+      ],
+      decides: [
+        {
+          what: 'Its tile: the white of the one logo alone.',
+          from: [{ table: 'TOKENS', key: 'headerLogo' }],
+        },
+      ],
+      fixes: [
+        'Its square: 36 px, the stand-in icon’s, the picture contained and with no alt, the name beside it saying whose it is.',
+        'Its choice: on the coloured header the logo for it, else the logo on a white tile; on the white header the logo; else the stand-in.',
+        'A picture that fails to load draws the stand-in.',
+      ],
+      states: [
+        {
+          name: 'Both set',
+          line: 'The coloured header wearing the light logo bare, the white one the logo.',
+        },
+        {
+          name: 'Only the logo',
+          line: 'The logo on a white tile on the coloured header, bare on the white one.',
+        },
+        {
+          name: 'Only the coloured header’s',
+          line: 'The light logo on the coloured header, the stand-in on the white one.',
+        },
+        { name: 'None', line: 'The stand-in on both.' },
+      ],
+      serves: 'A screen picks parts, never a style',
+      heldBy: { check: 'ui/src/components/atoms/HeaderLogo.test.tsx' },
       followed: 'yes',
     },
     {

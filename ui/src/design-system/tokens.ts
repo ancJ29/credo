@@ -90,6 +90,9 @@ export const TOKENS = {
   /** The company logo's tile, in px: 44 square, corners of 10 (the legacy's card head). Like the
    * door's padding and body below, a component's own setting, not a theme step. */
   logoTile: { size: 44, radius: 10 },
+  /** The header's logo, in px: the 36-px square the stand-in icon fills; the one logo alone sits on a
+   * white tile of the same square, its picture inset 3 px, corners of 6. */
+  headerLogo: { size: 36, inset: 3, radius: 6, tile: 'var(--mantine-color-white)' },
   /** The brand's gradient button: from shade 7 to shade 9, at 135 degrees, as Mantine's gradient variant reads it. */
   buttonGradient: {
     from: `brand.${BRAND_SHADES.from}`,

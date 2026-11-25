@@ -4,14 +4,14 @@ import {
   LANGUAGES,
   languagesAreValid,
   MAX_LOGO_BYTES,
+  type PictureKind,
+  type Pictures,
   type TenantConfig,
 } from '@credo/shared';
 import {
   Checkbox,
   ColorInput,
-  FileButton,
   Group,
-  Image,
   NativeSelect,
   Radio,
   Stack,
@@ -26,10 +26,10 @@ import { Loaded } from '../frame/Loaded';
 import { ActionButton } from '../components/atoms/ActionButton';
 import { FormMessage } from '../components/molecules/FormMessage';
 import { BrandPreview } from './BrandPreview';
+import { PictureField } from './PictureField';
 import { IdentityFields } from './IdentityFields';
 import { DetailCard, DetailColumns } from './DetailCards';
 import { PALETTES, paletteOfColour } from '../design-system/palettes';
-import { TYPE, WEIGHTS } from '../design-system/tokens';
 import { PageHeader } from '../components/organisms/PageHeader';
 
 type Props = {
@@ -43,11 +43,28 @@ type Props = {
   onRetry: () => void;
   /** Shows the newer settings after a conflict. */
   onReload: () => void;
+  /** The company's pictures as the settings' reply names them: each is saved at its choice, never with the rest. */
+  pictures: Pictures;
+  /** The page takes a picture chosen (a data URL) or removed (none), and saves it at once. */
+  onPicture: (kind: PictureKind, picture: string | null) => void;
+  /** How the last picture's save ended, and which picture it was. */
+  pictureOutcome: {
+    kind: PictureKind;
+    outcome: 'saved' | 'failed' | 'refused' | 'conflict';
+  } | null;
   /** Why a logo was refused at the chooser, where the mock draws it before any file is chosen. */
   logoRefusal?: LogoRefusal;
 };
 
 type LogoRefusal = 'logoNotImage' | 'logoTooLarge';
+
+/** What each outcome of a picture's save says, and in which kind of message. */
+const PICTURE_OUTCOMES = {
+  saved: { kind: 'saved', word: 'settings.saved' },
+  failed: { kind: 'error', word: 'settings.saveFailed' },
+  refused: { kind: 'error', word: 'settings.saveRefused' },
+  conflict: { kind: 'error', word: 'settings.conflict' },
+} as const;
 
 const readAsDataUrl = (file: File) =>
   new Promise<string>((resolve) => {
@@ -56,22 +73,45 @@ const readAsDataUrl = (file: File) =>
     reader.readAsDataURL(file);
   });
 
-function SettingsForm({ config, outcome, saving, onSave, onReload, logoRefusal }: Props) {
+function SettingsForm({
+  config,
+  outcome,
+  saving,
+  onSave,
+  onReload,
+  pictures,
+  onPicture,
+  pictureOutcome,
+  logoRefusal,
+}: Props) {
   const { t } = useTranslation();
   const [draft, setDraft] = useState(config);
   const change = (next: Partial<TenantConfig>) => setDraft((was) => ({ ...was, ...next }));
-  /** Why the file just chosen was not taken as the logo; the draft's logo is as it was. */
-  const [logoRefused, setLogoRefused] = useState<LogoRefusal | null>(logoRefusal ?? null);
+  /** Why the file just chosen for each picture was not taken: it is told to no one. */
+  const [refused, setRefused] = useState<Partial<Record<PictureKind, LogoRefusal | null>>>({
+    logo: logoRefusal ?? null,
+  });
 
-  const chooseLogo = (file: File | null) => {
+  const choosePicture = (kind: PictureKind) => (file: File | null) => {
     if (!file) return;
     const refusal = !file.type.startsWith('image/')
       ? 'logoNotImage'
       : file.size > MAX_LOGO_BYTES
         ? 'logoTooLarge'
         : null;
-    setLogoRefused(refusal);
-    if (!refusal) void readAsDataUrl(file).then((logo) => change({ logo }));
+    setRefused((was) => ({ ...was, [kind]: refusal }));
+    if (!refusal) void readAsDataUrl(file).then((picture) => onPicture(kind, picture));
+  };
+
+  /** What sits under a picture's field: its refusal at the chooser, else how its save ended. */
+  const messageOf = (kind: PictureKind) => {
+    const why = refused[kind];
+    if (why) {
+      return { kind: 'error' as const, text: t(`settings.${why}`, { max: MAX_LOGO_BYTES / 1024 }) };
+    }
+    if (pictureOutcome?.kind !== kind) return undefined;
+    const said = PICTURE_OUTCOMES[pictureOutcome.outcome];
+    return { kind: said.kind, text: t(said.word) };
   };
 
   const chooseLanguages = (languages: string[]) => {
@@ -116,7 +156,9 @@ function SettingsForm({ config, outcome, saving, onSave, onReload, logoRefusal }
           side={
             <BrandPreview
               name={draft.name}
-              logo={draft.logo ?? undefined}
+              logo={pictures.logo?.address}
+              headerLogo={pictures.logo?.address}
+              headerLogoOnColour={pictures['logo-on-colour']?.address}
               formatted={draft.formattedName}
               description={draft.description}
               brand={isHexColour(draft.colour) ? draft.colour : config.colour}
@@ -134,34 +176,28 @@ function SettingsForm({ config, outcome, saving, onSave, onReload, logoRefusal }
                 />
               </DetailCard>
               <DetailCard icon={<IconPhoto size={14} />} title={t('settings.pictures')}>
-                <Stack gap={6}>
-                  <Text size="sm" fw={WEIGHTS.label}>
-                    {t('settings.logo')}
-                  </Text>
-                  <Group>
-                    {draft.logo ? (
-                      <Image src={draft.logo} alt="" h={48} w={48} fit="contain" />
-                    ) : (
-                      <Text {...TYPE.caption}>{t('settings.logoNone')}</Text>
-                    )}
-                    <FileButton accept="image/*" onChange={chooseLogo}>
-                      {(props) => (
-                        <ActionButton meaning="other" onClick={props.onClick}>
-                          {t('settings.logoChoose')}
-                        </ActionButton>
-                      )}
-                    </FileButton>
-                    {draft.logo && (
-                      <ActionButton meaning="quiet" onClick={() => change({ logo: null })}>
-                        {t('settings.logoRemove')}
-                      </ActionButton>
-                    )}
-                  </Group>
-                  {logoRefused && (
-                    <FormMessage kind="error">
-                      {t(`settings.${logoRefused}`, { max: MAX_LOGO_BYTES / 1024 })}
-                    </FormMessage>
-                  )}
+                <Stack gap="lg">
+                  <PictureField
+                    label={t('settings.logo')}
+                    picture={pictures.logo?.address}
+                    none={t('settings.logoNone')}
+                    choose={t('settings.logoChoose')}
+                    remove={t('settings.logoRemove')}
+                    message={messageOf('logo')}
+                    onChoose={choosePicture('logo')}
+                    onRemove={() => onPicture('logo', null)}
+                  />
+                  <PictureField
+                    label={t('settings.logoOnColour')}
+                    hint={t('settings.logoOnColourHint')}
+                    picture={pictures['logo-on-colour']?.address}
+                    none={t('settings.logoOnColourNone')}
+                    choose={t('settings.logoOnColourChoose')}
+                    remove={t('settings.logoOnColourRemove')}
+                    message={messageOf('logo-on-colour')}
+                    onChoose={choosePicture('logo-on-colour')}
+                    onRemove={() => onPicture('logo-on-colour', null)}
+                  />
                 </Stack>
               </DetailCard>
               <DetailCard icon={<IconPalette size={14} />} title={t('settings.frame')}>

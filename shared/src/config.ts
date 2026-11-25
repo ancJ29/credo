@@ -6,8 +6,6 @@ export type Language = (typeof LANGUAGES)[number];
 /** The tenant's settings, the one record the root edits. */
 export type TenantConfig = {
   name: string;
-  /** An inline image (`data:image/…`) of at most `MAX_LOGO_BYTES`, or none. */
-  logo: string | null;
   /** The brand colour, `#rrggbb`. */
   colour: string;
   /** The header on white instead of the brand's colour. */
@@ -44,6 +42,11 @@ export const CREDO_COLOUR = '#3e618c';
 
 export const MAX_LOGO_BYTES = 200 * 1024;
 
+/** The company's pictures, each a record of its own: the logo, and the logo for the coloured header. */
+export const PICTURE_KINDS = ['logo', 'logo-on-colour'] as const;
+export type PictureKind = (typeof PICTURE_KINDS)[number];
+export const pictureKindSchema = z.enum(PICTURE_KINDS);
+
 /** The longest formatted name, in characters, as the legacy app held it. */
 export const MAX_FORMATTED_NAME = 1000;
 
@@ -71,20 +74,39 @@ export function logoIsValid(logo: string) {
   return image !== null && image.bytes <= MAX_LOGO_BYTES;
 }
 
+/** A picture as stored: an image data URL within the bound, in a record of its own. */
+export const storedPictureSchema = z.strictObject({
+  picture: z.string().refine(logoIsValid, 'an image of at most 200 KB'),
+});
+export type StoredPicture = z.infer<typeof storedPictureSchema>;
+
+const configShape = {
+  name: z.string().trim().min(1),
+  colour: z.string().refine(isHexColour, '#rrggbb'),
+  whiteHeader: z.boolean().default(false),
+  whiteMenu: z.boolean().default(false),
+  menuIcons: z.boolean().default(false),
+  languages: z.array(z.enum(LANGUAGES)),
+  defaultLanguage: z.enum(LANGUAGES),
+  formattedName: z.string().max(MAX_FORMATTED_NAME).default(''),
+  description: z.string().trim().max(MAX_DESCRIPTION).default(''),
+};
+const languagesRule = {
+  path: ['languages'],
+  error: 'at least one language, each once, the default among them',
+};
+
+/** The settings as a save sends them and a reply names them: no logo, which is a picture of its own. */
 export const tenantConfigSchema = z
+  .strictObject(configShape)
+  .refine(languagesAreValid, languagesRule) satisfies z.ZodType<TenantConfig>;
+
+/** The settings as an older company stored them: the inline logo still there, a data URL or null.
+ * Read by the move of that logo to a picture and by the seed's freshness check alone. */
+export const storedConfigSchema = z
   .strictObject({
-    name: z.string().trim().min(1),
-    logo: z.string().refine(logoIsValid, 'an image of at most 200 KB').nullable(),
-    colour: z.string().refine(isHexColour, '#rrggbb'),
-    whiteHeader: z.boolean().default(false),
-    whiteMenu: z.boolean().default(false),
-    menuIcons: z.boolean().default(false),
-    languages: z.array(z.enum(LANGUAGES)),
-    defaultLanguage: z.enum(LANGUAGES),
-    formattedName: z.string().max(MAX_FORMATTED_NAME).default(''),
-    description: z.string().trim().max(MAX_DESCRIPTION).default(''),
+    ...configShape,
+    logo: z.string().refine(logoIsValid, 'an image of at most 200 KB').nullable().optional(),
   })
-  .refine(languagesAreValid, {
-    path: ['languages'],
-    error: 'at least one language, each once, the default among them',
-  }) satisfies z.ZodType<TenantConfig>;
+  .refine(languagesAreValid, languagesRule);
+export type StoredConfig = z.infer<typeof storedConfigSchema>;

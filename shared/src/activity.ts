@@ -35,6 +35,7 @@ export const ACTIONS = {
   'employee.passkey': 'passkey added',
   'staff.setup': 'staff setup saved',
   'config.save': 'settings saved',
+  'config.picture': 'picture saved',
   'client.create': 'client made',
   'client.delete': 'client deleted',
   'client.rootPassword': 'root password set',

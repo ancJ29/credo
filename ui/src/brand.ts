@@ -1,8 +1,13 @@
 import { CREDO_COLOUR, type Language, type TenantConfig } from '@credo/shared';
 
-/** What every screen shows of the company, sign-in included; the formatted name and the description, empty where not given. */
-export type Brand = Pick<TenantConfig, 'name' | 'logo'> &
-  Partial<Pick<TenantConfig, 'formattedName' | 'description'>>;
+/** What every screen shows of the company, sign-in included, its pictures as addresses; the formatted name and the description, empty where not given. */
+export type Brand = Pick<TenantConfig, 'name'> &
+  Partial<Pick<TenantConfig, 'formattedName' | 'description'>> & {
+    /** The address of the company's logo, which the card and the header draw; none draws none. */
+    logo: string | null;
+    /** The address of the logo for the coloured header, which only the header draws. */
+    logoOnColour?: string | null;
+  };
 
 /** What the app draws in before it knows the company: credo's own colour and, on a device that
  * has never booted and chose nothing, the market's language. */

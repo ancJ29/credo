@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import {
+  PICTURE_KINDS,
+  pictureKindSchema,
+  storedConfigSchema,
+  storedPictureSchema,
   isHexColour,
   languagesAreValid,
   logoIsValid,
@@ -63,7 +67,6 @@ describe('A logo is an image of at most 200 KB; anything else is refused', () =>
 describe('A config that does not parse is refused on save and stops the boot', () => {
   const good = {
     name: 'Công ty A',
-    logo: null,
     colour: '#2f7d6d',
     languages: ['vi', 'en'],
     defaultLanguage: 'vi',
@@ -125,9 +128,46 @@ describe('A config that does not parse is refused on save and stops the boot', (
       { ...good, languages: ['vi'], defaultLanguage: 'en' },
       { ...good, languages: ['fr'] },
       { ...good, extra: 1 },
+      { ...good, logo: null },
       { ...good, logo: 'https://example.com/x.png' },
     ]) {
       expect(tenantConfigSchema.safeParse(bad).success).toBe(false);
     }
+  });
+});
+
+describe('the company’s pictures', () => {
+  it('10: names two kinds, and stores an image data URL within the bound alone', () => {
+    expect(PICTURE_KINDS).toEqual(['logo', 'logo-on-colour']);
+    expect(pictureKindSchema.safeParse('logo').success).toBe(true);
+    expect(pictureKindSchema.safeParse('banner').success).toBe(false);
+    expect(
+      storedPictureSchema.safeParse({ picture: 'data:image/png;base64,iVBORw0KGgo=' }).success,
+    ).toBe(true);
+    expect(storedPictureSchema.safeParse({ picture: 'nope' }).success).toBe(false);
+    expect(storedPictureSchema.safeParse({ picture: null }).success).toBe(false);
+  });
+});
+
+describe('A settings record as an older company stored it', () => {
+  const older = {
+    name: 'Công ty A',
+    colour: '#2f7d6d',
+    languages: ['vi'],
+    defaultLanguage: 'vi',
+  };
+
+  it('1: still holds its inline logo, a data URL or null, or none; a save never may', () => {
+    expect(storedConfigSchema.safeParse({ ...older, logo: null }).success).toBe(true);
+    expect(
+      storedConfigSchema.safeParse({ ...older, logo: 'data:image/png;base64,iVBORw0KGgo=' })
+        .success,
+    ).toBe(true);
+    expect(storedConfigSchema.safeParse(older).success).toBe(true);
+    expect(
+      storedConfigSchema.safeParse({ ...older, logo: 'https://example.com/x.png' }).success,
+    ).toBe(false);
+    expect(storedConfigSchema.safeParse({ ...older, languages: [] }).success).toBe(false);
+    expect(tenantConfigSchema.safeParse({ ...older, logo: null }).success).toBe(false);
   });
 });

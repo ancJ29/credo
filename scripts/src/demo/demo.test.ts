@@ -7,7 +7,7 @@ import {
   tenantConfigSchema,
 } from '@credo/shared';
 import { describe, expect, it } from 'vitest';
-import { companyConfig, staffSetupOf } from './company';
+import { companyConfig, companyLogo, staffSetupOf } from './company';
 import { addDays, atMinute, daysBetween, isSunday, vietnamToday } from './days';
 import { allCopies, assertLedgerScenario, CLIENTS, copyOfCode, PARTNER_LABEL } from './mapping';
 import { SCENARIO_IDS, SCENARIOS } from './scenarios';
@@ -253,9 +253,11 @@ describe('determinism', () => {
     expect(companyConfig('A', 'Vật liệu Quảng Tín Đạt').colour).toBe(
       companyConfig('A', 'Vật liệu Khác').colour,
     );
-    expect(companyConfig('A', 'Vật liệu Quảng Tín Đạt').logo).not.toBe(
-      companyConfig('A', 'Vật liệu Khác').logo,
+    expect(companyLogo('A', 'Vật liệu Quảng Tín Đạt')).toBe(
+      companyLogo('A', 'Vật liệu Quảng Tín Đạt'),
     );
+    expect(companyLogo('A', 'Vật liệu Quảng Tín Đạt')).not.toBe(companyLogo('A', 'Vật liệu Khác'));
+    expect(companyConfig('A', 'Vật liệu Khác')).not.toHaveProperty('logo');
     expect(staffSetupOf('S1')).toEqual(staffSetupOf('S1'));
     expect(staffSetupOf('S1')).not.toEqual(staffSetupOf('S2'));
   });

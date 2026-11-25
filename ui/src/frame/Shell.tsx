@@ -9,19 +9,13 @@ import {
   Title,
   UnstyledButton,
 } from '@mantine/core';
-import {
-  IconBrandAdobe,
-  IconChevronDown,
-  IconDots,
-  IconLanguage,
-  IconMenu2,
-  IconX,
-} from '@tabler/icons-react';
+import { IconChevronDown, IconDots, IconLanguage, IconMenu2, IconX } from '@tabler/icons-react';
 import { createContext, type ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation } from 'react-router';
 import type { Brand } from '../brand';
 import { BrandName } from '../components/atoms/BrandName';
+import { HeaderLogo } from '../components/atoms/HeaderLogo';
 import classes from './frame.module.css';
 import looks from './frameLook.module.css';
 import { LANGUAGE_NAMES } from '../i18n';
@@ -87,19 +81,23 @@ export const headerLook = (white: boolean) => ({
   style: white ? undefined : { background: BRAND_GRADIENT, color: 'var(--credo-on-header)' },
 });
 
-/** The header's brand: the stand-in icon and the company's name as the first heading, the formatted name where given, its colours showing only on the white header. */
+/** The header's brand: the company's logo, or the stand-in icon where none applies, and its name as the first heading, the formatted name where given, its colours showing only on the white header; the logos are addresses. */
 export function HeaderBrand({
   name,
   formatted,
+  logo,
+  logoOnColour,
   white,
 }: {
   name: string;
   formatted?: string;
+  logo?: string;
+  logoOnColour?: string;
   white: boolean;
 }) {
   return (
     <Group gap="sm" wrap="nowrap" className={headerClass(white, classes.brand, 'brand')}>
-      <IconBrandAdobe size={36} stroke={1.5} aria-hidden />
+      <HeaderLogo logo={logo} logoOnColour={logoOnColour} white={white} />
       <Title
         order={1}
         size="h4"
@@ -182,7 +180,13 @@ export function Shell({
       <AppShell.Header {...headerLook(!!whiteHeader)}>
         <Group h="100%" px="md" justify="space-between" wrap="nowrap">
           <Group wrap="nowrap" gap="sm">
-            <HeaderBrand name={brand.name} formatted={brand.formattedName} white={!!whiteHeader} />
+            <HeaderBrand
+              name={brand.name}
+              formatted={brand.formattedName}
+              logo={brand.logo ?? undefined}
+              logoOnColour={brand.logoOnColour ?? undefined}
+              white={!!whiteHeader}
+            />
             {badge && (
               <Badge variant="filled" className={head(classes.badge, 'badge')}>
                 {badge}

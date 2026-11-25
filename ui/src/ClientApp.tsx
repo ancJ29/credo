@@ -16,7 +16,7 @@ import { AddRecordPage } from './pages/client/AddRecordPage';
 import { AddPersonPage } from './pages/client/AddPersonPage';
 import { type Api, ApiError } from './api';
 import { Boot } from './frame/Boot';
-import { BEFORE_CONFIG, CREDO_BRAND } from './brand';
+import { type Brand, BEFORE_CONFIG, CREDO_BRAND } from './brand';
 import { localToday } from './day';
 import type { DeviceStore } from './device';
 import { DeliveriesPage } from './pages/client/DeliveriesPage';
@@ -224,7 +224,13 @@ export function ClientApp({
     );
   }
 
-  const { config } = doc;
+  const { config, pictures } = doc;
+  /** What every screen draws of the company: the settings, with its pictures as addresses. */
+  const brand: Brand = {
+    ...config,
+    logo: pictures.logo?.address ?? null,
+    logoOnColour: pictures['logo-on-colour']?.address ?? null,
+  };
   // A language the company stopped offering gives way to its default.
   const language = languageShown(config, chosen);
   const signedOut = () => {
@@ -339,7 +345,7 @@ export function ClientApp({
       <title>{config.name}</title>
       {landing ? (
         <QrLanding
-          brand={config}
+          brand={brand}
           status={qrStatus === 'refused' ? 'refused' : 'busy'}
           languages={config.languages}
           onLanguage={chooseLanguage}
@@ -350,7 +356,7 @@ export function ClientApp({
         />
       ) : user ? (
         <Shell
-          brand={config}
+          brand={brand}
           look={config}
           user={user.name}
           pages={pages}
@@ -500,7 +506,7 @@ export function ClientApp({
         </Shell>
       ) : (
         <SignIn
-          brand={config}
+          brand={brand}
           status={signIn}
           waitSeconds={waitSeconds}
           languages={config.languages}
