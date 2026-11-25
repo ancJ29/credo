@@ -26,6 +26,7 @@ import {
   saveConfigRequestSchema,
   sha256Hex,
   type SessionReplyBody,
+  type SignInMethodsReply,
   signInQrRequestSchema,
   signInRequestSchema,
   signInRoutes,
@@ -476,6 +477,13 @@ export function buildApp({
       return { authId, expiresAt, user: userViewOf(view) };
     },
   );
+
+  /** What the door may know before anyone signs in: whether the company has the QR sign-in on, and
+   * nothing else of its setup. A read, so it changes nothing and needs no exemption. */
+  app.get(signInRoutes.methods, forClient, async (request): Promise<SignInMethodsReply> => {
+    const setup = await readSetup(request.storage, request.storage.tenantId);
+    return { qr: staffConfig(setup.setup).fields.qr };
+  });
 
   /** Whether `password` is the one a sign-in record holds. A record with none (a person who has only
    * come in by a QR code) still spends the check, so it takes as long as a wrong one. */
