@@ -30,6 +30,7 @@ import {
 import { type Purpose, createChallenges, CHALLENGE_MS } from '../calling/challenge';
 import {
   authenticationOptions,
+  OPERATORS_RP_NAME,
   registrationOptions,
   relyingOn,
   storedPasskey,
@@ -153,7 +154,7 @@ export function registerOperatorAuth(app: FastifyInstance, deps: OperatorAuthDep
     purpose: Extract<Purpose, 'join' | 'add'>,
     subject: string,
   ) {
-    const options = await registrationOptions(relying, operator, held);
+    const options = await registrationOptions(relying, operator, held, OPERATORS_RP_NAME);
     return { options, token: challenges.mint(options.challenge, purpose, subject) };
   }
 

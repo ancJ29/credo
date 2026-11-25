@@ -55,6 +55,7 @@ import {
   readSignIn,
 } from './records/staff-records';
 import { registerOperatorAuth } from './routes/operator-auth';
+import { OPERATORS_RP_NAME } from './calling/passkeys';
 import { registerOwnPasskeyRoutes } from './routes/own-passkeys';
 import { registerListRoutes } from './routes/lists';
 import { registerDeliveryPhotoRoutes } from './routes/delivery-photo';
@@ -550,6 +551,8 @@ export function buildApp({
     signedIn,
     deviceOf,
     holder,
+    nameOf: async (request) =>
+      (await readConfig(request.storage))?.config.name ?? OPERATORS_RP_NAME,
   });
 
   const { operatorSignedIn, confirmed } = registerOperatorAuth(app, {

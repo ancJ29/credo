@@ -14,6 +14,7 @@ import { recordingActivity } from '../tests/audit';
 import { type RunningCStorage, startCStorage } from '../tests/c-storage';
 import { staffTenant } from '../tests/staff';
 import { DEVICE, ORIGIN, withAuth } from '../tests/tenant';
+import { startingConfig } from './records/clients';
 
 let cs: RunningCStorage;
 beforeAll(async () => {
@@ -40,7 +41,7 @@ const send = (t: Tenant, url: string, authId: string, payload?: unknown) =>
 
 /** What an options answer says of the relying party, the person and the passkeys not to be made again. */
 const optionsFacts = z.looseObject({
-  rp: z.looseObject({ id: z.string() }),
+  rp: z.looseObject({ id: z.string(), name: z.string() }),
   user: z.looseObject({ id: z.string(), name: z.string() }),
   excludeCredentials: z.array(z.looseObject({ id: z.string() })).default([]),
 });
@@ -86,6 +87,8 @@ describe('A company’s person adds a passkey, checked against the company’s o
     expect(decoded(asked.facts.user.id)).toBe(person.employee.id);
     expect(asked.facts.user.name).toBe('Lan Anh');
     expect(asked.facts.rp.id).toBe('localhost');
+    // where the company has no settings the passkey is made for the machine's name
+    expect(asked.facts.rp.name).toBe('Credo');
     const held = await heldBy(t, person.employee.id);
     expect(held?.passkeys.map((passkey) => passkey.id)).toEqual([first.id]);
     expect(held?.spent).toEqual([]);
@@ -95,6 +98,14 @@ describe('A company’s person adds a passkey, checked against the company’s o
       first.id,
       second.id,
     ]);
+  });
+
+  it('makes a company’s passkey for the company’s own plain name', async () => {
+    const t = await staffTenant(cs);
+    const person = await t.staff('EMP-1');
+    await t.client.putRecord(t.keys.config, startingConfig('Ăn Đêm'), null);
+
+    expect((await optionsFor(t, person.authId)).facts.rp.name).toBe('Ăn Đêm');
   });
 
   it('keeps the root’s passkey under the company’s own id', async () => {

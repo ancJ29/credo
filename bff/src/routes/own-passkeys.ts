@@ -50,6 +50,8 @@ type Deps = {
   }>;
   /** The device a call names, a 400 where it names none. */
   deviceOf: (request: FastifyRequest) => string;
+  /** The company's plain name, from its settings, which a new passkey is made for. */
+  nameOf: (request: FastifyRequest) => Promise<string>;
   /** The session a passkey's handle is to be signed in with, or null where it names no person who
    * may sign in (the root, or a person there, not archived and still named by their sign-in
    * record); the session is issued as a password's is, when the closure is called. */
@@ -68,7 +70,7 @@ type Deps = {
  */
 export function registerOwnPasskeyRoutes(
   app: FastifyInstance,
-  { now, origin, serviceKey, forClient, signedIn, deviceOf, holder }: Deps,
+  { now, origin, serviceKey, forClient, signedIn, deviceOf, holder, nameOf }: Deps,
 ) {
   const challenges = createChallenges({ serviceKey, now });
 
@@ -148,6 +150,7 @@ export function registerOwnPasskeyRoutes(
         relyingOf(request),
         { id: handle, name: who.name },
         held?.record.passkeys ?? [],
+        await nameOf(request),
       );
       return {
         options,

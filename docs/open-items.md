@@ -2322,7 +2322,7 @@ One's own password change ends every other session (`bff/src/app.ts#L475-L501`) 
 
 `walk/specs/piece-1.spec.ts#L134-L136` finds the h1 by `name: 'Minh Phát'` with no `exact: true`, a substring match, so it would also match the typed name "Minh Phát Sài Gòn" and does not prove its comment's "the header still the saved one"; the base picture and `ui/src/App.test.tsx#L447` hold that claim. *Fix:* `exact: true` on that finder. *Trigger:* the next change to the walk's spec, since a walk change needs a walk run.
 
-## 683. A company's new passkey is made for the relying party "Credo", the machine's, not for the company's own name — the machine; `[DEFERRED]` to the branding campaign's fourth milestone (piece 250.2's plan, 2026-11-25, Low)
+## 683. A company's new passkey is made for the relying party "Credo", the machine's, not for the company's own name — the machine; `[FIXED]` in piece 250.4's step 2 (2026-11-25; found in piece 250.2's plan, Low)
 
 `bff/src/calling/passkeys.ts#L17` and `#L42` name the relying party "Credo" for every passkey a company's person adds (from `bff/src/routes/own-passkeys.ts#L147-L151`), so the device's passkey list shows "Credo" under a company's own name. The settings are read only in `app.ts`'s closure (`bff/src/app.ts#L313-L317`), not in the passkey routes, until the fourth milestone's manifest reads them in the BFF. *Fix:* give the passkey calls the company's plain name from the settings. *Trigger:* milestone 4's plan.
 
