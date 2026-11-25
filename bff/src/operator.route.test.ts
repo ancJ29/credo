@@ -219,6 +219,8 @@ describe('A new client starts with its name, credo’s colour, no logo and both 
       menuIcons: false,
       languages: ['vi', 'en'],
       defaultLanguage: 'vi',
+      formattedName: '',
+      description: '',
     });
 
     const { body } = await signIn(app, { name: 'root', password: reply.password });

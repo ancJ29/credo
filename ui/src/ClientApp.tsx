@@ -17,7 +17,7 @@ import { AddRecordPage } from './pages/client/AddRecordPage';
 import { AddPersonPage } from './pages/client/AddPersonPage';
 import { type Api, ApiError } from './api';
 import { Boot } from './frame/Boot';
-import { BEFORE_CONFIG } from './brand';
+import { BEFORE_CONFIG, CREDO_BRAND } from './brand';
 import { localToday } from './day';
 import type { DeviceStore } from './device';
 import { DeliveriesPage } from './pages/client/DeliveriesPage';
@@ -222,6 +222,7 @@ export function ClientApp({
         test={test}
         {...look}
       >
+        <title>{CREDO_BRAND.name}</title>
         {phase === 'unknown' ? (
           <UnknownClient />
         ) : phase === 'waiting' ? (
@@ -349,6 +350,7 @@ export function ClientApp({
 
   return (
     <Providers colour={config.colour} language={language} test={test} {...look}>
+      <title>{config.name}</title>
       {landing ? (
         <QrLanding
           brand={config}

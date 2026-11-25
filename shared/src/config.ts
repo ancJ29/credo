@@ -19,6 +19,10 @@ export type TenantConfig = {
   /** The languages offered, each once. */
   languages: Language[];
   defaultLanguage: Language;
+  /** The name as typed, HTML, at most `MAX_FORMATTED_NAME` characters; empty where none. */
+  formattedName: string;
+  /** A short line under the name on the sign-in card, trimmed, at most `MAX_DESCRIPTION`; empty where none. */
+  description: string;
 };
 
 export const isHexColour = (value: string) => /^#[0-9a-f]{6}$/i.test(value);
@@ -39,6 +43,12 @@ export function languagesAreValid({
 export const CREDO_COLOUR = '#3e618c';
 
 export const MAX_LOGO_BYTES = 200 * 1024;
+
+/** The longest formatted name, in characters, as the legacy app held it. */
+export const MAX_FORMATTED_NAME = 1000;
+
+/** The longest description, in characters, once trimmed. */
+export const MAX_DESCRIPTION = 200;
 
 const IMAGE_DATA_URL = /^data:image\/([a-z0-9.+-]+);base64,([A-Za-z0-9+/]*)(={0,2})$/;
 
@@ -71,6 +81,8 @@ export const tenantConfigSchema = z
     menuIcons: z.boolean().default(false),
     languages: z.array(z.enum(LANGUAGES)),
     defaultLanguage: z.enum(LANGUAGES),
+    formattedName: z.string().max(MAX_FORMATTED_NAME).default(''),
+    description: z.string().trim().max(MAX_DESCRIPTION).default(''),
   })
   .refine(languagesAreValid, {
     path: ['languages'],

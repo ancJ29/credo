@@ -1,7 +1,8 @@
 import { CREDO_COLOUR, type Language, type TenantConfig } from '@credo/shared';
 
-/** What every screen shows of the company, sign-in included. */
-export type Brand = Pick<TenantConfig, 'name' | 'logo'>;
+/** What every screen shows of the company, sign-in included; the formatted name and the description, empty where not given. */
+export type Brand = Pick<TenantConfig, 'name' | 'logo'> &
+  Partial<Pick<TenantConfig, 'formattedName' | 'description'>>;
 
 /** What the app draws in before it knows the company: credo's own colour and, on a device that
  * has never booted and chose nothing, the market's language. */

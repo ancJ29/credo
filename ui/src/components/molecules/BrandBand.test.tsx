@@ -41,3 +41,31 @@ describe('BrandBand', () => {
     expect(screen.queryByRole('img')).toBeNull();
   });
 });
+
+describe('BrandBand, the formatted name and the description', () => {
+  const drawn = (formatted?: string, description?: string) =>
+    render(
+      <MantineProvider theme={themeOf('#2f7d6d')} env="test">
+        <BrandBand name="Acme" formatted={formatted} description={description} />
+      </MantineProvider>,
+    );
+
+  it('3: draws the formatted name as the heading, read by the plain name', () => {
+    const { container } = drawn('<b>Ac</b>me');
+
+    expect(container.querySelector('h1 [aria-hidden="true"] b')?.textContent).toBe('Ac');
+    expect(screen.getByRole('heading', { level: 1, name: 'Acme' })).toBeDefined();
+  });
+
+  it('4: draws the description in a caption under the name, and nothing where none is set', () => {
+    const { unmount } = drawn(undefined, 'Building materials');
+    const name = screen.getByRole('heading', { level: 1, name: 'Acme' });
+    const caption = screen.getByText('Building materials');
+    expect(name.compareDocumentPosition(caption) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+    expect(name.parentElement).toBe(caption.parentElement);
+    unmount();
+
+    const bare = drawn(undefined, '');
+    expect(bare.container.querySelectorAll('p')).toHaveLength(0);
+  });
+});

@@ -43,7 +43,7 @@ flowchart LR
   root could own** — a label, a logo, a colour, a declared field, a switch over an existing
   affordance. A common pattern belongs here whichever client asked. **The test:** could an operator
   be handed this switch and get it right? What carries it: `TenantConfig`
-  (`shared/src/config.ts#L7-L22`), and a company's declared fields (`shared/src/fields.ts#L4-L6`)
+  (`shared/src/config.ts#L7-L26`), and a company's declared fields (`shared/src/fields.ts#L4-L6`)
   whose values live in `extra`. *The honest limit:* `TenantConfig` holds eight presentation fields
   and no `features` object, so no screen reads a per-tenant switch today; the smallest honest
   extension is one defaulted `features` record on it, each key named for the behaviour and never for

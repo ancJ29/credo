@@ -1,7 +1,9 @@
 import { globSync, readFileSync } from 'node:fs';
+import { cleanup, render } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import { draw } from '../../tests/render';
 import { ROLES } from '../design-system/tokens';
+import { Providers } from './Providers';
 
 const scheme = () => document.documentElement.getAttribute('data-mantine-color-scheme');
 
@@ -42,5 +44,31 @@ describe('Providers', () => {
     }
     expect(read.size).toBeGreaterThan(5);
     for (const name of read) expect(style).toContain(`--credo-${name}: `);
+  });
+});
+
+describe('Providers, the page’s language', () => {
+  it('2: marks the page in the language shown, and again when it changes', () => {
+    const { rerender } = draw(<p>the page</p>, 'vi');
+    expect(document.documentElement.getAttribute('lang')).toBe('vi');
+
+    rerender(<p>the page</p>);
+    expect(document.documentElement.getAttribute('lang')).toBe('vi');
+    cleanup();
+    draw(<p>the page</p>, 'en');
+    expect(document.documentElement.getAttribute('lang')).toBe('en');
+  });
+
+  it('2: marks the element that carries the colour scheme where it is not the page’s own', () => {
+    const frame = document.createElement('div');
+    document.body.append(frame);
+    render(
+      <Providers colour="#2f7d6d" language="en" root={() => frame} test>
+        <p>the page</p>
+      </Providers>,
+    );
+
+    expect(frame.getAttribute('lang')).toBe('en');
+    frame.remove();
   });
 });

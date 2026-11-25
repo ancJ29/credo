@@ -148,7 +148,11 @@ describe('Gallery', () => {
 
     expect(part().getByRole('heading', { level: 2, name: 'DoorCard' })).toBeDefined();
     expect(part().getByText(/^A door’s card|^A door's card/)).toBeDefined();
-    expect(part().getByText('name: string · logo?: string · children: ReactNode')).toBeDefined();
+    expect(
+      part().getByText(
+        'name: string · logo?: string · formatted?: string · description?: string · children: ReactNode',
+      ),
+    ).toBeDefined();
     expect(stateNames()).toEqual(DOOR_CARD_STATES);
     expect(screen.queryByRole('heading', { level: 2, name: 'FieldLabel' })).toBeNull();
     expect(screen.getAllByRole('article')).toHaveLength(1);
@@ -1548,7 +1552,11 @@ describe('Gallery', () => {
     expect(about().getByRole('heading', { level: 2, name: 'DoorCard' })).toBeDefined();
     expect(about().getByText(/^A door’s card|^A door's card/)).toBeDefined();
     expect(about().getByRole('heading', { level: 3, name: 'Props' })).toBeDefined();
-    expect(about().getByText('name: string · logo?: string · children: ReactNode')).toBeDefined();
+    expect(
+      about().getByText(
+        'name: string · logo?: string · formatted?: string · description?: string · children: ReactNode',
+      ),
+    ).toBeDefined();
     expect(about().getByRole('heading', { level: 3, name: 'Show' })).toBeDefined();
     expect(about().getByRole('combobox', { name: 'Colour theme' })).toBeDefined();
     expect(about().queryAllByRole('figure')).toHaveLength(0);
@@ -1595,7 +1603,7 @@ describe('Gallery', () => {
   });
 
   it('213 case 1: every entry carries one to three use lines and one to three don’t-use lines', () => {
-    expect(ENTRIES).toHaveLength(46);
+    expect(ENTRIES).toHaveLength(48);
     for (const entry of ENTRIES) {
       for (const lines of [entry.useWhen, entry.dontUseWhen]) {
         expect(lines.length, entry.name).toBeGreaterThanOrEqual(1);
@@ -1850,6 +1858,7 @@ describe('Gallery', () => {
       'The confirm page',
       'The settings page',
       'BrandPreview',
+      'IdentityFields',
     ]);
     for (const name of SLOTS) {
       const entry = ENTRIES.find((each) => each.name === name);
@@ -1935,7 +1944,7 @@ describe('Gallery', () => {
         entry.kind !== KIND_OF_PAGE,
     );
     // A set that found nothing would quiet the loop.
-    expect(parts.length).toBe(27);
+    expect(parts.length).toBe(29);
     expect(GUIDELINE.contracts.map((contract) => contract.part).sort()).toEqual(
       parts.map((entry) => entry.name).sort(),
     );
@@ -2368,7 +2377,12 @@ describe('Gallery', () => {
   it('236 case 12: the settings page draws its fields and choices in four titled blocks beside a preview, saved, and a refusal as a message', () => {
     const entry = ENTRIES.find((each) => each.name === 'The settings page')!;
     expect(entry.kind).toBe(KIND_OF_PAGE);
-    expect(entry.states.map((state) => state.name)).toEqual(['The basics', 'Saved', 'Refused']);
+    expect(entry.states.map((state) => state.name)).toEqual([
+      'The basics',
+      'Saved',
+      'Refused',
+      'A formatted name',
+    ]);
     drawn(entry);
     const figure = (name: string) => within(part().getByRole('figure', { name }));
     // 1. The basics: four titled blocks in order and a preview, one main, no message.
@@ -2417,6 +2431,7 @@ describe('Gallery', () => {
       'A coloured header',
       'A white header',
       'A card with no logo',
+      'A formatted name',
     ]);
     drawn(entry);
     const figures = ['A coloured header', 'A white header', 'A card with no logo'].map((name) =>
@@ -2482,5 +2497,95 @@ describe('Gallery', () => {
     expect(inputs).toHaveLength(3);
     expect(colour.querySelectorAll('[readonly]')).toHaveLength(1);
     expect(colour.querySelectorAll('[data-error]').length).toBeGreaterThan(0);
+  });
+
+  it('250.2 case 15: the gallery draws the company’s name plain, formatted, on the coloured header and with nothing left', () => {
+    const entry = ENTRIES.find((each) => each.name === 'BrandName')!;
+    expect(entry.group).toBe('Atoms');
+    expect(entry.props).toBe('name: string · formatted?: string · colours?: boolean');
+    open(`${BASE}/atoms/brand-name`);
+
+    expect(stateNames()).toEqual(['Plain', 'Formatted', 'On the coloured header', 'Nothing left']);
+    const at = (name: string) => part().getByRole('figure', { name });
+    expect(at('Plain').querySelector('[aria-hidden="true"]')).toBeNull();
+    expect(at('Plain').textContent).toContain(SAMPLES.vi.shop);
+    const formatted = at('Formatted');
+    expect(formatted.querySelector('[aria-hidden="true"] b')).not.toBeNull();
+    expect(formatted.querySelector('[aria-hidden="true"] br')).not.toBeNull();
+    expect(formatted.querySelector('[style*="rgb(29, 53, 87)"]')).not.toBeNull();
+    expect(within(formatted).getByText(SAMPLES.vi.shop)).toBeDefined();
+    const header = at('On the coloured header');
+    expect(header.querySelector('[aria-hidden="true"] b')).not.toBeNull();
+    expect(header.querySelector('[style*="rgb(29, 53, 87)"]')).toBeNull();
+    expect(at('Nothing left').querySelector('[aria-hidden="true"]')).toBeNull();
+    expect(at('Nothing left').textContent).toContain(SAMPLES.vi.shop);
+  });
+
+  it('250.2 case 15: BrandBand, BrandPreview and the settings page each draw a formatted name', async () => {
+    const formattedIn = (figure: HTMLElement) => figure.querySelector('[aria-hidden="true"] b');
+    open(`${BASE}/molecules/brand-band`);
+    expect(stateNames()).toEqual(['Default', 'Formatted, with a description']);
+    const band = part().getByRole('figure', { name: 'Formatted, with a description' });
+    expect(formattedIn(band)).not.toBeNull();
+    expect(within(band).getByText(SAMPLES.vi.shopDescription)).toBeDefined();
+    expect(
+      part().getByRole('figure', { name: 'Default' }).querySelector('[aria-hidden="true"]'),
+    ).toBeNull();
+    cleanup();
+
+    open(`${BASE}/pages/brand-preview`);
+    expect(stateNames()).toEqual([
+      'A coloured header',
+      'A white header',
+      'A card with no logo',
+      'A formatted name',
+    ]);
+    const preview = part().getByRole('figure', { name: 'A formatted name' });
+    const header = preview.querySelector('[data-preview="header"]')!;
+    expect(header.querySelector('[aria-hidden="true"] b')).not.toBeNull();
+    expect(header.querySelector('[style*="rgb(29, 53, 87)"]')).toBeNull();
+    const card2 = preview.querySelector('[data-preview="card"]')!;
+    expect(card2.querySelector('[style*="rgb(29, 53, 87)"]')).not.toBeNull();
+    expect(within(card2 as HTMLElement).getByText(SAMPLES.vi.shopDescription)).toBeDefined();
+    cleanup();
+
+    open(`${BASE}/pages/the-settings-page`);
+    expect(stateNames()).toEqual(['The basics', 'Saved', 'Refused', 'A formatted name']);
+    const page = part().getByRole('figure', { name: 'A formatted name' });
+    const typed = within(page).getByRole<HTMLTextAreaElement>('textbox', {
+      name: DICTIONARIES.vi.settings.formattedName,
+    });
+    expect(typed.value).toContain('<b>');
+    await userEvent.type(
+      within(page).getByRole('textbox', { name: DICTIONARIES.vi.settings.name }),
+      'X',
+    );
+    expect(page.querySelector('[data-preview="card"]')?.textContent).toContain(
+      `${SAMPLES.vi.shop}X`,
+    );
+    expect(page.querySelector('[data-preview="header"] [aria-hidden="true"] b')).not.toBeNull();
+  });
+
+  it('250.2 case 15: IdentityFields draws the name, the formatted name with its hint and preview, and the description, and typing redraws the preview', async () => {
+    const user = userEvent.setup();
+    const entry = ENTRIES.find((each) => each.name === 'IdentityFields')!;
+    expect(entry.group).toBe('Pages');
+    open(`${BASE}/pages/identity-fields`);
+
+    expect(stateNames()).toEqual(['Empty', 'A formatted name']);
+    const words = DICTIONARIES.vi.settings;
+    const empty = part().getByRole('figure', { name: 'Empty' });
+    expect(within(empty).getByRole('textbox', { name: words.name })).toBeDefined();
+    expect(within(empty).getByText(words.formattedNameHint)).toBeDefined();
+    expect(within(empty).getByRole('textbox', { name: words.description })).toBeDefined();
+    expect(empty.querySelector('b')).toBeNull();
+    await user.type(within(empty).getByRole('textbox', { name: words.formattedName }), '<b>x</b>');
+    expect(empty.querySelector('[aria-hidden="true"] b')?.textContent).toBe('x');
+    await user.type(within(empty).getByRole('textbox', { name: words.name }), 'Z');
+    await user.type(within(empty).getByRole('textbox', { name: words.description }), 'D');
+    expect(within(empty).getByDisplayValue('D')).toBeDefined();
+    const filled = part().getByRole('figure', { name: 'A formatted name' });
+    expect(filled.querySelector('[aria-hidden="true"] b')).not.toBeNull();
+    expect(within(filled).getByText(words.formattedNamePreview)).toBeDefined();
   });
 });
