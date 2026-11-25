@@ -166,9 +166,15 @@ diff" is `git diff -U0 -- visual/src/resolved.pinned.txt | grep '^+[a-z]' | cut 
       red (no sign-up call, no page), then green. `UnknownClient` is now credo's door card with the link, and
       `WaitingClient` its twin; the gallery draws both as the app does. A 503 on the send says "too many
       companies are waiting", which a storage outage also earns: kept as it stands, for the review.
-- [ ] **4. The console's waiting list, on the fake.** Clients' block, Approve, Refuse and its question;
+- [x] **4. The console's waiting list, on the fake.** Clients' block, Approve, Refuse and its question;
       the fake's approval making the company. Rows 17, 18's second half. _Done when:_ `ui`'s and
       `visual`'s gates, the pinned diff naming `op-5-dashboard` alone. **11 min** (241.2's step 4: 11).
+      _Done 2026-11-25 16:19:_ `ui`'s and `visual`'s gates, each run after the last edit, and the citation test, run
+      last, each exit 0; rows 17 and 18's second half red (no list, approve or refuse call, no block), then
+      green. **The pinned diff names two screens, not one:** `op-5-dashboard` and `dc-4-gone`, the clients' list
+      the delete walk ends on, which now carries the data set's waiting company above it. A third, `op-7-list-failed`,
+      was moved by the first build and held still by showing the block only while the clients' list is read.
+      Step 8's moved list and the run line gain `dc-4-gone`.
 - [ ] **5. The sign-up and the waiting answer, in the BFF.** `bff/src/routes/sign-up.ts` and
       `bff/src/records/sign-ups.ts`; `resolveTenant`'s waiting detail; `createClient`'s check of a
       waiting code. Rows 1, 2, 5 to 9, 12. _Done when:_ `bff`'s and `shared`'s gates, the operators'

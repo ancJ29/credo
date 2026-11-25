@@ -22,7 +22,9 @@ describe.each(['en', 'vi'] as const)('the operator’s screens 5 to 7, in %s', (
     const menus = screen.getAllByRole('navigation', { name: words.nav.menu });
     expect(within(menus[0]).getAllByRole('link')).toHaveLength(5);
     expect(screen.queryByText('minh-phat')).toBeNull();
-    expect(screen.getAllByRole('row')).toHaveLength(1 + 3);
+    // the waiting company's table (a heading row and its one row) above the clients' (a heading row and three)
+    expect(await screen.findByRole('heading', { name: words.operator.waitingTitle })).toBeTruthy();
+    expect(screen.getAllByRole('row')).toHaveLength(1 + 1 + 1 + 3);
   });
 
   it('Screen 6 is the coming-soon page, reached after the list without a reload', async () => {

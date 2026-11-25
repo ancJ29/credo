@@ -687,6 +687,34 @@ export function createFakeApi({
         return { config, version: `v${version}` };
       }),
 
+    listSignUps: () =>
+      call('listSignUps', () => {
+        if (!device.operatorAuthId()) throw signedOut();
+        return [...waitingSignUps.values()].map((one) => ({ ...one }));
+      }),
+
+    approveSignUp: (code) =>
+      call('approveSignUp', () => {
+        if (!device.operatorAuthId()) throw signedOut();
+        const waiting = waitingSignUps.get(code);
+        if (!waiting) throw notFound();
+        if (clients.has(code)) return { kind: 'taken' as const };
+        clients.set(code, {
+          code,
+          name: waiting.name,
+          madeAt: Date.now(),
+          link: clientLinkPath(code),
+        });
+        waitingSignUps.delete(code);
+        return { kind: 'approved' as const, link: clientLinkPath(code) };
+      }),
+
+    refuseSignUp: (code) =>
+      call('refuseSignUp', () => {
+        if (!device.operatorAuthId()) throw signedOut();
+        if (!waitingSignUps.delete(code)) throw notFound();
+      }),
+
     signUp: (request) =>
       call('signUp', () => {
         const taken =

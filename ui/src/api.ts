@@ -128,6 +128,9 @@ import {
   sessionReplySchema,
   type SetEmailRequest,
   type SignUpRequest,
+  signUpApprovedReplySchema,
+  signUpListReplySchema,
+  type WaitingSignUp,
   signUpReplySchema,
   signUpRoutes,
   signInRoutes,
@@ -193,6 +196,9 @@ export type ChangeCodeResult =
 /** An email given or removed, or one already signing someone in, or the version moved. */
 export type SetEmailResult =
   { kind: 'set'; doc: EmployeeDoc } | { kind: 'taken' } | { kind: 'conflict' };
+
+/** A waiting company made, with the path it signs in at; or its address made meanwhile. */
+export type ApproveSignUpResult = { kind: 'approved'; link: string } | { kind: 'taken' };
 
 /** A company's sign-up sent, with the address it asked for; or that address taken. */
 export type SignUpResult = { kind: 'sent'; code: string } | { kind: 'taken' };
@@ -418,6 +424,28 @@ export function createApi({
       if (response.status === 409) return { kind: 'taken' };
       if (!response.ok) throw new ApiError(response.status, true);
       return { kind: 'sent', code: (await read(response, signUpReplySchema)).code };
+    },
+
+    /** The companies waiting for approval, as the operator is shown them, oldest first. */
+    async listSignUps(): Promise<WaitingSignUp[]> {
+      const response = await send('GET', signUpRoutes.list, undefined, 'operator');
+      if (!response.ok) throw new ApiError(response.status);
+      return (await read(response, signUpListReplySchema)).signUps;
+    },
+
+    /** Makes the waiting company, as the console's add does but with the root's chosen password; a
+     * 409 is an address made meanwhile, and the request stays. */
+    async approveSignUp(code: string): Promise<ApproveSignUpResult> {
+      const response = await send('POST', signUpRoutes.approve(code), undefined, 'operator');
+      if (response.status === 409) return { kind: 'taken' };
+      if (!response.ok) throw new ApiError(response.status);
+      return { kind: 'approved', link: (await read(response, signUpApprovedReplySchema)).link };
+    },
+
+    /** Removes a waiting request, freeing its address. */
+    async refuseSignUp(code: string): Promise<void> {
+      const response = await send('DELETE', signUpRoutes.one(code), undefined, 'operator');
+      if (!response.ok) throw new ApiError(response.status);
     },
 
     async signOut() {

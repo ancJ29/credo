@@ -30,8 +30,10 @@ import {
   ownPasskeyListReplySchema,
   ownPasskeyRemovedReplySchema,
   personPasskeysReplySchema,
+  clientLinkPath,
   SIGN_UP_WAITING,
   SIGN_UPS_WAITING_MAX,
+  signUpListReplySchema,
   operatorMeReplySchema,
   operatorSessionReplySchema,
   servicesReplySchema,
@@ -479,6 +481,9 @@ describe('the fake Api', () => {
         'personPasskeys',
         'removePersonPasskeys',
         'signUp',
+        'listSignUps',
+        'approveSignUp',
+        'refuseSignUp',
         'operatorPasskeyOptions',
         'operatorPasskeySignIn',
         'operatorJoinOptions',
@@ -1030,6 +1035,59 @@ describe('the fake Api', () => {
       });
     }
     expect(await status(api.signUp({ ...request, code: 'one-more' }))).toBe(503);
+  });
+
+  it('18: The fake lists the waiting companies for an operator, approves one into a company whose address then opens, and refuses one so its address is free again', async () => {
+    const held: { operator?: string } = { operator: 'fake.operator' };
+    const code = { current: null as string | null };
+    const api = createFakeApi({
+      device: {
+        authId: () => null,
+        operatorAuthId: () => held.operator ?? null,
+        clientCode: () => code.current,
+      },
+      cue: null,
+    });
+    const first = DEMO_SIGN_UPS[0];
+    const request = {
+      code: 'phu-quy',
+      name: 'Gạch Men Phú Quý',
+      contactName: 'An',
+      contactPhone: '0901 234',
+      password: 'Correct-horse-9!',
+    };
+
+    expect((await api.listSignUps()).map((one) => one.code)).toEqual([first.code]);
+    expect(signUpListReplySchema.safeParse({ signUps: await api.listSignUps() }).success).toBe(
+      true,
+    );
+    await api.signUp(request);
+    expect((await api.listSignUps()).map((one) => one.code)).toEqual([first.code, 'phu-quy']);
+
+    // approval makes the company, listed and no longer waiting, its address no longer marked
+    const approved = await api.approveSignUp(first.code);
+    expect(approved).toEqual({ kind: 'approved', link: clientLinkPath(first.code) });
+    expect((await api.listClients()).map((one) => one.code)).toContain(first.code);
+    expect((await api.listSignUps()).map((one) => one.code)).toEqual(['phu-quy']);
+    code.current = first.code;
+    expect((await api.getConfig()).config.name).toBe(DEMO_CONFIG.name);
+
+    // a refusal removes the request and frees the address, and the same address may ask again
+    await api.refuseSignUp('phu-quy');
+    expect(await api.listSignUps()).toEqual([]);
+    expect(await api.signUp(request)).toEqual({ kind: 'sent', code: 'phu-quy' });
+
+    // an address made meanwhile is taken: the approval says so and the request stays
+    await api.makeClient('phu-quy', 'Made first');
+    expect(await api.approveSignUp('phu-quy')).toEqual({ kind: 'taken' });
+    expect((await api.listSignUps()).map((one) => one.code)).toEqual(['phu-quy']);
+
+    expect(await status(api.approveSignUp('no-one'))).toBe(404);
+    expect(await status(api.refuseSignUp('no-one'))).toBe(404);
+    held.operator = undefined;
+    expect(await status(api.listSignUps())).toBe(401);
+    expect(await status(api.approveSignUp('phu-quy'))).toBe(401);
+    expect(await status(api.refuseSignUp('phu-quy'))).toBe(401);
   });
 
   it('C: Two fresh fakes mint the same QR link for the same person, so a screen that shows it reads the same on every build', async () => {
