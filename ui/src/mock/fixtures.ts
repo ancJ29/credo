@@ -1,4 +1,4 @@
-import type { TenantConfig } from '@credo/shared';
+import { drawIcon, pngOf, storedDeflate, type TenantConfig } from '@credo/shared';
 
 /** An invented logo for the mock's companies, drawn in a fill. */
 const logo = (fill: string) =>
@@ -13,6 +13,21 @@ export const LOGO = logo('#2f7d6d');
 export const LIGHT_LOGO = `data:image/svg+xml,${encodeURIComponent(
   '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><path d="M13 33V15l11 12 11-12v18" fill="none" stroke="#fff" stroke-width="4" stroke-linejoin="round"/></svg>',
 )}`;
+
+/** An invented icon uploaded for a mock company: the letter of its name drawn in another colour, `side` pixels square, as a PNG data URL. */
+const uploadedIcon = (side: number) => {
+  const png = pngOf(
+    drawIcon({ name: 'Minh Phát', code: 'minh-phat', colour: '#6a4c93' }, side),
+    storedDeflate,
+  );
+  let binary = '';
+  for (const byte of png) binary += String.fromCharCode(byte);
+  return `data:image/png;base64,${btoa(binary)}`;
+};
+
+/** The tab icon and the phone-app icon (its 192 size) a mock company uploaded. */
+export const TAB_ICON = uploadedIcon(64);
+export const APP_ICON = uploadedIcon(192);
 
 /** An invented company, never a client's. */
 export const FILLED: TenantConfig = {

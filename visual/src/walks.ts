@@ -526,6 +526,17 @@ export const WALKS: Walk[] = [
         },
         question: 'Does the coloured header show the company’s light logo, clear on its colour?',
       },
+      {
+        id: '18-icons',
+        number: 18,
+        path: 'main',
+        mock: { screen: 4, state: 'icons' },
+        sentence: {
+          en: 'Saved: both icons uploaded, the preview’s tab and home-screen tile wear them',
+          vi: 'Đã lưu: cả hai biểu tượng đã tải lên, tab và màn hình chính trong phần xem trước hiện chúng',
+        },
+        question: 'Do the tab and the phone’s home screen show the company’s own icons?',
+      },
     ],
   },
   {
