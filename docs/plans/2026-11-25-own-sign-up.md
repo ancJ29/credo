@@ -136,12 +136,17 @@ touched package's `pnpm --filter @credo/<pkg> check`, exit 0 by its own code, pl
 each step starts by taking `pre-merge` in, so 250.2's door parts are under it once landed. "The pinned
 diff" is `git diff -U0 -- visual/src/resolved.pinned.txt | grep '^+[a-z]' | cut -d' ' -f1 | sort -u`.
 
-- [ ] **1. Your answer, then the gallery.** The `docs/decisions.md` row in your words above. Then, on
+- [x] **1. Your answer, then the gallery.** The `docs/decisions.md` row in your words above. Then, on
       invented names: `DoorCard`'s "A company's sign-up", "An address taken" and "Sent for approval",
       `UnknownClient`'s link and "Waiting for approval"; the list page's "Waiting for approval" and
       "A refusal asked"; the words below. Row 19 red first. _Done when:_ the citation test, `ui`'s and
       `visual`'s gates, the scripts' `words.test.ts` and `fake.test.ts`, the pinned diff empty. **11 min**
       (241.2's step 1: 9; 241.1's step 7, a decisions row: 1). Then point 1.
+      _Done 2026-11-25 14:27:_ the citation test, `ui`'s and `visual`'s gates and the scripts' `words.test.ts` and
+      `fake.test.ts` each exit 0, the gates run after the last edit; the pinned diff empty; row 19 red on the
+      old gallery (no new state), then green. The decisions row is `docs/decisions.md`'s first. 25 keys (818
+      words), not about 26. Two states of the unknown and waiting screens sit in `DoorPage`'s entry, not a new
+      entry; `DoorCard`'s own file is untouched, three states are added to its gallery entry.
 - [ ] **2. The wire and the data set.** In `shared`: the five routes, the request's and the list's
       schemas with their bounds, the record's key and schema, the bound of 20, one waiting request in
       the data set at a fixed noon-UTC day. _Done when:_ `shared`'s, `ui`'s and `visual`'s gates, the

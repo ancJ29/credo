@@ -193,6 +193,16 @@ export const vi: Dictionary = {
       'Ứng dụng phản hồi nhưng máy chủ không kết nối được kho dữ liệu. Tạm thời không thể đăng nhập hoặc lưu thay đổi.',
     unavailableBff:
       'Ứng dụng phản hồi nhưng hệ thống API chưa phản hồi. Vui lòng thử lại sau giây lát.',
+    waitingTitle: 'Đang chờ duyệt',
+    colContact: 'Liên hệ',
+    colAsked: 'Ngày đăng ký',
+    approve: 'Duyệt',
+    refuse: 'Từ chối',
+    refuseAsk: 'Từ chối {{name}}? Yêu cầu sẽ bị xóa và địa chỉ được trả lại.',
+    refuseConfirm: 'Từ chối công ty này',
+    refuseCancel: 'Giữ lại chờ duyệt',
+    approved: '{{name}} đã được duyệt và mở tại địa chỉ của mình.',
+    approveFailed: 'Không tạo được công ty. Vui lòng thử lại.',
   },
   team: {
     intro:
@@ -928,5 +938,24 @@ export const vi: Dictionary = {
   unknownClient: {
     title: 'Không tìm thấy không gian làm việc',
     text: 'Địa chỉ truy cập này không thuộc công ty nào trong hệ thống. Vui lòng mở đường dẫn do công ty cung cấp.',
+  },
+  signUp: {
+    title: 'Đăng ký công ty của bạn',
+    intro:
+      'Công ty của bạn sẽ có địa chỉ riêng. Nhân viên credo kiểm tra từng công ty mới trước khi mở.',
+    name: 'Tên công ty',
+    code: 'Địa chỉ',
+    codeHint: 'Chữ thường, số và dấu gạch ngang; công ty của bạn mở tại địa chỉ này.',
+    contactName: 'Tên của bạn',
+    contactPhone: 'Số điện thoại để nhân viên gọi lại',
+    password: 'Mật khẩu quản trị',
+    submit: 'Gửi để duyệt',
+    taken: 'Địa chỉ này đã có người dùng. Hãy chọn địa chỉ khác.',
+    full: 'Có quá nhiều công ty đang chờ. Vui lòng thử lại sau.',
+    sentTitle: 'Đã gửi để duyệt',
+    sentText:
+      'Nhân viên credo sẽ kiểm tra {{name}} và gọi cho bạn. Khi được duyệt, hãy mở {{address}} và đăng nhập bằng tài khoản root với mật khẩu của bạn.',
+    waitingTitle: 'Đang chờ duyệt',
+    waitingText: 'Công ty này đã đăng ký và sẽ mở khi nhân viên credo duyệt.',
   },
 };

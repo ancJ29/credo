@@ -22,7 +22,7 @@ describe('14: the passkey list', () => {
     expect(
       await screen.findByRole('heading', { level: 2, name: words.ownPasskeys.title }),
     ).toBeTruthy();
-    expect(screen.getByText(words.ownPasskeys.text)).toBeTruthy();
+    expect(await screen.findByText(words.ownPasskeys.text)).toBeTruthy();
     expect(api.ownPasskeys).toHaveBeenCalledOnce();
     expect(screen.getAllByRole('columnheader').map((cell) => cell.textContent)).toEqual([
       words.ownPasskeys.colDevice,

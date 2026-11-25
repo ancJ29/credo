@@ -191,6 +191,16 @@ export const en = {
       'Web application is running, but API cannot reach storage. Sign-in and modifications are temporarily disabled.',
     unavailableBff:
       'Web application is running, but API backend is unresponsive. Please try again shortly.',
+    waitingTitle: 'Waiting for approval',
+    colContact: 'Contact',
+    colAsked: 'Asked on',
+    approve: 'Approve',
+    refuse: 'Refuse',
+    refuseAsk: 'Refuse {{name}}? The request is removed and its address freed.',
+    refuseConfirm: 'Refuse this company',
+    refuseCancel: 'Keep it waiting',
+    approved: '{{name}} is approved and open at its address.',
+    approveFailed: 'The company could not be made. Please try again.',
   },
   team: {
     intro:
@@ -928,6 +938,25 @@ export const en = {
   unknownClient: {
     title: 'Client workspace not found',
     text: 'This domain is not associated with any registered client. Please open the link sent by your company.',
+  },
+  signUp: {
+    title: 'Sign up your company',
+    intro:
+      'Your company gets its own address. A credo operator checks each new company before it opens.',
+    name: 'Company name',
+    code: 'Address',
+    codeHint: 'Small letters, digits and dashes; your company opens at this address.',
+    contactName: 'Your name',
+    contactPhone: 'Your phone, for the operator to call',
+    password: 'Root password',
+    submit: 'Send for approval',
+    taken: 'That address is taken. Choose another.',
+    full: 'Too many companies are waiting. Please try again later.',
+    sentTitle: 'Sent for approval',
+    sentText:
+      'A credo operator will check {{name}} and call you. Once approved, open {{address}} and sign in as root with your password.',
+    waitingTitle: 'Waiting for approval',
+    waitingText: 'This company has signed up and opens once a credo operator approves it.',
   },
 };
 

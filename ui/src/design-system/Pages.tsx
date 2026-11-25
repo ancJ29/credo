@@ -52,6 +52,7 @@ import { PageShell } from '../parts/PageShell';
 import { SectionCard } from '../components/organisms/SectionCard';
 import { MAX_LOGO_BYTES } from '@credo/shared';
 import { FilterBar } from './Fields';
+import { WaitingRows } from './SignUpStates';
 import { PALETTES } from './palettes';
 import { PICTURE } from './Photos';
 import { SAMPLES, useLanguage } from './samples';
@@ -345,7 +346,7 @@ function Cards() {
   );
 }
 
-/** The list page's six states: a list, filtered with a status, empty, loading, failed, and at the phone's width. */
+/** The list page's eight states: a list, filtered with a status, empty, loading, failed, at the phone's width, then the console's list of companies waiting for approval and a refusal asked. */
 export const ListPageStates = [
   { name: 'A list', node: <ListState state="list" /> },
   { name: 'Filtered, with a status', node: <Filtered /> },
@@ -353,6 +354,8 @@ export const ListPageStates = [
   { name: 'Loading', node: <ListState state="loading" /> },
   { name: 'Failed', node: <ListState state="failed" /> },
   { name: 'At the phone', node: <Cards />, phone: true as const },
+  { name: 'Waiting for approval', node: <WaitingRows /> },
+  { name: 'A refusal asked', node: <WaitingRows asked /> },
 ];
 
 /** The form page as the staff member's add draws it: the way back above the title, fields in titled blocks two a row, one main at the foot; `refused` adds a whole-form message above the blocks and the code's refusal on its field. */

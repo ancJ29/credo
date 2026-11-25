@@ -38,6 +38,7 @@ import { SectionCard } from '../components/organisms/SectionCard';
 import { CREDO_BRAND } from '../brand';
 import { LANGUAGE_NAMES } from '../i18n';
 import { Charter } from './Charter';
+import { SignUpCard, UnknownAddressSample } from './SignUpStates';
 import { ChoiceStates } from './Choices';
 import { MenuStates } from './Menus';
 import { PhotoStates } from './Photos';
@@ -1143,6 +1144,16 @@ export const ENTRIES: Entry[] = [
           </Stack>
         ),
       },
+      ...(['form', 'taken', 'sent'] as const).map((state) => ({
+        name: { form: 'A company’s sign-up', taken: 'An address taken', sent: 'Sent for approval' }[
+          state
+        ],
+        node: (
+          <Stack w={474} maw="100%">
+            <SignUpCard state={state} />
+          </Stack>
+        ),
+      })),
     ],
   },
   {
@@ -1172,6 +1183,8 @@ export const ENTRIES: Entry[] = [
         name: 'One language, no switch',
         node: <DoorPageSample />,
       },
+      { name: 'An address with no company', node: <UnknownAddressSample /> },
+      { name: 'Waiting for approval', node: <UnknownAddressSample waiting /> },
     ],
   },
   {
