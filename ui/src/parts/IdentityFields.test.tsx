@@ -1,3 +1,4 @@
+import { MAX_DESCRIPTION, MAX_FORMATTED_NAME } from '@credo/shared';
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
@@ -46,5 +47,16 @@ describe('IdentityFields', () => {
       ['formattedName', 'F'],
       ['description', 'D'],
     ]);
+  });
+
+  it('250.2 review: gives the formatted name and the description the bounds the record holds', () => {
+    draw(<IdentityFields name="" formattedName="" description="" onChange={vi.fn()} />);
+
+    expect(
+      screen.getByRole('textbox', { name: words.formattedName }).getAttribute('maxlength'),
+    ).toBe(String(MAX_FORMATTED_NAME));
+    expect(screen.getByRole('textbox', { name: words.description }).getAttribute('maxlength')).toBe(
+      String(MAX_DESCRIPTION),
+    );
   });
 });
