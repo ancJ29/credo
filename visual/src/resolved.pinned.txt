@@ -14,6 +14,7 @@ admin-setup/13-preview steel 5c49e1827d28
 admin-setup/14-formatted-typed steel 2631ae51cf6c
 admin-setup/15-formatted-saved steel e456550827ca
 admin-setup/16-formatted-card steel 96af7abe291f
+admin-setup/17-logo-on-colour steel e1841834cb67
 operator-setup/op-1-sign-in steel 4c94dbf4e3bb
 operator-setup/op-2-new-client steel a99d9da51da2
 operator-setup/op-3-made steel 66db2a88259e
@@ -155,6 +156,7 @@ admin-setup/13-preview emerald 129ccd0b1865
 admin-setup/14-formatted-typed emerald 9c863837443a
 admin-setup/15-formatted-saved emerald 9d85fdef211e
 admin-setup/16-formatted-card emerald 4b54242aaebc
+admin-setup/17-logo-on-colour emerald 0957a3c90149
 operator-setup/op-1-sign-in emerald 33c08326eb29
 operator-setup/op-2-new-client emerald 7c8d72161c24
 operator-setup/op-3-made emerald ccd7325ec497
@@ -296,6 +298,7 @@ admin-setup/13-preview brick 967111fbd0d8
 admin-setup/14-formatted-typed brick 9f4a198fa151
 admin-setup/15-formatted-saved brick df680f3adc92
 admin-setup/16-formatted-card brick ece257ad33d6
+admin-setup/17-logo-on-colour brick e90feeaa7ac9
 operator-setup/op-1-sign-in brick ed7cc7ecffbe
 operator-setup/op-2-new-client brick be451147e35a
 operator-setup/op-3-made brick 1c16e29d0eb9
@@ -437,6 +440,7 @@ admin-setup/13-preview bronze 063784a1efee
 admin-setup/14-formatted-typed bronze 957b91393afc
 admin-setup/15-formatted-saved bronze a751ede8925c
 admin-setup/16-formatted-card bronze 556950bd1734
+admin-setup/17-logo-on-colour bronze e5ba54e264b7
 operator-setup/op-1-sign-in bronze 78f5a4af7a8b
 operator-setup/op-2-new-client bronze bd617e41e9bd
 operator-setup/op-3-made bronze acd41d142e9e
@@ -578,6 +582,7 @@ admin-setup/13-preview plum 15403fe08fab
 admin-setup/14-formatted-typed plum 3b673f890dc7
 admin-setup/15-formatted-saved plum 294c99d6a860
 admin-setup/16-formatted-card plum d2c98899665a
+admin-setup/17-logo-on-colour plum 9c072131cdc3
 operator-setup/op-1-sign-in plum f6758d288ddd
 operator-setup/op-2-new-client plum 28b34ebe4b86
 operator-setup/op-3-made plum 1a1c5072fe2a
@@ -719,6 +724,7 @@ admin-setup/13-preview indigo c5999e63659e
 admin-setup/14-formatted-typed indigo 62d7bb408b52
 admin-setup/15-formatted-saved indigo 7d98f80b1805
 admin-setup/16-formatted-card indigo 05ae876ec847
+admin-setup/17-logo-on-colour indigo 7a16539eec46
 operator-setup/op-1-sign-in indigo 0474bc4c62e6
 operator-setup/op-2-new-client indigo 00306c65f33d
 operator-setup/op-3-made indigo 8ed1c72dbd5b
@@ -860,6 +866,7 @@ admin-setup/13-preview company f1148653c02a
 admin-setup/14-formatted-typed company f4f88e39888d
 admin-setup/15-formatted-saved company 4159d73ad8b6
 admin-setup/16-formatted-card company f048f77944f1
+admin-setup/17-logo-on-colour company 0fc6837abb75
 operator-setup/op-1-sign-in company 4d73a3d05a55
 operator-setup/op-2-new-client company d5e16aaae30e
 operator-setup/op-3-made company f545ac907573
@@ -1001,6 +1008,7 @@ admin-setup/13-preview terracotta 025ed53d7b81
 admin-setup/14-formatted-typed terracotta 020e781f0e25
 admin-setup/15-formatted-saved terracotta 5cf56b4df2e2
 admin-setup/16-formatted-card terracotta 69387547e0d7
+admin-setup/17-logo-on-colour terracotta 34e49a63f210
 operator-setup/op-1-sign-in terracotta 2096b5419ad5
 operator-setup/op-2-new-client terracotta 37bb9bb37489
 operator-setup/op-3-made terracotta c2809f5417bd
@@ -1142,6 +1150,7 @@ admin-setup/13-preview red c1729a4cd34c
 admin-setup/14-formatted-typed red 101b3d0ff1cc
 admin-setup/15-formatted-saved red 52ae93c932fa
 admin-setup/16-formatted-card red 26966752a069
+admin-setup/17-logo-on-colour red 20dae742e2b4
 operator-setup/op-1-sign-in red ab419333dcc4
 operator-setup/op-2-new-client red 62009853805b
 operator-setup/op-3-made red 09840814543e
@@ -1283,6 +1292,7 @@ admin-setup/13-preview amber 559a5873af6a
 admin-setup/14-formatted-typed amber bb4ece242ad0
 admin-setup/15-formatted-saved amber c414ddea3fa7
 admin-setup/16-formatted-card amber 70f46a2350da
+admin-setup/17-logo-on-colour amber 0a817e13b443
 operator-setup/op-1-sign-in amber 705bd4ea3d32
 operator-setup/op-2-new-client amber ef1ae8addd0e
 operator-setup/op-3-made amber b085b84487c7

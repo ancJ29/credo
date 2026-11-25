@@ -58,6 +58,8 @@ export async function shot(
     page.locator('.mantine-Button-loader'),
     `${screen}: a button's loader is still on the page`,
   ).toHaveCount(0);
+  // Every picture on the page has loaded: a header taken before its logo arrived could pass as settled.
+  await page.waitForFunction(() => [...document.images].every((image) => image.complete));
   await page.mouse.move(0, 0);
   await page.evaluate('window.scrollTo(0, 0)');
   const name = `${screen}-${language}-${width}.png`;

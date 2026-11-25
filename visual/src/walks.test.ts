@@ -66,6 +66,7 @@ describe('the walks', () => {
     expect(states.get('admin-setup:14-formatted-typed')!.id).toBe('formatted');
     expect(states.get('admin-setup:15-formatted-saved')!.id).toBe('formatted');
     expect(states.get('admin-setup:16-formatted-card')!.id).toBe('formatted');
+    expect(states.get('admin-setup:17-logo-on-colour')!.id).toBe('logo-on-colour');
     expect('scene' in states.get('operator-setup:op-4-code-taken')!).toBe(true);
     expect('scene' in states.get('admin-staff:staff-4-person')!).toBe(true);
     expect('scene' in states.get('admin-setup:1-sign-in')!).toBe(false);
@@ -85,14 +86,14 @@ describe('the walks', () => {
     expect(() => resolveDrawn(lacking(99, 'empty'), SCREENS)).toThrow('"99 empty"');
   });
 
-  it('18: holds piece 1’s eight screens in the app frame’s numbers, screen 9 after them, the white frame’s 10 and 11, the sign-in wait’s 12, the preview’s 13, and the formatted name’s 14 to 16', () => {
+  it('18: holds piece 1’s eight screens in the app frame’s numbers, screen 9 after them, the white frame’s 10 and 11, the sign-in wait’s 12, the preview’s 13, the formatted name’s 14 to 16, and the logo for the coloured header’s 17', () => {
     const screens = WALKS[0].screens;
 
     expect(screens.map((screen) => screen.number)).toEqual([
-      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
+      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17,
     ]);
     expect(screens.filter((screen) => screen.path === 'main').map((s) => s.number)).toEqual([
-      1, 3, 4, 5, 10, 11, 13, 14, 15, 16,
+      1, 3, 4, 5, 10, 11, 13, 14, 15, 16, 17,
     ]);
     expect(screens.filter((screen) => screen.path === 'wrong').map((s) => s.number)).toEqual([
       2, 6, 7, 8, 9, 12,
@@ -220,10 +221,10 @@ describe('the walks', () => {
     const support = read('support.ts');
 
     // the top of `shot`, in this order and nothing else between: the wait for any button loader (first,
-    // since a loader still on the page is no state to park the pointer over), then the park and the
-    // scroll, so every picture is taken after all three
+    // since a loader still on the page is no state to park the pointer over), the wait for every image
+    // on the page to have loaded (26), then the park and the scroll, so every picture is taken after all four
     expect(support).toMatch(
-      /export async function shot\([^)]*\) \{\n(?: {2}\/\/[^\n]*\n)* {2}await expect\(\n {4}page\.locator\('\.mantine-Button-loader'\),\n {4}`\$\{screen\}: a button's loader is still on the page`,\n {2}\)\.toHaveCount\(0\);\n {2}await page\.mouse\.move\(0, 0\);\n {2}await page\.evaluate\('window\.scrollTo\(0, 0\)'\);\n/,
+      /export async function shot\([^)]*\) \{\n(?: {2}\/\/[^\n]*\n)* {2}await expect\(\n {4}page\.locator\('\.mantine-Button-loader'\),\n {4}`\$\{screen\}: a button's loader is still on the page`,\n {2}\)\.toHaveCount\(0\);\n(?: {2}\/\/[^\n]*\n)* {2}await page\.waitForFunction\(\(\) => \[\.\.\.document\.images\]\.every\(\(image\) => image\.complete\)\);\n {2}await page\.mouse\.move\(0, 0\);\n {2}await page\.evaluate\('window\.scrollTo\(0, 0\)'\);\n/,
     );
     // the raw reader decides "equal": no comparator that skips softened edges, no tolerance
     expect(support).toContain("from '@credo/scripts/pixels'");
@@ -487,7 +488,7 @@ describe('the walks', () => {
     }
   });
 
-  it('puts B’s seven screens after A’s sixteen, the screens the plan names', () => {
+  it('puts B’s seven screens after A’s seventeen, the screens the plan names', () => {
     const [setup, staff, office] = piece2Walks().map((walk) => walk.screens.map((s) => s.id));
 
     expect(setup?.slice(1)).toEqual(['setup-2-fields']);

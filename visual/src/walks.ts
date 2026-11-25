@@ -515,6 +515,17 @@ export const WALKS: Walk[] = [
         question:
           'Does the card show the formatted name and the description as the company would want them?',
       },
+      {
+        id: '17-logo-on-colour',
+        number: 17,
+        path: 'main',
+        mock: { screen: 4, state: 'logo-on-colour' },
+        sentence: {
+          en: 'Saved: the header and the preview wear the logo for the coloured header',
+          vi: 'Đã lưu: đầu trang và phần xem trước hiện logo cho thanh tiêu đề màu',
+        },
+        question: 'Does the coloured header show the company’s light logo, clear on its colour?',
+      },
     ],
   },
   {
