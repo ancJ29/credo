@@ -157,20 +157,50 @@ diff" is `git diff -U0 -- visual/src/resolved.pinned.txt | grep '^+[a-z]' | cut 
       record's, the bound of 20, the waiting detail, the routes), `recordKeys.signUp` and `signUpPrefix`,
       `DEMO_SIGN_UPS` (one request, sent 3 November at noon UTC). The routes are four paths, not five: the
       public send and the operator's list, refusal and approval.
-- [ ] **3. The sign-up and the waiting screen, on the fake.** `ui/src/pages/SignUpPage.tsx`, the path
+- [x] **3. The sign-up and the waiting screen, on the fake.** `ui/src/pages/SignUpPage.tsx`, the path
       in `App.tsx`, the boot's waiting phase and its screen, `UnknownClient`'s link, the api calls and
       their fake answers. Rows 14 to 16, 18's first half. _Done when:_ `ui`'s and `visual`'s gates,
       the pinned diff naming `9-unknown-company` alone. **13 min** (241.2's step 3: 13).
-- [ ] **4. The console's waiting list, on the fake.** Clients' block, Approve, Refuse and its question;
+      _Done 2026-11-25 15:52:_ `ui`'s and `visual`'s gates, each run after the last edit, and the citation test, run
+      last, each exit 0; the pinned diff names `9-unknown-company` alone; rows 14 to 16 and 18's first half
+      red (no sign-up call, no page), then green. `UnknownClient` is now credo's door card with the link, and
+      `WaitingClient` its twin; the gallery draws both as the app does. A 503 on the send says "too many
+      companies are waiting", which a storage outage also earns: kept as it stands, for the review.
+- [x] **4. The console's waiting list, on the fake.** Clients' block, Approve, Refuse and its question;
       the fake's approval making the company. Rows 17, 18's second half. _Done when:_ `ui`'s and
       `visual`'s gates, the pinned diff naming `op-5-dashboard` alone. **11 min** (241.2's step 4: 11).
-- [ ] **5. The sign-up and the waiting answer, in the BFF.** `bff/src/routes/sign-up.ts` and
+      _Done 2026-11-25 16:19:_ `ui`'s and `visual`'s gates, each run after the last edit, and the citation test, run
+      last, each exit 0; rows 17 and 18's second half red (no list, approve or refuse call, no block), then
+      green. **The pinned diff names two screens, not one:** `op-5-dashboard` and `dc-4-gone`, the clients' list
+      the delete walk ends on, which now carries the data set's waiting company above it. A third, `op-7-list-failed`,
+      was moved by the first build and held still by showing the block only while the clients' list is read.
+      Step 8's moved list and the run line gain `dc-4-gone`.
+- [x] **5. The sign-up and the waiting answer, in the BFF.** `bff/src/routes/sign-up.ts` and
       `bff/src/records/sign-ups.ts`; `resolveTenant`'s waiting detail; `createClient`'s check of a
       waiting code. Rows 1, 2, 5 to 9, 12. _Done when:_ `bff`'s and `shared`'s gates, the operators'
       tests moved only in the route-list pin. **14 min** (241.2's steps 5 and 5b: 10 and 4).
-- [ ] **6. The approval and the refusal, in the BFF.** The three operator routes; `createClient`
+      _Done 2026-11-25 17:03:_ `bff`'s and `shared`'s gates, each run after the last edit, and the citation test, run
+      last, each exit 0; rows 1, 2, 5 to 9 and 12 red (no route, no waiting detail, a waiting code made), then
+      green in `bff/src/sign-up.route.test.ts`. The operators' route tests moved by their one route-list line
+      (`/api/sign-up (POST)`, read against the merge-base with `pre-merge`, since `pre-merge` has moved on); the
+      route lists read declared 35, exempt 19, total 54. The order in the route is: the body under its schema,
+      the queue counted (503 at 20), the code looked up (409), then the password hashed and the request written
+      only where none sits. The count and the write are not one step, so a burst may pass 20 by the requests in
+      flight; the stage's throttle bounds it. `tenants.route.test.ts` reads one more key of an unknown address
+      (the waiting record's).
+- [x] **6. The approval and the refusal, in the BFF.** The three operator routes; `createClient`
       taking a password hash. Rows 3, 4, 10, 11, 13. _Done when:_ `bff`'s gate; the route lists at their
       new counts, each new route named. **8 min** (241.2's step 6: 8).
+      _Done 2026-11-25 17:23:_ `bff`'s gate, run after the last edit, and the citation test, run last, each exit 0;
+      rows 3, 4, 10, 11 and 13 red (no operator route), then green in `bff/src/sign-up-approval.route.test.ts`.
+      The route lists read declared 36, exempt 20, total 56: `POST /api/operator/sign-ups/:code/approve` is the
+      one declared (`client.create`), `DELETE /api/operator/sign-ups/:code` the one exempt, and the list is a
+      `GET`; the operators' route-test diff by the merge-base is added lines only. `createClient` and the new
+      `createClientFromSignUp` share one writer; the second takes the request's `passwordHash` (so no first
+      password is returned) and lets its own waiting request stand; the hash is carried over unchanged, so
+      the root signs in by the password chosen. The request is
+      removed after the company is made, and a failure to remove it leaves a harmless request on a code the
+      company holds.
 - [ ] **7. The prose.** As "Prose that goes false"; the memo's request, bound and refusals. _Done
       when:_ the citation test. **5 min** (241.2's step 8: 5).
 

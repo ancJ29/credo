@@ -6,7 +6,7 @@ admin-setup/5-language-menu steel d94ecf29d786
 admin-setup/6-service-down steel 94d94878827d
 admin-setup/7-save-failed steel f232a6b12090
 admin-setup/8-save-conflict steel 1959eab31dd4
-admin-setup/9-unknown-company steel c8fcb68e09a0
+admin-setup/9-unknown-company steel 6d5c2c14d8d8
 admin-setup/10-saved-white steel ec02d1ad70a2
 admin-setup/11-menu-icons steel 049aaeed8c7b
 admin-setup/12-sign-in-wait steel d85e65ed1ab1
@@ -18,7 +18,7 @@ operator-setup/op-1-sign-in steel 4c94dbf4e3bb
 operator-setup/op-2-new-client steel a99d9da51da2
 operator-setup/op-3-made steel 66db2a88259e
 operator-setup/op-4-code-taken steel c588603f1235
-operator-setup/op-5-dashboard steel bc9d1a2d715a
+operator-setup/op-5-dashboard steel 9116716492ac
 operator-setup/op-6-coming-soon steel fccb6f616b29
 operator-setup/op-7-list-failed steel da8cb8fbd2c4
 operator-setup/op-8-code-invalid steel 912a1fb5b0f6
@@ -138,7 +138,7 @@ operator-team/tm-6-taken steel 95bed6d44cdc
 operator-delete-client/dc-1-page steel 6815db34579b
 operator-delete-client/dc-2-code steel 941022de1c82
 operator-delete-client/dc-3-failed steel 941022de1c82
-operator-delete-client/dc-4-gone steel d1fa6ea19f16
+operator-delete-client/dc-4-gone steel 83901e065cc1
 admin-setup/1-sign-in emerald 59ddf49818e9
 admin-setup/2-sign-in-refused emerald 1ecaadb355b8
 admin-setup/3-settings emerald 4908db348f99
@@ -147,7 +147,7 @@ admin-setup/5-language-menu emerald 98bcf1f97966
 admin-setup/6-service-down emerald 94d94878827d
 admin-setup/7-save-failed emerald d4275db8023a
 admin-setup/8-save-conflict emerald 4ee199236ff6
-admin-setup/9-unknown-company emerald c8fcb68e09a0
+admin-setup/9-unknown-company emerald 537743d86e49
 admin-setup/10-saved-white emerald 576114695311
 admin-setup/11-menu-icons emerald 97d0a5d570f6
 admin-setup/12-sign-in-wait emerald 1ecaadb355b8
@@ -159,7 +159,7 @@ operator-setup/op-1-sign-in emerald 33c08326eb29
 operator-setup/op-2-new-client emerald 7c8d72161c24
 operator-setup/op-3-made emerald ccd7325ec497
 operator-setup/op-4-code-taken emerald 6041fc3a65e7
-operator-setup/op-5-dashboard emerald bc68db21d267
+operator-setup/op-5-dashboard emerald f26b759556a8
 operator-setup/op-6-coming-soon emerald f28be7eb9d44
 operator-setup/op-7-list-failed emerald a7464a0ebdf6
 operator-setup/op-8-code-invalid emerald c2a1b5a197e0
@@ -279,7 +279,7 @@ operator-team/tm-6-taken emerald 898922805a5b
 operator-delete-client/dc-1-page emerald 75a3681aa976
 operator-delete-client/dc-2-code emerald 85d8a9b37153
 operator-delete-client/dc-3-failed emerald 85d8a9b37153
-operator-delete-client/dc-4-gone emerald ae69e108d47c
+operator-delete-client/dc-4-gone emerald 9726be23245f
 admin-setup/1-sign-in brick e8315b39c48e
 admin-setup/2-sign-in-refused brick 9beb6ac6f4be
 admin-setup/3-settings brick 995de3587a41
@@ -288,7 +288,7 @@ admin-setup/5-language-menu brick 13f9d7ae14ca
 admin-setup/6-service-down brick 94d94878827d
 admin-setup/7-save-failed brick f5b4fe51bc5d
 admin-setup/8-save-conflict brick 2c68861126da
-admin-setup/9-unknown-company brick c8fcb68e09a0
+admin-setup/9-unknown-company brick 430d502f91b6
 admin-setup/10-saved-white brick 20245511c8ac
 admin-setup/11-menu-icons brick dfd5c83f8f5d
 admin-setup/12-sign-in-wait brick 9beb6ac6f4be
@@ -300,7 +300,7 @@ operator-setup/op-1-sign-in brick ed7cc7ecffbe
 operator-setup/op-2-new-client brick be451147e35a
 operator-setup/op-3-made brick 1c16e29d0eb9
 operator-setup/op-4-code-taken brick 7da4c53c47aa
-operator-setup/op-5-dashboard brick 33d9bcce0cd3
+operator-setup/op-5-dashboard brick eaee3ab2729c
 operator-setup/op-6-coming-soon brick 0d46467d3072
 operator-setup/op-7-list-failed brick 6b51123aebe0
 operator-setup/op-8-code-invalid brick f46ae59b5995
@@ -420,7 +420,7 @@ operator-team/tm-6-taken brick c6357f59ce46
 operator-delete-client/dc-1-page brick 599655fbd347
 operator-delete-client/dc-2-code brick fa5e51d41b80
 operator-delete-client/dc-3-failed brick fa5e51d41b80
-operator-delete-client/dc-4-gone brick e3ea0bfd7be2
+operator-delete-client/dc-4-gone brick 2ed76ff28dcf
 admin-setup/1-sign-in bronze 0053e02a4d11
 admin-setup/2-sign-in-refused bronze eba3bc464a55
 admin-setup/3-settings bronze ab87b8e4854f
@@ -429,7 +429,7 @@ admin-setup/5-language-menu bronze f2d905575079
 admin-setup/6-service-down bronze 94d94878827d
 admin-setup/7-save-failed bronze 4f261d46bfd6
 admin-setup/8-save-conflict bronze b85badbbc7e3
-admin-setup/9-unknown-company bronze c8fcb68e09a0
+admin-setup/9-unknown-company bronze 0cc757fc6a77
 admin-setup/10-saved-white bronze c82dd7570262
 admin-setup/11-menu-icons bronze f8af99d1a446
 admin-setup/12-sign-in-wait bronze eba3bc464a55
@@ -441,7 +441,7 @@ operator-setup/op-1-sign-in bronze 78f5a4af7a8b
 operator-setup/op-2-new-client bronze bd617e41e9bd
 operator-setup/op-3-made bronze acd41d142e9e
 operator-setup/op-4-code-taken bronze b1012cb71a27
-operator-setup/op-5-dashboard bronze f5dce8f4feb1
+operator-setup/op-5-dashboard bronze d9100fab2608
 operator-setup/op-6-coming-soon bronze 28a87246d922
 operator-setup/op-7-list-failed bronze 9d48b9b2a9b2
 operator-setup/op-8-code-invalid bronze 8b1865605ad3
@@ -561,7 +561,7 @@ operator-team/tm-6-taken bronze 1d39b6f5c169
 operator-delete-client/dc-1-page bronze a5edbdbd81c4
 operator-delete-client/dc-2-code bronze e2905fd6ddca
 operator-delete-client/dc-3-failed bronze e2905fd6ddca
-operator-delete-client/dc-4-gone bronze 2248bf38c036
+operator-delete-client/dc-4-gone bronze 0adad5dde72c
 admin-setup/1-sign-in plum a65e2061e4b8
 admin-setup/2-sign-in-refused plum 3091eaee486c
 admin-setup/3-settings plum d01a4f7d1e9c
@@ -570,7 +570,7 @@ admin-setup/5-language-menu plum ebeb40c7d5c8
 admin-setup/6-service-down plum 94d94878827d
 admin-setup/7-save-failed plum 80e7e27105f9
 admin-setup/8-save-conflict plum d26512e69d26
-admin-setup/9-unknown-company plum c8fcb68e09a0
+admin-setup/9-unknown-company plum 6ba703c06689
 admin-setup/10-saved-white plum 6d90c0c2232c
 admin-setup/11-menu-icons plum 04efffbaca72
 admin-setup/12-sign-in-wait plum 3091eaee486c
@@ -582,7 +582,7 @@ operator-setup/op-1-sign-in plum f6758d288ddd
 operator-setup/op-2-new-client plum 28b34ebe4b86
 operator-setup/op-3-made plum 1a1c5072fe2a
 operator-setup/op-4-code-taken plum 0c22bca9c40b
-operator-setup/op-5-dashboard plum 2982e5b255a6
+operator-setup/op-5-dashboard plum 5b2e381d3fe9
 operator-setup/op-6-coming-soon plum 3d8b9aafd7f4
 operator-setup/op-7-list-failed plum b827c355ca09
 operator-setup/op-8-code-invalid plum 84e515c3b30f
@@ -702,7 +702,7 @@ operator-team/tm-6-taken plum 4a8b7b151f7d
 operator-delete-client/dc-1-page plum f7d1bc6d2706
 operator-delete-client/dc-2-code plum 4d9102d56d70
 operator-delete-client/dc-3-failed plum 4d9102d56d70
-operator-delete-client/dc-4-gone plum 3f732f5a9be6
+operator-delete-client/dc-4-gone plum 26ae724f1979
 admin-setup/1-sign-in indigo 282911f9b5f0
 admin-setup/2-sign-in-refused indigo 6fca4cb6954b
 admin-setup/3-settings indigo 4b139028184f
@@ -711,7 +711,7 @@ admin-setup/5-language-menu indigo 1529b7c9f58d
 admin-setup/6-service-down indigo 94d94878827d
 admin-setup/7-save-failed indigo 46ff19a72710
 admin-setup/8-save-conflict indigo 7c597c9f2937
-admin-setup/9-unknown-company indigo c8fcb68e09a0
+admin-setup/9-unknown-company indigo f529bf15e22d
 admin-setup/10-saved-white indigo 1dd9e033a56b
 admin-setup/11-menu-icons indigo 4c4566040f6d
 admin-setup/12-sign-in-wait indigo 6fca4cb6954b
@@ -723,7 +723,7 @@ operator-setup/op-1-sign-in indigo 0474bc4c62e6
 operator-setup/op-2-new-client indigo 00306c65f33d
 operator-setup/op-3-made indigo 8ed1c72dbd5b
 operator-setup/op-4-code-taken indigo 12df8e19e9fa
-operator-setup/op-5-dashboard indigo a617b7194bac
+operator-setup/op-5-dashboard indigo 5605373c7993
 operator-setup/op-6-coming-soon indigo 9601d611d118
 operator-setup/op-7-list-failed indigo 5f2bf9a425af
 operator-setup/op-8-code-invalid indigo a272839e2467
@@ -843,7 +843,7 @@ operator-team/tm-6-taken indigo 0cac97326121
 operator-delete-client/dc-1-page indigo b10630d5f25f
 operator-delete-client/dc-2-code indigo aec1c8b48269
 operator-delete-client/dc-3-failed indigo aec1c8b48269
-operator-delete-client/dc-4-gone indigo e40c71408db5
+operator-delete-client/dc-4-gone indigo d56259853206
 admin-setup/1-sign-in company 16a1b55ad357
 admin-setup/2-sign-in-refused company fa120719a166
 admin-setup/3-settings company 0fa135c96134
@@ -852,7 +852,7 @@ admin-setup/5-language-menu company 14f8b803bdcb
 admin-setup/6-service-down company 94d94878827d
 admin-setup/7-save-failed company d69c8ff8fddd
 admin-setup/8-save-conflict company 7f1399a12155
-admin-setup/9-unknown-company company c8fcb68e09a0
+admin-setup/9-unknown-company company ec04ce7f375d
 admin-setup/10-saved-white company 488698f5d9f5
 admin-setup/11-menu-icons company 7155b2e957ab
 admin-setup/12-sign-in-wait company fa120719a166
@@ -864,7 +864,7 @@ operator-setup/op-1-sign-in company 4d73a3d05a55
 operator-setup/op-2-new-client company d5e16aaae30e
 operator-setup/op-3-made company f545ac907573
 operator-setup/op-4-code-taken company 808f2e1cca21
-operator-setup/op-5-dashboard company 4e4ea3441964
+operator-setup/op-5-dashboard company bb304063a941
 operator-setup/op-6-coming-soon company 0778a4616a70
 operator-setup/op-7-list-failed company b334187cdc81
 operator-setup/op-8-code-invalid company ea60d15c62df
@@ -984,7 +984,7 @@ operator-team/tm-6-taken company 6b15add228dc
 operator-delete-client/dc-1-page company 9503ea99682a
 operator-delete-client/dc-2-code company cd80d210dc24
 operator-delete-client/dc-3-failed company cd80d210dc24
-operator-delete-client/dc-4-gone company 2f27ee8b7332
+operator-delete-client/dc-4-gone company fa905e09696e
 admin-setup/1-sign-in terracotta 88914e1253e4
 admin-setup/2-sign-in-refused terracotta 6d4aad8532ef
 admin-setup/3-settings terracotta a4896da5c01f
@@ -993,7 +993,7 @@ admin-setup/5-language-menu terracotta 9cb79d08b1c8
 admin-setup/6-service-down terracotta 94d94878827d
 admin-setup/7-save-failed terracotta a7dd96ddfef2
 admin-setup/8-save-conflict terracotta 4c91be43c3f7
-admin-setup/9-unknown-company terracotta c8fcb68e09a0
+admin-setup/9-unknown-company terracotta 0247ede3f2bf
 admin-setup/10-saved-white terracotta abf57240c4fb
 admin-setup/11-menu-icons terracotta be765c7961d5
 admin-setup/12-sign-in-wait terracotta 6d4aad8532ef
@@ -1005,7 +1005,7 @@ operator-setup/op-1-sign-in terracotta 2096b5419ad5
 operator-setup/op-2-new-client terracotta 37bb9bb37489
 operator-setup/op-3-made terracotta c2809f5417bd
 operator-setup/op-4-code-taken terracotta d35b7caadc21
-operator-setup/op-5-dashboard terracotta 04ffbf028066
+operator-setup/op-5-dashboard terracotta f9560be48715
 operator-setup/op-6-coming-soon terracotta 45dc5af05233
 operator-setup/op-7-list-failed terracotta 972f02c1b574
 operator-setup/op-8-code-invalid terracotta d739ac677961
@@ -1125,7 +1125,7 @@ operator-team/tm-6-taken terracotta 4662d3430faa
 operator-delete-client/dc-1-page terracotta 922b49d7a7d7
 operator-delete-client/dc-2-code terracotta e0d156df7cd9
 operator-delete-client/dc-3-failed terracotta e0d156df7cd9
-operator-delete-client/dc-4-gone terracotta 0b6214be64c4
+operator-delete-client/dc-4-gone terracotta 474686e6f147
 admin-setup/1-sign-in red 513cc9c58cca
 admin-setup/2-sign-in-refused red e8f2adfc00ad
 admin-setup/3-settings red 0633dcc50ede
@@ -1134,7 +1134,7 @@ admin-setup/5-language-menu red 0b5768b19e60
 admin-setup/6-service-down red 94d94878827d
 admin-setup/7-save-failed red 66a052317a5e
 admin-setup/8-save-conflict red 9ffc86cc3e9d
-admin-setup/9-unknown-company red c8fcb68e09a0
+admin-setup/9-unknown-company red d9b8013a03ad
 admin-setup/10-saved-white red d9bc64419959
 admin-setup/11-menu-icons red 759284509a51
 admin-setup/12-sign-in-wait red e8f2adfc00ad
@@ -1146,7 +1146,7 @@ operator-setup/op-1-sign-in red ab419333dcc4
 operator-setup/op-2-new-client red 62009853805b
 operator-setup/op-3-made red 09840814543e
 operator-setup/op-4-code-taken red d67c5ac4c838
-operator-setup/op-5-dashboard red e359fcdffc2f
+operator-setup/op-5-dashboard red 20af6255c74c
 operator-setup/op-6-coming-soon red ac20c4dbc4c0
 operator-setup/op-7-list-failed red 560e9f56cb74
 operator-setup/op-8-code-invalid red 6ddb0f6736ab
@@ -1266,7 +1266,7 @@ operator-team/tm-6-taken red 5630ce8705f8
 operator-delete-client/dc-1-page red d2d093aeff2b
 operator-delete-client/dc-2-code red b6a91b48ffe6
 operator-delete-client/dc-3-failed red b6a91b48ffe6
-operator-delete-client/dc-4-gone red ec7e0a7a9db8
+operator-delete-client/dc-4-gone red 2cb5cd49589f
 admin-setup/1-sign-in amber 3f3e0828971d
 admin-setup/2-sign-in-refused amber 1f8b0d23e6a5
 admin-setup/3-settings amber d7536bc98c3c
@@ -1275,7 +1275,7 @@ admin-setup/5-language-menu amber 194146f5976d
 admin-setup/6-service-down amber 94d94878827d
 admin-setup/7-save-failed amber 1f2fc7212fb6
 admin-setup/8-save-conflict amber ee60df65383f
-admin-setup/9-unknown-company amber c8fcb68e09a0
+admin-setup/9-unknown-company amber d9b6886697ba
 admin-setup/10-saved-white amber a01bd31cbc3a
 admin-setup/11-menu-icons amber 29defac9d471
 admin-setup/12-sign-in-wait amber 1f8b0d23e6a5
@@ -1287,7 +1287,7 @@ operator-setup/op-1-sign-in amber 705bd4ea3d32
 operator-setup/op-2-new-client amber ef1ae8addd0e
 operator-setup/op-3-made amber b085b84487c7
 operator-setup/op-4-code-taken amber 843931e43314
-operator-setup/op-5-dashboard amber b3bffe1c854d
+operator-setup/op-5-dashboard amber e6bba09219a9
 operator-setup/op-6-coming-soon amber 89c6daab8b04
 operator-setup/op-7-list-failed amber b8da986a398a
 operator-setup/op-8-code-invalid amber b71f166335ab
@@ -1407,4 +1407,4 @@ operator-team/tm-6-taken amber 243d3a907250
 operator-delete-client/dc-1-page amber 04c420f060e8
 operator-delete-client/dc-2-code amber 8a0cbf128ff0
 operator-delete-client/dc-3-failed amber 8a0cbf128ff0
-operator-delete-client/dc-4-gone amber b3868ebcd9bc
+operator-delete-client/dc-4-gone amber 16c9e3744f0d

@@ -2,7 +2,11 @@ import {
   addCustomerRequestSchema,
   addDays,
   deviceNameOf,
+  KEPT_CODES,
+  SIGN_UP_WAITING,
+  SIGN_UPS_WAITING_MAX,
   type OwnPasskeyItem,
+  type WaitingSignUp,
   addedNewestFirst,
   addOperatorRequestSchema,
   deleteClientRequestSchema,
@@ -92,6 +96,7 @@ import {
   DEMO_PASSKEYS,
   DEMO_PERSON_PASSKEYS,
   DEMO_PERSON_PASSKEYS_CODE,
+  DEMO_SIGN_UPS,
   DEMO_PHOTOS,
   DEMO_RECONCILIATIONS,
   DEMO_ROOT_NAME,
@@ -200,7 +205,8 @@ const STAFF_HANDLE = 'fake.session.';
 
 type Options = {
   /** Where the fake finds out whether this device holds a handle. */
-  device: Pick<ReturnType<typeof createDeviceStore>, 'authId' | 'operatorAuthId'>;
+  device: Pick<ReturnType<typeof createDeviceStore>, 'authId' | 'operatorAuthId'> &
+    Partial<Pick<ReturnType<typeof createDeviceStore>, 'clientCode'>>;
   cue: Cue | null;
   /** The company has turned on sign-in by QR code, which the data set leaves off, and saved the email's on. */
   signIns?: boolean;
@@ -339,6 +345,12 @@ export function createFakeApi({
     { phase: 'done' },
   ];
   const STOP_PRESSES: MoveClientReply[] = [{ phase: 'sweeping', left: 30 }, { phase: 'done' }];
+
+  /** The companies waiting for an operator's approval: the data set's one, then any asked for since
+   * the page loaded, by the code asked. */
+  const waitingSignUps = new Map<string, WaitingSignUp>(
+    DEMO_SIGN_UPS.map((one) => [one.code, { ...one }]),
+  );
 
   /** Every client the operator's list shows: the data set's, then any made since the page loaded. */
   const clients = new Map<string, ClientListItem>(
@@ -665,7 +677,61 @@ export function createFakeApi({
   const waits = new Map<string, { wrong: number; until: number }>();
 
   const fake: Api = {
-    getConfig: () => call('getConfig', () => ({ config, version: `v${version}` })),
+    getConfig: () =>
+      call('getConfig', () => {
+        // An address a company asked for and waits on says so, as the BFF's 404 marks it.
+        const code = device.clientCode?.();
+        if (code && waitingSignUps.has(code)) {
+          throw new ApiError(404, true, null, SIGN_UP_WAITING);
+        }
+        return { config, version: `v${version}` };
+      }),
+
+    listSignUps: () =>
+      call('listSignUps', () => {
+        if (!device.operatorAuthId()) throw signedOut();
+        return [...waitingSignUps.values()].map((one) => ({ ...one }));
+      }),
+
+    approveSignUp: (code) =>
+      call('approveSignUp', () => {
+        if (!device.operatorAuthId()) throw signedOut();
+        const waiting = waitingSignUps.get(code);
+        if (!waiting) throw notFound();
+        if (clients.has(code)) return { kind: 'taken' as const };
+        clients.set(code, {
+          code,
+          name: waiting.name,
+          madeAt: Date.now(),
+          link: clientLinkPath(code),
+        });
+        waitingSignUps.delete(code);
+        return { kind: 'approved' as const, link: clientLinkPath(code) };
+      }),
+
+    refuseSignUp: (code) =>
+      call('refuseSignUp', () => {
+        if (!device.operatorAuthId()) throw signedOut();
+        if (!waitingSignUps.delete(code)) throw notFound();
+      }),
+
+    signUp: (request) =>
+      call('signUp', () => {
+        const taken =
+          KEPT_CODES.includes(request.code) ||
+          waitingSignUps.has(request.code) ||
+          clients.has(request.code);
+        if (taken) return { kind: 'taken' as const };
+        if (waitingSignUps.size >= SIGN_UPS_WAITING_MAX) throw new ApiError(503, true);
+        waitingSignUps.set(request.code, {
+          code: request.code,
+          name: request.name,
+          contactName: request.contactName,
+          contactPhone: request.contactPhone,
+          sentAt: Date.now(),
+        });
+        return { kind: 'sent' as const, code: request.code };
+      }),
 
     signIn: (name) =>
       call('signIn', () => {

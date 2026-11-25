@@ -903,6 +903,91 @@ describe('the API client', () => {
       ]);
     });
 
+    it('C: sends a company’s sign-up, a 409 being an address taken, and any other refusal an error, the 503 of a full queue among them', async () => {
+      const request = {
+        code: 'phu-quy',
+        name: 'Phú Quý',
+        contactName: 'An',
+        contactPhone: '0901',
+        password: 'Correct-horse-9!',
+      };
+      const { calls, api } = fake(
+        json({ code: 'phu-quy' }, 201),
+        json({}, 409),
+        json({}, 503),
+        json({ nothing: true }, 201),
+      );
+
+      expect(await api.signUp(request)).toEqual({ kind: 'sent', code: 'phu-quy' });
+      expect(await api.signUp(request)).toEqual({ kind: 'taken' });
+      await expect(api.signUp(request)).rejects.toMatchObject({ status: 503, bff: true });
+      await expect(api.signUp(request)).rejects.toMatchObject({ status: null });
+      expect(calls.map((call) => [call.init.method, call.path])).toEqual([
+        ['POST', '/api/sign-up'],
+        ['POST', '/api/sign-up'],
+        ['POST', '/api/sign-up'],
+        ['POST', '/api/sign-up'],
+      ]);
+      expect(calls[0]?.init.body).toBe(JSON.stringify(request));
+    });
+
+    it('C: lists the waiting companies, approves one (a 409 being the address made meanwhile) and refuses one, each as the operator', async () => {
+      const waiting = {
+        code: 'son-ha',
+        name: 'Sơn Hà',
+        contactName: 'An',
+        contactPhone: '0903',
+        sentAt: 1,
+      };
+      const { calls, api } = fake(
+        json({}, 401),
+        json({ signUps: [waiting] }),
+        json({ link: '/login?client-code=son-ha' }),
+        json({}, 409),
+        json({}, 503),
+        new Response(null, { status: 204 }),
+        json({}, 404),
+      );
+
+      await expect(api.listSignUps()).rejects.toMatchObject({ status: 401 });
+      expect(await api.listSignUps()).toEqual([waiting]);
+      expect(await api.approveSignUp('son-ha')).toEqual({
+        kind: 'approved',
+        link: '/login?client-code=son-ha',
+      });
+      expect(await api.approveSignUp('son-ha')).toEqual({ kind: 'taken' });
+      await expect(api.approveSignUp('son-ha')).rejects.toMatchObject({ status: 503 });
+      await api.refuseSignUp('son-ha');
+      await expect(api.refuseSignUp('son-ha')).rejects.toMatchObject({ status: 404 });
+      expect(calls.map((call) => [call.init.method, call.path])).toEqual([
+        ['GET', '/api/operator/sign-ups'],
+        ['GET', '/api/operator/sign-ups'],
+        ['POST', '/api/operator/sign-ups/son-ha/approve'],
+        ['POST', '/api/operator/sign-ups/son-ha/approve'],
+        ['POST', '/api/operator/sign-ups/son-ha/approve'],
+        ['DELETE', '/api/operator/sign-ups/son-ha'],
+        ['DELETE', '/api/operator/sign-ups/son-ha'],
+      ]);
+    });
+
+    it('C: a settings read that fails otherwise than with a 404 is an error with its status', async () => {
+      const { api } = fake(json({}, 503));
+
+      await expect(api.getConfig()).rejects.toMatchObject({ status: 503, detail: null });
+    });
+
+    it('C: reads what a 404 of the settings marks, "waiting" for a company waiting for approval, and none where the answer marks nothing', async () => {
+      const { api } = fake(
+        json({ error: 'Not found', details: 'waiting' }, 404),
+        json({ error: 'Not found' }, 404),
+        new Response('gone', { status: 404 }),
+      );
+
+      await expect(api.getConfig()).rejects.toMatchObject({ status: 404, detail: 'waiting' });
+      await expect(api.getConfig()).rejects.toMatchObject({ status: 404, detail: null });
+      await expect(api.getConfig()).rejects.toMatchObject({ status: 404, detail: null });
+    });
+
     it('C: a 429 in the back end’s wait shape is a wait, on the sign-in and on one’s own password, and a 429 of any other shape is an error with no wait', async () => {
       const wait = { error: 'Wait', waitSeconds: 45 };
       const { api } = fake(

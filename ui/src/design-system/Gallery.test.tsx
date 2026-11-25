@@ -968,8 +968,12 @@ describe('Gallery', () => {
     expect(part().getByRole('heading', { name: 'Đăng nhập vào tài khoản của bạn' })).toBeDefined();
     expect(part().getByRole('heading', { name: DICTIONARIES.vi.qrScan.title })).toBeDefined();
     expect(part().getAllByText('hoặc')).toHaveLength(2);
-    // The sign-up cards' three back links; the scan page's way back is the password sign-in's own words.
-    expect(part().getAllByRole('link', { name: 'Quay lại đăng nhập' })).toHaveLength(3);
+    // The scan page's way back is the password sign-in's own words, drawn on its first view.
+    expect(
+      within(part().getByRole('figure', { name: 'Login link' })).getByRole('link', {
+        name: DICTIONARIES.vi.qrSignIn.password,
+      }),
+    ).toBeDefined();
   });
 
   it('213 case 7: a rule says in words what holds it and whether the app follows it, or the item that moves it', () => {

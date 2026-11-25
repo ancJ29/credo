@@ -5,6 +5,7 @@ import {
   type ConfigDoc,
   type Language,
   normaliseClientCode,
+  SIGN_UP_WAITING,
   type OptionsReply,
   parseQr,
   type SessionReply,
@@ -49,6 +50,7 @@ import { StaffSetupPage } from './pages/client/StaffSetupPage';
 import { SignIn } from './pages/SignIn';
 import { PasskeyNotGiven, type Passkeys } from './passkeys';
 import { UnknownClient } from './pages/client/UnknownClient';
+import { WaitingClient } from './pages/client/WaitingClient';
 
 type Props = {
   api: Api;
@@ -123,8 +125,9 @@ async function boot(api: Api, device: DeviceStore, linked: string | null) {
     }
     return { kind: 'ready', doc, user } as const;
   } catch (error) {
-    if (error instanceof ApiError && error.status === NOT_FOUND)
-      return { kind: 'unknown' } as const;
+    if (error instanceof ApiError && error.status === NOT_FOUND) {
+      return { kind: error.detail === SIGN_UP_WAITING ? 'waiting' : 'unknown' } as const;
+    }
     return { kind: 'unavailable' } as const;
   }
 }
@@ -145,7 +148,7 @@ export function ClientApp({
   today = localToday,
   shrink = shrinkToProof,
 }: Props) {
-  const [phase, setPhase] = useState<'loading' | 'unavailable' | 'unknown'>('loading');
+  const [phase, setPhase] = useState<'loading' | 'unavailable' | 'unknown' | 'waiting'>('loading');
   const [doc, setDoc] = useState<ConfigDoc | null>(null);
   const [user, setUser] = useState<UserView | null>(null);
   const [chosen, setChosen] = useState<Language | null>(() => device.language());
@@ -239,7 +242,13 @@ export function ClientApp({
         {...look}
       >
         <title>{CREDO_BRAND.name}</title>
-        {phase === 'unknown' ? <UnknownClient /> : <Boot status={phase} onRetry={retry} />}
+        {phase === 'unknown' ? (
+          <UnknownClient />
+        ) : phase === 'waiting' ? (
+          <WaitingClient />
+        ) : (
+          <Boot status={phase} onRetry={retry} />
+        )}
       </Providers>
     );
   }

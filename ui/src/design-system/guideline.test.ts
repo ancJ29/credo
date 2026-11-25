@@ -348,6 +348,7 @@ const DOOR_FILES = [
   'pages/SignIn.tsx',
   'pages/operator/JoinPage.tsx',
   'pages/operator/OperatorSignIn.tsx',
+  'pages/SignUpPage.tsx',
 ];
 
 /** What a source draws itself that a part decides: a page title, a table's least width, a `Button`. */
@@ -360,7 +361,7 @@ function drawnRaw(source: string) {
 }
 
 describe('The screens’ page base', () => {
-  it('222 case 15: no screen draws a page title, a least width or a Button, but the three door files, whose Buttons stay', () => {
+  it('222 case 15: no screen draws a page title, a least width or a Button, but the four door files, whose Buttons stay', () => {
     expect(drawnRaw('<Title {...TYPE.pageTitle}>x</Title>')).toEqual(['a page title']);
     expect(drawnRaw('<Table.ScrollContainer minWidth={640}>')).toEqual(['a least width']);
     expect(drawnRaw('<Button>x</Button>')).toEqual(['a Button']);
@@ -380,7 +381,7 @@ describe('The screens’ page base', () => {
     const doors = screens
       .filter(([path]) => DOOR_FILES.includes(path))
       .flatMap(([, source]) => drawnRaw(source));
-    expect(doors.sort()).toEqual(['a Button', 'a Button', 'a Button']);
+    expect(doors.sort()).toEqual(['a Button', 'a Button', 'a Button', 'a Button']);
   });
 });
 
