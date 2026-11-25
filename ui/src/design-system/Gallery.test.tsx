@@ -30,6 +30,7 @@ import {
 import { credoVariables } from './cssVariables';
 import { PALETTES } from './palettes';
 import { shadesOf } from './appTheme';
+import { PICTURE_ON_COLOUR } from './Photos';
 import { SAMPLES } from './samples';
 import { dayOf, timeOf } from '../day';
 import { marksOf, priceOf } from '../number';
@@ -1412,7 +1413,7 @@ describe('Gallery', () => {
   });
 
   it('213 case 1: every entry carries one to three use lines and one to three don’t-use lines', () => {
-    expect(ENTRIES).toHaveLength(48);
+    expect(ENTRIES).toHaveLength(50);
     for (const entry of ENTRIES) {
       for (const lines of [entry.useWhen, entry.dontUseWhen]) {
         expect(lines.length, entry.name).toBeGreaterThanOrEqual(1);
@@ -1668,6 +1669,7 @@ describe('Gallery', () => {
       'The settings page',
       'BrandPreview',
       'IdentityFields',
+      'PictureField',
     ]);
     for (const name of SLOTS) {
       const entry = ENTRIES.find((each) => each.name === name);
@@ -1753,7 +1755,7 @@ describe('Gallery', () => {
         entry.kind !== KIND_OF_PAGE,
     );
     // A set that found nothing would quiet the loop.
-    expect(parts.length).toBe(29);
+    expect(parts.length).toBe(31);
     expect(GUIDELINE.contracts.map((contract) => contract.part).sort()).toEqual(
       parts.map((entry) => entry.name).sort(),
     );
@@ -2207,11 +2209,14 @@ describe('Gallery', () => {
     expect(basics.getAllByRole('radio')).toHaveLength(6);
     expect(basics.getAllByRole('checkbox')).toHaveLength(2);
     expect(basics.getAllByRole('switch')).toHaveLength(3);
-    // the logo's picture, not the preview's, which is hidden from a reader
+    // the two fields' pictures, then the preview's two, which are hidden from a reader
     expect(part().getByRole('figure', { name: 'The basics' }).querySelectorAll('img')).toHaveLength(
-      2,
+      4,
     );
     expect(basics.getByRole('button', { name: 'Upload logo' })).toBeDefined();
+    expect(
+      basics.getByRole('button', { name: 'Upload logo for the colored header' }),
+    ).toBeDefined();
     expect(basics.queryByRole('status')).toBeNull();
     expect(basics.queryByRole('alert')).toBeNull();
     expect(basics.getAllByRole('button', { name: 'Save changes' })).toHaveLength(1);
@@ -2244,6 +2249,7 @@ describe('Gallery', () => {
       'A white header',
       'A card with no logo',
       'A formatted name',
+      'A logo for the coloured header',
     ]);
     drawn(entry);
     const figures = ['A coloured header', 'A white header', 'A card with no logo'].map((name) =>
@@ -2351,6 +2357,7 @@ describe('Gallery', () => {
       'A white header',
       'A card with no logo',
       'A formatted name',
+      'A logo for the coloured header',
     ]);
     const preview = part().getByRole('figure', { name: 'A formatted name' });
     const header = preview.querySelector('[data-preview="header"]')!;
@@ -2399,5 +2406,112 @@ describe('Gallery', () => {
     const filled = part().getByRole('figure', { name: 'A formatted name' });
     expect(filled.querySelector('[aria-hidden="true"] b')).not.toBeNull();
     expect(within(filled).getByText(words.formattedNamePreview)).toBeDefined();
+  });
+
+  it('250.3 case 22: HeaderLogo draws each of the header’s four cases on a coloured and a white ground', () => {
+    const entry = ENTRIES.find((each) => each.name === 'HeaderLogo')!;
+    expect(entry.group).toBe('Atoms');
+    expect(entry.props).toBe('logo?: string · logoOnColour?: string · white: boolean');
+    open(`${BASE}/atoms/header-logo`);
+
+    expect(stateNames()).toEqual([
+      'Both set',
+      'Only the logo',
+      'Only the coloured header’s',
+      'None',
+    ]);
+    const ground = (state: string, on: 'coloured' | 'white') =>
+      part()
+        .getByRole('figure', { name: state })
+        .querySelector<HTMLElement>(`[data-ground="${on}"]`)!;
+    const src = (state: string, on: 'coloured' | 'white') =>
+      ground(state, on).querySelector('img')?.getAttribute('src') ?? null;
+    const standIn = (state: string, on: 'coloured' | 'white') =>
+      ground(state, on).querySelector('svg.tabler-icon-brand-adobe') !== null;
+
+    expect(ground('None', 'coloured').getAttribute('data-white')).toBeNull();
+    expect(ground('None', 'white').getAttribute('data-white')).toBe('true');
+    expect(src('Both set', 'coloured')).toBe(PICTURE_ON_COLOUR);
+    expect(src('Both set', 'white')).not.toBeNull();
+    expect(src('Both set', 'white')).not.toBe(PICTURE_ON_COLOUR);
+    expect(src('Only the logo', 'coloured')).toBe(src('Only the logo', 'white'));
+    expect(
+      ground('Only the logo', 'coloured').querySelector('img')!.style.backgroundColor,
+    ).toContain('white');
+    expect(src('Only the coloured header’s', 'coloured')).toBe(PICTURE_ON_COLOUR);
+    expect(standIn('Only the coloured header’s', 'white')).toBe(true);
+    expect(standIn('None', 'coloured')).toBe(true);
+    expect(standIn('None', 'white')).toBe(true);
+    expect(standIn('Both set', 'coloured')).toBe(false);
+  });
+
+  it('250.3 case 22: PictureField draws a picture with its choose and remove, none, a refusal and a saved message, and the sample follows each press', async () => {
+    const user = userEvent.setup();
+    const entry = ENTRIES.find((each) => each.name === 'PictureField')!;
+    expect(entry.group).toBe('Pages');
+    open(`${BASE}/pages/picture-field`);
+
+    expect(stateNames()).toEqual(['With a picture', 'None', 'Refused', 'Saved']);
+    const words = DICTIONARIES.vi.settings;
+    const at = (name: string) => part().getByRole('figure', { name });
+    const withOne = within(at('With a picture'));
+    expect(withOne.getByText(words.logoOnColour)).toBeDefined();
+    expect(withOne.getByText(words.logoOnColourHint)).toBeDefined();
+    expect(at('With a picture').querySelector('img')).not.toBeNull();
+    expect(withOne.getByRole('button', { name: words.logoOnColourChoose })).toBeDefined();
+    await user.click(withOne.getByRole('button', { name: words.logoOnColourRemove }));
+    expect(at('With a picture').querySelector('img')).toBeNull();
+    expect(withOne.getByText(words.logoOnColourNone)).toBeDefined();
+    expect(withOne.queryByRole('button', { name: words.logoOnColourRemove })).toBeNull();
+    const none = within(at('None'));
+    expect(none.getByText(words.logoOnColourNone)).toBeDefined();
+    await user.upload(
+      at('None').querySelector<HTMLInputElement>('input[type="file"]')!,
+      new File(['x'], 'mark.png', { type: 'image/png' }),
+    );
+    expect(at('None').querySelector('img')).not.toBeNull();
+    expect(within(at('Refused')).getByRole('alert').textContent).toContain('200');
+    expect(within(at('Saved')).getByRole('status').textContent).toBe(
+      DICTIONARIES.vi.settings.saved,
+    );
+  });
+
+  it('250.3 case 22: BrandPreview draws the logo for the coloured header in its header and the logo alone on its card; the settings page’s two fields draw both', async () => {
+    open(`${BASE}/pages/brand-preview`);
+    const light = part().getByRole('figure', { name: 'A logo for the coloured header' });
+    const header = light.querySelector('[data-preview="header"]')!;
+    expect(header.hasAttribute('data-white')).toBe(false);
+    expect(header.querySelector('img')?.getAttribute('src')).toBe(PICTURE_ON_COLOUR);
+    expect(light.querySelector('[data-preview="card"] img')?.getAttribute('src')).not.toBe(
+      PICTURE_ON_COLOUR,
+    );
+    cleanup();
+
+    open(`${BASE}/pages/the-settings-page`);
+    const page = part().getByRole('figure', { name: 'A formatted name' });
+    const words = DICTIONARIES.vi.settings;
+    expect(within(page).getByText(words.logo)).toBeDefined();
+    expect(within(page).getByText(words.logoOnColour)).toBeDefined();
+    expect(page.querySelector('[data-preview="header"] img')?.getAttribute('src')).toBe(
+      PICTURE_ON_COLOUR,
+    );
+
+    // the preview follows each field: removing the light logo draws the logo on a tile, choosing it again the light one
+    const user = userEvent.setup();
+    const headerPicture = () => page.querySelector('[data-preview="header"] img')!;
+    await user.click(within(page).getByRole('button', { name: words.logoOnColourRemove }));
+    expect(headerPicture().getAttribute('src')).not.toBe(PICTURE_ON_COLOUR);
+    await user.upload(
+      page.querySelectorAll<HTMLInputElement>('input[type="file"]')[1],
+      new File(['x'], 'mark.png', { type: 'image/png' }),
+    );
+    expect(headerPicture().getAttribute('src')).toBe(PICTURE_ON_COLOUR);
+    await user.click(within(page).getByRole('button', { name: words.logoRemove }));
+    expect(page.querySelectorAll('[data-preview="card"] img')).toHaveLength(0);
+    await user.upload(
+      page.querySelectorAll<HTMLInputElement>('input[type="file"]')[0],
+      new File(['x'], 'mark.png', { type: 'image/png' }),
+    );
+    expect(page.querySelectorAll('[data-preview="card"] img')).toHaveLength(1);
   });
 });

@@ -632,6 +632,22 @@ describe('HeaderBrand', () => {
     );
   });
 
+  it('14: the brand draws the logos as the header’s table says, beside the name, with an empty alt', () => {
+    const pictures = (white: boolean) =>
+      draw(
+        <HeaderBrand name="Minh Phát" white={white} logo="/logo.png" logoOnColour="/light.png" />,
+      ).container.querySelector('img');
+
+    expect(pictures(false)?.getAttribute('src')).toBe('/light.png');
+    expect(pictures(false)?.getAttribute('alt')).toBe('');
+    cleanup();
+    expect(pictures(true)?.getAttribute('src')).toBe('/logo.png');
+    cleanup();
+    const alone = draw(<HeaderBrand name="Minh Phát" white={false} logo="/logo.png" />);
+    expect(alone.container.querySelector('img')?.getAttribute('src')).toBe('/logo.png');
+    expect(screen.getByRole('heading', { level: 1, name: 'Minh Phát' })).toBeDefined();
+  });
+
   it('3: where no formatted name is set the plain name is drawn as bare text, as before', () => {
     const { container } = draw(<HeaderBrand name="Minh Phát" white={false} />);
 

@@ -32,6 +32,43 @@ describe('the preview of the header and the sign-in card', () => {
     expect(picture(white.container, 'card').querySelector('img')).toBeNull();
   });
 
+  it('19: the preview’s header chooses its logo as the app’s header does, the card wearing the logo alone', () => {
+    const header = (props: { whiteHeader?: boolean; onColour?: string }) => {
+      const drawn = draw(
+        <BrandPreview
+          name="An Phat"
+          logo="/card.png"
+          headerLogo="/logo.png"
+          headerLogoOnColour={props.onColour}
+          brand={BRICK}
+          whiteHeader={props.whiteHeader}
+        />,
+      );
+      const found = {
+        header: picture(drawn.container, 'header').querySelector('img')?.getAttribute('src'),
+        card: picture(drawn.container, 'card').querySelector('img')?.getAttribute('src'),
+      };
+      drawn.unmount();
+      return found;
+    };
+
+    expect(header({ onColour: '/light.png' })).toEqual({ header: '/light.png', card: '/card.png' });
+    expect(header({})).toEqual({ header: '/logo.png', card: '/card.png' });
+    expect(header({ whiteHeader: true, onColour: '/light.png' })).toEqual({
+      header: '/logo.png',
+      card: '/card.png',
+    });
+  });
+
+  it('19: with no header logo given the preview’s header draws the stand-in, as before, whatever the card wears', () => {
+    const { container } = draw(<BrandPreview name="An Phat" logo="/card.png" brand={BRICK} />);
+
+    expect(picture(container, 'header').querySelector('img')).toBeNull();
+    expect(
+      picture(container, 'header').querySelector('svg.tabler-icon-brand-adobe'),
+    ).not.toBeNull();
+  });
+
   it('hides both pictures from a reader and takes no focus: only the title and two captions are read', () => {
     const { container } = draw(<BrandPreview name="An Phat" logo="/logo.png" brand={BRICK} />);
 

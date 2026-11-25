@@ -27,6 +27,7 @@ import { BackLink } from '../components/atoms/BackLink';
 import { BrandName } from '../components/atoms/BrandName';
 import { DoorHeading } from '../components/atoms/DoorHeading';
 import { FieldLabel } from '../components/atoms/FieldLabel';
+import { HeaderLogo } from '../components/atoms/HeaderLogo';
 import { LogoTile } from '../components/atoms/LogoTile';
 import { StatusBadge, type Status } from '../components/atoms/StatusBadge';
 import { BrandBand } from '../components/molecules/BrandBand';
@@ -45,7 +46,7 @@ import { PALETTES } from './palettes';
 import { WEIGHTS } from './tokens';
 import { ChoiceStates } from './Choices';
 import { MenuStates } from './Menus';
-import { PhotoStates } from './Photos';
+import { PhotoStates, PICTURE_ON_COLOUR } from './Photos';
 import { LinkStates } from './Links';
 import { DialogStates } from './Dialog';
 import { FieldStates } from './Fields';
@@ -56,6 +57,7 @@ import {
   SettingsPageStates,
   BrandPreviewStates,
   IdentityFieldsStates,
+  PictureFieldStates,
   DaySheetStates,
   FormPageStates,
   ImportPageStates,
@@ -99,6 +101,23 @@ import {
 /** A sample company logo for the tile: Tabler's Adobe icon (3.49.0) at stroke 2, in teal, the human's choice for the gallery's sample. */
 const SAMPLE_LOGO =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='teal' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M12.893 4.514l7.977 14a.993 .993 0 0 1 -.394 1.365a1.04 1.04 0 0 1 -.5 .127h-3.476l-4.5 -8l-2.5 4h1.5l2 4h-8.977c-.565 0 -1.023 -.45 -1.023 -1c0 -.171 .045 -.34 .13 -.49l7.977 -13.993a1.034 1.034 0 0 1 1.786 0l0 -.009'/%3E%3C/svg%3E";
+
+/** The header's logo in one case, on the coloured header and on the white one, each ground the height of the header. */
+function HeaderLogoSample({ logo, logoOnColour }: { logo?: string; logoOnColour?: string }) {
+  return (
+    <Group align="flex-start" gap="lg">
+      {([false, true] as const).map((white) => (
+        <ColourScope key={String(white)} colour={PALETTES[2].shades[7]}>
+          <div data-ground={white ? 'white' : 'coloured'} {...headerLook(white)}>
+            <Group h={56} px="md">
+              <HeaderLogo logo={logo} logoOnColour={logoOnColour} white={white} />
+            </Group>
+          </div>
+        </ColourScope>
+      ))}
+    </Group>
+  );
+}
 
 /** Each status of a row, as the person reads it: the part draws its words from the stage's dictionary. */
 function StatusRow({ statuses }: { statuses: Status[] }) {
@@ -847,7 +866,7 @@ export const ENTRIES: Entry[] = [
     kind: KIND_OF_PAGE,
     name: 'The settings page',
     description:
-      'The page where a company sets its name, formatted name, description, logo, colour and languages, drawn from parts only: titled blocks of fields and choices, a save that stays on the page and says saved, and a refusal said through a message, the logo’s too.',
+      'The page where a company sets its name, formatted name, description, two logos, colour and languages, drawn from parts only: titled blocks of fields and choices, a save that stays on the page and says saved, and a refusal said through a message, the logo’s too.',
     props:
       'PageHeader · SectionCard · IdentityFields · ColorInput · Radio.Group · Switch · Checkbox.Group · NativeSelect · FormMessage · ActionButton',
     useWhen: [
@@ -871,9 +890,9 @@ export const ENTRIES: Entry[] = [
     name: 'BrandPreview',
     kind: 'Layout',
     description:
-      'A block titled Preview that shows a company header and the title of its sign-in card in the colour given, with the formatted name and the description where given, before anything is saved; both pictures are hidden from a reader and take no focus, only the title and two captions are read.',
+      'A block titled Preview that shows a company header and the title of its sign-in card in the colour given, with the logo on the card, the logos of the header (which chooses between them as the app header does), the formatted name and the description where given, before anything is saved; both pictures are hidden from a reader and take no focus, only the title and two captions are read.',
     props:
-      'name: string · logo?: string · formatted?: string · description?: string · brand: string · whiteHeader?: boolean',
+      'name: string · logo?: string · headerLogo?: string · headerLogoOnColour?: string · formatted?: string · description?: string · brand: string · whiteHeader?: boolean',
     useWhen: ['A page sets a company look and shows it before the save, beside its fields.'],
     dontUseWhen: [
       'The real header or a real door: those are Shell and DoorCard, which the app draws.',
@@ -893,6 +912,25 @@ export const ENTRIES: Entry[] = [
     dontUseWhen: ['The picture of the header and the card: that is BrandPreview’s.'],
     instead: 'BrandPreview',
     states: IdentityFieldsStates,
+  },
+  {
+    group: 'Pages',
+    name: 'PictureField',
+    kind: 'Fields',
+    description:
+      'A field for one picture of the company: its label, an optional hint, the picture as it stands or its words for none, a button to choose another and, with a picture, one to remove it, then the message of the last try; each word comes from the screen, so the field serves any picture, and what is chosen or removed is told to the screen, which saves it.',
+    props:
+      "label: string · hint?: string · picture?: string · none: string · choose: string · remove: string · message?: { kind: 'saved' | 'error'; text: string } · onChoose: (file: File | null) => void · onRemove: () => void",
+    useWhen: [
+      'A page lets a company choose one of its pictures: a logo, and later its icons.',
+      'A picture is shown beside its choose and remove, with its refusal under it.',
+    ],
+    dontUseWhen: [
+      'A person’s photo, shown larger and chosen only: that is the photo panel’s.',
+      'The picture as the header or the card draws it: that is HeaderLogo’s and BrandPreview’s.',
+    ],
+    instead: 'BrandPreview',
+    states: PictureFieldStates,
   },
   {
     group: 'Atoms',
@@ -982,6 +1020,32 @@ export const ENTRIES: Entry[] = [
           </Text>
         ),
       },
+    ],
+  },
+  {
+    group: 'Atoms',
+    name: 'HeaderLogo',
+    kind: 'Marks',
+    description:
+      'The mark at the start of the header, in the 36-pixel square of the stand-in icon: on the coloured header the logo for the coloured header bare, else the one logo on a white tile; on the white header the logo; the stand-in where none applies or the picture fails to load.',
+    props: 'logo?: string · logoOnColour?: string · white: boolean',
+    useWhen: ['The header draws the company at its start, before its name.'],
+    dontUseWhen: [
+      'The logo on a card: that is LogoTile’s.',
+      'The whole header brand, its name too: that is the shell’s.',
+    ],
+    instead: 'LogoTile',
+    states: [
+      {
+        name: 'Both set',
+        node: <HeaderLogoSample logo={SAMPLE_LOGO} logoOnColour={PICTURE_ON_COLOUR} />,
+      },
+      { name: 'Only the logo', node: <HeaderLogoSample logo={SAMPLE_LOGO} /> },
+      {
+        name: 'Only the coloured header’s',
+        node: <HeaderLogoSample logoOnColour={PICTURE_ON_COLOUR} />,
+      },
+      { name: 'None', node: <HeaderLogoSample /> },
     ],
   },
   {

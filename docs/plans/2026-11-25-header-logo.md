@@ -190,10 +190,14 @@ Sizes are the last rows of each step's shape in the runs log. Each gate is the t
 `pnpm --filter @credo/<pkg> check`, exit 0 by its own code, plus the citation test. "The pinned diff"
 is `git diff -U0 -- visual/src/resolved.pinned.txt | grep '^+[a-z]' | cut -d' ' -f1 | sort -u`.
 
-- [ ] **1. The gallery.** `HeaderLogo`, `PictureField`, `HeaderBrand` and `BrandPreview` taking
+- [x] **1. The gallery.** `HeaderLogo`, `PictureField`, `HeaderBrand` and `BrandPreview` taking
       addresses as strings, so `shared` waits; the sample; the states, contracts and entries; the five
       keys. Rows 14, 15, 19, 22 and 24 red first; row 23 the null proof. _Done when:_ `ui`'s, `visual`'s
       and `scripts`' gates; the pinned diff empty. **40 min** (250.2's step 1: 40). Then point 1.
+      Done 25 November: `ui`'s gate 18:31, `visual`'s 18:36, `scripts`' 18:40, each exit 0; the pinned
+      diff empty. `BrandPreview` takes the header's logos as `headerLogo` and `headerLogoOnColour`,
+      beside `logo` for the card, since the settings page passes it the logo and one prop for both
+      would have moved its 11 screens; step 2 passes them. Citation test at 18:48.
 - [ ] **2. The screens, on the fake.** In `shared` the kinds and the reply's `pictures`; `Brand` from
       it; `Shell`, `SignInFrame` and the QR landing pass both; `Settings` draws two `PictureField`s,
       saving at choice; the fake's pictures; the BFF answering each null until step 3. Rows 16 to 18,

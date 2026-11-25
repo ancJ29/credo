@@ -55,6 +55,12 @@ export const en = {
     logoNone: 'No logo uploaded',
     logoChoose: 'Upload logo',
     logoRemove: 'Remove logo',
+    logoOnColour: 'Logo for the colored header',
+    logoOnColourHint:
+      'Optional: a light version, shown on the colored header in place of the logo.',
+    logoOnColourNone: 'No logo for the colored header',
+    logoOnColourChoose: 'Upload logo for the colored header',
+    logoOnColourRemove: 'Remove logo for the colored header',
     logoTooLarge: 'File exceeds {{max}} KB and was not uploaded.',
     logoNotImage: 'Invalid file format. Please upload an image.',
     colour: 'Brand color',
