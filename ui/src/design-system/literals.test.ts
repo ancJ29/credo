@@ -12,6 +12,10 @@ const SHADE = /(["'`])[a-z]+\.[0-9]+\1|--mantine-color-[a-z]+-[0-9]/;
 const TYPE_NUMBER =
   /\b(?:fw|fz)=\{?\s*[0-9]|\b(?:fontWeight|fontSize)['"]?\s*:\s*['"]?[0-9]|font-(?:weight|size)['"]?\s*:\s*['"]?[0-9]/;
 
+/** Markup set from a string: the React prop, an assignment to either HTML property, or the insert call. */
+const MARKUP =
+  /dangerouslySetInnerHTML|\b(?:inner|outer)HTML\s*(?:\+|-|\*)?=(?!=)|insertAdjacentHTML/;
+
 const SRC = `${import.meta.dirname}/..`;
 
 /** A palette's name: Mantine's fourteen palettes, the client's `brand`, `white` and `black`. */
@@ -168,5 +172,37 @@ describe('The formats', () => {
       expect(INTL.test(form), form).toBe(true);
     for (const form of ['Internal notes', 'an Intl-free word', 'const intl = 1'])
       expect(INTL.test(form), form).toBe(false);
+  });
+});
+
+describe('The markup', () => {
+  it('8: No app file sets markup from a string; the company name is built as elements by BrandName', () => {
+    const all = globSync('**/*.{ts,tsx}', { cwd: SRC });
+    // A glob that found nothing, or a folder moved, would quiet the check below.
+    expect(all.some((path) => path.endsWith('.tsx'))).toBe(true);
+    expect(all).toContain('components/atoms/BrandName.tsx');
+    const own = all.filter((path) => !/\.test\.tsx?$/.test(path));
+    expect(own.length).toBeGreaterThanOrEqual(50);
+    const written = own.filter((path) => MARKUP.test(readFileSync(`${SRC}/${path}`, 'utf8')));
+    expect(written).toEqual([]);
+  });
+
+  it('8: the pattern refuses each way to set markup, and not a read of it or a word that holds one', () => {
+    for (const form of [
+      '<div dangerouslySetInnerHTML={{ __html: x }} />',
+      'node.innerHTML = x;',
+      'node.innerHTML=x',
+      'node.outerHTML = x',
+      'node.innerHTML += x',
+      'node.insertAdjacentHTML("beforeend", x)',
+    ])
+      expect(MARKUP.test(form), form).toBe(true);
+    for (const form of [
+      'expect(node.innerHTML).toBe(x)',
+      'const html = node.innerHTML;',
+      'if (node.innerHTML === x) return',
+      'innerHtml',
+    ])
+      expect(MARKUP.test(form), form).toBe(false);
   });
 });

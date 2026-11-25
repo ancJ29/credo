@@ -42,6 +42,8 @@ export function startingConfig(name: string, settings: Partial<TenantConfig> = {
     menuIcons: false,
     languages: ['vi', 'en'],
     defaultLanguage: 'vi',
+    formattedName: '',
+    description: '',
     ...settings,
   };
 }

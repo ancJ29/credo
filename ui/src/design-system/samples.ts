@@ -22,6 +22,8 @@ export const SAMPLES: Record<
     actions: string;
     changesKept: string;
     shop: string;
+    shopFormatted: string;
+    shopDescription: string;
     shopAddress: string;
     address: string;
     email: string;
@@ -69,6 +71,8 @@ export const SAMPLES: Record<
     actions: 'Actions',
     changesKept: 'Changes are kept when you save.',
     shop: 'An Phat',
+    shopFormatted: '<b>An</b><br><span style="color:#1d3557">Phat</span>',
+    shopDescription: 'Rice and food, delivered to your door',
     shopAddress: '12 Le Loi',
     address: 'Address',
     email: 'Email',
@@ -123,6 +127,8 @@ export const SAMPLES: Record<
     actions: 'Thao tác',
     changesKept: 'Thay đổi được lưu khi bạn bấm lưu.',
     shop: 'Công ty An Phát',
+    shopFormatted: '<b>An</b><br><span style="color:#1d3557">Phát</span>',
+    shopDescription: 'Gạo và thực phẩm, giao tận nơi',
     shopAddress: '12 Lê Lợi',
     address: 'Địa chỉ',
     email: 'Email',

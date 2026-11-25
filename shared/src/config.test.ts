@@ -3,6 +3,8 @@ import {
   isHexColour,
   languagesAreValid,
   logoIsValid,
+  MAX_DESCRIPTION,
+  MAX_FORMATTED_NAME,
   MAX_LOGO_BYTES,
   tenantConfigSchema,
 } from './config';
@@ -68,16 +70,51 @@ describe('A config that does not parse is refused on save and stops the boot', (
   };
 
   const off = { whiteHeader: false, whiteMenu: false, menuIcons: false };
+  const empty = { formattedName: '', description: '' };
 
   it('parses a whole config and trims the name', () => {
     expect(tenantConfigSchema.parse({ ...good, ...off, name: '  Công ty A ' })).toEqual({
       ...good,
       ...off,
+      ...empty,
     });
   });
 
   it('reads a record stored before the frame switches with all three off', () => {
-    expect(tenantConfigSchema.parse(good)).toEqual({ ...good, ...off });
+    expect(tenantConfigSchema.parse(good)).toEqual({ ...good, ...off, ...empty });
+  });
+
+  it('9: keeps the formatted name as typed and the description trimmed', () => {
+    const typed = '  <b>Công</b><br> ty  ';
+    const parsed = tenantConfigSchema.parse({
+      ...good,
+      formattedName: typed,
+      description: '  Vật liệu  ',
+    });
+    expect(parsed.formattedName).toBe(typed);
+    expect(parsed.description).toBe('Vật liệu');
+  });
+
+  it('9: reads a record stored before both existed as both empty', () => {
+    const parsed = tenantConfigSchema.parse(good);
+    expect([parsed.formattedName, parsed.description]).toEqual(['', '']);
+  });
+
+  it('10: refuses a formatted name past 1,000 characters and a description past 200, and keeps the bounds', () => {
+    expect([MAX_FORMATTED_NAME, MAX_DESCRIPTION]).toEqual([1000, 200]);
+    const long = (length: number) => 'a'.repeat(length);
+    expect(
+      tenantConfigSchema.safeParse({ ...good, formattedName: long(1000), description: long(200) })
+        .success,
+    ).toBe(true);
+    expect(tenantConfigSchema.safeParse({ ...good, formattedName: long(1001) }).success).toBe(
+      false,
+    );
+    expect(tenantConfigSchema.safeParse({ ...good, description: long(201) }).success).toBe(false);
+    // the bound is on the trimmed description: spaces round it do not count
+    expect(tenantConfigSchema.safeParse({ ...good, description: ` ${long(200)} ` }).success).toBe(
+      true,
+    );
   });
 
   it('refuses a blank name, a bad colour, a bad language set and a stray key', () => {

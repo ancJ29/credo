@@ -5,7 +5,7 @@ import { Settings } from '../parts/Settings';
 import { Shell } from '../frame/Shell';
 import { SignIn } from '../pages/SignIn';
 import { UnknownClient } from '../pages/client/UnknownClient';
-import { FILLED, FRESH, ROOT, TYPED, WHITE, WHITE_ICONS } from './fixtures';
+import { FILLED, FORMATTED, FRESH, ROOT, TYPED, WHITE, WHITE_ICONS } from './fixtures';
 import type { TenantConfig } from '@credo/shared';
 
 /** The mock's handlers do nothing: no screen here calls a service. */
@@ -47,9 +47,10 @@ const signIn = (
   status: 'idle' | 'busy' | 'refused' | 'wait',
   initial?: { username: string; password: string },
   waitSeconds?: number,
+  brand: TenantConfig = FILLED,
 ) => (
   <SignIn
-    brand={FILLED}
+    brand={brand}
     status={status}
     waitSeconds={waitSeconds}
     initial={initial}
@@ -87,6 +88,12 @@ export const SCREENS: MockScreen[] = [
       { id: 'empty', label: 'empty', colour: FILLED.colour, screen: signIn('idle') },
       { id: 'filled', label: 'filled', colour: FILLED.colour, screen: signIn('idle', ROOT) },
       { id: 'loading', label: 'loading', colour: FILLED.colour, screen: signIn('busy', ROOT) },
+      {
+        id: 'formatted',
+        label: 'formatted: the name in its colours, the description under it',
+        colour: FORMATTED.colour,
+        screen: signIn('idle', undefined, undefined, FORMATTED),
+      },
     ],
   },
   {
@@ -156,6 +163,12 @@ export const SCREENS: MockScreen[] = [
         colour: FILLED.colour,
         screen: settings(TYPED, {}, {}, FILLED),
       },
+      {
+        id: 'formatted',
+        label: 'formatted: both fields typed, the frame keeps the saved look',
+        colour: FILLED.colour,
+        screen: settings(FORMATTED, {}, {}, TYPED),
+      },
     ],
   },
   {
@@ -167,6 +180,12 @@ export const SCREENS: MockScreen[] = [
         label: 'filled',
         colour: TYPED.colour,
         screen: settings(TYPED, { outcome: 'saved' }),
+      },
+      {
+        id: 'formatted',
+        label: 'formatted: saved, the header shows the formatted name',
+        colour: FORMATTED.colour,
+        screen: settings(FORMATTED, { outcome: 'saved' }),
       },
     ],
   },

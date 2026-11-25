@@ -13,9 +13,9 @@ import { type APIRequestContext, expect, type Page, test } from '@playwright/tes
 import { required, shot, WIDTHS } from '../support';
 
 /**
- * Piece 1's walk, the client's admin: thirteen screens, each in Vietnamese and in English, each at
+ * Piece 1's walk, the client's admin: sixteen screens, each in Vietnamese and in English, each at
  * the PC, tablet and phone widths the visual report draws, each saved with Playwright's own
- * screenshot check against its committed base image (13 × 2 × 3 = 78). The stack
+ * screenshot check against its committed base image (16 × 2 × 3 = 96). The stack
  * (`pnpm stack -- …`) gives the address, the demo client's code and the root's sign-in in the
  * environment, and the walk opens the client's link, as its root would. Words come from the app's
  * own dictionaries, so a renamed label turns this red where it was renamed.
@@ -32,6 +32,9 @@ const ROOT = {
 const SCOPE = { [CLIENT_HEADER]: CODE };
 
 const NEW_NAME = 'Minh Phát Sài Gòn';
+/** The formatted name and the description the root types: a bold part, a second colour, a break. */
+const NEW_FORMATTED = '<b>Minh Phát</b><br><span style="color:#1d3557">Sài Gòn</span>';
+const NEW_DESCRIPTION = 'Vật liệu xây dựng, giao tận công trình';
 /** What the other save, made through the API, calls the company. */
 const THEIR_NAME = 'Minh Phát Bình Dương';
 
@@ -128,7 +131,9 @@ async function walk(page: Page, language: Language, width: number) {
   await page.getByRole('radio', { name: words.settings.palettes.brick }).check();
   await page.getByRole('heading', { level: 2 }).click();
   // 13. The preview wears the typed name and Brick before any save, the header still the saved one.
-  await expect(page.getByRole('heading', { level: 1, name: 'Minh Phát' })).toBeVisible();
+  await expect(
+    page.getByRole('heading', { level: 1, name: 'Minh Phát', exact: true }),
+  ).toBeVisible();
   await at('13-preview');
   await page.route(ROUTES.config, (route) =>
     route.request().method() === 'PUT'
@@ -171,6 +176,33 @@ async function walk(page: Page, language: Language, width: number) {
   await expect(page.getByRole('status')).toHaveText(words.settings.saved);
   await expect(page.getByRole('heading', { level: 1, name: NEW_NAME })).toBeVisible();
   await at('4-saved');
+
+  // 14. The formatted name and the description typed: their preview, and the preview's header and
+  // card, show them before the save.
+  await page.getByLabel(words.settings.formattedName, { exact: true }).fill(NEW_FORMATTED);
+  await page.getByLabel(words.settings.description, { exact: true }).fill(NEW_DESCRIPTION);
+  await page.getByRole('heading', { level: 2 }).click();
+  await expect(page.locator('[data-preview="card"]')).toContainText(NEW_DESCRIPTION);
+  await at('14-formatted-typed');
+
+  // 15. Saved: the header shows the formatted name, read by the plain one.
+  await page.getByRole('button', { name: words.settings.save }).click();
+  await expect(page.getByRole('status')).toHaveText(words.settings.saved);
+  await expect(page.getByRole('heading', { level: 1, name: NEW_NAME, exact: true })).toBeVisible();
+  await expect(page.locator('header [aria-hidden="true"] b')).toBeVisible();
+  await at('15-formatted-saved');
+
+  // 16. Signed out: the card shows the formatted name and the description. Signing in again
+  // returns to Settings, for the screens after.
+  await page.getByRole('button', { name: ROOT.name, exact: true }).click();
+  await page.getByRole('menuitem', { name: words.user.signOut }).click();
+  await expect(page.getByText(NEW_DESCRIPTION)).toBeVisible();
+  await at('16-formatted-card');
+  await page.getByLabel(words.auth.username, { exact: true }).fill(ROOT.name);
+  await page.getByLabel(words.auth.password, { exact: true }).fill(ROOT.password);
+  await page.getByRole('button', { name: words.auth.submit, exact: true }).click();
+  // Signing out leaves the address at /settings, so the page signed in again is Settings itself.
+  await expect(page.getByRole('heading', { level: 2, name: words.settings.title })).toBeVisible();
 
   // 5. The language switched, from the header's button: its picture is taken here, while every
   // switch is off, so screens 1 to 9 keep the coloured frame; the menu is closed and the switch made
@@ -235,11 +267,11 @@ for (const [device, width] of Object.entries(WIDTHS)) {
   test.describe(`piece 1: the client's admin, on a ${device} (${width})`, () => {
     test.use({ viewport: { width, height: 800 } });
 
-    test('walks all thirteen screens in Vietnamese', async ({ page }) => {
+    test('walks all sixteen screens in Vietnamese', async ({ page }) => {
       await walk(page, 'vi', width);
     });
 
-    test('walks all thirteen screens in English', async ({ page }) => {
+    test('walks all sixteen screens in English', async ({ page }) => {
       await walk(page, 'en', width);
     });
   });

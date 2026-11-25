@@ -29,6 +29,7 @@ import {
   IconPhoto,
   IconUser,
 } from '@tabler/icons-react';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActionButton } from '../components/atoms/ActionButton';
 import { MenuRow } from '../components/atoms/MenuRow';
@@ -47,6 +48,7 @@ import { LISTS } from '../listSheet';
 import { numberOf, priceOf } from '../number';
 import { ListTable } from '../parts/ListTable';
 import { BrandPreview } from '../parts/BrandPreview';
+import { IdentityFields } from '../parts/IdentityFields';
 import { DetailCard, DetailColumns, FieldPair } from '../parts/DetailCards';
 import { PageShell } from '../parts/PageShell';
 import { SectionCard } from '../components/organisms/SectionCard';
@@ -1046,10 +1048,16 @@ export const ConfirmPageStates = [
   { name: 'Their removal asked', node: <PersonPasskeys asked /> },
 ];
 
-/** The settings page as the company's own draws it: four titled blocks (the name, the logo from the photos with its choose and remove, the palette, the colour and the three switches, the languages) beside a preview of the header and the sign-in card, which comes first on a phone; `saved` says so above the blocks, `refused` says why above them and under the logo. */
-function SettingsPage({ state }: { state: 'basics' | 'saved' | 'refused' }) {
+/** The settings page as the company's own draws it: four titled blocks (the name with its formatted name and description, the logo from the photos with its choose and remove, the palette, the colour and the three switches, the languages) beside a preview of the header and the sign-in card, which comes first on a phone; `saved` says so above the blocks, `refused` says why above them and under the logo. */
+function SettingsPage({ state }: { state: 'basics' | 'saved' | 'refused' | 'formatted' }) {
   const { t } = useTranslation();
   const words = SAMPLES[useLanguage()];
+  const formatted = state === 'formatted';
+  const [identity, setIdentity] = useState({
+    name: words.shop,
+    formattedName: formatted ? words.shopFormatted : '',
+    description: formatted ? words.shopDescription : '',
+  });
   return (
     <Stack p="md" gap="lg">
       <div>
@@ -1062,16 +1070,21 @@ function SettingsPage({ state }: { state: 'basics' | 'saved' | 'refused' }) {
         sideFirst
         side={
           <BrandPreview
-            name={words.shop}
+            name={identity.name}
             logo={PICTURE}
+            formatted={identity.formattedName}
+            description={identity.description}
             brand={PALETTES[0].shades[7]}
-            whiteHeader
+            whiteHeader={!formatted}
           />
         }
         main={
           <Stack gap="lg">
             <SectionCard icon={<IconId size={14} />} title={t('settings.identity')}>
-              <TextInput label={t('settings.name')} required defaultValue={words.shop} />
+              <IdentityFields
+                {...identity}
+                onChange={(field, value) => setIdentity((was) => ({ ...was, [field]: value }))}
+              />
             </SectionCard>
             <SectionCard icon={<IconPhoto size={14} />} title={t('settings.pictures')}>
               <Stack gap={6}>
@@ -1110,7 +1123,7 @@ function SettingsPage({ state }: { state: 'basics' | 'saved' | 'refused' }) {
                   defaultValue={PALETTES[0].shades[7]}
                 />
                 <Stack gap="md">
-                  <Switch label={t('settings.whiteHeader')} defaultChecked />
+                  <Switch label={t('settings.whiteHeader')} defaultChecked={!formatted} />
                   <Switch label={t('settings.whiteMenu')} />
                   <Switch label={t('settings.menuIcons')} />
                 </Stack>
@@ -1140,14 +1153,15 @@ function SettingsPage({ state }: { state: 'basics' | 'saved' | 'refused' }) {
   );
 }
 
-/** The settings page's three states: the basics, saved, and refused. */
+/** The settings page's four states: the basics, saved, refused, and a formatted name with its description. */
 export const SettingsPageStates = [
   { name: 'The basics', node: <SettingsPage state="basics" /> },
   { name: 'Saved', node: <SettingsPage state="saved" /> },
   { name: 'Refused', node: <SettingsPage state="refused" /> },
+  { name: 'A formatted name', node: <SettingsPage state="formatted" /> },
 ];
 
-/** The preview of the header and the sign-in card, in a brick colour with a logo, with the white header, and with no logo. */
+/** The preview of the header and the sign-in card, in a brick colour with a logo, with the white header, with no logo, and with a formatted name. */
 export const BrandPreviewStates = [
   {
     name: 'A coloured header',
@@ -1173,4 +1187,45 @@ export const BrandPreviewStates = [
       </Stack>
     ),
   },
+  { name: 'A formatted name', node: <FormattedPreview /> },
+];
+
+/** The preview with a formatted name and a description, on a coloured header: the colours give way there and show on the card. */
+function FormattedPreview() {
+  const words = SAMPLES[useLanguage()];
+  return (
+    <Stack w={480} maw="100%">
+      <BrandPreview
+        name={words.shop}
+        logo={PICTURE}
+        formatted={words.shopFormatted}
+        description={words.shopDescription}
+        brand={PALETTES[2].shades[7]}
+      />
+    </Stack>
+  );
+}
+
+/** The identity fields as the gallery draws them: what is typed is kept, so the preview of the formatted name redraws. */
+function IdentityFieldsSample({ formatted }: { formatted?: boolean }) {
+  const words = SAMPLES[useLanguage()];
+  const [identity, setIdentity] = useState({
+    name: words.shop,
+    formattedName: formatted ? words.shopFormatted : '',
+    description: formatted ? words.shopDescription : '',
+  });
+  return (
+    <Stack w={480} maw="100%">
+      <IdentityFields
+        {...identity}
+        onChange={(field, value) => setIdentity((was) => ({ ...was, [field]: value }))}
+      />
+    </Stack>
+  );
+}
+
+/** The identity fields empty, and with a formatted name and a description. */
+export const IdentityFieldsStates = [
+  { name: 'Empty', node: <IdentityFieldsSample /> },
+  { name: 'A formatted name', node: <IdentityFieldsSample formatted /> },
 ];

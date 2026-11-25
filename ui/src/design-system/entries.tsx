@@ -24,6 +24,7 @@ import {
   IconUser,
 } from '@tabler/icons-react';
 import { BackLink } from '../components/atoms/BackLink';
+import { BrandName } from '../components/atoms/BrandName';
 import { DoorHeading } from '../components/atoms/DoorHeading';
 import { FieldLabel } from '../components/atoms/FieldLabel';
 import { LogoTile } from '../components/atoms/LogoTile';
@@ -36,8 +37,12 @@ import { DoorPage } from '../components/organisms/DoorPage';
 import { PageHeader } from '../components/organisms/PageHeader';
 import { SectionCard } from '../components/organisms/SectionCard';
 import { CREDO_BRAND } from '../brand';
+import { headerLook } from '../frame/Shell';
 import { LANGUAGE_NAMES } from '../i18n';
 import { Charter } from './Charter';
+import { ColourScope } from './ColourScope';
+import { PALETTES } from './palettes';
+import { WEIGHTS } from './tokens';
 import { SignUpCard, UnknownAddressSample } from './SignUpStates';
 import { ChoiceStates } from './Choices';
 import { MenuStates } from './Menus';
@@ -51,6 +56,7 @@ import {
   ConfirmPageStates,
   SettingsPageStates,
   BrandPreviewStates,
+  IdentityFieldsStates,
   DaySheetStates,
   FormPageStates,
   ImportPageStates,
@@ -103,6 +109,50 @@ function StatusRow({ statuses }: { statuses: Status[] }) {
         <StatusBadge key={status} status={status} />
       ))}
     </Group>
+  );
+}
+
+/** The company name in the four ways the atom draws it, on white or on the coloured header: plain, formatted, the colours given way, and a formatted name with nothing left after cleaning. */
+function BrandNameSample({ state }: { state: 'plain' | 'formatted' | 'header' | 'nothing' }) {
+  const words = SAMPLES[useLanguage()];
+  const formatted = state === 'formatted' || state === 'header';
+  const name = (
+    <BrandName
+      name={words.shop}
+      formatted={
+        state === 'nothing'
+          ? '<script>x</script> <br>'
+          : formatted
+            ? words.shopFormatted
+            : undefined
+      }
+      colours={state !== 'header'}
+    />
+  );
+  if (state !== 'header') return <Text fw={WEIGHTS.title}>{name}</Text>;
+  return (
+    <ColourScope colour={PALETTES[2].shades[7]}>
+      <div {...headerLook(false)}>
+        <Group h={56} px="md">
+          <Text fw={WEIGHTS.title} c="inherit">
+            {name}
+          </Text>
+        </Group>
+      </div>
+    </ColourScope>
+  );
+}
+
+/** The company's formatted name and description on a band, in the picked language. */
+function FormattedBand() {
+  const words = SAMPLES[useLanguage()];
+  return (
+    <BrandBand
+      name={words.shop}
+      logo={SAMPLE_LOGO}
+      formatted={words.shopFormatted}
+      description={words.shopDescription}
+    />
   );
 }
 
@@ -798,9 +848,9 @@ export const ENTRIES: Entry[] = [
     kind: KIND_OF_PAGE,
     name: 'The settings page',
     description:
-      'The page where a company sets its name, logo, colour and languages, drawn from parts only: titled blocks of fields and choices, a save that stays on the page and says saved, and a refusal said through a message, the logo’s too.',
+      'The page where a company sets its name, formatted name, description, logo, colour and languages, drawn from parts only: titled blocks of fields and choices, a save that stays on the page and says saved, and a refusal said through a message, the logo’s too.',
     props:
-      'PageHeader · SectionCard · TextInput · ColorInput · Radio.Group · Switch · Checkbox.Group · NativeSelect · FormMessage · ActionButton',
+      'PageHeader · SectionCard · IdentityFields · ColorInput · Radio.Group · Switch · Checkbox.Group · NativeSelect · FormMessage · ActionButton',
     useWhen: [
       'You are about to build a page that edits one record in place and stays on it after the save.',
       'You need a field that takes a picture, with its refusal under it.',
@@ -822,14 +872,28 @@ export const ENTRIES: Entry[] = [
     name: 'BrandPreview',
     kind: 'Layout',
     description:
-      'A block titled Preview that shows a company header and the title of its sign-in card in the colour given, before anything is saved; both pictures are hidden from a reader and take no focus, only the title and two captions are read.',
-    props: 'name: string · logo?: string · brand: string · whiteHeader?: boolean',
+      'A block titled Preview that shows a company header and the title of its sign-in card in the colour given, with the formatted name and the description where given, before anything is saved; both pictures are hidden from a reader and take no focus, only the title and two captions are read.',
+    props:
+      'name: string · logo?: string · formatted?: string · description?: string · brand: string · whiteHeader?: boolean',
     useWhen: ['A page sets a company look and shows it before the save, beside its fields.'],
     dontUseWhen: [
       'The real header or a real door: those are Shell and DoorCard, which the app draws.',
     ],
     instead: 'DoorCard',
     states: BrandPreviewStates,
+  },
+  {
+    group: 'Pages',
+    name: 'IdentityFields',
+    kind: 'Fields',
+    description:
+      'The fields of the Identity block: the company name, the name with formatting typed as HTML with its hint and a preview of it as the company draws it, and the short description for the sign-in card; each is told what was typed.',
+    props:
+      "name: string · formattedName: string · description: string · onChange: (field: 'name' | 'formattedName' | 'description', value: string) => void",
+    useWhen: ['A page sets the company name, its formatted name and its description in one block.'],
+    dontUseWhen: ['The picture of the header and the card: that is BrandPreview’s.'],
+    instead: 'BrandPreview',
+    states: IdentityFieldsStates,
   },
   {
     group: 'Atoms',
@@ -845,6 +909,29 @@ export const ENTRIES: Entry[] = [
     ],
     instead: 'SectionTitle',
     states: [{ name: 'Phone', node: <FieldLabelSample /> }],
+  },
+  {
+    group: 'Atoms',
+    name: 'BrandName',
+    kind: 'Text',
+    description:
+      'The company name, plain, or formatted where one is typed as HTML: cleaned at each draw to bold, line breaks and one colour on a span, built as elements, hidden from a reader beside the plain name; colours false lets the colour of the text show.',
+    props: 'name: string · formatted?: string · colours?: boolean',
+    useWhen: [
+      'The company name is drawn where it may be formatted: a heading, a band, a preview.',
+      'The name sits on the coloured header: give colours false, and the text colour wins.',
+    ],
+    dontUseWhen: [
+      'The name with its logo: that is BrandBand’s.',
+      'A name read by the browser, as the tab or a logo’s alt: that stays the plain name.',
+    ],
+    instead: 'BrandBand',
+    states: [
+      { name: 'Plain', node: <BrandNameSample state="plain" /> },
+      { name: 'Formatted', node: <BrandNameSample state="formatted" /> },
+      { name: 'On the coloured header', node: <BrandNameSample state="header" /> },
+      { name: 'Nothing left', node: <BrandNameSample state="nothing" /> },
+    ],
   },
   {
     group: 'Atoms',
@@ -1045,8 +1132,8 @@ export const ENTRIES: Entry[] = [
     name: 'BrandBand',
     kind: 'Headings',
     description:
-      "The company's logo tile beside its name as the first heading, bold and centred on the brand's palest shade, a brand-1 line beneath.",
-    props: 'name: string · logo?: string',
+      'The company logo tile beside its name as the first heading, formatted where a formatted name is given, with a short description in a caption under the name, bold and centred on the brand palest shade, a brand-1 line beneath.',
+    props: 'name: string · logo?: string · formatted?: string · description?: string',
     useWhen: ["The company's logo and name lead a door or a card."],
     dontUseWhen: ["The logo alone: that is LogoTile's.", "A page's title: that is PageHeader's."],
     instead: 'LogoTile',
@@ -1056,6 +1143,14 @@ export const ENTRIES: Entry[] = [
         node: (
           <Stack w={474} maw="100%" gap={0}>
             <BrandBand name="Công ty TNHH Acme" logo={SAMPLE_LOGO} />
+          </Stack>
+        ),
+      },
+      {
+        name: 'Formatted, with a description',
+        node: (
+          <Stack w={474} maw="100%" gap={0}>
+            <FormattedBand />
           </Stack>
         ),
       },
@@ -1119,8 +1214,9 @@ export const ENTRIES: Entry[] = [
     name: 'DoorCard',
     kind: 'Cards',
     description:
-      "A door's card: a bar in the brand's gradient across its top, the company's band, then what it holds.",
-    props: 'name: string · logo?: string · children: ReactNode',
+      "A door's card: a bar in the brand's gradient across its top, the company's band with its formatted name and description where given, then what it holds.",
+    props:
+      'name: string · logo?: string · formatted?: string · description?: string · children: ReactNode',
     useWhen: ['A page a person reaches before sign-in, the card holding its words and buttons.'],
     dontUseWhen: [
       "A block inside a signed-in page: that is SectionCard's.",

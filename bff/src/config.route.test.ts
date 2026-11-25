@@ -26,6 +26,8 @@ const company: TenantConfig = {
   menuIcons: false,
   languages: ['vi', 'en'],
   defaultLanguage: 'vi',
+  formattedName: '',
+  description: '',
 };
 
 const imageOf = (bytes: number) =>
@@ -298,5 +300,48 @@ describe('A department, a position or a person may be allowed to change the comp
     });
 
     expect((await save(person.call, version)).statusCode).toBe(403);
+  });
+});
+
+describe('The root types a formatted name and a description, which every screen reads', () => {
+  it('9: keeps the formatted name as typed and the description trimmed', async () => {
+    const t = await rootSession();
+    const formattedName = ' <b>Đại</b><br>Việt ';
+    const saved = await t.save({ ...company, formattedName, description: '  Vật liệu  ' }, null);
+    expect(saved.statusCode).toBe(200);
+
+    const config = configDocSchema.parse((await t.read()).json()).config;
+    expect(config.formattedName).toBe(formattedName);
+    expect(config.description).toBe('Vật liệu');
+  });
+
+  it('9: reads a record stored before both existed as both empty', async () => {
+    const t = await rootSession();
+    const { formattedName, description, ...before } = company;
+    expect([formattedName, description]).toEqual(['', '']);
+    await t.client.putRecord(t.keys.config, before);
+
+    const config = configDocSchema.parse((await t.read()).json()).config;
+    expect([config.formattedName, config.description]).toEqual(['', '']);
+  });
+
+  it('10: refuses a formatted name past 1,000 characters or a description past 200, 400, keeping the record', async () => {
+    const t = await rootSession();
+    await t.save(company, null);
+    const stored = await t.client.getRecord(t.keys.config);
+    for (const bad of [
+      { formattedName: 'a'.repeat(1001) },
+      { description: 'a'.repeat(201) },
+      { formattedName: 7 },
+    ]) {
+      const refused = await t.save({ ...company, ...bad }, stored?.tag ?? null);
+      expect(refused.statusCode, JSON.stringify(Object.keys(bad))).toBe(400);
+    }
+    expect(await t.client.getRecord(t.keys.config)).toEqual(stored);
+    const longest = await t.save(
+      { ...company, formattedName: 'a'.repeat(1000), description: 'a'.repeat(200) },
+      stored?.tag ?? null,
+    );
+    expect(longest.statusCode).toBe(200);
   });
 });
