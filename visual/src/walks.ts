@@ -54,7 +54,7 @@ export type Step =
    * field with these words, as a person's choosing it does. */
   | { attach: string; file: DemoFile }
   /** Waits until the page shows a heading, an alert or a table cell that reads so, and does
-   * nothing to it: the screen's last step when it is about what the page draws after a press or a
+   * nothing to it (a status, as the green tick's, is seen as an alert is): the screen's last step when it is about what the page draws after a press or a
    * load, which the page is not yet still enough to have drawn on a loaded machine. `text` says
    * the words are the cell's own (a name from the data), not a key of the dictionary; `with` fills
    * a word's `{{name}}`. */
@@ -282,6 +282,17 @@ const DRAFT_YESTERDAY_PATH = `/orders/${DRAFT_YESTERDAY.day}/${DRAFT_YESTERDAY.i
  * the secret given. */
 const qrLinkWith = (secret: string, code = 'EMP-0004') =>
   `/login?client-code=demo&qr=${DEMO_EMPLOYEES.find((p) => p.code === code)!.id}.${secret}`;
+
+/** The code part of a QR link, as a person pastes it on the scan page: the person and the secret. */
+const qrCodeWith = (secret: string, code = 'EMP-0004') =>
+  `${DEMO_EMPLOYEES.find((p) => p.code === code)!.id}.${secret}`;
+
+/** The scan page's by-hand view with a code pasted and sent, as the walk's screens 4 and 5 do. */
+const QR_PASTED = (secret: string): Step[] => [
+  { press: 'qrScan.byHand' },
+  { fill: 'qrScan.paste', text: qrCodeWith(secret) },
+  { press: 'auth.submit' },
+];
 
 /** The driver's walk's data, by the data set: the driver `EMP-0005`, the request of theirs that waits
  * today, and the request the data set delivered, with its order fulfilled. */
@@ -1613,6 +1624,62 @@ export const WALKS: Walk[] = [
           vi: 'Mã đã dùng rồi, hoặc đã quá 15 phút',
         },
         question: SIGN_IN_LOOK,
+      },
+      {
+        id: 'phone-3-scan',
+        number: 3,
+        path: 'main',
+        scene: { path: '/login/qr', out: true, steps: [{ see: 'qrScan.title' }] },
+        sentence: {
+          en: 'The scan page: scan the code with the camera, or enter it by hand',
+          vi: 'Trang quét mã: quét bằng máy ảnh, hoặc nhập thủ công',
+        },
+        question: 'Would a person know to scan the code the root shows them?',
+      },
+      {
+        id: 'phone-4-signed-in',
+        number: 4,
+        path: 'main',
+        scene: {
+          path: '/login/qr',
+          out: true,
+          steps: [...QR_PASTED(DEMO_QR_SECRET), { see: 'qrScan.signedIn' }],
+        },
+        sentence: {
+          en: 'The code pasted: signed in, with a green tick before the first page',
+          vi: 'Đã dán mã: đăng nhập xong, có dấu tích xanh trước trang đầu tiên',
+        },
+        question: 'Does the tick tell the person they are signed in?',
+      },
+      {
+        id: 'phone-5-scan-code-used',
+        number: 5,
+        path: 'wrong',
+        scene: {
+          path: '/login/qr',
+          out: true,
+          steps: [...QR_PASTED('used-before-qr-code'), { see: 'qrSignIn.refusedText' }],
+        },
+        sentence: {
+          en: 'A code used before, or past its 15 minutes, pasted on the scan page: refused, with the way back to the password',
+          vi: 'Mã đã dùng rồi, hoặc đã quá 15 phút, được dán vào trang quét: bị từ chối, kèm cách quay lại mật khẩu',
+        },
+        question: 'Does this say what to do next?',
+      },
+      {
+        id: 'phone-6-no-camera',
+        number: 6,
+        path: 'wrong',
+        scene: {
+          path: '/login/qr',
+          out: true,
+          steps: [{ press: 'qrScan.scan' }, { see: 'qrScan.noCamera' }],
+        },
+        sentence: {
+          en: 'The camera cannot be used here: told, with the picture and the pasted link left',
+          vi: 'Không dùng được máy ảnh: được báo, còn lại đọc từ ảnh và dán đường dẫn',
+        },
+        question: 'Would a person know to read a picture or paste the link instead?',
       },
     ],
   },

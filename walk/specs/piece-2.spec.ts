@@ -7,8 +7,8 @@ import { required, shot, virtualAuthenticator, WIDTHS } from '../support';
 
 /**
  * Piece 2's groups A, B, C and D, four walks in one run: the staff setup and the staff list, the person's
- * pages, the import, the office's and the phone's, forty-seven screens, each in Vietnamese and in English
- * at the three widths (47 × 2 × 3 = 282). The `fake` project runs it on `pnpm fake -- …`, the UI alone over the data set,
+ * pages, the import, the office's and the phone's, fifty-one screens, each in Vietnamese and in English
+ * at the three widths (51 × 2 × 3 = 306). The `fake` project runs it on `pnpm fake -- …`, the UI alone over the data set,
  * and keeps the pictures as the full run's reference; the `full` project runs it on the stack
  * (`pnpm stack -- …`) and compares them with the bases, or with the fake run's pictures. Each screen opens at an address of its own, so a screen never meets
  * what an earlier one changed. Words come from the app's own dictionaries.
@@ -650,6 +650,38 @@ async function walk(page: Page, language: Language, width: number) {
   await open(page, language, { path: qrAddress(page, true), out: true, signIns: true });
   await expect(title(words.qrSignIn.refusedTitle)).toBeVisible();
   await at('phone-2-code-used');
+
+  // 3. The scan page, opened from the door's button: the camera or the code by hand.
+  await open(page, language, { path: '/login/qr', out: true });
+  await expect(title(words.qrScan.title)).toBeVisible();
+  await at('phone-3-scan');
+
+  // 4. A code pasted: signed in, the green tick before the first page. The code is the stack's own,
+  // issued by the root.
+  const pasting = await open(page, language, { path: '/login/qr', out: true });
+  const fresh = new URL(await qrAddress(page, false)(pasting), 'http://x').searchParams.get('qr')!;
+  await press(words.qrScan.byHand);
+  await page.getByLabel(exactly(words.qrScan.paste)).fill(fresh);
+  await press(words.auth.submit);
+  await expect(page.getByRole('status')).toHaveText(words.qrScan.signedIn);
+  await at('phone-4-signed-in');
+
+  // 5. A code used before, pasted: refused in the landing's words, the way back to the password. The
+  // pasted code is minted on the stack, so its field is masked.
+  const refusing = await open(page, language, { path: '/login/qr', out: true });
+  const used = new URL(await qrAddress(page, true)(refusing), 'http://x').searchParams.get('qr')!;
+  await press(words.qrScan.byHand);
+  await page.getByLabel(exactly(words.qrScan.paste)).fill(used);
+  await press(words.auth.submit);
+  await expect(page.getByRole('alert')).toHaveText(words.qrSignIn.refusedText);
+  await at('phone-5-scan-code-used', [page.getByLabel(exactly(words.qrScan.paste))]);
+
+  // 6. No camera to use: told, with the picture and the pasted link left. A browser with no camera or
+  // none allowed refuses the request, which is how the fake's page sees it too.
+  await open(page, language, { path: '/login/qr', out: true });
+  await press(words.qrScan.scan);
+  await expect(page.getByText(words.qrScan.noCamera)).toBeVisible();
+  await at('phone-6-no-camera');
 }
 
 for (const [device, width] of Object.entries(WIDTHS)) {
@@ -660,7 +692,7 @@ for (const [device, width] of Object.entries(WIDTHS)) {
       ['vi', 'Vietnamese'],
       ['en', 'English'],
     ] as const) {
-      test(`walks all forty-seven screens in ${name}`, async ({ page }) => {
+      test(`walks all fifty-one screens in ${name}`, async ({ page }) => {
         await walk(page, language, width);
       });
     }

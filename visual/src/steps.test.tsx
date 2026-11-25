@@ -224,7 +224,7 @@ describe('a scene’s steps', () => {
     expect(out()).toBe('');
     await expect(
       runSteps(document.body, [{ see: 'Nobody', text: true }], {}, QUICK),
-    ).rejects.toThrow('found no heading, alert or cell named “Nobody”');
+    ).rejects.toThrow('found no heading, alert, status or cell named “Nobody”');
   });
 
   it('wait for an alert by its own words, or by the dictionary’s with a word filled, and touch nothing', async () => {

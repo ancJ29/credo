@@ -141,5 +141,9 @@
   "Would a person opening it know the company opens once an operator approves it?": "Người mở địa chỉ này có biết công ty sẽ mở khi nhân viên vận hành duyệt không?",
   "Would you see who is waiting, who to call and since when?": "Bạn có thấy ai đang chờ, gọi cho ai và từ ngày nào không?",
   "Does the question say what refusing does?": "Câu hỏi có nói rõ việc từ chối sẽ làm gì không?",
-  "Does it say the company is approved and open, and is it in the list?": "Màn hình có nói công ty đã được duyệt và đang mở, và công ty có trong danh sách không?"
+  "Does it say the company is approved and open, and is it in the list?": "Màn hình có nói công ty đã được duyệt và đang mở, và công ty có trong danh sách không?",
+  "Would a person know to scan the code the root shows them?": "Người dùng có biết cần quét mã mà root đưa cho họ không?",
+  "Does the tick tell the person they are signed in?": "Dấu tích có cho người dùng biết họ đã đăng nhập không?",
+  "Would a person know to read a picture or paste the link instead?": "Người dùng có biết nên đọc từ ảnh hoặc dán đường dẫn thay thế không?",
+  "Does this say what to do next?": "Màn hình này có nói bước tiếp theo phải làm gì không?"
 }

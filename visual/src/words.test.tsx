@@ -239,6 +239,10 @@ const PROOF: Record<string, (w: (typeof DICTIONARIES)['en']) => string> = {
   'office-staff:office-10-passkey-removed': (w) => `status: ${w.ownPasskeys.removed}`,
   'phone-sign-in:phone-1-signed-in': (w) => `heading: ${w.staff.title}`,
   'phone-sign-in:phone-2-code-used': (w) => `heading: ${w.qrSignIn.refusedTitle}`,
+  'phone-sign-in:phone-3-scan': (w) => `heading: ${w.qrScan.title}`,
+  'phone-sign-in:phone-4-signed-in': (w) => `status: ${w.qrScan.signedIn}`,
+  'phone-sign-in:phone-5-scan-code-used': (w) => `alert: ${w.qrSignIn.refusedText}`,
+  'phone-sign-in:phone-6-no-camera': (w) => `alert: ${w.qrScan.noCamera}`,
   'admin-lists:lists-1-customers': (w) => `heading: ${w.nav.customers}`,
   'admin-lists:lists-2-customers-import': (w) =>
     `main: ${w.import.chosen.replace('{{name}}', 'customers.xlsx')}`,

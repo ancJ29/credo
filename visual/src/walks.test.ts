@@ -459,20 +459,20 @@ describe('the walks', () => {
     expect(spec).toContain('status: 503');
   });
 
-  it('puts piece 2’s groups A, B, C and D in four walks, forty-seven screens in all, each a scene and none from the mock', () => {
+  it('puts piece 2’s groups A, B, C and D in four walks, fifty-one screens in all, each a scene and none from the mock', () => {
     const piece2 = piece2Walks();
 
     expect(piece2.map((walk) => [walk.id, walk.person, walk.part, walk.screens.length])).toEqual([
       ['admin-staff-setup', 'admin', 'setup', 2],
       ['admin-staff', 'admin', 'staff', 33],
       ['office-staff', 'office', 'staff', 10],
-      ['phone-sign-in', 'driver', 'staff', 2],
+      ['phone-sign-in', 'driver', 'staff', 6],
     ]);
     const screens = piece2.flatMap((walk) => walk.screens);
-    expect(screens).toHaveLength(47);
+    expect(screens).toHaveLength(51);
     expect(screens.filter((screen) => screen.mock !== undefined)).toEqual([]);
     expect(screens.filter((screen) => screen.scene === undefined)).toEqual([]);
-    expect(new Set(screens.map((screen) => screen.id)).size).toBe(47);
+    expect(new Set(screens.map((screen) => screen.id)).size).toBe(51);
     expect(piece2.map((walk) => walk.screens.map((screen) => screen.number))).toEqual([
       [1, 2],
       [
@@ -480,7 +480,7 @@ describe('the walks', () => {
         26, 27, 28, 29, 30, 31, 32, 33,
       ],
       [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-      [1, 2],
+      [1, 2, 3, 4, 5, 6],
     ]);
     expect(piece2[1].screens.filter((s) => s.path === 'wrong').map((s) => s.number)).toEqual([
       9, 10, 11, 16, 22, 28, 29,
@@ -488,7 +488,9 @@ describe('the walks', () => {
     expect(piece2[2].screens.filter((s) => s.path === 'wrong').map((s) => s.number)).toEqual([
       3, 4, 7,
     ]);
-    expect(piece2[3].screens.filter((s) => s.path === 'wrong').map((s) => s.number)).toEqual([2]);
+    expect(piece2[3].screens.filter((s) => s.path === 'wrong').map((s) => s.number)).toEqual([
+      2, 5, 6,
+    ]);
     expect(piece2[2].screens.filter((s) => s.navigation).map((s) => s.number)).toEqual([1, 5]);
     for (const walk of piece2) {
       expect(PEOPLE.map((person) => person.id)).toContain(walk.person);
@@ -521,7 +523,14 @@ describe('the walks', () => {
       'office-9-passkey-remove-asked',
       'office-10-passkey-removed',
     ]);
-    expect(phone).toEqual(['phone-1-signed-in', 'phone-2-code-used']);
+    expect(phone).toEqual([
+      'phone-1-signed-in',
+      'phone-2-code-used',
+      'phone-3-scan',
+      'phone-4-signed-in',
+      'phone-5-scan-code-used',
+      'phone-6-no-camera',
+    ]);
     // the email and the QR code are shown on a company that uses them; the phone is signed out
     const scenes = new Map(WALKS.flatMap((walk) => walk.screens).map((s) => [s.id, s.scene]));
     expect(scenes.get('staff-17-email')?.signIns).toBe(true);

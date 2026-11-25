@@ -54,6 +54,39 @@ const scan = () => openApp('/login/qr', { out: true });
 const picture = () => new File(['x'], 'code.png', { type: 'image/png' });
 const fileInput = () => document.querySelector<HTMLInputElement>('input[type=file]')!;
 
+describe('the walk spec’s phone scan screens 3 to 6, replayed on the real router', () => {
+  it('WK6: the page opens on its two choices, a pasted code signs in with the tick, a used one is refused, and no camera is told', async () => {
+    const choice = openApp('/login/qr', { out: true });
+    expect(await screen.findByRole('heading', { level: 2, name: words.qrScan.title })).toBeTruthy();
+    choice.unmount();
+
+    const signed = openApp('/login/qr', { out: true });
+    await userEvent.click(await screen.findByRole('button', { name: words.qrScan.byHand }));
+    await userEvent.type(
+      screen.getByRole('textbox', { name: words.qrScan.paste }),
+      `${bao.id}.${DEMO_QR_SECRET}`,
+    );
+    await userEvent.click(screen.getByRole('button', { name: words.auth.submit }));
+    expect((await screen.findByRole('status')).textContent).toBe(words.qrScan.signedIn);
+    signed.unmount();
+
+    const used = openApp('/login/qr', { out: true });
+    await userEvent.click(await screen.findByRole('button', { name: words.qrScan.byHand }));
+    await userEvent.type(
+      screen.getByRole('textbox', { name: words.qrScan.paste }),
+      `${bao.id}.used-before-qr-code`,
+    );
+    await userEvent.click(screen.getByRole('button', { name: words.auth.submit }));
+    expect((await screen.findByRole('alert')).textContent).toBe(words.qrSignIn.refusedText);
+    used.unmount();
+
+    Object.defineProperty(navigator, 'mediaDevices', { configurable: true, value: undefined });
+    openApp('/login/qr', { out: true });
+    await userEvent.click(await screen.findByRole('button', { name: words.qrScan.scan }));
+    expect((await screen.findByRole('alert')).textContent).toBe(words.qrScan.noCamera);
+  });
+});
+
 describe('the QR scan page', () => {
   it('3: opens on its two choices and a code the camera reads signs the person in with a green tick, then their first page', async () => {
     vi.mocked(readQr).mockResolvedValue(LINK);

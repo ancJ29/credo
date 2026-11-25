@@ -33,7 +33,7 @@ function wordsFor(
 }
 
 const PRESSED = 'button, a[href], input[type=radio], input[type=checkbox]';
-const SEEN = 'h1, h2, h3, h4, h5, h6, [role=heading], [role=alert], td, [role=cell]';
+const SEEN = 'h1, h2, h3, h4, h5, h6, [role=heading], [role=alert], [role=status], td, [role=cell]';
 const TYPED = 'input:not([type=radio]):not([type=checkbox]):not([type=hidden]), textarea';
 
 /** What a step acts on, and what it is called when none is found. */
@@ -55,7 +55,7 @@ function target(
       selector: SEEN,
       name: step.text ? step.see : wordsFor(dictionary, step.see, step.with),
       within: undefined,
-      kind: 'heading, alert or cell',
+      kind: 'heading, alert, status or cell',
     };
   }
   if ('fill' in step) {
