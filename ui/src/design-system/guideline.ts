@@ -875,7 +875,7 @@ export const GUIDELINE: {
         { what: 'The preview’s weight.', from: [{ table: 'WEIGHTS', key: 'title' }] },
       ],
       fixes: [
-        'Its fields: the name, a growing text area with its hint for the formatted name, then the description with its hint.',
+        'Its fields: the name, a two-row text area with its hint for the formatted name, then the description with its hint.',
         'Its preview: the name as BrandName draws it, redrawn with each key typed, under a caption.',
       ],
       states: [
