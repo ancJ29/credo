@@ -581,7 +581,7 @@ export function buildApp({
   registerDeleteClientRoutes(app, { storage, storeOfLine, now, operatorSignedIn, confirmed });
   registerMoveClientRoutes(app, { storage, boxStorage, now, operatorSignedIn, confirmed });
   registerOperatorTeamRoutes(app, { storage, now, operatorSignedIn, confirmed });
-  registerSignUpRoutes(app, { storage, now });
+  registerSignUpRoutes(app, { storage, now, operatorSignedIn });
 
   app.get(ROUTES.operatorClients, async (request): Promise<ClientListReply> => {
     await operatorSignedIn(request);

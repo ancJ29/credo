@@ -50,9 +50,9 @@ describe('The route list: every route that changes data writes an entry or says 
     const exempt = changing.filter((one) => one.exempt);
     expect(declared.length + exempt.length).toBe(changing.length);
     expect({ declared: declared.length, exempt: exempt.length, total: changing.length }).toEqual({
-      declared: 35,
-      exempt: 19,
-      total: 54,
+      declared: 36,
+      exempt: 20,
+      total: 56,
     });
   });
 
@@ -73,6 +73,7 @@ describe('The route list: every route that changes data writes an entry or says 
     ).toEqual([
       'DELETE /api/operator/operators/:id',
       'DELETE /api/operator/passkeys/:id',
+      'DELETE /api/operator/sign-ups/:code',
       'POST /api/auth/passkey/add-options',
       'POST /api/auth/passkey/options',
       'POST /api/auth/passkey/sign-in',

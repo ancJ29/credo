@@ -13,11 +13,16 @@ import { recordTools } from './records';
 /** Whether a code is spoken for: kept back for the app's own address, a company's, one whose
  * deletion is unfinished, or one a request already waits on. Any of these refuses a new request and
  * the operator's own add alike. */
-export async function codeIsHeld(storage: CStorageClient, code: string): Promise<boolean> {
+export async function codeIsHeld(
+  storage: CStorageClient,
+  code: string,
+  /** False for the approval of the very request that waits on the code. */
+  waiting = true,
+): Promise<boolean> {
   if (KEPT_CODES.includes(code)) return true;
   if (await storage.getRecord(recordKeys.client(code))) return true;
   if (await storage.getRecord(recordKeys.clientDeletion(code))) return true;
-  return (await storage.getRecord(recordKeys.signUp(code))) !== null;
+  return waiting && (await storage.getRecord(recordKeys.signUp(code))) !== null;
 }
 
 /** How many requests wait: every record under the prefix, never a short count. */
