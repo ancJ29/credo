@@ -425,6 +425,7 @@ describe('The operator never reads or changes a client, never sees a root’s pa
         '│       ├── /archive (POST)',
         '│       ├── /restore (POST)',
         '│       ├── /password (PUT)',
+        '│       ├── /passkeys (GET, HEAD, DELETE)',
         '│       ├── /photo (GET, HEAD, PUT)',
         '│       ├── /code (PUT)',
         '│       ├── /email (PUT)',

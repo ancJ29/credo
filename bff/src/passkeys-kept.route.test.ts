@@ -3,6 +3,7 @@ import {
   optionsReplySchema,
   ownPasskeyListReplySchema,
   ownPasskeyRemovedReplySchema,
+  personPasskeysReplySchema,
   signInRoutes,
   storedOwnPasskeysSchema,
 } from '@credo/shared';
@@ -366,5 +367,160 @@ describe('The removal meets a rival write to the same record, and a record that 
     expect((await t.client.getRecord(t.keys.passkeys(person.employee.id)))?.data).toEqual({
       not: 'a record',
     });
+  });
+});
+
+describe('The root counts a person’s passkeys and removes them all', () => {
+  const asRoot = (t: Tenant, method: 'GET' | 'DELETE', id: string, authId = t.root) =>
+    t.app.inject({
+      method,
+      url: signInRoutes.employeePasskeys(id),
+      headers: headers(authId),
+    });
+  const EVERY_RIGHT = {
+    'staff.canView': true,
+    'staff.canCreate': true,
+    'staff.canEdit': true,
+    'staff.canDelete': true,
+    'settings.canEdit': true,
+    'orders.canView': true,
+    'orders.canEdit': true,
+    'deliveries.canDeliver': true,
+  };
+
+  it('7: reads the count, removes all so they sign in no one, ends the person’s sessions and not the root’s', async () => {
+    const t = await staffTenant(cs);
+    const { person, phone, pc } = await holding(t);
+    const elsewhere = (
+      await signIn(t.app, { name: 'EMP-1', password: person.password as string }, OTHER_DEVICE)
+    ).body.authId;
+
+    const counted = await asRoot(t, 'GET', person.employee.id);
+    const removed = await asRoot(t, 'DELETE', person.employee.id);
+
+    expect(personPasskeysReplySchema.parse(counted.json())).toEqual({ count: 2 });
+    expect(personPasskeysReplySchema.parse(removed.json())).toEqual({ count: 0 });
+    expect((await heldBy(t, person.employee.id))?.passkeys).toEqual([]);
+    expect([await signInBy(t, phone), await signInBy(t, pc)]).toEqual([401, 401]);
+    expect((await who(t, person.authId)).statusCode).toBe(401);
+    expect((await who(t, elsewhere)).statusCode).toBe(401);
+    expect((await who(t, t.root)).statusCode).toBe(200);
+    expect(
+      personPasskeysReplySchema.parse((await asRoot(t, 'GET', person.employee.id)).json()),
+    ).toEqual({ count: 0 });
+    expect(
+      (await signIn(t.app, { name: 'EMP-1', password: person.password as string })).response
+        .statusCode,
+    ).toBe(200);
+  });
+
+  it('7: counts none for a person with no record, and removing all of none is none', async () => {
+    const t = await staffTenant(cs);
+    const person = await t.staff('EMP-1');
+
+    expect(
+      personPasskeysReplySchema.parse((await asRoot(t, 'GET', person.employee.id)).json()),
+    ).toEqual({ count: 0 });
+    expect((await asRoot(t, 'DELETE', person.employee.id)).statusCode).toBe(200);
+    expect(await heldBy(t, person.employee.id)).toBeNull();
+    expect((await asRoot(t, 'GET', '00000000-0000-4000-8000-00000000dead')).statusCode).toBe(404);
+    expect((await asRoot(t, 'DELETE', '00000000-0000-4000-8000-00000000dead')).statusCode).toBe(
+      404,
+    );
+  });
+
+  it('8: is the root’s alone: a person holding every right gets 403 to both, and nothing moves', async () => {
+    const t = await staffTenant(cs);
+    const { person, phone } = await holding(t);
+    const boss = await t.staff('EMP-9', { own: EVERY_RIGHT });
+
+    const counted = await asRoot(t, 'GET', person.employee.id, boss.authId);
+    const removed = await asRoot(t, 'DELETE', person.employee.id, boss.authId);
+    const anonymous = await asRoot(t, 'GET', person.employee.id, '');
+
+    expect([counted.statusCode, removed.statusCode, anonymous.statusCode]).toEqual([403, 403, 401]);
+    expect((await heldBy(t, person.employee.id))?.passkeys).toHaveLength(2);
+    expect(await signInBy(t, phone)).toBe(200);
+  });
+
+  it('10: answers 404 to the count and the removal where passkeys are off, and removes nothing', async () => {
+    const t = await staffTenant(cs);
+    const { person } = await holding(t);
+    await t.setup({ fields: { passkey: false } });
+
+    expect((await asRoot(t, 'GET', person.employee.id)).statusCode).toBe(404);
+    expect((await asRoot(t, 'DELETE', person.employee.id)).statusCode).toBe(404);
+    expect((await heldBy(t, person.employee.id))?.passkeys).toHaveLength(2);
+    expect((await who(t, person.authId)).statusCode).toBe(200);
+  });
+
+  it('11: writes "passkeys removed" in the activity, the person as its target, naming no key', async () => {
+    const recorded = recordingActivity();
+    const t = await staffTenant(cs, { activity: recorded.client });
+    const { person } = await holding(t);
+    const before = recorded.entries.length;
+
+    await asRoot(t, 'DELETE', person.employee.id);
+
+    const written = recorded.entries.slice(before);
+    expect(written).toHaveLength(1);
+    expect(written[0]).toMatchObject({
+      action: 'employee.passkeysRemove',
+      targetId: person.employee.id,
+      clientId: t.id,
+      memo: { outcome: 'saved' },
+    });
+    expect(JSON.stringify(written[0])).not.toContain('publicKey');
+  });
+
+  /** A client that, `times` writes to a person's passkeys running, lets a rival add a passkey first. */
+  const rivalled = () => {
+    const state = { times: 0 };
+    const wrap = (client: CStorageClient): CStorageClient => ({
+      ...client,
+      putRecord: async (key, data, tag) => {
+        if (state.times > 0 && key.includes('.passkeys.')) {
+          state.times--;
+          const current = await client.getRecord(key);
+          const held = storedOwnPasskeysSchema.parse(current?.data);
+          await client.putRecord(
+            key,
+            {
+              ...held,
+              passkeys: [
+                ...held.passkeys,
+                {
+                  id: 'rival',
+                  publicKey: 'AA',
+                  counter: 0,
+                  transports: [],
+                  addedAt: 0,
+                  lastUsedAt: null,
+                },
+              ],
+            },
+            current?.tag ?? null,
+          );
+        }
+        return await client.putRecord(key, data, tag);
+      },
+    });
+    return { state, wrap };
+  };
+
+  it('reads again and removes the rival’s passkey with the rest, and answers 503 when the record moved every try, the sessions then standing', async () => {
+    const rival = rivalled();
+    const t = await staffTenant(cs, { wrap: rival.wrap });
+    const { person } = await holding(t);
+    rival.state.times = 1;
+    expect((await asRoot(t, 'DELETE', person.employee.id)).statusCode).toBe(200);
+    expect((await heldBy(t, person.employee.id))?.passkeys).toEqual([]);
+
+    const again = await holding(t, 'EMP-2');
+    rival.state.times = 3;
+    const failed = await asRoot(t, 'DELETE', again.person.employee.id);
+
+    expect(failed.statusCode).toBe(503);
+    expect((await who(t, again.person.authId)).statusCode).toBe(200);
   });
 });

@@ -189,10 +189,17 @@ test. "The pinned diff" is
       function is `renewed` in `bff/src/app.ts`: the password change's put, entry, `endKept` and `issue`,
       moved whole, its callers' tests unchanged. The route lists read declared 34, exempt 18, total 52.
       Step 6 adds the root's and the tests' route-list lines `declared 35`, `total 53`.
-- [ ] **6. The root's, in the BFF.** Two routes in `bff/src/routes/staff.ts` beside the QR's:
+- [x] **6. The root's, in the BFF.** Two routes in `bff/src/routes/staff.ts` beside the QR's:
       `mustBeRoot`, `mustFind`, the switch, then `endSessions`. Rows 7 to 9, 10 and 11's root halves.
       _Done when:_ `bff`'s gate; the same diff; the route lists at declared 35, exempt 18, total 53.
       **8 min** (241.2's step 6: 8).
+      _Done 2026-11-25 13:41:_ `bff`'s gate, run after the last edit, and the citation test, run last, each exit 0;
+      the diff against `pre-merge` of the operators' route tests shows only three added route-list lines (the
+      two of step 5 and `/passkeys (GET, HEAD, DELETE)` under the person); the route lists read declared 35,
+      exempt 18, total 53; rows 7, 8, 9 and 11's root halves red (the routes absent: 6 failed, row 10 passing
+      on the absent route's 404), then green in `bff/src/passkeys-kept.route.test.ts` and `cross-tenant.route.test.ts`.
+      The removal writes the passkeys first (`removeAllOwnPasskeys`), then `endSessions` on the person's
+      sign-in record; the root's session stands.
 - [ ] **7. The walk.** As "The walk" below; the generator writes Lan's two. Rows 19 to 21. _Done
       when:_ `visual`'s, `walk`'s, `ui`'s and `scripts`' gates, row 20 red on the old counts, row 21
       replayed, the pinned diff naming the seven new scenes alone. **20 min** (241.2's step 7: 14 for

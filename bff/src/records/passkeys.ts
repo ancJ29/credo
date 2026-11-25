@@ -71,6 +71,24 @@ export async function removeOwnPasskey(
   throw new CStorageError(412, 'a person’s passkeys moved on every attempt to remove one');
 }
 
+/** Removes every passkey a person holds, over the tag read; a moved tag reads again, {@link ATTEMPTS}
+ * times at most. Returns how many were removed (none where there is no record, which is not made). */
+export async function removeAllOwnPasskeys(
+  storage: RecordStore,
+  tenantId: string,
+  handle: string,
+): Promise<number> {
+  for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
+    const held = await readOwnPasskeys(storage, tenantId, handle);
+    if (!held || held.record.passkeys.length === 0) return 0;
+    const key = recordKeys.tenant(tenantId).passkeys(handle);
+    if ((await storage.putRecord(key, { ...held.record, passkeys: [] }, held.tag)) === 'saved') {
+      return held.record.passkeys.length;
+    }
+  }
+  throw new CStorageError(412, 'a person’s passkeys moved on every attempt to remove them all');
+}
+
 /** The library's verdict on an answer for one passkey: the counter it moves on to, or null where it
  * refuses. */
 export type SpendCheck = (passkey: StoredPasskey) => Promise<number | null>;
