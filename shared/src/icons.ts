@@ -1,5 +1,5 @@
+import { imageDataUrl, type PictureKind, type TenantConfig } from './config';
 import { clientLinkPath } from './wire';
-import type { TenantConfig } from './config';
 
 /** The drawn icon of a company with none uploaded: a square of its colour with its first letter in
  * white, drawn as pixels because an iPhone takes only a PNG. Nothing here reads a font, an image
@@ -203,3 +203,35 @@ export function manifestOf(
     ],
   };
 }
+
+/** The kinds of picture that are icons, and the side each is drawn and saved at. */
+export const ICON_KINDS = ['tab-icon', 'app-icon'] as const;
+export type IconKind = (typeof ICON_KINDS)[number];
+export const ICON_SIDES: Record<IconKind, number> = { 'tab-icon': 64, 'app-icon': 512 };
+/** The smaller size of the phone-app icon. */
+export const SMALL_SIDE = 192;
+
+/** The sides of the PNG a data URL holds, or null where it is no PNG. */
+function dataUrlSides(url: string) {
+  if (imageDataUrl(url)?.type !== 'png') return null;
+  const head = atob(url.slice(url.indexOf(',') + 1, url.indexOf(',') + 33));
+  return pngSides(Uint8Array.from(head, (char) => char.charCodeAt(0)));
+}
+
+const isSquare = (url: string | undefined, side: number) => {
+  const sides = url === undefined ? null : dataUrlSides(url);
+  return sides !== null && sides.width === side && sides.height === side;
+};
+
+/** Whether a picture's save holds what its kind asks: an icon is a PNG of its kind's side (the
+ * phone-app icon with its 192-pixel size beside it), any other kind has no second size. */
+export function pictureIsValid(kind: PictureKind, picture: string, small?: string): boolean {
+  if (kind === 'tab-icon') return small === undefined && isSquare(picture, ICON_SIDES[kind]);
+  if (kind === 'app-icon')
+    return isSquare(picture, ICON_SIDES[kind]) && isSquare(small, SMALL_SIDE);
+  return small === undefined;
+}
+
+/** Whether a kind of picture is an icon. */
+export const isIconKind = (kind: PictureKind): kind is IconKind =>
+  (ICON_KINDS as readonly string[]).includes(kind);

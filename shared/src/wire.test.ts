@@ -22,6 +22,7 @@ import {
   NO_PICTURES,
   pictureAddress,
   savePictureRequestSchema,
+  smallAddress,
   createClientReplySchema,
   createClientRequestSchema,
   errorReplySchema,
@@ -108,10 +109,17 @@ describe('the wire contract', () => {
   it('21: the settings’ reply names each picture, and none where an older reply names none', () => {
     const parsed = configDocSchema.parse({ config, version: 'tag' });
     expect(parsed.pictures).toEqual(NO_PICTURES);
-    expect(NO_PICTURES).toEqual({ logo: null, 'logo-on-colour': null });
+    expect(NO_PICTURES).toEqual({
+      logo: null,
+      'logo-on-colour': null,
+      'tab-icon': null,
+      'app-icon': null,
+    });
     const named = {
       logo: { address: '/api/pictures/an/logo?v=t', version: 't' },
       'logo-on-colour': null,
+      'tab-icon': { address: '/api/pictures/an/tab-icon?v=t', version: '' },
+      'app-icon': null,
     };
     expect(configDocSchema.parse({ config, version: 'tag', pictures: named }).pictures).toEqual(
       named,
@@ -120,6 +128,10 @@ describe('the wire contract', () => {
       configDocSchema.safeParse({ config, version: 'tag', pictures: { logo: null } }).success,
     ).toBe(false);
     expect(ROUTES.pictures).toBe('/api/pictures');
+    expect(ROUTES.manifest).toBe('/api/manifest');
+    expect(smallAddress('/api/pictures/an/app-icon?v=t')).toBe(
+      '/api/pictures/an/app-icon?v=t&size=192',
+    );
     expect(pictureAddress('an-phat', 'logo', 'tag')).toBe('/api/pictures/an-phat/logo?v=tag');
   });
 
@@ -131,6 +143,11 @@ describe('the wire contract', () => {
     expect(save(null, TAG)).toBe(true);
     expect(save('not an image', null)).toBe(false);
     expect(save(png, 'v1')).toBe(false);
+    // the phone-app icon's second size rides with it, a picture too
+    const withSmall = (small: unknown) =>
+      savePictureRequestSchema.safeParse({ picture: png, small, version: null }).success;
+    expect(withSmall(png)).toBe(true);
+    expect(withSmall('nope')).toBe(false);
   });
 
   it('takes a save’s version only as a c-storage tag or null: anything else can never match', () => {

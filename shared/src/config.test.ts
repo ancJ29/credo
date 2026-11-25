@@ -137,8 +137,8 @@ describe('A config that does not parse is refused on save and stops the boot', (
 });
 
 describe('the company’s pictures', () => {
-  it('10: names two kinds, and stores an image data URL within the bound alone', () => {
-    expect(PICTURE_KINDS).toEqual(['logo', 'logo-on-colour']);
+  it('10: names four kinds, and stores an image data URL within the bound alone', () => {
+    expect(PICTURE_KINDS).toEqual(['logo', 'logo-on-colour', 'tab-icon', 'app-icon']);
     expect(pictureKindSchema.safeParse('logo').success).toBe(true);
     expect(pictureKindSchema.safeParse('banner').success).toBe(false);
     expect(

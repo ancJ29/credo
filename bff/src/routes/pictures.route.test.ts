@@ -1,4 +1,13 @@
-import { configDocSchema, MAX_LOGO_BYTES } from '@credo/shared';
+import { deflateSync } from 'node:zlib';
+import {
+  configDocSchema,
+  CREDO_COLOUR,
+  drawIcon,
+  MAX_LOGO_BYTES,
+  pngOf,
+  pngSides,
+  smallAddress,
+} from '@credo/shared';
 import { afterAll, beforeAll, describe, expect, inject, it } from 'vitest';
 import { type RunningCStorage, startCStorage } from '../../tests/c-storage';
 import { recordingActivity } from '../../tests/audit';
@@ -30,8 +39,8 @@ async function company(seeded = true) {
   const activity = recordingActivity();
   const t = await staffTenant(cs, { activity: activity.client });
   if (seeded) await seedSettings(t.client, t.id);
-  const save = (kind: string, picture: string | null, version: string | null) =>
-    t.rootCall.send('PUT', `/api/pictures/${kind}`, { picture, version });
+  const save = (kind: string, picture: string | null, version: string | null, small?: string) =>
+    t.rootCall.send('PUT', `/api/pictures/${kind}`, { picture, version, small });
   /** The public call: no company header, no sign-in, only the address. */
   const fetchPicture = (address: string) => t.app.app.inject({ method: 'GET', url: address });
   const doc = async () => configDocSchema.parse((await t.rootCall.get('/api/config')).json());
@@ -342,10 +351,148 @@ describe('A stored logo moves to a picture of its own at the settings’ first r
     const after = await t.settingsNow();
     const again = configDocSchema.parse((await t.read()).json());
 
-    expect(first.pictures).toEqual({ logo: null, 'logo-on-colour': null });
+    expect(first.pictures).toMatchObject({
+      logo: null,
+      'logo-on-colour': null,
+      'tab-icon': { version: '' },
+      'app-icon': { version: '' },
+    });
     expect(after.data).not.toHaveProperty('logo');
     expect(await t.client.getRecord(t.keys.picture('logo'))).toBeNull();
     expect(again.version).toBe(after.tag);
     expect((await t.settingsNow()).tag).toBe(after.tag);
+  });
+});
+
+/** The drawn icon of the seeded company, as the BFF draws it, `side` pixels square. */
+const drawn = (side: number) =>
+  Buffer.from(
+    pngOf(drawIcon({ name: 'Acme', code: 'acme-co', colour: CREDO_COLOUR }, side), (raw) =>
+      deflateSync(raw),
+    ),
+  );
+/** An uploaded icon: a PNG `side` pixels square in another colour, as the browser makes it, a data URL. */
+const upload = (side: number, colour = '#b5472a') =>
+  `data:image/png;base64,${Buffer.from(
+    pngOf(drawIcon({ name: 'Bee', code: 'bee', colour }, side), (raw) => deflateSync(raw)),
+  ).toString('base64')}`;
+
+describe('The tab icon and the phone-app icon are two more kinds of picture', () => {
+  it('5: an icon’s address answers the stored PNG at its tag, the 192 at size=192, and the drawn icon where none is stored, never cached', async () => {
+    const t = await company();
+    const tab = upload(64);
+    const big = upload(512);
+    const small = upload(192, '#2a7ab5');
+
+    const before = (await t.doc()).pictures;
+    expect((await t.fetchPicture(before['tab-icon']!.address)).rawPayload.equals(drawn(64))).toBe(
+      true,
+    );
+    const drawnApp = await t.fetchPicture(before['app-icon']!.address);
+    expect(drawnApp.headers['content-type']).toBe('image/png');
+    expect(drawnApp.headers['cache-control']).toBe('no-cache');
+    expect(drawnApp.headers['x-content-type-options']).toBe('nosniff');
+    expect(drawnApp.headers['content-security-policy']).toBe(SANDBOX);
+    expect(drawnApp.rawPayload.equals(drawn(512))).toBe(true);
+    expect(
+      (await t.fetchPicture(smallAddress(before['app-icon']!.address))).rawPayload.equals(
+        drawn(192),
+      ),
+    ).toBe(true);
+
+    expect((await t.save('tab-icon', tab, null)).statusCode).toBe(200);
+    expect((await t.save('app-icon', big, null, small)).statusCode).toBe(200);
+    const after = (await t.doc()).pictures;
+    const bytes = (url: string) => Buffer.from(url.slice(url.indexOf(',') + 1), 'base64');
+    const served = await t.fetchPicture(after['tab-icon']!.address);
+    expect(served.headers['content-type']).toBe('image/png');
+    expect(served.headers['cache-control']).toBe('public, max-age=31536000, immutable');
+    expect(served.rawPayload.equals(bytes(tab))).toBe(true);
+    expect((await t.fetchPicture(after['app-icon']!.address)).rawPayload.equals(bytes(big))).toBe(
+      true,
+    );
+    expect(
+      (await t.fetchPicture(smallAddress(after['app-icon']!.address))).rawPayload.equals(
+        bytes(small),
+      ),
+    ).toBe(true);
+    // size=192 asks only the phone-app icon's second size; the tab icon has the one
+    expect(
+      (await t.fetchPicture(`${after['tab-icon']!.address}&size=192`)).rawPayload.equals(
+        bytes(tab),
+      ),
+    ).toBe(true);
+    expect(pngSides(new Uint8Array(drawn(64)))).toEqual({ width: 64, height: 64 });
+    // a company with no settings has none to draw from
+    await seedTenant(t.client, 'bare-co');
+    expect((await t.fetchPicture('/api/pictures/bare-co/tab-icon')).statusCode).toBe(404);
+  });
+
+  it('6: an icon’s save takes PNGs of the kind’s sides within 200 KB; refuses another side, another type, a byte over (400), no right (403), a moved version (409)', async () => {
+    const t = await company();
+    const nobody = await t.staff('NOBODY', { own: { 'staff.canView': true } });
+    const jpeg = upload(64).replace('image/png', 'image/jpeg');
+    const filler = `data:image/png;base64,${Buffer.concat([
+      Buffer.from(upload(64).slice(22), 'base64'),
+      Buffer.alloc(MAX_LOGO_BYTES),
+    ]).toString('base64')}`;
+
+    for (const [kind, picture, small] of [
+      ['tab-icon', upload(128), undefined],
+      ['tab-icon', jpeg, undefined],
+      ['tab-icon', filler, undefined],
+      ['tab-icon', upload(64), upload(64)],
+      ['app-icon', upload(512), undefined],
+      ['app-icon', upload(512), upload(512)],
+      ['app-icon', upload(256), upload(192)],
+      ['logo', image(10), upload(64)],
+    ] as const) {
+      expect(
+        (await t.save(kind, picture, null, small)).statusCode,
+        `${kind} ${small?.length}`,
+      ).toBe(400);
+    }
+    expect((await t.save('tab-icon', null, null, upload(64))).statusCode).toBe(400);
+    expect(
+      (
+        await nobody.call.send('PUT', '/api/pictures/tab-icon', {
+          picture: upload(64),
+          version: null,
+        })
+      ).statusCode,
+    ).toBe(403);
+    expect((await t.doc()).pictures['tab-icon']!.version).toBe('');
+
+    const first = await t.save('tab-icon', upload(64), null);
+    expect(first.statusCode).toBe(200);
+    const view = configDocSchema.parse(first.json()).pictures['tab-icon']!;
+    expect(view.version).toMatch(/^[0-9a-f]{64}$/);
+    // over a moved version: 409, and a remove brings back the drawn icon
+    expect((await t.save('tab-icon', upload(64, '#000000'), 'a'.repeat(64))).statusCode).toBe(409);
+    const removed = configDocSchema.parse((await t.save('tab-icon', null, view.version)).json());
+    expect(removed.pictures['tab-icon']!.version).toBe('');
+    expect(
+      (await t.fetchPicture(removed.pictures['tab-icon']!.address)).rawPayload.equals(drawn(64)),
+    ).toBe(true);
+  });
+
+  it('7: the settings’ reply names each icon: the stored one’s tag, else the drawn one at the settings’ version', async () => {
+    const t = await company();
+    const settings = await t.doc();
+    const names = (doc: typeof settings, kind: 'tab-icon' | 'app-icon') => doc.pictures[kind]!;
+
+    expect(names(settings, 'tab-icon')).toEqual({
+      address: `/api/pictures/acme-co/tab-icon?v=${settings.version}`,
+      version: '',
+    });
+    expect(names(settings, 'app-icon').address).toBe(
+      `/api/pictures/acme-co/app-icon?v=${settings.version}`,
+    );
+
+    await t.save('tab-icon', upload(64), null);
+    const stored = names(await t.doc(), 'tab-icon');
+    expect(stored.version).toMatch(/^[0-9a-f]{64}$/);
+    expect(stored.address).toBe(`/api/pictures/acme-co/tab-icon?v=${stored.version}`);
+    expect(names(await t.doc(), 'app-icon').version).toBe('');
   });
 });

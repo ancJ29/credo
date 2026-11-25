@@ -2,12 +2,17 @@ import { deflateSync, inflateSync, crc32 } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
 import {
   drawIcon,
+  ICON_KINDS,
+  ICON_SIDES,
+  isIconKind,
   glyphLines,
   ICON_LETTERS,
   iconLetter,
   manifestOf,
   pngOf,
+  pictureIsValid,
   pngSides,
+  SMALL_SIDE,
   storedDeflate,
   type Pixels,
 } from './icons';
@@ -186,5 +191,36 @@ describe('the manifest', () => {
     expect('description' in plain).toBe(false);
     expect(plain.theme_color).toBe('#ffffff');
     expect(plain.lang).toBe('en');
+  });
+});
+
+describe('a picture a kind accepts', () => {
+  const url = (side: number, type = 'png') =>
+    `data:image/${type};base64,${Buffer.from(pngOf(drawIcon(COMPANY, side), storedDeflate)).toString('base64')}`;
+
+  it('Is a PNG of the kind’s side, the phone-app icon with its 192, and no other kind has two sizes', () => {
+    expect(pictureIsValid('tab-icon', url(64))).toBe(true);
+    expect(pictureIsValid('tab-icon', url(64), url(64))).toBe(false);
+    expect(pictureIsValid('tab-icon', url(192))).toBe(false);
+    expect(pictureIsValid('tab-icon', url(64, 'jpeg'))).toBe(false);
+    expect(pictureIsValid('app-icon', url(512), url(192))).toBe(true);
+    expect(pictureIsValid('app-icon', url(512))).toBe(false);
+    expect(pictureIsValid('app-icon', url(512), url(512))).toBe(false);
+    expect(pictureIsValid('app-icon', url(192), url(192))).toBe(false);
+    expect(pictureIsValid('app-icon', url(512), 'data:image/png;base64,AAAA')).toBe(false);
+    // a picture that is not a PNG, a PNG too short to have a header, a non-square one
+    const tall = Buffer.from(pngOf(drawIcon(COMPANY, 64), storedDeflate));
+    tall.writeUInt32BE(100, 20);
+    expect(pictureIsValid('tab-icon', `data:image/png;base64,${tall.toString('base64')}`)).toBe(
+      false,
+    );
+    expect(pictureIsValid('tab-icon', 'data:image/png;base64,iVBORw0KGgo=')).toBe(false);
+    expect(pictureIsValid('logo', url(64))).toBe(true);
+    expect(pictureIsValid('logo-on-colour', url(64), url(64))).toBe(false);
+    expect(ICON_KINDS).toEqual(['tab-icon', 'app-icon']);
+    expect(ICON_KINDS.every(isIconKind)).toBe(true);
+    expect(['logo', 'logo-on-colour'].some((kind) => isIconKind(kind as 'logo'))).toBe(false);
+    expect(ICON_SIDES).toEqual({ 'tab-icon': 64, 'app-icon': 512 });
+    expect(SMALL_SIDE).toBe(192);
   });
 });

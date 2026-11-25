@@ -7,6 +7,8 @@ export const ROUTES = {
   config: '/api/config',
   /** A picture's save, under it: `PUT /api/pictures/<kind>`, the company in the header. */
   pictures: '/api/pictures',
+  /** The phone-app description of a company: `GET /api/manifest/<code>`, no sign-in. */
+  manifest: '/api/manifest',
   signIn: '/api/auth/sign-in',
   signOut: '/api/auth/sign-out',
   me: '/api/auth/me',
@@ -137,6 +139,10 @@ export type PictureView = z.infer<typeof pictureViewSchema>;
 export const picturesSchema = z.strictObject({
   logo: pictureViewSchema.nullable(),
   'logo-on-colour': pictureViewSchema.nullable(),
+  /** The icons are never null in a reply: where none is stored the view names the drawn one, with
+   * the version `''` (no picture to save over). */
+  'tab-icon': pictureViewSchema.nullable(),
+  'app-icon': pictureViewSchema.nullable(),
 }) satisfies z.ZodType<Record<PictureKind, PictureView | null>>;
 export type Pictures = z.infer<typeof picturesSchema>;
 
@@ -146,7 +152,15 @@ export const pictureAddress = (code: string, kind: PictureKind, tag: string) =>
   `${ROUTES.pictures}/${code}/${kind}?v=${tag}`;
 
 /** No picture of any kind: what a reply that predates the field means. */
-export const NO_PICTURES: Pictures = { logo: null, 'logo-on-colour': null };
+export const NO_PICTURES: Pictures = {
+  logo: null,
+  'logo-on-colour': null,
+  'tab-icon': null,
+  'app-icon': null,
+};
+
+/** The address of an icon's smaller size, 192 pixels, which an iPhone's home screen takes. */
+export const smallAddress = (address: string) => `${address}&size=192`;
 
 /** The settings with the version they were read at, and the company's pictures; a save sends the
  * version back. */
@@ -173,6 +187,8 @@ export type SaveConfigRequest = z.infer<typeof saveConfigRequestSchema>;
  * the picture was read at (null where there is none). */
 export const savePictureRequestSchema = z.strictObject({
   picture: z.string().refine(logoIsValid, 'an image of at most 200 KB').nullable(),
+  /** The phone-app icon's 192-pixel size, sent with its 512; no other kind takes one. */
+  small: z.string().refine(logoIsValid, 'an image of at most 200 KB').optional(),
   version: tagSchema.nullable(),
 });
 export type SavePictureRequest = z.infer<typeof savePictureRequestSchema>;
