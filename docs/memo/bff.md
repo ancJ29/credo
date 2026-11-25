@@ -440,6 +440,23 @@ add takes a session issued in the last ten minutes, else a 403.
 - *Held by:* `bff/src/passkey-sign-in.route.test.ts`.
 - *Rejected:* one relying party for every company. Item 291's fix needs the same address.
 
+## A company's phone-app description is public, and its icon is drawn in code
+
+`GET /api/manifest/<code>` answers the company's name, colour, description and default language to
+anyone naming the code, with no sign-in and no company header, as the settings' GET already does
+(`bff/src/routes/manifest.ts`, built by `manifestOf` in `shared/src/icons.ts`). A company with no
+tab or phone-app icon stored gets one drawn as pixels by `shared`'s letter table and PNG writer
+(`drawIcon`, `pngOf`), since an iPhone takes a PNG and not an SVG; the BFF passes zlib's deflate, the
+fake a stored one, so both draw the same pixels. Each icon is a picture record with the other pictures:
+the phone-app icon holds its 512 and its 192 (`small`) in one record, and the settings' reply names
+the drawn icon at the settings' version with the picture version `''`.
+
+- _The surprise:_ **a drawn icon's address changes with the settings, not with a record**, so a new
+  colour or name is a new address. A save over a drawn icon sends version null, never the `''`.
+- _Held by:_ `bff/src/routes/manifest.route.test.ts`, `bff/src/routes/pictures.route.test.ts`,
+  `shared/src/icons.test.ts`.
+- _Rejected:_ an SVG stand-in, which an iPhone does not take; an image library in the BFF.
+
 ## Where the rest is
 
 - What belongs in this package and the file to copy: [`bff/CLAUDE.md`](../../bff/CLAUDE.md).
