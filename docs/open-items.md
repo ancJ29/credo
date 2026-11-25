@@ -706,7 +706,7 @@ A real browser's date input never yields a day that is not one, so `dayIsValid` 
 
 ## 103. A door draws the client's logo, the shell does not — the machine; `[DEFERRED]` (signin-look, review, Opus, 2026-11-05, Info)
 
-A door draws `brand.logo` when there is one (`ui/src/pages/SignIn.tsx#L75-L79`), while `Shell` draws its generic mark unconditionally and never reads `brand.logo` (`ui/src/frame/Shell.tsx#L146-L148`), so a client with a logo sees its logo on the door and the generic mark one click later. `Shell` was outside this piece's bound and the human approved the mock's choice at 18:12. *Fix:* have `Shell` draw `brand.logo` when there is one, as the door does. *Trigger:* the first client with a logo, or the next change to `Shell`'s header.
+A door draws `brand.logo` when there is one (`ui/src/pages/SignIn.tsx#L75-L79`), while `Shell` draws its generic mark unconditionally and never reads `brand.logo` (`ui/src/frame/Shell.tsx#L89-L105`), so a client with a logo sees its logo on the door and the generic mark one click later. `Shell` was outside this piece's bound and the human approved the mock's choice at 18:12. *Fix:* have `Shell` draw `brand.logo` when there is one, as the door does. *Trigger:* the first client with a logo, or the next change to `Shell`'s header.
 
 ## 104. The words test's BEFORE table was written by hand, not rendered from the old doors — the machine; `[DEFERRED]` (signin-look, review, Opus, 2026-11-05, Info)
 

@@ -23,6 +23,7 @@ flowchart LR
 ## How it closed
 
 - The mock's look: yes. Point 1, the gallery: yes.
-- The landing on `pre-merge`, the whole check and the review before `main`: <!-- FILL: each one's verdict in words, once they have run -->
-- The push and the deploy to ridge: <!-- FILL: done or not -->
-- Point 3, on ridge, a PC and a phone: <!-- FILL: your look's answer, yes or no -->
+- The landing on `pre-merge`, the whole check and the review before `main`: the branch landed on `pre-merge`; the whole check was green; the review was red on three findings, all words in documents and none in code, fixed in one pass, and `main` then took the branch.
+- Point 2, the walks page: yes, 24 November.
+- The push and the deploy to ridge: you pushed `main`, and then read the page on ridge.
+- Point 3, on ridge, a PC and a phone: yes, 25 November.
