@@ -37,10 +37,10 @@ import {
   isMoving,
   storedClientSchema,
   storedUserSchema,
-  tenantConfigSchema,
+  storedConfigSchema,
 } from '@credo/shared';
 import { DEMO_DELIVERY_PHOTOS } from '@credo/shared/demo';
-import { companyConfig, staffSetupOf } from './company';
+import { companyConfig, companyLogo, staffSetupOf } from './company';
 import { addDays, atMinute, daysBetween } from './days';
 import { customersOf, productsOf } from './lists';
 import { type Ledger, readLedger, SEED_BLOCKS, type SeedBlock, writeLedger } from './ledger';
@@ -176,8 +176,11 @@ async function isFresh(
   const keys = recordKeys.tenant(tenantId);
   const listed = await storage.listRecords(keys.all);
   const asMade = (data: unknown) => {
-    const config = tenantConfigSchema.safeParse(data);
-    return config.success && isDeepStrictEqual(config.data, startingConfig(name));
+    // An older create left a logo of null in the settings: that is as made too.
+    const config = storedConfigSchema.safeParse(data);
+    if (!config.success) return false;
+    const { logo, ...rest } = config.data;
+    return !logo && isDeepStrictEqual(rest, startingConfig(name));
   };
   return (
     !listed.more &&
@@ -288,6 +291,13 @@ async function fill(
     config: companyConfig(copy.client, copy.company),
     version: config.version,
   });
+  // The monogram is a picture of its own, saved through the route; one already there is kept.
+  if (config.pictures.logo === null) {
+    await driver.must('PUT', `${ROUTES.pictures}/logo`, {
+      picture: companyLogo(copy.client, copy.company),
+      version: null,
+    });
+  }
   const setup = await driver.must<StaffSetupDoc>('GET', ROUTES.staffSetup);
   if (setup.setup.departments.length === 0) {
     await driver.must('PUT', ROUTES.staffSetup, {

@@ -10,7 +10,7 @@ import {
 } from '@credo/shared';
 import { describe, expect, it } from 'vitest';
 import { applyAll, applyCopy } from './apply';
-import { companyConfig } from './company';
+import { companyLogo } from './company';
 import { addDays } from './days';
 import { writeLedger } from './ledger';
 import {
@@ -101,10 +101,9 @@ describe('which clients are touched', () => {
     expect((await applyCopy(storage, A1, TODAY)).status).toBe('ok');
   });
 
-  it('row 8: a copy whose name, logo, colour, languages or default language its users changed before the first fill is refused, never overwritten', async () => {
+  it('row 8: a copy whose name, colour, languages or default language its users changed before the first fill is refused, never overwritten', async () => {
     const changes = {
       name: 'Tên khách tự đặt',
-      logo: companyConfig('B', B1.company).logo,
       colour: '#112233',
       languages: ['vi'],
       defaultLanguage: 'en',
@@ -133,6 +132,60 @@ describe('which clients are touched', () => {
       );
       expect(config[field as keyof typeof config]).toEqual(value);
     }
+  });
+
+  it('row 13: a copy whose users saved a logo before the first fill is refused, and one the old create made, its settings holding a logo of null, is still fresh', async () => {
+    const storage = await fresh();
+    const made = await make(storage, B1);
+    const root = await asRoot(storage, B1.code, made.password);
+    const saved = await root('PUT', `${ROUTES.pictures}/logo`, {
+      picture: companyLogo(B1.client, B1.company),
+      version: null,
+    });
+    expect(saved.statusCode).toBe(200);
+    expect((await applyCopy(storage, B1, TODAY)).status).toBe('refused');
+
+    const older = await fresh();
+    await make(older, A1);
+    const id = await tenantOf(older, A1.code);
+    const held = (await older.getRecord(recordKeys.tenant(id).config))!;
+    await older.putRecord(
+      recordKeys.tenant(id).config,
+      { ...(held.data as object), logo: null },
+      held.tag,
+    );
+    expect((await applyCopy(older, A1, TODAY)).status).toBe('ok');
+  });
+
+  it('row 13: a copy whose stored settings do not parse is not fresh, so it is refused', async () => {
+    const storage = await fresh();
+    await make(storage, A1);
+    const id = await tenantOf(storage, A1.code);
+    const held = (await storage.getRecord(recordKeys.tenant(id).config))!;
+    await storage.putRecord(
+      recordKeys.tenant(id).config,
+      { ...(held.data as object), colour: 'green' },
+      held.tag,
+    );
+
+    expect((await applyCopy(storage, A1, TODAY)).status).toBe('refused');
+  });
+
+  it('row 13: the seed’s monogram is a picture saved through the route, its settings holding no logo', async () => {
+    const storage = await fresh();
+    await make(storage, B1);
+
+    expect((await applyCopy(storage, B1, TODAY)).status).toBe('ok');
+
+    const records = await everything(storage, B1.code);
+    const id = await tenantOf(storage, B1.code);
+    const picture = records.find(({ key }) => key === recordKeys.tenant(id).picture('logo'));
+    expect(picture?.data).toEqual({ picture: companyLogo(B1.client, B1.company) });
+    expect(
+      records.find(({ key }) => key === recordKeys.tenant(id).config)?.data,
+    ).not.toHaveProperty('logo');
+    // a second run keeps what is there
+    expect((await applyCopy(storage, B1, TODAY)).status).toBe('ok');
   });
 
   it('row 8: a list that has more past what was read is not a new client', async () => {

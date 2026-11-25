@@ -29,6 +29,7 @@ import {
   DEMO_DELIVERIES,
   DEMO_DELIVERY_PHOTOS,
   DEMO_EMPLOYEES,
+  DEMO_LOGO,
   DEMO_INVITED_NAME,
   DEMO_OPERATOR_ID,
   DEMO_PASSKEYS,
@@ -106,6 +107,8 @@ describe('the demo generator', () => {
     const keys = recordKeys.tenant(index.id);
     expect(storedUserSchema.parse(records.get(keys.user(ROOT_NAME))).root).toBe(true);
     expect(tenantConfigSchema.parse(records.get(keys.config))).toEqual(DEMO_CONFIG);
+    expect(records.get(keys.config)).not.toHaveProperty('logo');
+    expect(records.get(keys.picture('logo'))).toEqual({ picture: DEMO_LOGO });
     const app = appOn(storage);
     const root = (password: string) =>
       app.inject({

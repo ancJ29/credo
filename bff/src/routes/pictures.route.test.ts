@@ -2,7 +2,7 @@ import { configDocSchema, MAX_LOGO_BYTES } from '@credo/shared';
 import { afterAll, beforeAll, describe, expect, inject, it } from 'vitest';
 import { type RunningCStorage, startCStorage } from '../../tests/c-storage';
 import { recordingActivity } from '../../tests/audit';
-import { startingConfig } from '../records/clients';
+import { createClient, startingConfig } from '../records/clients';
 import { staffTenant } from '../../tests/staff';
 import { seedSettings, seedTenant } from '../../tests/tenant';
 
@@ -26,10 +26,10 @@ const TAG = /^[0-9a-f]{64}$/;
 const SANDBOX = "default-src 'none'; style-src 'unsafe-inline'; sandbox";
 
 /** A company with its settings, its root signed in, and an activity client that keeps its entries. */
-async function company() {
+async function company(seeded = true) {
   const activity = recordingActivity();
   const t = await staffTenant(cs, { activity: activity.client });
-  await seedSettings(t.client, t.id);
+  if (seeded) await seedSettings(t.client, t.id);
   const save = (kind: string, picture: string | null, version: string | null) =>
     t.rootCall.send('PUT', `/api/pictures/${kind}`, { picture, version });
   /** The public call: no company header, no sign-in, only the address. */
@@ -92,6 +92,22 @@ describe('A picture is a record of its own, served at an address that names the 
       expect((await t.fetchPicture(url)).statusCode, url).toBe(404);
     }
     expect((await t.fetchPicture('/api/pictures/acme-co/logo')).statusCode).toBe(200);
+  });
+
+  it('13: a company made with a logo holds it as its logo picture, and the operator’s create gives none', async () => {
+    const t = await company();
+    await createClient(t.client, {
+      code: 'logo-co',
+      name: 'Logo Co',
+      madeAt: 0,
+      logo: image(12, 'png', 2),
+    });
+    await createClient(t.client, { code: 'bare-co', name: 'Bare Co', madeAt: 0 });
+
+    const made = await t.fetchPicture('/api/pictures/logo-co/logo');
+
+    expect(made.rawPayload.equals(Buffer.alloc(12, 2))).toBe(true);
+    expect((await t.fetchPicture('/api/pictures/bare-co/logo')).statusCode).toBe(404);
   });
 
   it('8: a code reaches its own company’s picture and no other’s', async () => {
@@ -234,5 +250,102 @@ describe('Whoever holds the settings right saves a picture at its choice', () =>
     expect(mine).toHaveLength(3);
     expect(t.activity.entries.some((entry) => entry.action === 'config.save')).toBe(true);
     expect(JSON.stringify(t.activity.entries)).not.toContain('base64');
+  });
+});
+
+describe('A stored logo moves to a picture of its own at the settings’ first read', () => {
+  /** A company whose settings are stored as they were before the pictures: the logo inline. */
+  async function older(logo: string | null, ...more: [string, unknown][]) {
+    const t = await company(false);
+    const stored = { ...startingConfig('Acme'), logo };
+    await t.client.putRecord(t.keys.config, stored, null);
+    for (const [key, data] of more) await t.client.putRecord(key, data, null);
+    const read = () =>
+      t.app.app.inject({
+        method: 'GET',
+        url: '/api/config',
+        headers: { 'x-client-code': 'acme-co' },
+      });
+    const settingsNow = async () => (await t.client.getRecord(t.keys.config))!;
+    return { ...t, read, settingsNow, stored };
+  }
+
+  it('1: moves a stored logo at the first read: its picture holds the same data URL, the settings hold no logo, the reply names it', async () => {
+    const logo = image(300, 'png', 4);
+    const t = await older(logo);
+
+    const answered = await t.read();
+
+    expect(answered.statusCode).toBe(200);
+    const doc = configDocSchema.parse(answered.json());
+    expect(doc.config).not.toHaveProperty('logo');
+    expect((await t.client.getRecord(t.keys.picture('logo')))?.data).toEqual({ picture: logo });
+    expect((await t.settingsNow()).data).not.toHaveProperty('logo');
+    const view = doc.pictures.logo!;
+    expect(view.address).toBe(`/api/pictures/acme-co/logo?v=${view.version}`);
+    expect((await t.fetchPicture(view.address)).rawPayload.equals(Buffer.alloc(300, 4))).toBe(true);
+    // the move is no one's change: no entry, and a save after it holds no bytes
+    expect(t.activity.entries).toEqual([]);
+    const saved = await t.rootCall.send('PUT', '/api/config', {
+      config: { ...doc.config, name: 'Renamed' },
+      version: doc.version,
+    });
+    expect(saved.statusCode).toBe(200);
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect(JSON.stringify(t.activity.entries)).not.toContain('base64');
+  });
+
+  it('2: a move stopped after the picture’s write loses nothing: the next read finishes it', async () => {
+    const logo = image(100, 'png', 5);
+    const t = await older(logo);
+    const key = t.keys.picture('logo');
+    await t.client.putRecord(key, { picture: logo }, null);
+
+    const doc = configDocSchema.parse((await t.read()).json());
+
+    expect(doc.pictures.logo).not.toBeNull();
+    expect((await t.settingsNow()).data).not.toHaveProperty('logo');
+    expect((await t.client.getRecord(key))?.data).toEqual({ picture: logo });
+  });
+
+  it('3: a picture already stored is kept over an older inline logo', async () => {
+    const t = await older(image(100, 'png', 5));
+    await t.client.putRecord(t.keys.picture('logo'), { picture: image(50, 'png', 8) }, null);
+
+    const doc = configDocSchema.parse((await t.read()).json());
+
+    expect((await t.client.getRecord(t.keys.picture('logo')))?.data).toEqual({
+      picture: image(50, 'png', 8),
+    });
+    expect(
+      (await t.fetchPicture(doc.pictures.logo!.address)).rawPayload.equals(Buffer.alloc(50, 8)),
+    ).toBe(true);
+    expect((await t.settingsNow()).data).not.toHaveProperty('logo');
+  });
+
+  it('4: two reads at once move it once, both replies naming the same picture', async () => {
+    const t = await older(image(100, 'png', 6));
+
+    const [first, second] = await Promise.all([t.read(), t.read()]);
+
+    expect(first.statusCode).toBe(200);
+    expect(second.statusCode).toBe(200);
+    expect(second.json()).toEqual(first.json());
+    expect(configDocSchema.parse(first.json()).pictures.logo).not.toBeNull();
+    expect((await t.settingsNow()).data).not.toHaveProperty('logo');
+  });
+
+  it('5: a stored logo of null is dropped and no picture made; the new shape is read with no write', async () => {
+    const t = await older(null);
+
+    const first = configDocSchema.parse((await t.read()).json());
+    const after = await t.settingsNow();
+    const again = configDocSchema.parse((await t.read()).json());
+
+    expect(first.pictures).toEqual({ logo: null, 'logo-on-colour': null });
+    expect(after.data).not.toHaveProperty('logo');
+    expect(await t.client.getRecord(t.keys.picture('logo'))).toBeNull();
+    expect(again.version).toBe(after.tag);
+    expect((await t.settingsNow()).tag).toBe(after.tag);
   });
 });

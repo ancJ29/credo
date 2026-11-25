@@ -76,6 +76,7 @@ import {
   DEMO_CLIENTS,
   DEMO_CODE,
   DEMO_CONFIG,
+  DEMO_LOGO,
   DEMO_CUSTOMERS,
   DEMO_DELIVERIES,
   DEMO_DELIVERY_PHOTOS,
@@ -228,7 +229,7 @@ export function createFakeApi({
   let version = 1;
   /** The company's pictures, each as the data URL itself, with the tick it was last saved at. */
   const held: Record<PictureKind, { picture: string | null; tick: number }> = {
-    logo: { picture: config.logo, tick: 1 },
+    logo: { picture: DEMO_LOGO, tick: 1 },
     'logo-on-colour': { picture: null, tick: 1 },
   };
   const viewOf = (kind: PictureKind) => {

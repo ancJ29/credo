@@ -218,11 +218,16 @@ is `git diff -U0 -- visual/src/resolved.pinned.txt | grep '^+[a-z]' | cut -d' ' 
       `ui/src` did not change. The route is `GET /api/pictures/<code>/<kind>` and the save
       `PUT /api/pictures/<kind>`; the settings' reply names each picture from two reads, one a kind, not
       one list of the prefix. Citation test at 20:17.
-- [ ] **4. The move.** The settings lose `logo`; the stored shape; the move; `startingConfig`,
+- [x] **4. The move.** The settings lose `logo`; the stored shape; the move; `startingConfig`,
       `DEMO_CONFIG` and its picture, the generator, the seed's monogram through the route, the
       freshness check; the mock's fixtures and the literals of 8. Rows 1 to 6 and 13 red first.
       _Done when:_ `shared`'s, `bff`'s, `scripts`', `ui`'s and `visual`'s gates; the pinned diff as step
       2 left it. **25 min** (250.2's step 2: 25).
+      Done 25 November: `shared`'s gate 20:48, `bff`'s 21:00, `scripts`' 21:03, `ui`'s 20:57, `visual`'s
+      21:07, each exit 0; the pinned file untouched, so its diff is as step 2 left it. The move is in
+      `readConfig`; a company made with a logo (the data set's) holds it through `createClient`'s
+      `logo`. Rows 1 to 5 and 13's new cases red first; rows 6 and 13's old-create case held on the old
+      code. Citation test at 21:14.
 - [ ] **5. The walk.** As below; rows 25 and 26. _Done when:_ `visual`'s, `walk`'s and `ui`'s gates;
       row 25 red on the old counts; the pinned diff naming `17-logo-on-colour` alone (10 lines); the new
       step replayed in jsdom on the real router. **15 min** (250.2's step 4: 15).

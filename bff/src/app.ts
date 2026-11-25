@@ -34,6 +34,7 @@ import {
   staffConfig,
   storedClientSchema,
   type StoredUser,
+  storedConfigSchema,
   tenantConfigSchema,
   type UserView,
   waitAfter,
@@ -323,22 +324,46 @@ export function buildApp({
     if (!who.root && !who.permissions[id]) throw forbidden();
   };
 
+  /** How often a read finishes the move of an inline logo before it gives up: the settings moving under
+   * it (another read's finish, a save) is read again, and three such moves in a row is a fault. */
+  const MOVE_READS = 3;
+
+  /**
+   * The settings as they stand, with each picture named. A company's logo stored inline (before the
+   * pictures were records of their own) is moved here, under every boot, save and conflict that reads:
+   * the picture is written first and create-only, so one already there (a newer upload, or another
+   * read's move) is kept; then the settings are rewritten without the field, on the tag read. An
+   * interruption between the two writes leaves the inline logo and the next read finishes the move.
+   * No activity entry: no person changed anything.
+   */
   async function readConfig(storage: TenantStorage, code: string): Promise<ConfigDoc | null> {
-    const found = await storage.getRecord(recordKeys.tenant(storage.tenantId).config);
-    // A config that does not parse throws: the boot stops with a 500, never on another's defaults.
-    if (!found) return null;
-    // Each picture is its own record: the reply names where it is served and the tag it is at.
-    const views = await Promise.all(
-      PICTURE_KINDS.map(async (kind) => {
-        const held = await storage.getRecord(recordKeys.tenant(storage.tenantId).picture(kind));
-        return held ? { address: pictureAddress(code, kind, held.tag), version: held.tag } : null;
-      }),
-    );
-    return {
-      config: tenantConfigSchema.parse(found.data),
-      version: found.tag,
-      pictures: { logo: views[0] ?? null, 'logo-on-colour': views[1] ?? null },
-    };
+    const keys = recordKeys.tenant(storage.tenantId);
+    for (let read = 0; read < MOVE_READS; read += 1) {
+      const found = await storage.getRecord(keys.config);
+      // A config that does not parse throws: the boot stops with a 500, never on another's defaults.
+      if (!found) return null;
+      const { logo, ...stored } = storedConfigSchema.parse(found.data);
+      if (!('logo' in (found.data as object))) {
+        // Each picture is its own record: the reply names where it is served and the tag it is at.
+        const views = await Promise.all(
+          PICTURE_KINDS.map(async (kind) => {
+            const held = await storage.getRecord(keys.picture(kind));
+            return held
+              ? { address: pictureAddress(code, kind, held.tag), version: held.tag }
+              : null;
+          }),
+        );
+        return {
+          config: tenantConfigSchema.parse(stored),
+          version: found.tag,
+          pictures: { logo: views[0] ?? null, 'logo-on-colour': views[1] ?? null },
+        };
+      }
+      // A logo of null is dropped alike: nothing to keep. A picture there is kept over this one.
+      if (logo) await storage.putRecord(keys.picture('logo'), { picture: logo }, null);
+      await storage.putRecord(keys.config, stored, found.tag);
+    }
+    throw new HttpError(503, 'Service unavailable');
   }
 
   /** The code the app sent: `forClient` has checked it names a company. */

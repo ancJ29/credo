@@ -62,7 +62,6 @@ import {
 
 const config = {
   name: 'A',
-  logo: null,
   colour: '#000000',
   languages: ['vi'],
   defaultLanguage: 'vi',

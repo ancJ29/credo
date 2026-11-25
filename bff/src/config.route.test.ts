@@ -1,9 +1,4 @@
-import {
-  configDocSchema,
-  conflictReplySchema,
-  MAX_LOGO_BYTES,
-  type TenantConfig,
-} from '@credo/shared';
+import { configDocSchema, conflictReplySchema, type TenantConfig } from '@credo/shared';
 import { afterAll, beforeAll, describe, expect, inject, it } from 'vitest';
 import { type RunningCStorage, startCStorage } from '../tests/c-storage';
 import { personCalls, staffTenant } from '../tests/staff';
@@ -19,7 +14,6 @@ afterAll(async () => {
 
 const company: TenantConfig = {
   name: 'Công ty Đại Việt',
-  logo: null,
   colour: '#2f7d6d',
   whiteHeader: false,
   whiteMenu: false,
@@ -48,10 +42,20 @@ async function rootSession() {
 }
 
 describe('The root sets the company’s name, logo and brand colour; every screen shows them, sign-in too', () => {
+  it('6: a save that sends a logo is refused, 400, and stores nothing', async () => {
+    const t = await rootSession();
+    const saved = await t.save({ ...company }, null);
+    const version = configDocSchema.parse(saved.json()).version;
+
+    const refused = await t.save({ ...company, logo: imageOf(100) }, version);
+
+    expect(refused.statusCode).toBe(400);
+    expect(configDocSchema.parse((await t.read()).json()).version).toBe(version);
+  });
+
   it('saves the settings and serves them to a caller who has not signed in', async () => {
     const t = await rootSession();
-    const logo = imageOf(1000);
-    const saved = await t.save({ ...company, logo }, null);
+    const saved = await t.save(company, null);
     expect(saved.statusCode).toBe(200);
 
     const read = await t.read();
@@ -62,7 +66,7 @@ describe('The root sets the company’s name, logo and brand colour; every scree
       'logo-on-colour': null,
     });
     const doc = configDocSchema.parse(read.json());
-    expect(doc.config).toEqual({ ...company, logo });
+    expect(doc.config).toEqual(company);
     expect(doc.version).toBe(configDocSchema.parse(saved.json()).version);
   });
 
@@ -129,24 +133,6 @@ describe('A config that does not parse is refused on save and stops the boot', (
     const read = await t.read();
     expect(read.statusCode).toBe(500);
     expect(read.json()).toEqual({ error: 'Internal error' });
-  });
-});
-
-describe('A logo is an image of at most 200 KB; anything else is refused', () => {
-  it('saves a logo of exactly 200 KB', async () => {
-    const t = await rootSession();
-    expect((await t.save({ ...company, logo: imageOf(MAX_LOGO_BYTES) }, null)).statusCode).toBe(
-      200,
-    );
-  });
-
-  it('refuses a logo one byte over, and one that is not an image, and stores nothing', async () => {
-    const t = await rootSession();
-    for (const logo of [imageOf(MAX_LOGO_BYTES + 1), 'data:text/html;base64,AAAA', 'logo.png']) {
-      const refused = await t.save({ ...company, logo }, null);
-      expect(refused.statusCode).toBe(400);
-    }
-    expect(await t.client.getRecord(t.keys.config)).toBeNull();
   });
 });
 

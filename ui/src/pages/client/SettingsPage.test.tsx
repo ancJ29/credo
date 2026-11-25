@@ -12,7 +12,6 @@ const words = DICTIONARIES.en;
 const starting = (word: string) => new RegExp(`^${word.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`);
 const config: TenantConfig = {
   name: 'Minh Phát',
-  logo: 'data:image/png;base64,AAAA',
   colour: '#2f7d6d',
   whiteHeader: false,
   whiteMenu: false,

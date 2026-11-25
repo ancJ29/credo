@@ -4,10 +4,13 @@ import { streamOf } from './stream';
 
 const COLOURS = ['#2f7d6d', '#8a4b2a', '#3e618c', '#7a3b6e', '#b4532a', '#4a6b2f', '#2a6f8f'];
 
-/** The company's settings: its name, and a colour and a monogram logo drawn from its client's own
- * stream, so every copy of one client has the same brand. */
-export function companyConfig(client: string, name: string): TenantConfig {
-  const colour = streamOf(client, 'brand').pick(COLOURS);
+/** The company's colour, drawn from its client's own stream, so every copy of one client has the
+ * same brand. */
+const colourOf = (client: string) => streamOf(client, 'brand').pick(COLOURS);
+
+/** The company's monogram logo, an image data URL in its colour, kept as its logo picture. */
+export function companyLogo(client: string, name: string): string {
+  const colour = colourOf(client);
   const monogram = name
     .split(' ')
     .slice(-2)
@@ -16,10 +19,14 @@ export function companyConfig(client: string, name: string): TenantConfig {
   const svg =
     `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><rect width="48" height="48" rx="10" fill="${colour}"/>` +
     `<text x="24" y="31" font-size="20" font-family="sans-serif" font-weight="700" text-anchor="middle" fill="#fff">${monogram}</text></svg>`;
+  return `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`;
+}
+
+/** The company's settings: its name and its colour. */
+export function companyConfig(client: string, name: string): TenantConfig {
   return {
     name,
-    logo: `data:image/svg+xml;base64,${Buffer.from(svg).toString('base64')}`,
-    colour,
+    colour: colourOf(client),
     whiteHeader: false,
     whiteMenu: false,
     menuIcons: false,

@@ -210,9 +210,9 @@ describe('A new client starts with its name, credo’s colour, no logo and both 
 
     const read = await app.inject({ method: 'GET', url: '/api/config' });
     const doc = configDocSchema.parse(read.json());
+    expect(doc.pictures).toEqual({ logo: null, 'logo-on-colour': null });
     expect(doc.config).toEqual({
       name: 'Acme Trading',
-      logo: null,
       colour: CREDO_COLOUR,
       whiteHeader: false,
       whiteMenu: false,

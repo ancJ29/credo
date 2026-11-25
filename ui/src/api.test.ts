@@ -10,7 +10,6 @@ import { ApiError, createApi, hopOf } from './api';
 
 const config: TenantConfig = {
   name: 'Minh Phát',
-  logo: null,
   colour: '#2f7d6d',
   whiteHeader: false,
   whiteMenu: false,

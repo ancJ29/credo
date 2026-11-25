@@ -53,6 +53,7 @@ import {
   DEMO_CODE,
   DEMO_COLLEAGUE_ID,
   DEMO_CONFIG,
+  DEMO_LOGO,
   DEMO_CUSTOMERS,
   DEMO_DELIVERIES,
   DEMO_DELIVERY_PHOTOS,
@@ -956,7 +957,7 @@ describe('the fake Api', () => {
     const png = 'data:image/png;base64,iVBORw0KGgo=';
     const api = fake();
     const first = await api.getConfig();
-    expect(first.pictures.logo?.address).toBe(DEMO_CONFIG.logo);
+    expect(first.pictures.logo?.address).toBe(DEMO_LOGO);
     expect(first.pictures['logo-on-colour']).toBeNull();
 
     const saved = await api.savePicture('logo-on-colour', png, null);
