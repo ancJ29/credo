@@ -192,8 +192,8 @@ async function walk(page: Page, language: Language, width: number) {
   await expect(page.locator('header [aria-hidden="true"] b')).toBeVisible();
   await at('15-formatted-saved');
 
-  // 16. Signed out: the card shows the formatted name and the description. Signing in again opens
-  // Settings as screen 3 did, for the screens after.
+  // 16. Signed out: the card shows the formatted name and the description. Signing in again
+  // returns to Settings, for the screens after.
   await page.getByRole('button', { name: ROOT.name, exact: true }).click();
   await page.getByRole('menuitem', { name: words.user.signOut }).click();
   await expect(page.getByText(NEW_DESCRIPTION)).toBeVisible();
@@ -201,11 +201,7 @@ async function walk(page: Page, language: Language, width: number) {
   await page.getByLabel(words.auth.username, { exact: true }).fill(ROOT.name);
   await page.getByLabel(words.auth.password, { exact: true }).fill(ROOT.password);
   await page.getByRole('button', { name: words.auth.submit, exact: true }).click();
-  await expect(page.getByRole('heading', { level: 2, name: words.nav.orders })).toBeVisible();
-  await page
-    .getByRole('navigation', { name: words.nav.menu })
-    .getByRole('link', { name: words.nav.settings })
-    .click();
+  // Signing out leaves the address at /settings, so the page signed in again is Settings itself.
   await expect(page.getByRole('heading', { level: 2, name: words.settings.title })).toBeVisible();
 
   // 5. The language switched, from the header's button: its picture is taken here, while every

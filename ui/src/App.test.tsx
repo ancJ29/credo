@@ -1030,5 +1030,13 @@ describe('the tab and the page’s language', () => {
 
     expect(await screen.findByText(description)).toBeTruthy();
     expect(document.querySelector('h1 [aria-hidden="true"] b')?.textContent).toBe('Minh');
+
+    // Signing in again, as the spec's step 16 does, returns to the Settings page at its address.
+    await userEvent.type(screen.getByLabelText(labelled(words.auth.username)), 'root');
+    await userEvent.type(screen.getByLabelText(labelled(words.auth.password)), 'pw');
+    await userEvent.click(screen.getByRole('button', { name: words.auth.submit }));
+    expect(
+      await screen.findByRole('heading', { level: 2, name: words.settings.title }),
+    ).toBeTruthy();
   });
 });
