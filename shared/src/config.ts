@@ -47,6 +47,7 @@ export const MAX_LOGO_BYTES = 200 * 1024;
 /** The company's pictures, each a record of its own: the logo, and the logo for the coloured header. */
 export const PICTURE_KINDS = ['logo', 'logo-on-colour'] as const;
 export type PictureKind = (typeof PICTURE_KINDS)[number];
+export const pictureKindSchema = z.enum(PICTURE_KINDS);
 
 /** The longest formatted name, in characters, as the legacy app held it. */
 export const MAX_FORMATTED_NAME = 1000;
@@ -74,6 +75,12 @@ export function logoIsValid(logo: string) {
   const image = imageDataUrl(logo);
   return image !== null && image.bytes <= MAX_LOGO_BYTES;
 }
+
+/** A picture as stored: an image data URL within the bound, in a record of its own. */
+export const storedPictureSchema = z.strictObject({
+  picture: z.string().refine(logoIsValid, 'an image of at most 200 KB'),
+});
+export type StoredPicture = z.infer<typeof storedPictureSchema>;
 
 export const tenantConfigSchema = z
   .strictObject({

@@ -140,6 +140,11 @@ export const picturesSchema = z.strictObject({
 }) satisfies z.ZodType<Record<PictureKind, PictureView | null>>;
 export type Pictures = z.infer<typeof picturesSchema>;
 
+/** Where a picture is served: the address names the company, since an `img` sends no header, and
+ * carries the tag the picture is at, so a new picture is a new address. */
+export const pictureAddress = (code: string, kind: PictureKind, tag: string) =>
+  `${ROUTES.pictures}/${code}/${kind}?v=${tag}`;
+
 /** No picture of any kind: what a reply that predates the field means. */
 export const NO_PICTURES: Pictures = { logo: null, 'logo-on-colour': null };
 

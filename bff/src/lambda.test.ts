@@ -50,7 +50,7 @@ const context = { callbackWaitsForEmptyEventLoop: false };
 
 async function setUp() {
   const tenant = await freshTenant(cs);
-  await seedTenant(tenant.client, CODE);
+  const id = await seedTenant(tenant.client, CODE);
   const env = {
     C_STORAGE_URL: cs.baseUrl,
     INTERNAL_ACCESS_KEY: cs.internalAccessKey,
@@ -81,10 +81,56 @@ async function setUp() {
       listenerHeaders: heard.headers,
     };
   }
-  return { both, close: () => listener.close(), handler, env, port };
+  return {
+    both,
+    close: () => listener.close(),
+    handler,
+    env,
+    port,
+    id,
+    client: tenant.client,
+    door,
+  };
 }
 
 describe('the Lambda entry', () => {
+  it('9: a picture arrives whole, base64-encoded, as the listener sends its bytes; a JSON answer stays text', async () => {
+    const { handler, client, id, door, port, close } = await setUp();
+    try {
+      const bytes = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0xff, 0xfe, 0x00, 0x80, 0xc3, 0x28]);
+      await client.putRecord(
+        `tenant.${id}.picture.logo`,
+        { picture: `data:image/png;base64,${bytes.toString('base64')}` },
+        null,
+      );
+
+      const answered = await handler(
+        httpApiEvent({ method: 'GET', path: '/api/pictures/acme-co/logo', headers: door }),
+        context,
+      );
+      const heard = await fetch(`http://127.0.0.1:${port}/api/pictures/acme-co/logo`, {
+        headers: door,
+      });
+
+      expect(answered.statusCode).toBe(200);
+      expect(answered.isBase64Encoded).toBe(true);
+      expect(Buffer.from(answered.body, 'base64').equals(bytes)).toBe(true);
+      expect(Buffer.from(await heard.arrayBuffer()).equals(bytes)).toBe(true);
+      expect(answered.headers['content-type']).toBe('image/png');
+      const json = await handler(
+        httpApiEvent({
+          method: 'GET',
+          path: '/api/config',
+          headers: { ...door, 'x-client-code': CODE },
+        }),
+        context,
+      );
+      expect(json.isBase64Encoded).toBe(false);
+    } finally {
+      await close();
+    }
+  });
+
   it('answers an HTTP API event as the listener answers the same request', async () => {
     const { both, close } = await setUp();
     try {

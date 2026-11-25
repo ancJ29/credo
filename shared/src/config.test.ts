@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  PICTURE_KINDS,
+  pictureKindSchema,
+  storedPictureSchema,
   isHexColour,
   languagesAreValid,
   logoIsValid,
@@ -129,5 +132,18 @@ describe('A config that does not parse is refused on save and stops the boot', (
     ]) {
       expect(tenantConfigSchema.safeParse(bad).success).toBe(false);
     }
+  });
+});
+
+describe('the company’s pictures', () => {
+  it('10: names two kinds, and stores an image data URL within the bound alone', () => {
+    expect(PICTURE_KINDS).toEqual(['logo', 'logo-on-colour']);
+    expect(pictureKindSchema.safeParse('logo').success).toBe(true);
+    expect(pictureKindSchema.safeParse('banner').success).toBe(false);
+    expect(
+      storedPictureSchema.safeParse({ picture: 'data:image/png;base64,iVBORw0KGgo=' }).success,
+    ).toBe(true);
+    expect(storedPictureSchema.safeParse({ picture: 'nope' }).success).toBe(false);
+    expect(storedPictureSchema.safeParse({ picture: null }).success).toBe(false);
   });
 });

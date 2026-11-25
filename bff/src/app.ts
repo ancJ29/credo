@@ -10,7 +10,8 @@ import {
   type ClientListReply,
   type ServicesReply,
   type ConfigDoc,
-  NO_PICTURES,
+  PICTURE_KINDS,
+  pictureAddress,
   createClientRequestSchema,
   type CreateClientReply,
   type CStorageClient,
@@ -66,6 +67,7 @@ import { registerOperatorTeamRoutes } from './routes/operator-team';
 import { registerDeleteClientRoutes } from './routes/clients-delete';
 import { registerMoveClientRoutes } from './routes/client-move';
 import { registerRootPasswordRoutes } from './routes/root-password';
+import { registerPictureRoutes } from './routes/pictures';
 import { registerStaffRoutes } from './routes/staff';
 
 declare module 'fastify' {
@@ -215,11 +217,21 @@ export function buildApp({
   async function resolveTenant(request: FastifyRequest) {
     const code = clientCodeSchema.safeParse(request.headers[CLIENT_HEADER]);
     if (!code.success) throw new HttpError(400, 'Bad request', { details: CLIENT_HEADER });
-    const found = await storage.getRecord(recordKeys.client(code.data));
+    const found = await tenantOfCode(code.data, request);
+    request.tenantId = found.tenantId;
+    request.storage = found.storage;
+  }
+
+  /** A company by its code: unknown is a 404, a box not held a 503. The public picture route reads
+   * its company this way, from the address and no header. */
+  async function tenantOfCode(code: string, request: FastifyRequest) {
+    const found = await storage.getRecord(recordKeys.client(code));
     if (!found) throw new HttpError(404, 'Unknown client');
     const line = storedClientSchema.parse(found.data);
-    request.tenantId = line.id;
-    request.storage = tenantStorage(storeOfLine(line, 'company', request.log), line.id);
+    return {
+      tenantId: line.id,
+      storage: tenantStorage(storeOfLine(line, 'company', request.log), line.id),
+    };
   }
   const forClient = { onRequest: resolveTenant };
 
@@ -311,15 +323,26 @@ export function buildApp({
     if (!who.root && !who.permissions[id]) throw forbidden();
   };
 
-  async function readConfig(storage: TenantStorage): Promise<ConfigDoc | null> {
+  async function readConfig(storage: TenantStorage, code: string): Promise<ConfigDoc | null> {
     const found = await storage.getRecord(recordKeys.tenant(storage.tenantId).config);
     // A config that does not parse throws: the boot stops with a 500, never on another's defaults.
-    // The pictures are each null until the picture route answers (the route's step): no reply
-    // names one.
-    return found
-      ? { config: tenantConfigSchema.parse(found.data), version: found.tag, pictures: NO_PICTURES }
-      : null;
+    if (!found) return null;
+    // Each picture is its own record: the reply names where it is served and the tag it is at.
+    const views = await Promise.all(
+      PICTURE_KINDS.map(async (kind) => {
+        const held = await storage.getRecord(recordKeys.tenant(storage.tenantId).picture(kind));
+        return held ? { address: pictureAddress(code, kind, held.tag), version: held.tag } : null;
+      }),
+    );
+    return {
+      config: tenantConfigSchema.parse(found.data),
+      version: found.tag,
+      pictures: { logo: views[0] ?? null, 'logo-on-colour': views[1] ?? null },
+    };
   }
+
+  /** The code the app sent: `forClient` has checked it names a company. */
+  const codeOf = (request: FastifyRequest) => request.headers[CLIENT_HEADER] as string;
 
   /** A sign-in ends the session the device's kept handle still names, which the app sends on
    * every call. Only whoever holds the handle's secret ends it: naming a device ends nothing. */
@@ -335,7 +358,7 @@ export function buildApp({
   }
 
   app.get(ROUTES.config, forClient, async (request) => {
-    const doc = await readConfig(request.storage);
+    const doc = await readConfig(request.storage, codeOf(request));
     if (!doc) throw new HttpError(404, 'Not set up');
     return doc;
   });
@@ -349,17 +372,27 @@ export function buildApp({
       mustCan(who, 'settings.canEdit');
       const body = parse(saveConfigRequestSchema, request.body);
       const key = recordKeys.tenant(request.tenantId).config;
-      const before = await readConfig(request.storage);
+      const before = await readConfig(request.storage, codeOf(request));
       const result = await request.storage.putRecord(key, body.config, body.version);
       if (result === 'moved') {
         return reply
           .status(409)
-          .send({ error: 'Conflict', current: await readConfig(request.storage) });
+          .send({ error: 'Conflict', current: await readConfig(request.storage, codeOf(request)) });
       }
       entry.saved(before, body.config);
-      return await readConfig(request.storage);
+      return await readConfig(request.storage, codeOf(request));
     },
   );
+
+  registerPictureRoutes(app, {
+    now,
+    forClient,
+    signedIn,
+    mustBeRoot,
+    mustCan,
+    readConfig,
+    tenantOfCode,
+  });
 
   /** The sign-in record a typed name opens: the code's own, or, for an email, the record of the code
    * of the person the email names. An email names no one unless that person's record holds it and

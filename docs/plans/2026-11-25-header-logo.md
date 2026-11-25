@@ -211,9 +211,13 @@ is `git diff -U0 -- visual/src/resolved.pinned.txt | grep '^+[a-z]' | cut -d' ' 
       pictures as `logo`, `headerLogo` and `headerLogoOnColour`. Rows 16 and 20 held on the old code
       and were seen red by a mutation (the card taking the coloured header's logo, the console's brand
       given a logo). Citation test at 19:50.
-- [ ] **3. The route and the save, in the BFF.** As 3 above, copied from the photo's; the Lambda
+- [x] **3. The route and the save, in the BFF.** As 3 above, copied from the photo's; the Lambda
       handler's `enforceBase64`. Rows 7 to 12 red first. _Done when:_ `shared`'s and `bff`'s gates.
       **14 min** (241.2's step 5: 10, its fix 4).
+      Done 25 November: `shared`'s gate 19:59, `bff`'s 20:09, each exit 0; no `ui` or `visual` gate, as
+      `ui/src` did not change. The route is `GET /api/pictures/<code>/<kind>` and the save
+      `PUT /api/pictures/<kind>`; the settings' reply names each picture from two reads, one a kind, not
+      one list of the prefix. Citation test at 20:17.
 - [ ] **4. The move.** The settings lose `logo`; the stored shape; the move; `startingConfig`,
       `DEMO_CONFIG` and its picture, the generator, the seed's monogram through the route, the
       freshness check; the mock's fixtures and the literals of 8. Rows 1 to 6 and 13 red first.

@@ -20,6 +20,7 @@ import {
   conflictReplySchema,
   configDocSchema,
   NO_PICTURES,
+  pictureAddress,
   savePictureRequestSchema,
   createClientReplySchema,
   createClientRequestSchema,
@@ -120,6 +121,7 @@ describe('the wire contract', () => {
       configDocSchema.safeParse({ config, version: 'tag', pictures: { logo: null } }).success,
     ).toBe(false);
     expect(ROUTES.pictures).toBe('/api/pictures');
+    expect(pictureAddress('an-phat', 'logo', 'tag')).toBe('/api/pictures/an-phat/logo?v=tag');
   });
 
   it('21: a picture’s save takes an image within the bound or null, and a tag or null', () => {
