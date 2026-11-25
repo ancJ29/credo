@@ -11,6 +11,9 @@ admin-setup/10-saved-white steel ec02d1ad70a2
 admin-setup/11-menu-icons steel 049aaeed8c7b
 admin-setup/12-sign-in-wait steel d85e65ed1ab1
 admin-setup/13-preview steel e6f86f06fa85
+admin-setup/14-formatted-typed steel 8a3b85c8df57
+admin-setup/15-formatted-saved steel c79fe38e22b2
+admin-setup/16-formatted-card steel 96af7abe291f
 operator-setup/op-1-sign-in steel 4c94dbf4e3bb
 operator-setup/op-2-new-client steel a99d9da51da2
 operator-setup/op-3-made steel 66db2a88259e
@@ -149,6 +152,9 @@ admin-setup/10-saved-white emerald 576114695311
 admin-setup/11-menu-icons emerald 97d0a5d570f6
 admin-setup/12-sign-in-wait emerald 1ecaadb355b8
 admin-setup/13-preview emerald 0fe8d1af152b
+admin-setup/14-formatted-typed emerald 1dc68c1ff33f
+admin-setup/15-formatted-saved emerald a796dd534098
+admin-setup/16-formatted-card emerald 4b54242aaebc
 operator-setup/op-1-sign-in emerald 33c08326eb29
 operator-setup/op-2-new-client emerald 7c8d72161c24
 operator-setup/op-3-made emerald ccd7325ec497
@@ -287,6 +293,9 @@ admin-setup/10-saved-white brick 20245511c8ac
 admin-setup/11-menu-icons brick dfd5c83f8f5d
 admin-setup/12-sign-in-wait brick 9beb6ac6f4be
 admin-setup/13-preview brick 09328016f8cd
+admin-setup/14-formatted-typed brick 834e2be6d576
+admin-setup/15-formatted-saved brick 8d3e0107eb64
+admin-setup/16-formatted-card brick ece257ad33d6
 operator-setup/op-1-sign-in brick ed7cc7ecffbe
 operator-setup/op-2-new-client brick be451147e35a
 operator-setup/op-3-made brick 1c16e29d0eb9
@@ -425,6 +434,9 @@ admin-setup/10-saved-white bronze c82dd7570262
 admin-setup/11-menu-icons bronze f8af99d1a446
 admin-setup/12-sign-in-wait bronze eba3bc464a55
 admin-setup/13-preview bronze b5b52e81713a
+admin-setup/14-formatted-typed bronze 4a1a47ee8b46
+admin-setup/15-formatted-saved bronze 2569c9bf7e13
+admin-setup/16-formatted-card bronze 556950bd1734
 operator-setup/op-1-sign-in bronze 78f5a4af7a8b
 operator-setup/op-2-new-client bronze bd617e41e9bd
 operator-setup/op-3-made bronze acd41d142e9e
@@ -563,6 +575,9 @@ admin-setup/10-saved-white plum 6d90c0c2232c
 admin-setup/11-menu-icons plum 04efffbaca72
 admin-setup/12-sign-in-wait plum 3091eaee486c
 admin-setup/13-preview plum 697c476825bd
+admin-setup/14-formatted-typed plum 2a14c41dc294
+admin-setup/15-formatted-saved plum 0bdbe419fdb1
+admin-setup/16-formatted-card plum d2c98899665a
 operator-setup/op-1-sign-in plum f6758d288ddd
 operator-setup/op-2-new-client plum 28b34ebe4b86
 operator-setup/op-3-made plum 1a1c5072fe2a
@@ -701,6 +716,9 @@ admin-setup/10-saved-white indigo 1dd9e033a56b
 admin-setup/11-menu-icons indigo 4c4566040f6d
 admin-setup/12-sign-in-wait indigo 6fca4cb6954b
 admin-setup/13-preview indigo f2d8c4c382ae
+admin-setup/14-formatted-typed indigo b64346d6c551
+admin-setup/15-formatted-saved indigo d4dcfdcce07a
+admin-setup/16-formatted-card indigo 05ae876ec847
 operator-setup/op-1-sign-in indigo 0474bc4c62e6
 operator-setup/op-2-new-client indigo 00306c65f33d
 operator-setup/op-3-made indigo 8ed1c72dbd5b
@@ -839,6 +857,9 @@ admin-setup/10-saved-white company 488698f5d9f5
 admin-setup/11-menu-icons company 7155b2e957ab
 admin-setup/12-sign-in-wait company fa120719a166
 admin-setup/13-preview company b5fa0df49bbc
+admin-setup/14-formatted-typed company 8a2a2bc22497
+admin-setup/15-formatted-saved company 35c3ee1866a5
+admin-setup/16-formatted-card company f048f77944f1
 operator-setup/op-1-sign-in company 4d73a3d05a55
 operator-setup/op-2-new-client company d5e16aaae30e
 operator-setup/op-3-made company f545ac907573
@@ -977,6 +998,9 @@ admin-setup/10-saved-white terracotta abf57240c4fb
 admin-setup/11-menu-icons terracotta be765c7961d5
 admin-setup/12-sign-in-wait terracotta 6d4aad8532ef
 admin-setup/13-preview terracotta 949baab7b555
+admin-setup/14-formatted-typed terracotta ee8ac6b06751
+admin-setup/15-formatted-saved terracotta e88568d9d22b
+admin-setup/16-formatted-card terracotta 69387547e0d7
 operator-setup/op-1-sign-in terracotta 2096b5419ad5
 operator-setup/op-2-new-client terracotta 37bb9bb37489
 operator-setup/op-3-made terracotta c2809f5417bd
@@ -1115,6 +1139,9 @@ admin-setup/10-saved-white red d9bc64419959
 admin-setup/11-menu-icons red 759284509a51
 admin-setup/12-sign-in-wait red e8f2adfc00ad
 admin-setup/13-preview red 142dbde4b2c3
+admin-setup/14-formatted-typed red dd67df73aec0
+admin-setup/15-formatted-saved red 32151a46264a
+admin-setup/16-formatted-card red 26966752a069
 operator-setup/op-1-sign-in red ab419333dcc4
 operator-setup/op-2-new-client red 62009853805b
 operator-setup/op-3-made red 09840814543e
@@ -1253,6 +1280,9 @@ admin-setup/10-saved-white amber a01bd31cbc3a
 admin-setup/11-menu-icons amber 29defac9d471
 admin-setup/12-sign-in-wait amber 1f8b0d23e6a5
 admin-setup/13-preview amber 94dd9a9e6f05
+admin-setup/14-formatted-typed amber 455261778768
+admin-setup/15-formatted-saved amber 5387371d1579
+admin-setup/16-formatted-card amber 70f46a2350da
 operator-setup/op-1-sign-in amber 705bd4ea3d32
 operator-setup/op-2-new-client amber ef1ae8addd0e
 operator-setup/op-3-made amber b085b84487c7

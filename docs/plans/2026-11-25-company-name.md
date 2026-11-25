@@ -182,9 +182,10 @@ is `git diff -U0 -- visual/src/resolved.pinned.txt | grep '^+[a-z]' | cut -d' ' 
       screens below alone (90 lines); `git diff pre-merge -- ui/src/parts/Settings.test.tsx | grep -c '^-[^-]'`
       0. **21 min** (250.1's step 2: 21).
       _Done 2026-11-25, build 250.2 step 3, sonnet:_ `ui`'s and `visual`'s gates each exit 0 (the runs of 12:54 to 12:59); rows 1 to 4 and 11 seen red first on the old code (12:47, 11 cases), rows 3 and 14 the null proofs in part (the parts of step 1 already drew them); the pinned diff names the nine settings screens alone, 90 lines; `Settings.test.tsx` differs from `pre-merge` by one removed line, `getAllByRole('textbox')` counting 4 where it counted 2, since the Identity block adds two fields (the row's count was 0).
-- [ ] **4. The walk.** As below; rows 18 and 19; item 681's fix. _Done when:_ `visual`'s, `walk`'s and
+- [x] **4. The walk.** As below; rows 18 and 19; item 681's fix. _Done when:_ `visual`'s, `walk`'s and
       `ui`'s gates; row 18 red on the old counts; the pinned diff naming the three new screens alone
       (30 lines); each new step replayed in jsdom on the real router. **16 min** (250.1's step 3: 16).
+      _Done 2026-11-25, build 250.2 step 4, sonnet:_ `visual`'s, `walk`'s and `ui`'s gates each exit 0 (the runs of 13:11 to 13:15); row 18 seen red on the old counts (13:02, two cases); the pinned diff names `14-formatted-typed`, `15-formatted-saved` and `16-formatted-card` alone, 30 lines; the new steps replayed in jsdom on the real router in `App.test.tsx`; item 681's `exact: true` is in the spec; no walk run, no base written.
 - [ ] **5. The prose.** `docs/products.md#L35`'s Settings row gains the two fields, the tab and the
       language; `docs/memo/ui.md` gains the surprise: the formatted name is stored as typed and drawn
       only through `BrandName`, which cleans it at each draw. Item 681 `[FIXED]`; item 683 filed: a

@@ -999,4 +999,36 @@ describe('the tab and the page’s language', () => {
 
     await waitFor(() => expect(document.documentElement.getAttribute('lang')).toBe('vi'));
   });
+
+  it('2: the walk’s formatted steps: the root types both fields, saves, the header shows the name formatted, and signing out shows the card with the description', async () => {
+    const formattedName = '<b>Minh</b><br><span style="color:#1d3557">Phát</span>';
+    const description = 'Vật liệu xây dựng';
+    const saved = { config: { ...config, formattedName, description }, version: 'v2' };
+    const saveConfig = vi.fn<Api['saveConfig']>(() =>
+      Promise.resolve({ kind: 'saved', doc: saved }),
+    );
+    setup({ saveConfig }, { ...signedIn, 'credo.language': 'en' }, '/settings');
+
+    await userEvent.click(
+      await screen.findByRole('textbox', { name: words.settings.formattedName }),
+    );
+    await userEvent.paste(formattedName);
+    await userEvent.type(
+      screen.getByRole('textbox', { name: words.settings.description }),
+      description,
+    );
+    expect(document.querySelector('[data-preview="card"]')?.textContent).toContain(description);
+    await userEvent.click(screen.getByRole('button', { name: words.settings.save }));
+
+    expect((await screen.findByRole('status')).textContent).toBe(words.settings.saved);
+    expect(saveConfig).toHaveBeenCalledExactlyOnceWith(saved.config, 'v1');
+    expect(document.querySelector('header [aria-hidden="true"] b')?.textContent).toBe('Minh');
+    expect(screen.getAllByRole('heading', { level: 1 })[0].textContent).toContain('Minh Phát');
+
+    await userEvent.click(screen.getByRole('button', { name: 'root' }));
+    await userEvent.click(screen.getByRole('menuitem', { name: words.user.signOut }));
+
+    expect(await screen.findByText(description)).toBeTruthy();
+    expect(document.querySelector('h1 [aria-hidden="true"] b')?.textContent).toBe('Minh');
+  });
 });
