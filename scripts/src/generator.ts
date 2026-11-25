@@ -1,6 +1,7 @@
-import { generateKeyPairSync } from 'node:crypto';
+import { generateKeyPairSync, randomUUID } from 'node:crypto';
 import { buildApp } from '@credo/bff';
 import { createClient, ROOT_NAME } from '@credo/bff/clients';
+import { hashPassword } from '@credo/bff/password';
 import { createOperator, makeLink } from '@credo/bff/operators';
 import { createSessions, OPERATOR_SESSION } from '@credo/bff/sessions';
 import {
@@ -51,6 +52,7 @@ import {
   DEMO_PASSKEYS,
   DEMO_PERSON_PASSKEYS,
   DEMO_PERSON_PASSKEYS_CODE,
+  DEMO_SIGN_UPS,
   DEMO_PHOTOS,
   DEMO_PRODUCTS,
   DEMO_TEAM,
@@ -558,6 +560,21 @@ export async function seedDemo(
   // The operator's list shows three clients: the other two are only made, with their fixed times.
   for (const { code, name, madeAt } of DEMO_CLIENTS.filter((client) => client !== demo)) {
     if ((await createClient(storage, { code, name, madeAt })) === 'taken') {
+      throw new Error('the service already holds data: not seeded over');
+    }
+  }
+  // The company waiting for an operator, at its fixed day: a request beside the client index, holding
+  // a hash of a password no one is given, as the fake's waiting company does.
+  for (const { code, name, contactName, contactPhone, sentAt } of DEMO_SIGN_UPS) {
+    const passwordHash = await hashPassword(randomUUID());
+    /* v8 ignore next 9 -- unreachable: the operators and the demo client were written a moment ago over nothing */
+    if (
+      (await storage.putRecord(
+        recordKeys.signUp(code),
+        { name, contactName, contactPhone, passwordHash, sentAt },
+        null,
+      )) === 'moved'
+    ) {
       throw new Error('the service already holds data: not seeded over');
     }
   }

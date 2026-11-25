@@ -34,6 +34,7 @@ import {
   DEMO_PASSKEYS,
   DEMO_PERSON_PASSKEYS,
   DEMO_PERSON_PASSKEYS_CODE,
+  DEMO_SIGN_UPS,
   DEMO_ORDERS,
   DEMO_PHOTOS,
   DEMO_PRODUCTS,
@@ -241,6 +242,21 @@ describe('the demo generator', () => {
     expect(listed.json()).toEqual({
       passkeys: DEMO_PASSKEYS.map(({ id, addedAt, lastUsedAt }) => ({ id, addedAt, lastUsedAt })),
     });
+  });
+
+  it('20: A stack holds the data set’s one waiting request at its day, which the operator’s list shows as the fake’s does', async () => {
+    const { storage } = memoryStorage();
+    const { operatorHandle } = await seedDemo(storage);
+    const app = appOn(storage);
+
+    const listed = await app.inject({
+      method: 'GET',
+      url: '/api/operator/sign-ups',
+      headers: { 'x-auth-id': operatorHandle },
+    });
+
+    expect(listed.statusCode).toBe(200);
+    expect(listed.json()).toEqual({ signUps: DEMO_SIGN_UPS });
   });
 
   it('The data set names the root as the BFF does, so the fake’s sign-in is the real one’s', () => {

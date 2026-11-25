@@ -136,6 +136,15 @@ export const PARTS: Part[] = [
 /** A data-set person's page, by their code. */
 const personAt = (code: string) => `/staff/${DEMO_EMPLOYEES.find((p) => p.code === code)!.id}`;
 
+/** A company's sign-up form, filled as its asker fills it, the address one the data set does not hold. */
+const SIGN_UP_FILLED: Step[] = [
+  { fill: 'signUp.name', text: 'Gạch Men Phú Quý' },
+  { fill: 'signUp.code', text: 'phu-quy' },
+  { fill: 'signUp.contactName', text: 'Lê Hoàng Nam' },
+  { fill: 'signUp.contactPhone', text: '0903 111 222' },
+  { fill: 'signUp.password', text: 'Gach-Men-2026!' },
+];
+
 /** The add form, filled as the root fills it: the same steps for the form and for what follows. */
 const FILLED_ADD: Step[] = [
   { fill: 'addPerson.name', text: 'Mai Linh' },
@@ -523,6 +532,60 @@ export const WALKS: Walk[] = [
         question:
           'Does the card show the formatted name and the description as the company would want them?',
       },
+      {
+        id: '17-sign-up',
+        number: 17,
+        path: 'main',
+        scene: { path: '/sign-up', steps: SIGN_UP_FILLED },
+        sentence: {
+          en: 'A company asks for its address: the form filled, in credo’s own card',
+          vi: 'Một công ty xin địa chỉ: biểu mẫu đã điền, trong thẻ riêng của credo',
+        },
+        question: 'Would a company know what to fill in, and that an operator checks it first?',
+      },
+      {
+        id: '18-sign-up-taken',
+        number: 18,
+        path: 'wrong',
+        scene: {
+          path: '/sign-up',
+          steps: [
+            ...SIGN_UP_FILLED.filter((step) => !('fill' in step && step.fill === 'signUp.code')),
+            { fill: 'signUp.code', text: 'hoa-sen' },
+            { press: 'signUp.submit' },
+          ],
+        },
+        sentence: {
+          en: 'The address asked for is taken: said on the address itself',
+          vi: 'Địa chỉ xin đã có người dùng: báo ngay ở ô địa chỉ',
+        },
+        question: 'Does it say the address is taken, and where to change it?',
+      },
+      {
+        id: '19-sign-up-sent',
+        number: 19,
+        path: 'main',
+        scene: {
+          path: '/sign-up',
+          steps: [...SIGN_UP_FILLED, { press: 'signUp.submit' }, { see: 'signUp.sentTitle' }],
+        },
+        sentence: {
+          en: 'Sent for approval: what happens next and which address to open',
+          vi: 'Đã gửi chờ duyệt: điều gì xảy ra tiếp theo và mở địa chỉ nào',
+        },
+        question: 'Does it say what happens next, and which address to open once approved?',
+      },
+      {
+        id: '20-address-waiting',
+        number: 20,
+        path: 'wrong',
+        scene: { path: '/login?client-code=son-ha', steps: [{ see: 'signUp.waitingTitle' }] },
+        sentence: {
+          en: 'The address of a company still waiting: no form, and why',
+          vi: 'Địa chỉ của công ty còn đang chờ duyệt: không có biểu mẫu, và lý do',
+        },
+        question: 'Would a person opening it know the company opens once an operator approves it?',
+      },
     ],
   },
   {
@@ -676,6 +739,54 @@ export const WALKS: Walk[] = [
         },
         question:
           'Would you know which box the company will live on, and how much room each box has left?',
+      },
+      {
+        id: 'op-11-waiting',
+        number: 11,
+        path: 'main',
+        scene: {
+          path: '/operator/clients',
+          operator: true,
+          steps: [{ see: 'operator.waitingTitle' }],
+        },
+        sentence: {
+          en: 'The clients’ page with the company waiting for approval above the list: who asked, the phone, the day',
+          vi: 'Trang khách hàng, công ty đang chờ duyệt nằm trên danh sách: ai xin, số điện thoại, ngày xin',
+        },
+        question: 'Would you see who is waiting, who to call and since when?',
+      },
+      {
+        id: 'op-12-refuse-asked',
+        number: 12,
+        path: 'main',
+        scene: {
+          path: '/operator/clients',
+          operator: true,
+          steps: [{ press: 'operator.refuse', after: ': Sơn Hà Vật Liệu' }],
+        },
+        sentence: {
+          en: 'Refusing a waiting company asks first',
+          vi: 'Từ chối công ty đang chờ thì được hỏi trước',
+        },
+        question: 'Does the question say what refusing does?',
+      },
+      {
+        id: 'op-13-approved',
+        number: 13,
+        path: 'main',
+        scene: {
+          path: '/operator/clients',
+          operator: true,
+          steps: [
+            { press: 'operator.approve', after: ': Sơn Hà Vật Liệu' },
+            { see: 'Sơn Hà Vật Liệu', text: true },
+          ],
+        },
+        sentence: {
+          en: 'An approval: the company is made, and open at its address',
+          vi: 'Đã duyệt: công ty được tạo, và mở tại địa chỉ của mình',
+        },
+        question: 'Does it say the company is approved and open, and is it in the list?',
       },
     ],
   },

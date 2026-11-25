@@ -206,13 +206,22 @@ diff" is `git diff -U0 -- visual/src/resolved.pinned.txt | grep '^+[a-z]' | cut 
 
 ### Waiting for your word: the walks and the long checks
 
-- [ ] **8. The walk.** The doors' walk (`walk/specs/piece-1.spec.ts`, beside its unknown company) gains
+- [x] **8. The walk.** The doors' walk (`walk/specs/piece-1.spec.ts`, beside its unknown company) gains
       four scenes, the form, an address taken, sent, the address waiting; the operator's walk gains
       three, the waiting list, the refusal asked, an approval; the generator writes the data set's
       request. No new walk, so `walk/run.sh`'s list stays. Rows 20 to 22. _Done when:_
       `visual`'s, `walk`'s, `ui`'s and `scripts`' gates, the pinned diff naming the new scenes and the
       two moved alone. **20 min** (241.2's step 7: 14; piece 125's step 4, a seed change through the
       scripts' gate: 20).
+      _Done 2026-11-25 22:21:_ `walk`'s, `visual`'s, `ui`'s and `scripts`' gates, each run after the last edit it
+      reads, each exit 0; row 20 red (the list empty), then green in `generator.test.ts`; row 21
+      held by `walks.test.ts`'s new counts (the doors' walk 20, the operator's 13); row 22 replayed in
+      `SignUpPage.test.tsx` and `OperatorWalk.test.tsx`; the pinned diff names the seven new scenes
+      alone, `9-unknown-company`, `op-5-dashboard` and `dc-4-gone` having moved in steps 3 and 4. The
+      moved list of step 9 is those three. The sign-up scenes' names are `17-sign-up` to
+      `20-address-waiting`, the operator's `op-11-waiting` to `op-13-approved`. The capture test's
+      small walk is now the first walk's mock screens alone, no walk being mock-only any more.
+
 - [ ] **9. Your walk run, then the bases.** The run line below, green; the bases committed alone; the
       same walks without flags, 0 moved. **2 min** (241.2's: 1 and 1).
 - [ ] **10. The recap and the landing.** The recap and its products row; the landing; the whole check,

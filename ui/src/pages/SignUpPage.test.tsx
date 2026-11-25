@@ -40,6 +40,30 @@ describe('15: the sign-up page opens at any address, before any company’s boot
   });
 });
 
+describe('the walk spec’s sign-up screens 17 to 20, replayed on the real router', () => {
+  it('WK6: the walk’s form, filled as the walk fills it, is sent with its password and says it was sent', async () => {
+    const { api } = openApp('/sign-up');
+    await fill('phu-quy', 'Gach-Men-2026!');
+    await send();
+
+    expect(await screen.findByRole('heading', { name: words.signUp.sentTitle })).toBeTruthy();
+    expect(api.signUp).toHaveBeenCalledOnce();
+  });
+
+  it('WK6: the walk’s address held by a company is said taken, and the address of a company waiting shows its screen', async () => {
+    const taken = openApp('/sign-up');
+    await fill('hoa-sen', 'Gach-Men-2026!');
+    await send();
+    expect(await screen.findByText(words.signUp.taken)).toBeTruthy();
+    taken.unmount();
+
+    openApp('/login?client-code=son-ha', { out: true });
+    expect(
+      await screen.findByRole('heading', { level: 2, name: words.signUp.waitingTitle }),
+    ).toBeTruthy();
+  });
+});
+
 describe('the sign-up page speaks the device’s language', () => {
   /** A device that keeps only what a test tells it, drawn on the app at /sign-up. */
   const drawnWith = (kept: Record<string, string>) => {

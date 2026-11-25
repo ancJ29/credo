@@ -85,25 +85,27 @@ describe('the walks', () => {
     expect(() => resolveDrawn(lacking(99, 'empty'), SCREENS)).toThrow('"99 empty"');
   });
 
-  it('18: holds piece 1’s eight screens in the app frame’s numbers, screen 9 after them, the white frame’s 10 and 11, the sign-in wait’s 12, the preview’s 13, and the formatted name’s 14 to 16', () => {
+  it('18: holds piece 1’s eight screens in the app frame’s numbers, screen 9 after them, the white frame’s 10 and 11, the sign-in wait’s 12, the preview’s 13, and the formatted name’s 14 to 16, then the sign-up’s four as 17 to 20', () => {
     const screens = WALKS[0].screens;
 
     expect(screens.map((screen) => screen.number)).toEqual([
-      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
+      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20,
     ]);
     expect(screens.filter((screen) => screen.path === 'main').map((s) => s.number)).toEqual([
-      1, 3, 4, 5, 10, 11, 13, 14, 15, 16,
+      1, 3, 4, 5, 10, 11, 13, 14, 15, 16, 17, 19,
     ]);
     expect(screens.filter((screen) => screen.path === 'wrong').map((s) => s.number)).toEqual([
-      2, 6, 7, 8, 9, 12,
+      2, 6, 7, 8, 9, 12, 18, 20,
     ]);
   });
 
-  it('puts the operator’s walk after piece 1’s: ten screens, numbered 1 to 10, each a scene and none from the mock, the failures on the wrong path', () => {
+  it('puts the operator’s walk after piece 1’s: thirteen screens, numbered 1 to 13, each a scene and none from the mock, the failures on the wrong path', () => {
     const walk = WALKS[1];
 
     expect(walk.id).toBe('operator-setup');
-    expect(walk.screens.map((screen) => screen.number)).toEqual([1, 2, 3, 4, 5, 6, 7, 8, 9, 10]);
+    expect(walk.screens.map((screen) => screen.number)).toEqual([
+      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13,
+    ]);
     expect(walk.screens.filter((s) => s.path === 'wrong').map((s) => s.id)).toEqual([
       'op-4-code-taken',
       'op-7-list-failed',
@@ -122,7 +124,14 @@ describe('the walks', () => {
     const firstMake = body.indexOf('press(words.operator.make)');
 
     expect(firstMake).toBeGreaterThan(0);
-    for (const id of ['op-5-dashboard', 'op-6-coming-soon', 'op-7-list-failed']) {
+    for (const id of [
+      'op-5-dashboard',
+      'op-6-coming-soon',
+      'op-7-list-failed',
+      'op-11-waiting',
+      'op-12-refuse-asked',
+      'op-13-approved',
+    ]) {
       const at = body.indexOf(`await at('${id}'`);
       expect(at, id).toBeGreaterThan(0);
       expect(at, id).toBeLessThan(firstMake);
