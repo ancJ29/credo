@@ -277,7 +277,7 @@ async function walk(page: Page, language: Language, width: number) {
   // 9. A link that names no company: the BFF's own 404, and credo's colour, never the client's.
   await page.goto(`/login?client-code=${NO_SUCH_COMPANY}`);
   await expect(
-    page.getByRole('heading', { level: 1, name: words.unknownClient.title }),
+    page.getByRole('heading', { level: 2, name: words.unknownClient.title }),
   ).toBeVisible();
   await at('9-unknown-company');
 

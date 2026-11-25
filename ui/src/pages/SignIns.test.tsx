@@ -267,6 +267,11 @@ describe('the walk spec’s own-passkey and person-passkey scenes, replayed on t
     await userEvent.click(screen.getByRole('button', { name: words.ownPasskeys.removeConfirm }));
     expect((await screen.findByRole('status')).textContent).toBe(words.ownPasskeys.removed);
     expect(screen.queryByRole('cell', { name: 'Windows · Chrome' })).toBeNull();
+    // The walk's finder for the table's scroll container, and its reset before office-10's picture.
+    const viewport = screen.getByRole('table').closest('.mantine-ScrollArea-viewport');
+    expect(viewport).toBeTruthy();
+    if (viewport) viewport.scrollLeft = 0;
+    expect(viewport?.scrollLeft).toBe(0);
     expect(screen.getByRole('cell', { name: 'iPhone · Safari' })).toBeTruthy();
   });
 

@@ -639,6 +639,13 @@ async function walk(page: Page, language: Language, width: number) {
   await press(`${words.ownPasskeys.remove}: Windows · Chrome`);
   await press(words.ownPasskeys.removeConfirm);
   await expect(page.getByRole('status')).toHaveText(words.ownPasskeys.removed);
+  // The Remove click scrolled the table sideways at 768 and the shrunk table keeps whatever offset
+  // is left, a few pixels apart from one pass to the next: back to the left edge, then the picture.
+  const passkeys = page
+    .getByRole('table')
+    .locator('xpath=ancestor::*[contains(@class, "mantine-ScrollArea-viewport")]');
+  await passkeys.evaluate((viewport) => viewport.scrollTo({ left: 0 }));
+  await expect.poll(() => passkeys.evaluate((viewport) => viewport.scrollLeft)).toBe(0);
   await at('office-10-passkey-removed');
 
   // The phone's walk: a QR code opened on a phone that is signed out.

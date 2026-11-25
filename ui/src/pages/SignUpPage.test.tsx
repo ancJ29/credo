@@ -41,6 +41,20 @@ describe('15: the sign-up page opens at any address, before any company’s boot
 });
 
 describe('the walk spec’s sign-up screens 17 to 20, replayed on the real router', () => {
+  it('WK6: the walk’s link that names no company shows the unknown screen titled at level 2', async () => {
+    openApp('/login?client-code=no-such-company', {
+      out: true,
+      override: (spied) => {
+        spied.getConfig.mockRejectedValue(new ApiError(404, true));
+      },
+    });
+
+    expect(
+      await screen.findByRole('heading', { level: 2, name: words.unknownClient.title }),
+    ).toBeTruthy();
+    expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Credo');
+  });
+
   it('WK6: the walk’s form, filled as the walk fills it, is sent with its password and says it was sent', async () => {
     const { api } = openApp('/sign-up');
     await fill('phu-quy', 'Gach-Men-2026!');
