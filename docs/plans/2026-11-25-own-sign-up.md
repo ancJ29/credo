@@ -147,10 +147,16 @@ diff" is `git diff -U0 -- visual/src/resolved.pinned.txt | grep '^+[a-z]' | cut 
       old gallery (no new state), then green. The decisions row is `docs/decisions.md`'s first. 25 keys (818
       words), not about 26. Two states of the unknown and waiting screens sit in `DoorPage`'s entry, not a new
       entry; `DoorCard`'s own file is untouched, three states are added to its gallery entry.
-- [ ] **2. The wire and the data set.** In `shared`: the five routes, the request's and the list's
+- [x] **2. The wire and the data set.** In `shared`: the five routes, the request's and the list's
       schemas with their bounds, the record's key and schema, the bound of 20, one waiting request in
       the data set at a fixed noon-UTC day. _Done when:_ `shared`'s, `ui`'s and `visual`'s gates, the
       pinned diff empty. **17 min** (241.2's step 2: 17).
+      _Done 2026-11-25 15:03:_ `shared`'s, `ui`'s and `visual`'s gates, each run after the last edit, and the citation
+      test, run last, each exit 0; the pinned diff empty; the step's cases red (no `signups` module, no
+      `DEMO_SIGN_UPS`), then green. New: `shared/src/signups.ts` (the request's and the list's schemas, the
+      record's, the bound of 20, the waiting detail, the routes), `recordKeys.signUp` and `signUpPrefix`,
+      `DEMO_SIGN_UPS` (one request, sent 3 November at noon UTC). The routes are four paths, not five: the
+      public send and the operator's list, refusal and approval.
 - [ ] **3. The sign-up and the waiting screen, on the fake.** `ui/src/pages/SignUpPage.tsx`, the path
       in `App.tsx`, the boot's waiting phase and its screen, `UnknownClient`'s link, the api calls and
       their fake answers. Rows 14 to 16, 18's first half. _Done when:_ `ui`'s and `visual`'s gates,

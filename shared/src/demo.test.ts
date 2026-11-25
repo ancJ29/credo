@@ -11,6 +11,7 @@ import {
   DEMO_OPERATOR_ID,
   DEMO_PASSKEYS,
   DEMO_PERSON_PASSKEYS,
+  DEMO_SIGN_UPS,
   DEMO_PERSON_PASSKEYS_CODE,
   DEMO_TEAM,
   DEMO_PHOTOS,
@@ -22,6 +23,7 @@ import { dayIsValid, fieldValueIsValid } from './fields';
 import { photoIsValid } from './photo';
 import { clientCodeSchema } from './records';
 import { ownPasskeyListReplySchema } from './signins';
+import { signUpListReplySchema } from './signups';
 import { employeeSchema, staffConfig, staffSetupSchema } from './staff';
 import {
   joinTokenSchema,
@@ -105,6 +107,23 @@ describe('the demo clients', () => {
       expect(clientCodeSchema.safeParse(client.code).success, client.code).toBe(true);
       expect(new Date(client.madeAt).getUTCHours(), client.code).toBe(12);
       expect(new Date(client.madeAt).getUTCMinutes(), client.code).toBe(0);
+    }
+  });
+});
+
+describe('the data set’s company waiting for approval', () => {
+  it('20: holds one waiting request, sent at noon UTC before the data set’s today, on a code no company holds', () => {
+    expect(DEMO_SIGN_UPS).toHaveLength(1);
+    expect(signUpListReplySchema.safeParse({ signUps: DEMO_SIGN_UPS }).success).toBe(true);
+    for (const one of DEMO_SIGN_UPS) {
+      expect(new Date(one.sentAt).getUTCHours(), one.code).toBe(12);
+      expect(new Date(one.sentAt).getUTCMinutes(), one.code).toBe(0);
+      expect(one.sentAt, one.code).toBeLessThan(Date.UTC(2026, 10, 4));
+      expect(clientCodeSchema.safeParse(one.code).success, one.code).toBe(true);
+      expect(
+        DEMO_CLIENTS.map((client) => client.code),
+        one.code,
+      ).not.toContain(one.code);
     }
   });
 });

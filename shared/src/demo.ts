@@ -140,6 +140,24 @@ export const DEMO_CLIENTS: { code: string; name: string; madeAt: number }[] = [
   { code: 'binh-an', name: 'Bình An', madeAt: Date.UTC(2026, 9, 21, 12) },
 ];
 
+/** The company waiting for a credo operator's approval, as the operator's list shows it: an invented
+ * company, never a real client's, sent at noon UTC the day before the data set's today. */
+export const DEMO_SIGN_UPS: {
+  code: string;
+  name: string;
+  contactName: string;
+  contactPhone: string;
+  sentAt: number;
+}[] = [
+  {
+    code: 'son-ha',
+    name: 'Sơn Hà Vật Liệu',
+    contactName: 'Lê Minh Châu',
+    contactPhone: '0903 555 012',
+    sentAt: Date.UTC(2026, 10, 3, 12),
+  },
+];
+
 /** The services the status page shows, fixed at their source so the fake's screens and the stack's
  * read the same: one build for the app, the BFF and c-storage (the commit they were built from,
  * as a short hash); how long the BFF and c-storage took; and when it was last checked, at noon UTC
