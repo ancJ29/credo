@@ -17,7 +17,7 @@ flowchart LR
 
 ## What was proved
 
-- Each new row was seen red on the old code, then green. The pinned diff named only the settings screens after the screens, and only the three new ones after the walk.
+- Each new row that could fail was seen red on the old code, then green; the rows that already held stayed green. The tab's title and the page's language are held by jsdom tests only; the walk's own browser check is item 693, filed. The pinned diff named only the settings screens after the screens, and only the three new ones after the walk.
 - Your walk run of 25 November (14:40 to 14:55) was green: the admin walk moved none between its two passes, 48 pictures moved against the old bases and 18 are new; the office's settings picture moved. An earlier run, 13:41, went red on a wait in the new step, fixed in the spec.
 - Item 681 is fixed; item 683 is filed: a company's new passkey is still made for "Credo", until milestone 4.
 

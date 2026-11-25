@@ -1,3 +1,4 @@
+import { MAX_DESCRIPTION, MAX_FORMATTED_NAME } from '@credo/shared';
 import { Stack, Text, Textarea, TextInput } from '@mantine/core';
 import { useTranslation } from 'react-i18next';
 import { BrandName } from '../components/atoms/BrandName';
@@ -29,6 +30,7 @@ export function IdentityFields({
           label={t('settings.formattedName')}
           description={t('settings.formattedNameHint')}
           rows={2}
+          maxLength={MAX_FORMATTED_NAME}
           value={formattedName}
           onChange={(event) => onChange('formattedName', event.currentTarget.value)}
         />
@@ -40,6 +42,7 @@ export function IdentityFields({
       <TextInput
         label={t('settings.description')}
         description={t('settings.descriptionHint')}
+        maxLength={MAX_DESCRIPTION}
         value={description}
         onChange={(event) => onChange('description', event.currentTarget.value)}
       />
