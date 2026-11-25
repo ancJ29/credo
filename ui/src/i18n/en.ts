@@ -85,6 +85,20 @@ export const en = {
     preview: 'Preview',
     previewHeader: "The header, as the company's people see it",
     previewCard: "The sign-in card, as the company's people see it",
+    tabIcon: 'Tab icon',
+    tabIconHint: "Optional: a square picture shown in the browser's tab.",
+    tabIconChoose: 'Upload tab icon',
+    tabIconRemove: 'Remove tab icon',
+    appIcon: 'Phone app icon',
+    appIconHint:
+      "Optional: a square picture of at least 512 pixels, shown on a phone's home screen.",
+    appIconChoose: 'Upload phone app icon',
+    appIconRemove: 'Remove phone app icon',
+    iconDrawn:
+      'None uploaded: a mark drawn from the color and the first letter of the name is used.',
+    iconTooSmall: 'The picture must be at least 512 pixels on its shorter side.',
+    iconPreviewTab: "In the browser's tab",
+    iconPreviewHome: "On a phone's home screen",
     formattedName: 'Name with formatting',
     formattedNameHint:
       'Optional, in HTML: bold <b>, a colour <span style="color:#rrggbb"> and a line break <br> are kept, the rest dropped; the tab and screen readers keep the name above.',

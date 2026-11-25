@@ -40,12 +40,12 @@ function rowsOf(text: string): string[][] {
 }
 
 describe('words out', () => {
-  it('writes a row for each of the 780 keys in the English order under its header', async () => {
+  it('writes a row for each of the 792 keys in the English order under its header', async () => {
     const { status, folder } = await run(['out', 'p1.csv']);
     expect(status).toBe(0);
     const rows = rowsOf(await readFile(join(folder, 'p1.csv'), 'utf8'));
     expect(rows[0]).toEqual(['key', 'English', 'Vietnamese', 'Note']);
-    expect(rows).toHaveLength(781);
+    expect(rows).toHaveLength(793);
     expect(rows[1]).toEqual(['app.name', 'Credo', 'Credo', '']);
     expect(rows.map((row) => row[0]).slice(1, 4)).toEqual([
       'app.name',
@@ -61,7 +61,7 @@ describe('words out', () => {
     expect([...bytes.subarray(0, 3)]).toEqual([0xef, 0xbb, 0xbf]);
     const text = bytes.toString('utf8');
     expect(text.endsWith('\r\n')).toBe(true);
-    expect(text.split('\r\n')).toHaveLength(782);
+    expect(text.split('\r\n')).toHaveLength(794);
     expect(text.replaceAll('\r\n', '')).not.toMatch(/[\r\n]/);
   });
 
@@ -409,7 +409,7 @@ describe('words in', () => {
     expect(alike.out).toBe(`already so Vietnamese nav.orders (vi.ts line 31)\n${NONE}`);
   });
 
-  it('finds each of the 780 keys in each word file, as the app reads it', async () => {
+  it('finds each of the 792 keys in each word file, as the app reads it', async () => {
     const flatten = (tree: Record<string, unknown>, prefix = ''): [string, string][] =>
       Object.entries(tree).flatMap(([name, value]) =>
         typeof value === 'string'
@@ -419,8 +419,8 @@ describe('words in', () => {
     for (const code of ['en', 'vi'] as const) {
       const found = findWords(await readFile(join(REPO, 'ui/src/i18n', `${code}.ts`), 'utf8'));
       const read = flatten(DICTIONARIES[code]);
-      expect(read).toHaveLength(780);
-      expect(found.size).toBe(780);
+      expect(read).toHaveLength(792);
+      expect(found.size).toBe(792);
       for (const [key, word] of read) expect(found.get(key)?.text).toBe(word);
     }
   });

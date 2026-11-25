@@ -45,11 +45,12 @@ import { LISTS } from '../listSheet';
 import { numberOf, priceOf } from '../number';
 import { ListTable } from '../parts/ListTable';
 import { BrandPreview } from '../parts/BrandPreview';
+import { IconPreview } from '../parts/IconPreview';
 import { IdentityFields } from '../parts/IdentityFields';
 import { DetailColumns, FieldPair } from '../parts/DetailCards';
 import { PageShell } from '../parts/PageShell';
 import { SectionCard } from '../components/organisms/SectionCard';
-import { MAX_LOGO_BYTES } from '@credo/shared';
+import { drawIcon, MAX_LOGO_BYTES, pngOf, storedDeflate } from '@credo/shared';
 import { FilterBar } from './Fields';
 import { PALETTES } from './palettes';
 import { PICTURE } from './Photos';
@@ -1073,6 +1074,33 @@ function FormattedPreview() {
     </Stack>
   );
 }
+
+/** The company's drawn icon, `side` pixels square, as a PNG data URL: the pixels the back end draws where none is uploaded. */
+function drawnIconUrl(name: string, side: number) {
+  const png = pngOf(
+    drawIcon({ name, code: 'an-phat', colour: PALETTES[2].shades[7] }, side),
+    storedDeflate,
+  );
+  let binary = '';
+  for (const byte of png) binary += String.fromCharCode(byte);
+  return `data:image/png;base64,${btoa(binary)}`;
+}
+
+/** The preview of the tab icon and the phone-app icon: one uploaded, the drawn ones, and a long name cut at one line. */
+function IconPreviewSample({ shown }: { shown: 'uploaded' | 'drawn' | 'long' }) {
+  const words = SAMPLES[useLanguage()];
+  const name = shown === 'long' ? `${words.shop} ${words.shopDescription}` : words.shop;
+  const [tab, app] =
+    shown === 'uploaded' ? [PICTURE, PICTURE] : [drawnIconUrl(name, 64), drawnIconUrl(name, 192)];
+  return <IconPreview name={name} tabIcon={tab} appIcon={app} />;
+}
+
+/** The preview of the two icons, uploaded, drawn from the colour and the first letter, and with a name too long for one line. */
+export const IconPreviewStates = [
+  { name: 'Uploaded', node: <IconPreviewSample shown="uploaded" /> },
+  { name: 'Drawn', node: <IconPreviewSample shown="drawn" /> },
+  { name: 'A long name', node: <IconPreviewSample shown="long" /> },
+];
 
 /** The identity fields as the gallery draws them: what is typed is kept, so the preview of the formatted name redraws. */
 function IdentityFieldsSample({ formatted }: { formatted?: boolean }) {
