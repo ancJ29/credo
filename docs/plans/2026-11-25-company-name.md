@@ -196,9 +196,10 @@ is `git diff -U0 -- visual/src/resolved.pinned.txt | grep '^+[a-z]' | cut -d' ' 
 - [x] **6. Your walk run, then the bases.** The run below, green; the bases committed alone, each
       walk's count matching the log; the same walks without flags, 0 moved. **2 min** (250.1's step 5: 2).
       _Done 2026-11-25, build 250.2 step 6, sonnet:_ your walk run of 25 November (14:40 to 14:55) green: the admin walk's 96 pictures moved none from the first pass to the second, 48 moved against the old bases and 18 are new; the office's 240 pictures moved none either way and 6 moved against the bases, `office-5-settings`; the bases commit holds those 72 pictures alone, 48 moved and 18 new for piece 1 and 6 moved for piece 2, as the run's comparison lines say; the second run without flags was not made, the same run's two passes at 0 moved standing for it, as piece 250.1's step 5 did. An earlier run of 13:41 went red in piece 1 on the new step 16's wait, fixed in the spec.
-- [ ] **7. The recap and the landing.** The recap and its products row; `pre-merge` taken in, the
+- [x] **7. The recap and the landing.** The recap and its products row; `pre-merge` taken in, the
       gates again, the landing; the whole check; `pre-main-review` before `main`, at most once a push.
       **43 min** (250.1's step 6: a recap 3; a whole check and a review about 20 each).
+      _Done 2026-11-25, build 250.2 step 7, sonnet:_ the recap and its products row written; the landing on `pre-merge`, the whole check green, the review red on three Medium and two Low blocks, fixed in one pass and landed again; `main` moved, pushed by the human, looks 1 to 3 yes on 25 November; the citation test green at the closing.
 
 Total: 133 minutes, 43 of them the landing's.
 
