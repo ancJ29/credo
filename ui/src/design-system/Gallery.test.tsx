@@ -57,6 +57,15 @@ const HEADINGS: Record<string, string> = {
 };
 
 const BASE = '/48b74d079/gallery';
+/** The confirm page's six states 241.4 added after the add page's two, in drawing order. */
+const NEW_PASSKEY_STATES = [
+  'Your passkeys',
+  'A removal asked',
+  'A passkey removed',
+  'No passkey yet',
+  'A person’s passkeys',
+  'Their removal asked',
+];
 
 function open(path: string) {
   return render(
@@ -541,7 +550,7 @@ describe('Gallery', () => {
         row.textContent,
         row.getAttribute('href'),
       ]),
-    ).toContainEqual([en.user.passkey, '/passkey']);
+    ).toContainEqual([en.user.passkey, '/passkeys']);
     cleanup();
     // 4. The confirm page: two phone states, the one press to add, then the added message.
     const confirm = ENTRIES.find((each) => each.name === 'The confirm page')!;
@@ -551,8 +560,9 @@ describe('Gallery', () => {
       'Made',
       'A passkey to add',
       'A passkey added',
+      ...NEW_PASSKEY_STATES,
     ]);
-    expect(confirm.states.slice(3).map((state) => 'phone' in state && state.phone)).toEqual([
+    expect(confirm.states.slice(3, 5).map((state) => 'phone' in state && state.phone)).toEqual([
       true,
       true,
     ]);
@@ -570,14 +580,102 @@ describe('Gallery', () => {
     const add = toAdd.getByRole('button', { name: en.ownPasskey.submit });
     expect(add.getAttribute('data-variant')).toBe('filled');
     expect(toAdd.getAllByRole('button')).toHaveLength(1);
+    expect(toAdd.getByRole('link', { name: en.ownPasskeys.title }).getAttribute('href')).toBe(
+      '/passkeys',
+    );
     expect(toAdd.queryByRole('status')).toBeNull();
     const added = bodyOf('A passkey added');
     expect(added.getByRole('status').textContent).toContain(en.ownPasskey.added);
     expect(added.getByText(en.ownPasskey.addedText)).toBeDefined();
     expect(added.queryByRole('button', { name: en.ownPasskey.submit })).toBeNull();
+    expect(added.getByRole('link', { name: en.ownPasskeys.title }).getAttribute('href')).toBe(
+      '/passkeys',
+    );
     expect(words.ownPasskey.submit).toBe('Thêm khóa truy cập');
-    expect(words.user.passkey).toBe('Thêm khóa truy cập');
-    expect(en.user.passkey).toBe('Add a passkey');
+    expect(words.user.passkey).toBe('Khóa truy cập');
+    expect(en.user.passkey).toBe('Passkeys');
+  });
+
+  it('241.4 case 18: the gallery draws the passkey list’s states, the removal’s question and the person’s panel in the dictionary’s words', () => {
+    const { en, vi: words } = DICTIONARIES;
+    const confirm = ENTRIES.find((each) => each.name === 'The confirm page')!;
+    expect(confirm.states.slice(5).map((state) => state.name)).toEqual(NEW_PASSKEY_STATES);
+    expect(confirm.states.slice(5).map((state) => 'phone' in state && state.phone)).toEqual([
+      true,
+      true,
+      true,
+      true,
+      false,
+      false,
+    ]);
+    drawn(confirm);
+    const bodyOf = (name: string, phone: boolean) => {
+      if (!phone) return within(part().getByRole('figure', { name }));
+      const frame = part().getByTitle<HTMLIFrameElement>(`${name}, at the phone’s width`);
+      act(() => {
+        fireEvent.load(frame);
+      });
+      return within(frame.contentDocument!.body);
+    };
+    // 1. The list: the heading, what a passkey is, three rows by device, added and last used, each its Remove.
+    const list = bodyOf('Your passkeys', true);
+    expect(list.getByRole('heading', { level: 2, name: en.ownPasskeys.title })).toBeDefined();
+    expect(list.getByText(en.ownPasskeys.text)).toBeDefined();
+    expect(list.getAllByRole('columnheader').map((cell) => cell.textContent)).toEqual([
+      en.ownPasskeys.colDevice,
+      en.passkey.colAdded,
+      en.passkey.colLastUsed,
+      '',
+    ]);
+    expect(list.getAllByRole('row')).toHaveLength(4);
+    expect(list.getAllByRole('row')[1].textContent).toContain('iPhone · Safari');
+    expect(list.getAllByRole('row')[2].textContent).toContain(en.passkey.never);
+    expect(list.getAllByRole('row')[3].textContent).toContain(en.ownPasskeys.deviceUnknown);
+    expect(
+      list.getAllByRole('button', { name: new RegExp(`^${en.ownPasskeys.remove}`) }),
+    ).toHaveLength(3);
+    expect(list.queryByText(en.ownPasskeys.removeAsk)).toBeNull();
+    expect(list.queryByRole('status')).toBeNull();
+    // 2. The question: what removing does, the press and the way to keep it.
+    const asked = bodyOf('A removal asked', true);
+    expect(asked.getByText(en.ownPasskeys.removeAsk)).toBeDefined();
+    expect(
+      asked
+        .getByRole('button', { name: en.ownPasskeys.removeConfirm })
+        .getAttribute('data-variant'),
+    ).toBe('filled');
+    expect(asked.getByRole('button', { name: en.ownPasskeys.removeCancel })).toBeDefined();
+    // 3. Removed: the message, one row fewer.
+    const removed = bodyOf('A passkey removed', true);
+    expect(removed.getByRole('status').textContent).toContain(en.ownPasskeys.removed);
+    expect(removed.getAllByRole('row')).toHaveLength(3);
+    expect(removed.queryByText(en.ownPasskeys.removeAsk)).toBeNull();
+    // 4. None yet: the line and the way to add, no table.
+    const none = bodyOf('No passkey yet', true);
+    expect(none.getByText(en.ownPasskeys.none)).toBeDefined();
+    expect(none.queryByRole('table')).toBeNull();
+    expect(none.getByRole('link', { name: en.ownPasskey.submit }).getAttribute('href')).toBe(
+      '/passkey',
+    );
+    // 5. The root's panel on a person's page, then its question, at a PC's width.
+    const name = SAMPLES.en.person;
+    const panel = bodyOf('A person’s passkeys', false);
+    expect(panel.getByRole('heading', { name: en.person.passkeysTitle })).toBeDefined();
+    expect(panel.getByText(en.person.passkeysHeld.replace('{{count}}', '2'))).toBeDefined();
+    expect(panel.getByText(en.person.passkeysText.replace('{{name}}', name))).toBeDefined();
+    expect(panel.getByRole('button', { name: en.person.passkeysRemove })).toBeDefined();
+    expect(panel.queryByRole('button', { name: en.person.passkeysCancel })).toBeNull();
+    const theirs = bodyOf('Their removal asked', false);
+    expect(
+      theirs.getByRole('button', { name: en.person.passkeysConfirm.replace('{{name}}', name) }),
+    ).toBeDefined();
+    expect(theirs.getByRole('button', { name: en.person.passkeysCancel })).toBeDefined();
+    expect(theirs.queryByRole('button', { name: en.person.passkeysRemove })).toBeNull();
+    // 6. The words: Vietnamese beside English, and the removal's question names the other devices.
+    expect(words.ownPasskeys.title).toBe('Khóa truy cập của bạn');
+    expect(words.person.passkeysCancel).toBe('Giữ lại');
+    expect(en.ownPasskeys.removeAsk).toContain('other devices will be signed out');
+    expect(en.person.passkeysFailed).toContain('could not be removed');
   });
 
   it('241.1 case 18: DoorCard and DoorPage say they are built and in use, and no line says a screen draws a card of its own', () => {
@@ -2119,18 +2217,14 @@ describe('Gallery', () => {
       { words: 'Customers', href: '/customers', arrow: true },
       { words: 'Products', href: '/products', arrow: true },
       { words: 'Change password', href: '/password', arrow: true },
-      { words: 'Add a passkey', href: '/passkey', arrow: true },
+      { words: 'Passkeys', href: '/passkeys', arrow: true },
       { words: 'Sign out', href: null, arrow: false },
     ]);
     expect(more.panels[1].lastElementChild!.textContent).toContain('Sign out');
     // 2. No other pages: the one panel of the person's link and sign-out.
     const bare = rowsOf('No other pages');
     expect(bare.panels).toHaveLength(1);
-    expect(bare.rows.map((row) => row.words)).toEqual([
-      'Change password',
-      'Add a passkey',
-      'Sign out',
-    ]);
+    expect(bare.rows.map((row) => row.words)).toEqual(['Change password', 'Passkeys', 'Sign out']);
   });
 
   it('236 case 11: the confirm page draws the warning first, red only on a delete, the made value with its copy button', () => {
@@ -2142,6 +2236,7 @@ describe('Gallery', () => {
       'Made',
       'A passkey to add',
       'A passkey added',
+      ...NEW_PASSKEY_STATES,
     ]);
     drawn(entry);
     const figure = (name: string) => within(part().getByRole('figure', { name }));

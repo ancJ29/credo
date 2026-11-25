@@ -130,13 +130,18 @@ touched package's `pnpm --filter @credo/<pkg> check`, exit 0 by its own code, pl
 test. "The pinned diff" is
 `git diff -U0 -- visual/src/resolved.pinned.txt | grep '^+[a-z]' | cut -d' ' -f1 | sort -u`.
 
-- [ ] **1. The gallery.** In the confirm page's entry (`ui/src/design-system/Pages.tsx#L908-L915`),
+- [x] **1. The gallery.** In the confirm page's entry (`ui/src/design-system/Pages.tsx#L908-L915`),
       beside the add page's two states, which gain the way back: "Your passkeys", "A removal asked",
       "A passkey removed" and "No passkey yet" at the phone's width, "A person's passkeys" and "Their
       removal asked" at a PC's, on the gallery's own names and days; the menu's "Passkeys"; the words
       below, their count in `scripts/src/words.test.ts`. Row 18 red first. _Done when:_ `ui`'s and
       `visual`'s gates, the scripts' `words.test.ts` and `fake.test.ts`, the pinned diff naming
       `lists-9-more` alone. **10 min** (241.2's step 1: 9; 241.1's: 10). Then point 1.
+      _Done 2026-11-25 12:29:_ `ui`'s and `visual`'s gates, the citation test and the scripts' `words.test.ts` and
+      `fake.test.ts` each exit 0; row 18 red with no new state, then green. Eighteen keys (793 words) and
+      `user.passkey` changed; the gallery's menu row links to `/passkeys`. The pinned diff is empty, not
+      `lists-9-more`: the hash holds resolved styles, never text, so the word's move shows in the walk's
+      pixels alone.
 - [ ] **2. The wire, the device's name, the data set.** In `shared`: the four routes, the list's item,
       `device` on a company's stored passkey, `deviceNameOf` and its tests, the two actions, Lan's two
       passkeys. Row 2's names red first. _Done when:_ `shared`'s, `ui`'s and `visual`'s gates, the

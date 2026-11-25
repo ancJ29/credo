@@ -45,7 +45,7 @@ export const vi: Dictionary = {
     language: 'Ngôn ngữ',
     signOut: 'Đăng xuất',
     password: 'Đổi mật khẩu',
-    passkey: 'Thêm khóa truy cập',
+    passkey: 'Khóa truy cập',
   },
   settings: {
     title: 'Cài đặt',
@@ -532,6 +532,15 @@ export const vi: Dictionary = {
     qrLink: 'Liên kết trong mã QR',
     qrOnce: 'Mã có hiệu lực 15 phút và chỉ dùng một lần. Tạo mã mới sẽ thay thế mã hiện tại.',
     qrFailed: 'Không thể tạo mã QR. Vui lòng thử lại.',
+    passkeysTitle: 'Khóa truy cập',
+    passkeysHeld: 'Số khóa truy cập: {{count}}',
+    passkeysText:
+      'Khi mất điện thoại, hãy gỡ hết: {{name}} bị đăng xuất trên mọi thiết bị và đăng nhập lại không cần khóa truy cập.',
+    passkeysRemove: 'Gỡ tất cả khóa truy cập',
+    passkeysConfirm: 'Gỡ khóa truy cập của {{name}}',
+    passkeysCancel: 'Giữ lại',
+    passkeysRemoved: 'Đã gỡ khóa truy cập. {{name}} đã bị đăng xuất trên mọi thiết bị.',
+    passkeysFailed: 'Không gỡ được khóa truy cập. Vui lòng thử lại.',
   },
   wait: {
     second: 'Quá nhiều lần thử sai. Vui lòng chờ {{count}} giây trước khi thử lại.',
@@ -561,6 +570,19 @@ export const vi: Dictionary = {
       'Lần sau, hãy nhấn Đăng nhập bằng khóa truy cập ở trang đăng nhập rồi dùng khuôn mặt, vân tay hoặc mã PIN của thiết bị.',
     tooOld: 'Để an toàn, hãy đăng xuất và đăng nhập lại, rồi thêm khóa truy cập.',
     off: 'Công ty của bạn đã tắt khóa truy cập.',
+  },
+  ownPasskeys: {
+    title: 'Khóa truy cập của bạn',
+    text: 'Mỗi khóa truy cập đăng nhập cho bạn trên thiết bị của nó bằng khuôn mặt, vân tay hoặc mã PIN. Mật khẩu của bạn vẫn dùng được.',
+    colDevice: 'Thiết bị',
+    deviceUnknown: 'Không rõ thiết bị',
+    none: 'Bạn chưa có khóa truy cập nào.',
+    remove: 'Gỡ',
+    removeAsk:
+      'Gỡ khóa truy cập này? Khóa sẽ không đăng nhập được nữa, và các thiết bị khác của bạn sẽ bị đăng xuất.',
+    removeConfirm: 'Gỡ khóa truy cập này',
+    removeCancel: 'Giữ lại',
+    removed: 'Đã gỡ khóa truy cập. Các cách đăng nhập khác của bạn vẫn dùng được.',
   },
   qrSignIn: {
     busyTitle: 'Đang đăng nhập...',

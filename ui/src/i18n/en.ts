@@ -44,7 +44,7 @@ export const en = {
     language: 'Language',
     signOut: 'Sign out',
     password: 'Change password',
-    passkey: 'Add a passkey',
+    passkey: 'Passkeys',
   },
   settings: {
     title: 'Settings',
@@ -530,6 +530,15 @@ export const en = {
     qrLink: 'QR sign-in link',
     qrOnce: 'Valid for one login within 15 minutes. Generating a new code replaces this one.',
     qrFailed: 'Failed to generate QR code. Please try again.',
+    passkeysTitle: 'Passkeys',
+    passkeysHeld: 'Passkeys held: {{count}}',
+    passkeysText:
+      'If a phone is lost, remove them all: {{name}} is signed out everywhere and signs in again without a passkey.',
+    passkeysRemove: 'Remove all passkeys',
+    passkeysConfirm: 'Remove {{name}}’s passkeys',
+    passkeysCancel: 'Keep them',
+    passkeysRemoved: 'Passkeys removed. {{name}} is signed out everywhere.',
+    passkeysFailed: 'The passkeys could not be removed. Please try again.',
   },
   wait: {
     second: 'Too many failed attempts. Please wait {{count}} second before retrying.',
@@ -559,6 +568,19 @@ export const en = {
       'Next time, press Sign in with a passkey on the sign-in page and use your face, fingerprint or device PIN.',
     tooOld: 'For your safety, sign out and sign in again, then add a passkey.',
     off: 'Passkeys are switched off for your company.',
+  },
+  ownPasskeys: {
+    title: 'Your passkeys',
+    text: 'Each passkey signs you in on its device with your face, fingerprint or PIN. Your password keeps working.',
+    colDevice: 'Device',
+    deviceUnknown: 'Device not recorded',
+    none: 'You have no passkey yet.',
+    remove: 'Remove',
+    removeAsk:
+      'Remove this passkey? It will no longer sign you in, and your other devices will be signed out.',
+    removeConfirm: 'Remove this passkey',
+    removeCancel: 'Keep it',
+    removed: 'Passkey removed. Your other ways to sign in keep working.',
   },
   qrSignIn: {
     busyTitle: 'Signing you in...',
