@@ -200,10 +200,16 @@ test. "The pinned diff" is
       on the absent route's 404), then green in `bff/src/passkeys-kept.route.test.ts` and `cross-tenant.route.test.ts`.
       The removal writes the passkeys first (`removeAllOwnPasskeys`), then `endSessions` on the person's
       sign-in record; the root's session stands.
-- [ ] **7. The walk.** As "The walk" below; the generator writes Lan's two. Rows 19 to 21. _Done
+- [x] **7. The walk.** As "The walk" below; the generator writes Lan's two. Rows 19 to 21. _Done
       when:_ `visual`'s, `walk`'s, `ui`'s and `scripts`' gates, row 20 red on the old counts, row 21
       replayed, the pinned diff naming the seven new scenes alone. **20 min** (241.2's step 7: 14 for
       five scenes; piece 125's step 4, a seed change through the scripts' gate: 20).
+      _Done 2026-11-25 21:35:_ `walk`'s, `visual`'s, `ui`'s and `scripts`' gates, each run after the last edit that
+      it reads, each exit 0; row 19 red (no passkey record), then green in `generator.test.ts`; row 20
+      red on the old counts, then green; row 21 replayed in `SignIns.test.tsx`; the pinned diff names
+      the seven new scenes alone. The generator writes Lan's two as one record under her minted id.
+      One press is by a device's name, which no dictionary key holds, so a step gains `after`, the
+      words that follow the key's in the control's own name. Seven Vietnamese questions added.
 - [ ] **8. The prose.** As "Prose that goes false". _Done when:_ the citation test. **5 min** (241.2's
       step 8: 5).
 - [ ] **9. Your walk run, then the bases.** After `pre-merge` is taken in, so 250.2's bases are under

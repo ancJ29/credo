@@ -450,27 +450,27 @@ describe('the walks', () => {
     expect(spec).toContain('status: 503');
   });
 
-  it('puts piece 2’s groups A, B, C and D in four walks, forty screens in all, each a scene and none from the mock', () => {
+  it('puts piece 2’s groups A, B, C and D in four walks, forty-seven screens in all, each a scene and none from the mock', () => {
     const piece2 = piece2Walks();
 
     expect(piece2.map((walk) => [walk.id, walk.person, walk.part, walk.screens.length])).toEqual([
       ['admin-staff-setup', 'admin', 'setup', 2],
-      ['admin-staff', 'admin', 'staff', 29],
-      ['office-staff', 'office', 'staff', 7],
+      ['admin-staff', 'admin', 'staff', 33],
+      ['office-staff', 'office', 'staff', 10],
       ['phone-sign-in', 'driver', 'staff', 2],
     ]);
     const screens = piece2.flatMap((walk) => walk.screens);
-    expect(screens).toHaveLength(40);
+    expect(screens).toHaveLength(47);
     expect(screens.filter((screen) => screen.mock !== undefined)).toEqual([]);
     expect(screens.filter((screen) => screen.scene === undefined)).toEqual([]);
-    expect(new Set(screens.map((screen) => screen.id)).size).toBe(40);
+    expect(new Set(screens.map((screen) => screen.id)).size).toBe(47);
     expect(piece2.map((walk) => walk.screens.map((screen) => screen.number))).toEqual([
       [1, 2],
       [
         1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
-        26, 27, 28, 29,
+        26, 27, 28, 29, 30, 31, 32, 33,
       ],
-      [1, 2, 3, 4, 5, 6, 7],
+      [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
       [1, 2],
     ]);
     expect(piece2[1].screens.filter((s) => s.path === 'wrong').map((s) => s.number)).toEqual([
@@ -505,7 +505,13 @@ describe('the walks', () => {
     const [, staff, office, phone] = piece2Walks().map((walk) => walk.screens.map((s) => s.id));
 
     expect(staff?.slice(16, 18)).toEqual(['staff-17-email', 'staff-18-qr']);
-    expect(office?.slice(5)).toEqual(['office-6-password', 'office-7-password-wrong']);
+    expect(office?.slice(5, 7)).toEqual(['office-6-password', 'office-7-password-wrong']);
+    // the passkeys' three follow the password's two, each as the manager who holds two
+    expect(office?.slice(7)).toEqual([
+      'office-8-passkeys',
+      'office-9-passkey-remove-asked',
+      'office-10-passkey-removed',
+    ]);
     expect(phone).toEqual(['phone-1-signed-in', 'phone-2-code-used']);
     // the email and the QR code are shown on a company that uses them; the phone is signed out
     const scenes = new Map(WALKS.flatMap((walk) => walk.screens).map((s) => [s.id, s.scene]));
@@ -517,7 +523,7 @@ describe('the walks', () => {
     expect(scenes.get('office-7-password-wrong')?.cue).toBe('changePassword:403');
   });
 
-  it('puts D’s four screens after B’s, numbered 19 to 22 as the plan names them, the file without the name column on the wrong path, the switch back on as 23, the email sign-in as 24 and the passkey’s five appended as 25 to 29', () => {
+  it('puts D’s four screens after B’s, numbered 19 to 22 as the plan names them, the file without the name column on the wrong path, the switch back on as 23, the email sign-in as 24 and the passkey’s five appended as 25 to 29, and the person’s passkeys’ four as 30 to 33', () => {
     const staff = WALKS.find((walk) => walk.id === 'admin-staff')!.screens;
 
     expect(staff.slice(18).map((screen) => [screen.id, screen.number, screen.path])).toEqual([
@@ -532,6 +538,10 @@ describe('the walks', () => {
       ['staff-27-passkey-sign-in', 27, 'main'],
       ['staff-28-passkey-not-given', 28, 'wrong'],
       ['staff-29-passkey-refused', 29, 'wrong'],
+      ['staff-30-no-passkey', 30, 'main'],
+      ['staff-31-person-passkeys', 31, 'main'],
+      ['staff-32-person-passkeys-asked', 32, 'main'],
+      ['staff-33-person-passkeys-removed', 33, 'main'],
     ]);
     expect(staff[21].scene!.steps).toEqual([
       { attach: 'import.file', file: 'import-no-name' },
@@ -597,15 +607,15 @@ describe('the walks', () => {
       expect(scene.path.startsWith('/'), scene.path).toBe(true);
     }
     expect(scenes.filter((scene) => scene.as !== undefined).map((scene) => scene.as)).toEqual([
-      // the passkey's first three, as the person the root gave an email
-      ...Array<string>(3).fill('EMP-0002'),
+      // the passkey's first three, as the person the root gave an email, and the fourth, who holds none
+      ...Array<string>(4).fill('EMP-0002'),
       'EMP-0001',
       'EMP-0001',
       'EMP-0001',
       'EMP-0005',
       'EMP-0003',
-      'EMP-0001',
-      'EMP-0001',
+      // the password's two and the manager's three passkey screens
+      ...Array<string>(5).fill('EMP-0001'),
       ...Array<string>(15).fill('EMP-0001'),
       ...Array<string>(5).fill('EMP-0005'),
       ...Array<string>(8).fill('EMP-0001'),

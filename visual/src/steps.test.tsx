@@ -176,6 +176,10 @@ describe('a scene’s steps', () => {
     );
     expect(out()).toBe('confirm');
 
+    // what follows the words in the control's own name is the step's, the same in each language
+    await runSteps(document.body, [{ press: 'archive.plain', after: ' Mai' }], WORDS, QUICK);
+    expect(out()).toBe('confirm');
+
     // a name the step does not give is left empty, and a plain word has none to fill
     await runSteps(document.body, [{ press: 'archive.plain' }], WORDS, QUICK);
     expect(out()).toBe('plain');

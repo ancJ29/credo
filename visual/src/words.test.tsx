@@ -218,6 +218,12 @@ const PROOF: Record<string, (w: (typeof DICTIONARIES)['en']) => string> = {
   'admin-staff:staff-27-passkey-sign-in': (w) => `heading: ${w.ownPasskey.title}`,
   'admin-staff:staff-28-passkey-not-given': (w) => `alert: ${w.passkey.notGiven}`,
   'admin-staff:staff-29-passkey-refused': (w) => `alert: ${w.auth.passkeyRefused}`,
+  'admin-staff:staff-30-no-passkey': (w) => `heading: ${w.ownPasskeys.title}`,
+  'admin-staff:staff-31-person-passkeys': (w) => `heading: ${w.person.passkeysTitle}`,
+  'admin-staff:staff-32-person-passkeys-asked': (w) =>
+    `button: ${w.person.passkeysConfirm.replace('{{name}}', 'Nguyễn Thị Lan')}`,
+  'admin-staff:staff-33-person-passkeys-removed': (w) =>
+    `status: ${w.person.passkeysRemoved.replace('{{name}}', 'Nguyễn Thị Lan')}`,
   'office-staff:office-1-menu': (w) => `link: ${w.nav.staff}`,
   'office-staff:office-2-add': (w) => `region: ${w.person.signInNotYet}`,
   'office-staff:office-3-forbidden': (w) => `heading: ${w.forbidden.title}`,
@@ -228,6 +234,9 @@ const PROOF: Record<string, (w: (typeof DICTIONARIES)['en']) => string> = {
   'admin-staff:staff-18-qr': (w) => `img: ${w.person.qrImage}`,
   'office-staff:office-6-password': (w) => `status: ${w.ownPassword.changed}`,
   'office-staff:office-7-password-wrong': (w) => `alert: ${w.ownPassword.wrong}`,
+  'office-staff:office-8-passkeys': (w) => `heading: ${w.ownPasskeys.title}`,
+  'office-staff:office-9-passkey-remove-asked': (w) => `button: ${w.ownPasskeys.removeConfirm}`,
+  'office-staff:office-10-passkey-removed': (w) => `status: ${w.ownPasskeys.removed}`,
   'phone-sign-in:phone-1-signed-in': (w) => `heading: ${w.staff.title}`,
   'phone-sign-in:phone-2-code-used': (w) => `heading: ${w.qrSignIn.refusedTitle}`,
   'admin-lists:lists-1-customers': (w) => `heading: ${w.nav.customers}`,

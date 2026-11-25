@@ -32,6 +32,8 @@ import {
   DEMO_INVITED_NAME,
   DEMO_OPERATOR_ID,
   DEMO_PASSKEYS,
+  DEMO_PERSON_PASSKEYS,
+  DEMO_PERSON_PASSKEYS_CODE,
   DEMO_ORDERS,
   DEMO_PHOTOS,
   DEMO_PRODUCTS,
@@ -375,6 +377,35 @@ describe('the demo generator', () => {
         const held = setup.departments.find((unit) => unit.id === person.department?.id);
         expect(held?.name ?? null, person.code).toBe(link(person.department));
       }
+    });
+
+    it('19: A stack’s company holds the data set’s two passkeys for EMP-0001 at their days, which the person’s own list shows, and no one else holds any', async () => {
+      const { storage } = memoryStorage();
+      const { code, people } = await seedClient(storage, 'walk-19');
+      const { call, signIn } = bff(storage, code);
+      const lan = (await signIn(DEMO_PERSON_PASSKEYS_CODE, people[DEMO_PERSON_PASSKEYS_CODE]))!;
+
+      const listed = (await call('GET', '/api/auth/passkeys', lan)).json<{
+        passkeys: {
+          id: string;
+          device: string | null;
+          addedAt: number;
+          lastUsedAt: number | null;
+        }[];
+      }>();
+
+      expect(listed.passkeys).toEqual(
+        DEMO_PERSON_PASSKEYS.map(({ id, device, addedAt, lastUsedAt }) => ({
+          id,
+          device,
+          addedAt,
+          lastUsedAt,
+        })),
+      );
+      const others = (await storage.listRecords('tenant.')).records.filter((record) =>
+        record.key.includes('.passkeys.'),
+      );
+      expect(others).toHaveLength(1);
     });
 
     it('The week of orders and requests the BFF lists is the data set’s, with its numbers, days, states, drivers and times', async () => {

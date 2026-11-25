@@ -31,6 +31,7 @@ import {
   type SessionReply,
   type StaffSetupDoc,
   type StoredAccount,
+  type StoredOwnPasskeys,
   type StoredRoster,
   AUTH_HEADER,
   recordKeys,
@@ -48,6 +49,8 @@ import {
   DEMO_INVITED_NAME,
   DEMO_OPERATOR_ID,
   DEMO_PASSKEYS,
+  DEMO_PERSON_PASSKEYS,
+  DEMO_PERSON_PASSKEYS_CODE,
   DEMO_PHOTOS,
   DEMO_PRODUCTS,
   DEMO_TEAM,
@@ -180,6 +183,25 @@ export async function seedClient(
         extra: person.extra,
         permissions: person.permissions,
       });
+    }
+    if (person.code === DEMO_PERSON_PASSKEYS_CODE) {
+      // The person's own list: two passkeys at their fixed days, one record under the minted id; the
+      // public keys are forgotten ones, so nothing signs in with them and the list alone shows them.
+      const key = recordKeys.tenant(made.id).passkeys(doc.employee.id);
+      const held: StoredOwnPasskeys = {
+        passkeys: DEMO_PERSON_PASSKEYS.map(({ id, device, addedAt, lastUsedAt }) => ({
+          id,
+          publicKey: forgottenPublicKey(),
+          counter: 0,
+          transports: ['internal'],
+          addedAt,
+          lastUsedAt,
+          device,
+        })),
+        spent: [],
+      };
+      /* v8 ignore next -- unreachable: the client and its person were made a moment ago */
+      if ((await storage.putRecord(key, held, null)) === 'moved') throw new SeededAlready();
     }
     const photo = DEMO_PHOTOS[person.id];
     if (photo) {

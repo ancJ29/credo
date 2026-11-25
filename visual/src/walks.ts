@@ -36,8 +36,16 @@ export type DeviceWidth = (typeof DEVICE_WIDTH)[Device];
 export type Step =
   /** Presses the button, link, switch or choice with these words; `within` names the group of
    * choices it sits in by the words of its label, `with` fills a word's `{{name}}`; `text` says the
-   * words are the control's own (the signed-in person's name on the menu button), not a key. */
-  | { press: string; within?: string; with?: Record<string, string>; text?: true }
+   * words are the control's own (the signed-in person's name on the menu button), not a key;
+   * `after` is what follows the words in the control's own name, the same in both languages (a
+   * device's name after "Remove"). */
+  | {
+      press: string;
+      within?: string;
+      with?: Record<string, string>;
+      text?: true;
+      after?: string;
+    }
   /** Replaces what is typed in the field with these words by `text`. */
   | { fill: string; text: string }
   /** Chooses, in the list with these words, the option that reads `option`. */
@@ -1269,6 +1277,58 @@ export const WALKS: Walk[] = [
         },
         question: 'Would a person whose passkey is not taken know to use their password?',
       },
+      {
+        id: 'staff-30-no-passkey',
+        number: 30,
+        path: 'main',
+        scene: { path: '/passkeys', as: 'EMP-0002', steps: [{ see: 'ownPasskeys.title' }] },
+        sentence: {
+          en: 'A person with no passkey yet: told so, and the way to add one',
+          vi: 'Người chưa có khóa truy cập nào: được báo, và có cách để thêm',
+        },
+        question: 'Would a person with no passkey know how to add one?',
+      },
+      {
+        id: 'staff-31-person-passkeys',
+        number: 31,
+        path: 'main',
+        scene: { path: personAt('EMP-0001'), steps: [{ see: 'person.passkeysTitle' }] },
+        sentence: {
+          en: 'The root on a person’s page: the passkeys they hold, and the way to remove them all',
+          vi: 'Root xem trang của một người: số khóa truy cập họ có, và cách gỡ hết',
+        },
+        question:
+          'Would the root see that this person holds passkeys, and how to remove them for a lost phone?',
+      },
+      {
+        id: 'staff-32-person-passkeys-asked',
+        number: 32,
+        path: 'main',
+        scene: { path: personAt('EMP-0001'), steps: [{ press: 'person.passkeysRemove' }] },
+        sentence: {
+          en: 'Removing a person’s passkeys asks first',
+          vi: 'Gỡ khóa truy cập của một người thì được hỏi trước',
+        },
+        question: 'Does it say the person will be signed out everywhere?',
+      },
+      {
+        id: 'staff-33-person-passkeys-removed',
+        number: 33,
+        path: 'main',
+        scene: {
+          path: personAt('EMP-0001'),
+          steps: [
+            { press: 'person.passkeysRemove' },
+            { press: 'person.passkeysConfirm', with: { name: 'Nguyễn Thị Lan' } },
+            { see: 'person.passkeysTitle' },
+          ],
+        },
+        sentence: {
+          en: 'The person’s passkeys removed, and the person signed out everywhere',
+          vi: 'Đã gỡ khóa truy cập của người đó, và họ bị đăng xuất khỏi mọi nơi',
+        },
+        question: 'Does it say the passkeys are gone and the person signed out?',
+      },
     ],
   },
   {
@@ -1367,6 +1427,51 @@ export const WALKS: Walk[] = [
           vi: 'Mật khẩu hiện tại không đúng',
         },
         question: 'Does this say what to fix?',
+      },
+      {
+        id: 'office-8-passkeys',
+        number: 8,
+        path: 'main',
+        scene: { path: '/passkeys', as: 'EMP-0001', steps: [{ see: 'ownPasskeys.title' }] },
+        sentence: {
+          en: 'One’s own passkeys: an iPhone’s, last used on 3 November, and a PC’s, never used',
+          vi: 'Các khóa truy cập của chính mình: của iPhone, dùng lần cuối ngày 3 tháng 11, và của máy tính, chưa dùng lần nào',
+        },
+        question: 'Would a person tell their passkeys apart, and see how to remove one?',
+      },
+      {
+        id: 'office-9-passkey-remove-asked',
+        number: 9,
+        path: 'main',
+        scene: {
+          path: '/passkeys',
+          as: 'EMP-0001',
+          steps: [{ press: 'ownPasskeys.remove', after: ': Windows · Chrome' }],
+        },
+        sentence: {
+          en: 'Removing the PC’s passkey asks first',
+          vi: 'Gỡ khóa truy cập của máy tính thì được hỏi trước',
+        },
+        question: 'Does the question say plainly what removing it does?',
+      },
+      {
+        id: 'office-10-passkey-removed',
+        number: 10,
+        path: 'main',
+        scene: {
+          path: '/passkeys',
+          as: 'EMP-0001',
+          steps: [
+            { press: 'ownPasskeys.remove', after: ': Windows · Chrome' },
+            { press: 'ownPasskeys.removeConfirm' },
+            { see: 'ownPasskeys.title' },
+          ],
+        },
+        sentence: {
+          en: 'The passkey removed: one row left, and the message',
+          vi: 'Đã gỡ khóa truy cập: còn một dòng, kèm thông báo',
+        },
+        question: 'Does it say the passkey is gone and the other ways in still work?',
       },
     ],
   },

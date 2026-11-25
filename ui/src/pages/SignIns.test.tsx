@@ -251,6 +251,45 @@ describe('the walk spec’s passkey scenes, replayed on the real router', () => 
   });
 });
 
+describe('the walk spec’s own-passkey and person-passkey scenes, replayed on the real router', () => {
+  const PC = `${words.ownPasskeys.remove}: Windows · Chrome`;
+
+  it('WK6: The office’s manager sees her two passkeys, is asked before the PC’s goes, and one row is left with the message', async () => {
+    openApp('/passkeys', { as: 'EMP-0001' });
+    expect(
+      await screen.findByRole('heading', { level: 2, name: words.ownPasskeys.title }),
+    ).toBeTruthy();
+    expect(screen.getByRole('cell', { name: 'iPhone · Safari' })).toBeTruthy();
+    expect(screen.getByRole('cell', { name: 'Windows · Chrome' })).toBeTruthy();
+
+    await userEvent.click(screen.getByRole('button', { name: PC }));
+    expect(screen.getByText(words.ownPasskeys.removeAsk)).toBeTruthy();
+    await userEvent.click(screen.getByRole('button', { name: words.ownPasskeys.removeConfirm }));
+    expect((await screen.findByRole('status')).textContent).toBe(words.ownPasskeys.removed);
+    expect(screen.queryByRole('cell', { name: 'Windows · Chrome' })).toBeNull();
+    expect(screen.getByRole('cell', { name: 'iPhone · Safari' })).toBeTruthy();
+  });
+
+  it('WK6: A person with no passkey is told so, with the way to add one', async () => {
+    openApp('/passkeys', { as: 'EMP-0002' });
+    expect(await screen.findByText(words.ownPasskeys.none)).toBeTruthy();
+    expect(screen.getByRole('link', { name: words.ownPasskey.submit })).toBeTruthy();
+  });
+
+  it('WK6: The root sees the manager hold two passkeys, is asked, and removes them with the person signed out said by name', async () => {
+    openApp(`/staff/${person('EMP-0001').id}`);
+    expect(await screen.findByText(filled(words.person.passkeysHeld, { count: '2' }))).toBeTruthy();
+    const name = person('EMP-0001').name;
+    await userEvent.click(screen.getByRole('button', { name: words.person.passkeysRemove }));
+    await userEvent.click(
+      screen.getByRole('button', { name: filled(words.person.passkeysConfirm, { name }) }),
+    );
+    expect((await screen.findAllByRole('status'))[0]?.textContent).toBe(
+      filled(words.person.passkeysRemoved, { name }),
+    );
+  });
+});
+
 /** A company whose root saved the passkey sign-in off: the setup read says so. */
 const passkeysOff = (spied: Spied, original: Api) =>
   spied.getStaffSetup.mockImplementation(async () => {

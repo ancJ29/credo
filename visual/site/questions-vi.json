@@ -127,5 +127,12 @@
   "Would the office know the code is in use, and that nothing typed was lost?": "Văn phòng có biết mã này đã có người dùng, và những gì đã gõ không bị mất không?",
   "Would the office know what a new product needs before it can be added?": "Văn phòng có biết một sản phẩm mới cần những gì trước khi thêm được không?",
   "Would the office know the customer is now in the list?": "Văn phòng có biết khách hàng giờ đã có trong danh sách không?",
-  "Would you know which box the company will live on, and how much room each box has left?": "Bạn có biết công ty sẽ nằm trên máy chủ nào, và mỗi máy chủ còn bao nhiêu chỗ không?"
+  "Would you know which box the company will live on, and how much room each box has left?": "Bạn có biết công ty sẽ nằm trên máy chủ nào, và mỗi máy chủ còn bao nhiêu chỗ không?",
+  "Would a person tell their passkeys apart, and see how to remove one?": "Người dùng có phân biệt được các khóa truy cập của mình, và thấy cách gỡ một khóa không?",
+  "Does the question say plainly what removing it does?": "Câu hỏi có nói rõ việc gỡ khóa sẽ làm gì không?",
+  "Does it say the passkey is gone and the other ways in still work?": "Màn hình có nói khóa truy cập đã được gỡ và các cách đăng nhập khác vẫn dùng được không?",
+  "Would a person with no passkey know how to add one?": "Người chưa có khóa truy cập có biết cách thêm một khóa không?",
+  "Would the root see that this person holds passkeys, and how to remove them for a lost phone?": "Root có thấy người này đang có khóa truy cập, và cách gỡ chúng khi mất điện thoại không?",
+  "Does it say the person will be signed out everywhere?": "Màn hình có nói người đó sẽ bị đăng xuất khỏi mọi nơi không?",
+  "Does it say the passkeys are gone and the person signed out?": "Màn hình có nói khóa truy cập đã được gỡ và người đó đã bị đăng xuất không?"
 }
