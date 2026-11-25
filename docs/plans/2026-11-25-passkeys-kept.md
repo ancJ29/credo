@@ -171,17 +171,24 @@ test. "The pinned diff" is
       person's page reads the count for the root where passkeys are on (`PersonPage.tsx#L597-L602`);
       two api calls and their fake answers. Rows 16, 17's second half. _Done when:_ `ui`'s and
       `visual`'s gates, the pinned diff empty. **11 min** (241.2's step 4: 11).
-      _Done 2026-11-25 13:17:_ `ui`'s and `visual`'s gates, each run after the last edit, and the citation test each
+      _Done 2026-11-25 13:28:_ `ui`'s and `visual`'s gates, each run after the last edit, and the citation test each
       exit 0; the pinned diff empty; rows 16 and 17's second half red (no `personPasskeys` call, no panel), then
       green. The two api calls are `personPasskeys(id)` and `removePersonPasskeys(id)`, each answering the count
       (`personPasskeysReplySchema`, step 2's); the page reads the count for the root where passkeys are on and the
       person has not left, and the panel shows while one is held, and after a removal says so.
-- [ ] **5. One's own, in the BFF.** The two routes in `own-passkeys.ts`; the add names the device; the
+- [x] **5. One's own, in the BFF.** The two routes in `own-passkeys.ts`; the add names the device; the
       removal writes the record, then the sign-in record's new generation and the device's new
       session, the password change's lines made one function both call. Rows 1 to 6, 10 and 11's own
       halves. _Done when:_ `bff`'s and `shared`'s gates, and
       `git diff -U0 pre-merge -- bff/src/operator.route.test.ts 'bff/src/routes/operator-*.route.test.ts'`
       shows only added route-list lines (row 12). **14 min** (241.2's steps 5 and 5b: 10 and 4).
+      _Done 2026-11-25 13:36:_ `bff`'s and `shared`'s gates, each run after the last edit, and the citation test each
+      exit 0; the diff against `pre-merge` of the operators' route tests shows only the two added route-list
+      lines (row 12); rows 1 to 6, 10 and 11's own halves red (the routes absent: 12 of 14 failed, rows 6 and 10
+      passing on the absent route's 404), then green in `bff/src/passkeys-kept.route.test.ts`. The shared
+      function is `renewed` in `bff/src/app.ts`: the password change's put, entry, `endKept` and `issue`,
+      moved whole, its callers' tests unchanged. The route lists read declared 34, exempt 18, total 52.
+      Step 6 adds the root's and the tests' route-list lines `declared 35`, `total 53`.
 - [ ] **6. The root's, in the BFF.** Two routes in `bff/src/routes/staff.ts` beside the QR's:
       `mustBeRoot`, `mustFind`, the switch, then `endSessions`. Rows 7 to 9, 10 and 11's root halves.
       _Done when:_ `bff`'s gate; the same diff; the route lists at declared 35, exempt 18, total 53.

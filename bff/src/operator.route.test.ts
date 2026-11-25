@@ -391,6 +391,8 @@ describe('The operator never reads or changes a client, never sees a root’s pa
         '├── /api/auth/passkey/sign-in (POST)',
         '├── /api/auth/passkey/add (POST)',
         '│   └── -options (POST)',
+        '├── /api/auth/passkeys (GET, HEAD)',
+        '│   └── /:id (DELETE)',
         '├── /api/auth/me (GET, HEAD)',
         '├── /api/operator/passkey/options (POST)',
         '├── /api/operator/passkey/sign-in (POST)',

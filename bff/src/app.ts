@@ -41,7 +41,7 @@ import { companiesByBox, createClient, listClients, ROOT_NAME } from './records/
 import { type StoreOfLine, type TenantStorage, tenantStorage } from './records/records';
 import { clearWait, countTry, waitKeyFrom } from './records/sign-in-wait';
 import { HttpError, parse, replyFor } from './errors';
-import { type Declared, declare, exempt, operatorOf, personOf } from './audit';
+import { type Declared, declare, type Entry, exempt, operatorOf, personOf } from './audit';
 import { constantTimeEqual } from './calling/constant-time';
 import { hashPassword, verifyAgainstNobody, verifyPassword } from './calling/password';
 import { createSessions } from './calling/sessions';
@@ -323,6 +323,26 @@ export function buildApp({
     if (typeof kept === 'string') await sessions.end(kept);
   }
 
+  /** The person's sign-in record written anew, its new generation ending every session issued
+   * before it; this device gets the session that replaces the one it held. A record that moved
+   * since the session read it has ended the session: a 401. */
+  async function renewed(
+    request: FastifyRequest,
+    who: Awaited<ReturnType<typeof signedIn>>,
+    device: string,
+    entry: Entry,
+    changed: StoredUser,
+  ): Promise<SessionReplyBody> {
+    const key = recordKeys.tenant(request.tenantId).user(who.signInName);
+    if ((await request.storage.putRecord(key, changed, who.signIn.tag)) === 'moved')
+      throw unauthorized();
+    entry.saved(null, null);
+    const sessions = sessionsOf(request.storage);
+    await endKept(request, sessions);
+    const issued = await sessions.issue(device, who.signInName, changed.generation);
+    return { ...issued, user: userViewOf(who) };
+  }
+
   function deviceOf(request: FastifyRequest) {
     const device = deviceIdSchema.safeParse(request.headers[DEVICE_HEADER]);
     if (!device.success) throw new HttpError(400, 'Bad request', { details: DEVICE_HEADER });
@@ -486,20 +506,12 @@ export function buildApp({
         throw seconds > 0 ? waitError(seconds) : forbidden();
       }
       await clearWait(request.storage, waitKey, who.signInName);
-      const changed: StoredUser = {
+      return await renewed(request, who, device, entry, {
         ...who.signIn.user,
         passwordHash: await hashPassword(body.password),
         passwordAt: now(),
         generation: randomUUID(),
-      };
-      const key = recordKeys.tenant(request.tenantId).user(who.signInName);
-      if ((await request.storage.putRecord(key, changed, who.signIn.tag)) === 'moved')
-        throw unauthorized();
-      entry.saved(null, null);
-      const sessions = sessionsOf(request.storage);
-      await endKept(request, sessions);
-      const issued = await sessions.issue(device, who.signInName, changed.generation);
-      return { ...issued, user: userViewOf(who) };
+      });
     },
   );
 
@@ -550,6 +562,7 @@ export function buildApp({
     signedIn,
     deviceOf,
     holder,
+    renewed,
   });
 
   const { operatorSignedIn, confirmed } = registerOperatorAuth(app, {
