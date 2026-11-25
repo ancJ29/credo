@@ -210,8 +210,12 @@ test. "The pinned diff" is
       the seven new scenes alone. The generator writes Lan's two as one record under her minted id.
       One press is by a device's name, which no dictionary key holds, so a step gains `after`, the
       words that follow the key's in the control's own name. Seven Vietnamese questions added.
-- [ ] **8. The prose.** As "Prose that goes false". _Done when:_ the citation test. **5 min** (241.2's
+- [x] **8. The prose.** As "Prose that goes false". _Done when:_ the citation test. **5 min** (241.2's
       step 8: 5).
+      _Done 2026-11-25 22:38:_ the citation test exits 0, run last. `docs/partners/words.md`'s passkey entry, `docs/products.md`'s
+      sign-in by passkey row and `docs/memo/bff.md`'s passkey section now say the list, the removal and the
+      root's removal; item 679 is narrowed to a password change that does not offer to drop passkeys;
+      `docs/decisions.md` gains points 4 and 5 as two rows.
 - [ ] **9. Your walk run, then the bases.** After `pre-merge` is taken in, so 250.2's bases are under
       it if 250.2 landed first: the run line below, green; the bases committed alone, each walk's
       count matching the log; the same walks without flags, 0 moved. **2 min** (241.2's: 1 and 1).

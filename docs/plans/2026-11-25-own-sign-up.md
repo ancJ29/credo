@@ -201,8 +201,11 @@ diff" is `git diff -U0 -- visual/src/resolved.pinned.txt | grep '^+[a-z]' | cut 
       the root signs in by the password chosen. The request is
       removed after the company is made, and a failure to remove it leaves a harmless request on a code the
       company holds.
-- [ ] **7. The prose.** As "Prose that goes false"; the memo's request, bound and refusals. _Done
+- [x] **7. The prose.** As "Prose that goes false"; the memo's request, bound and refusals. _Done
       when:_ the citation test. **5 min** (241.2's step 8: 5).
+      _Done 2026-11-25 22:38:_ the citation test exits 0, run last. `docs/products.md`'s Frame and Clients row gains the waiting
+      list, its approval and refusal; `docs/memo/bff.md` gains a section on the public route, its bound and
+      the three operator routes; `docs/decisions.md` already holds your answer (step 1).
 
 ### Waiting for your word: the walks and the long checks
 
