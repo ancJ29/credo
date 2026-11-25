@@ -329,6 +329,24 @@ colour, and the frame's as `--credo-brand-text`.
   buttons on the gradient).
 - _Not covered:_ the switch's thumb on a light colour's checked track (item 636).
 
+## The company's formatted name is stored as typed and drawn only through `BrandName`
+
+`formattedName` (`shared/src/config.ts`) is the root's HTML as typed, at most 1,000 characters, kept
+whole; nothing cleans it on save, since the BFF has no DOM and a hand-made cleaner would have to
+guard no reader. Every draw goes through `BrandName` (`ui/src/components/atoms/BrandName.tsx`), which
+parses it with the browser's `DOMParser`, keeps `b`, `strong`, `br` and a `span` whose style is one
+`color` of `#rrggbb`, unwraps every other element to its text, drops `script`, `style`, `template` and
+comments with their text, and builds React elements from what it kept, never markup
+(`ui/src/design-system/literals.test.ts` refuses `innerHTML` and its kin in the app's files).
+
+- _The surprise:_ **a new place that draws the formatted name must use `BrandName`, or it draws
+  unvetted HTML.** The tab, the logo's `alt` and the heading's reader take the plain `name`, which
+  `BrandName` leaves beside the drawing for a screen reader. On the coloured header the colours give
+  way to the header's text colour (`colours` false); on the white header and the card they show as typed.
+- _Held by:_ `ui/src/components/atoms/BrandName.test.tsx` (the cleaning), `ui/src/frame/Shell.test.tsx`
+  (the header), `ui/src/design-system/literals.test.ts` (no markup from a string).
+- _Not covered:_ a mail or a document that draws the name later; revisit the cleaning at save then.
+
 ## Where the rest is
 
 - What belongs in this package and the file to copy: [`ui/CLAUDE.md`](../../ui/CLAUDE.md).

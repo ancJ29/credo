@@ -186,12 +186,13 @@ is `git diff -U0 -- visual/src/resolved.pinned.txt | grep '^+[a-z]' | cut -d' ' 
       `ui`'s gates; row 18 red on the old counts; the pinned diff naming the three new screens alone
       (30 lines); each new step replayed in jsdom on the real router. **16 min** (250.1's step 3: 16).
       _Done 2026-11-25, build 250.2 step 4, sonnet:_ `visual`'s, `walk`'s and `ui`'s gates each exit 0 (the runs of 13:11 to 13:15); row 18 seen red on the old counts (13:02, two cases); the pinned diff names `14-formatted-typed`, `15-formatted-saved` and `16-formatted-card` alone, 30 lines; the new steps replayed in jsdom on the real router in `App.test.tsx`; item 681's `exact: true` is in the spec; no walk run, no base written.
-- [ ] **5. The prose.** `docs/products.md#L35`'s Settings row gains the two fields, the tab and the
+- [x] **5. The prose.** `docs/products.md#L35`'s Settings row gains the two fields, the tab and the
       language; `docs/memo/ui.md` gains the surprise: the formatted name is stored as typed and drawn
       only through `BrandName`, which cleans it at each draw. Item 681 `[FIXED]`; item 683 filed: a
       company's new passkey is made for the relying party "Credo", the machine's, `[DEFERRED]` to
       milestone 4's plan, whose manifest reads the settings in the BFF. _Done when:_ the citation test.
       **5 min** (241.2's step 8: 5, prose and two items).
+      _Done 2026-11-25, build 250.2 step 5, sonnet:_ the Settings row of `docs/products.md` names the two fields, the tab and the language; `docs/memo/ui.md` holds the surprise; item 681 `[FIXED]`, item 683 filed `[DEFERRED]`; `pre-merge` is an ancestor of the branch; the words line of `docs/products.md` already read 780, so no word count moved; the citation test exit 0 (the run of 13:17).
 - [ ] **6. Your walk run, then the bases.** The run below, green; the bases committed alone, each
       walk's count matching the log; the same walks without flags, 0 moved. **2 min** (250.1's step 5: 2).
 - [ ] **7. The recap and the landing.** The recap and its products row; `pre-merge` taken in, the
