@@ -352,9 +352,10 @@ describe('16: the passkeys panel on a person’s page', () => {
 });
 
 describe('a QR code for a person', () => {
-  it('C: The root shows a person a QR code and its link, for one sign-in within 15 minutes; a new code cancels the last', async () => {
+  it('9: The root shows a person a QR code and its link, copies the link, and a new code asks first while one is shown; “Keep this one” keeps it', async () => {
+    const user = userEvent.setup();
     const { api } = openApp(at('EMP-0004'), { signIns: true });
-    await userEvent.click(await screen.findByRole('button', { name: words.person.qrShow }));
+    await user.click(await screen.findByRole('button', { name: words.person.qrShow }));
 
     const link = await screen.findByLabelText<HTMLInputElement>(words.person.qrLink);
     expect(link.readOnly).toBe(true);
@@ -367,10 +368,27 @@ describe('a QR code for a person', () => {
     expect(screen.getByText(words.person.qrOnce)).toBeTruthy();
     expect(api.issueQr).toHaveBeenCalledWith(person('EMP-0004').id);
 
+    // the link is copied by its button
+    await user.click(
+      screen.getByRole('button', { name: new RegExp(`^${words.operator.copyLink}`) }),
+    );
+    expect(await navigator.clipboard.readText()).toBe(link.value);
+
+    // a new code asks first: keeping the one shown asks the BFF for nothing
     const first = link.value;
-    await userEvent.click(screen.getByRole('button', { name: words.person.qrNew }));
+    await user.click(screen.getByRole('button', { name: words.person.qrNew }));
+    expect(screen.getByText(words.person.qrNewAsk)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: words.person.qrNew })).toBeNull();
+    await user.click(screen.getByRole('button', { name: words.person.qrNewCancel }));
+    expect(screen.queryByText(words.person.qrNewAsk)).toBeNull();
+    expect(link.value).toBe(first);
+    expect(api.issueQr).toHaveBeenCalledTimes(1);
+
+    await user.click(screen.getByRole('button', { name: words.person.qrNew }));
+    await user.click(screen.getByRole('button', { name: words.person.qrNewConfirm }));
     await waitFor(() => expect(link.value).not.toBe(first));
     expect(api.issueQr).toHaveBeenCalledTimes(2);
+    expect(screen.queryByText(words.person.qrNewAsk)).toBeNull();
   });
 
   it('C: A QR code that could not be made says so, and the button asks again', async () => {

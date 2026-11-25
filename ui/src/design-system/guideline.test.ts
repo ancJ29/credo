@@ -87,6 +87,8 @@ const MAIN_MORE_THAN_ONCE: Record<string, number> = {
   'pages/client/ListImportPage.tsx': 3,
   // The driver's take-a-photo, then the send of the photo taken: the photo decides which.
   'pages/client/MyDeliveryPage.tsx': 2,
+  // The passkeys panel's removal, and the QR panel's new code: each shows only once asked, on a person's page that draws one panel's question at a time.
+  'parts/SignInPanels.tsx': 2,
   // The scan's start and the paste's read: two views of one sign-in page, one drawn at a time.
   'pages/client/QrScanPage.tsx': 2,
   // The record's save, and the confirm of a lock or unlock that shows only while asked.

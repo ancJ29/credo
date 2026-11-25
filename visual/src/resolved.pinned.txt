@@ -54,7 +54,7 @@ admin-staff/staff-14-search steel 122488bf6da6
 admin-staff/staff-15-code-changed steel cc2f4b44af48
 admin-staff/staff-16-field-refused steel e195a4a46b99
 admin-staff/staff-17-email steel 03a46eda1c2e
-admin-staff/staff-18-qr steel 22c69019aad5
+admin-staff/staff-18-qr steel af5c8d5653da
 admin-staff/staff-19-import steel a0d05bf654e1
 admin-staff/staff-20-preview steel ff5ccd4a477a
 admin-staff/staff-21-imported steel 4926fc7501d7
@@ -195,7 +195,7 @@ admin-staff/staff-14-search emerald c1aca5024fc1
 admin-staff/staff-15-code-changed emerald 6e38581fd869
 admin-staff/staff-16-field-refused emerald 48cbd574fafb
 admin-staff/staff-17-email emerald 91ecf4fdc348
-admin-staff/staff-18-qr emerald 3c3c83e7a765
+admin-staff/staff-18-qr emerald 0f9aa5872c22
 admin-staff/staff-19-import emerald e6b443edf8b2
 admin-staff/staff-20-preview emerald f668d1ef5504
 admin-staff/staff-21-imported emerald febea068a333
@@ -336,7 +336,7 @@ admin-staff/staff-14-search brick b947c9e83de6
 admin-staff/staff-15-code-changed brick e8f0e0d37e2e
 admin-staff/staff-16-field-refused brick 1e1512c39f17
 admin-staff/staff-17-email brick 61a7011805f9
-admin-staff/staff-18-qr brick 5944e005be22
+admin-staff/staff-18-qr brick a6c076afffbf
 admin-staff/staff-19-import brick 08da5ab58be8
 admin-staff/staff-20-preview brick 3d8621df113d
 admin-staff/staff-21-imported brick 550cc5e83fa2
@@ -477,7 +477,7 @@ admin-staff/staff-14-search bronze ad3c65c0402b
 admin-staff/staff-15-code-changed bronze 03e4ed6f49d9
 admin-staff/staff-16-field-refused bronze b2216375b7b1
 admin-staff/staff-17-email bronze 546386db1de4
-admin-staff/staff-18-qr bronze 8ac174e35b89
+admin-staff/staff-18-qr bronze 8ee1aed503a6
 admin-staff/staff-19-import bronze d713a7679ac6
 admin-staff/staff-20-preview bronze d001c2299ef9
 admin-staff/staff-21-imported bronze e62b60736586
@@ -618,7 +618,7 @@ admin-staff/staff-14-search plum ade846d0f1a4
 admin-staff/staff-15-code-changed plum 00d7e19e7687
 admin-staff/staff-16-field-refused plum 705d11a3710a
 admin-staff/staff-17-email plum 6b9e6babf3b6
-admin-staff/staff-18-qr plum 4cfea3c95a42
+admin-staff/staff-18-qr plum f86ea88e4364
 admin-staff/staff-19-import plum 8882863a4dc1
 admin-staff/staff-20-preview plum f4efbd619f93
 admin-staff/staff-21-imported plum c8c95316f6e0
@@ -759,7 +759,7 @@ admin-staff/staff-14-search indigo e94a3f35b30f
 admin-staff/staff-15-code-changed indigo ba2e0a601505
 admin-staff/staff-16-field-refused indigo 1581261ecec9
 admin-staff/staff-17-email indigo f4e62e73a688
-admin-staff/staff-18-qr indigo 3c59456402a7
+admin-staff/staff-18-qr indigo 1e22176683da
 admin-staff/staff-19-import indigo 354f4e52aa86
 admin-staff/staff-20-preview indigo a29f00b9a00e
 admin-staff/staff-21-imported indigo 334e92ff43fb
@@ -900,7 +900,7 @@ admin-staff/staff-14-search company b518bf916911
 admin-staff/staff-15-code-changed company e2f64ae2289a
 admin-staff/staff-16-field-refused company 5db10d1d1cca
 admin-staff/staff-17-email company 6dc5754eecb9
-admin-staff/staff-18-qr company c7c6f9048fe4
+admin-staff/staff-18-qr company d1df29b9f0c2
 admin-staff/staff-19-import company 2230354e2066
 admin-staff/staff-20-preview company 0cfa2de7cb06
 admin-staff/staff-21-imported company cd99ba1453f2
@@ -1041,7 +1041,7 @@ admin-staff/staff-14-search terracotta d47693917cda
 admin-staff/staff-15-code-changed terracotta 17c14a2c1d27
 admin-staff/staff-16-field-refused terracotta b4e204cab237
 admin-staff/staff-17-email terracotta d9eaba9ebda7
-admin-staff/staff-18-qr terracotta 232968fdd376
+admin-staff/staff-18-qr terracotta 6444296b861d
 admin-staff/staff-19-import terracotta b9c0ac4a55ac
 admin-staff/staff-20-preview terracotta 3ffbbd8b8c27
 admin-staff/staff-21-imported terracotta b04351412e0d
@@ -1182,7 +1182,7 @@ admin-staff/staff-14-search red 42e632f07659
 admin-staff/staff-15-code-changed red 93f9315abc27
 admin-staff/staff-16-field-refused red bf1d9b6dd12a
 admin-staff/staff-17-email red 42cb63ab62d2
-admin-staff/staff-18-qr red 115f9474b2b0
+admin-staff/staff-18-qr red d20e5a57a76b
 admin-staff/staff-19-import red 3e7afa792f9e
 admin-staff/staff-20-preview red 333d48ec257d
 admin-staff/staff-21-imported red 866abf83ddd7
@@ -1323,7 +1323,7 @@ admin-staff/staff-14-search amber 0af898b823de
 admin-staff/staff-15-code-changed amber 03134bb43879
 admin-staff/staff-16-field-refused amber 20af9da88475
 admin-staff/staff-17-email amber 3401bd8136b1
-admin-staff/staff-18-qr amber e1e83fa6903d
+admin-staff/staff-18-qr amber e5ac7203b97e
 admin-staff/staff-19-import amber de6050688b67
 admin-staff/staff-20-preview amber ac064dd941dd
 admin-staff/staff-21-imported amber 3b3d02ca873c

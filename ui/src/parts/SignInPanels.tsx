@@ -8,10 +8,9 @@ import { useTranslation } from 'react-i18next';
 import { DetailCard } from './DetailCards';
 import { type PageProps, refusal } from '../page';
 import { QrCode } from './QrCode';
+import { CopyText } from '../components/molecules/CopyText';
 import { TYPE, WEIGHTS } from '../design-system/tokens';
 import { FormMessage } from '../components/molecules/FormMessage';
-
-const READ_ONLY = { input: { fontFamily: 'ui-monospace, monospace' } };
 
 /** An email: a second name to sign in with, the root's alone to give or take back. No mail is ever
  * sent to it, so it is not checked beyond its shape. */
@@ -174,15 +173,18 @@ export function PasskeysPanel({
   );
 }
 
-/** A QR code for one sign-in on a phone, within 15 minutes: the root's alone to show, and a new
- * code cancels the last. The code and its link are held in this state alone. */
+/** A QR code for one sign-in on a phone, within 15 minutes: the root's alone to show, its link
+ * copied by a button, and a new code, which cancels the last, asked for first while one is shown.
+ * The code and its link are held in this state alone. */
 export function QrPanel({ page, id }: { page: PageProps; id: string }) {
   const { t } = useTranslation();
   const [link, setLink] = useState<string | null>(null);
   const [failed, setFailed] = useState(false);
+  const [asking, setAsking] = useState(false);
 
   async function show() {
     setFailed(false);
+    setAsking(false);
     try {
       const issued = await page.api.issueQr(id);
       setLink(new URL(issued.link, window.location.origin).href);
@@ -200,13 +202,35 @@ export function QrPanel({ page, id }: { page: PageProps; id: string }) {
         {link !== null && (
           <Stack gap="xs" w="100%">
             <QrCode value={link} label={t('person.qrImage')} />
-            <TextInput label={t('person.qrLink')} value={link} readOnly styles={READ_ONLY} />
+            <CopyText
+              value={link}
+              label={t('operator.copyLink')}
+              about={t('person.qrTitle')}
+              field={t('person.qrLink')}
+            />
             <Text {...TYPE.caption}>{t('person.qrOnce')}</Text>
           </Stack>
         )}
-        <ActionButton meaning="other" onClick={() => void show()}>
-          {link === null ? t('person.qrShow') : t('person.qrNew')}
-        </ActionButton>
+        {asking ? (
+          <Stack gap="sm">
+            <Text>{t('person.qrNewAsk')}</Text>
+            <ActionRow>
+              <ActionButton meaning="main" onClick={() => void show()}>
+                {t('person.qrNewConfirm')}
+              </ActionButton>
+              <ActionButton meaning="other" onClick={() => setAsking(false)}>
+                {t('person.qrNewCancel')}
+              </ActionButton>
+            </ActionRow>
+          </Stack>
+        ) : (
+          <ActionButton
+            meaning="other"
+            onClick={() => (link === null ? void show() : setAsking(true))}
+          >
+            {link === null ? t('person.qrShow') : t('person.qrNew')}
+          </ActionButton>
+        )}
       </Stack>
     </DetailCard>
   );
