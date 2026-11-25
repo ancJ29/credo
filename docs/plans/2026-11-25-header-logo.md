@@ -231,10 +231,12 @@ is `git diff -U0 -- visual/src/resolved.pinned.txt | grep '^+[a-z]' | cut -d' ' 
 - [ ] **5. The walk.** As below; rows 25 and 26. _Done when:_ `visual`'s, `walk`'s and `ui`'s gates;
       row 25 red on the old counts; the pinned diff naming `17-logo-on-colour` alone (10 lines); the new
       step replayed in jsdom on the real router. **15 min** (250.2's step 4: 15).
-- [ ] **6. The prose.** `docs/products.md#L35`'s Settings row gains the second logo, the header and
+- [x] **6. The prose.** `docs/products.md#L35`'s Settings row gains the second logo, the header and
       the save at choice, `#L87` 785 words; `docs/memo/bff.md` the surprises (the one public reply not
       JSON, its policy, its base64 on Lambda; a settings read that may write once); items 76 and 103
       `[FIXED]`. _Done when:_ the citation test. **4 min** (250.2's step 5: 4).
+      Done 25 November: the words line already read 785 (step 1), so no count line moved; the citation test
+      at 21:25.
 - [ ] **7. Your walk run, then the bases.** The run below, green; the bases committed alone, each
       walk's count matching the log, no door or console base among them. **3 min** (250.2's step 6: 3).
 - [ ] **8. The recap and the landing.** The recap and its products row; `pre-merge` taken in, the
