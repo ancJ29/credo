@@ -193,8 +193,9 @@ is `git diff -U0 -- visual/src/resolved.pinned.txt | grep '^+[a-z]' | cut -d' ' 
       milestone 4's plan, whose manifest reads the settings in the BFF. _Done when:_ the citation test.
       **5 min** (241.2's step 8: 5, prose and two items).
       _Done 2026-11-25, build 250.2 step 5, sonnet:_ the Settings row of `docs/products.md` names the two fields, the tab and the language; `docs/memo/ui.md` holds the surprise; item 681 `[FIXED]`, item 683 filed `[DEFERRED]`; `pre-merge` is an ancestor of the branch; the words line of `docs/products.md` already read 780, so no word count moved; the citation test exit 0 (the run of 13:17).
-- [ ] **6. Your walk run, then the bases.** The run below, green; the bases committed alone, each
+- [x] **6. Your walk run, then the bases.** The run below, green; the bases committed alone, each
       walk's count matching the log; the same walks without flags, 0 moved. **2 min** (250.1's step 5: 2).
+      _Done 2026-11-25, build 250.2 step 6, sonnet:_ your walk run of 25 November (14:40 to 14:55) green: the admin walk's 96 pictures moved none from the first pass to the second, 48 moved against the old bases and 18 are new; the office's 240 pictures moved none either way and 6 moved against the bases, `office-5-settings`; the bases commit holds those 72 pictures alone, 48 moved and 18 new for piece 1 and 6 moved for piece 2, as the run's comparison lines say; the second run without flags was not made, the same run's two passes at 0 moved standing for it, as piece 250.1's step 5 did. An earlier run of 13:41 went red in piece 1 on the new step 16's wait, fixed in the spec.
 - [ ] **7. The recap and the landing.** The recap and its products row; `pre-merge` taken in, the
       gates again, the landing; the whole check; `pre-main-review` before `main`, at most once a push.
       **43 min** (250.1's step 6: a recap 3; a whole check and a review about 20 each).
