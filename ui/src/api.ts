@@ -127,6 +127,9 @@ import {
   type SessionReply,
   sessionReplySchema,
   type SetEmailRequest,
+  type SignUpRequest,
+  signUpReplySchema,
+  signUpRoutes,
   signInRoutes,
   type SetPasswordReply,
   setPasswordReplySchema,
@@ -147,6 +150,8 @@ export class ApiError extends Error {
     readonly bff = false,
     /** The seconds a 429 in the back end's wait shape asks to wait; null for every other answer. */
     readonly waitSeconds: number | null = null,
+    /** What a 404 of the BFF's own shape marks, as `SIGN_UP_WAITING` marks a company that waits for approval; null for none. */
+    readonly detail: string | null = null,
   ) {
     super(status === null ? 'no usable answer' : `answered ${status}`);
     this.name = 'ApiError';
@@ -188,6 +193,9 @@ export type ChangeCodeResult =
 /** An email given or removed, or one already signing someone in, or the version moved. */
 export type SetEmailResult =
   { kind: 'set'; doc: EmployeeDoc } | { kind: 'taken' } | { kind: 'conflict' };
+
+/** A company's sign-up sent, with the address it asked for; or that address taken. */
+export type SignUpResult = { kind: 'sent'; code: string } | { kind: 'taken' };
 
 /** One's own password changed, with the session that replaces every other; or the current one wrong. */
 export type ChangePasswordResult =
@@ -291,6 +299,12 @@ export function createApi({
     return new ApiError(response.status, bffErrorSchema.safeParse(body).success);
   }
 
+  /** What a 404 of the BFF's own shape marks in its `details`, or null for none. */
+  async function detailOf(response: Response) {
+    const body = (await response.json().catch(() => null)) as { details?: unknown } | null;
+    return typeof body?.details === 'string' ? body.details : null;
+  }
+
   /** A 429 as the back end shapes it: the wait it asks, or null for any other answer. */
   async function waitOf(response: Response) {
     const parsed = waitReplySchema.safeParse(await response.json().catch(() => null));
@@ -323,6 +337,7 @@ export function createApi({
   return {
     async getConfig(): Promise<ConfigDoc> {
       const response = await send('GET', ROUTES.config);
+      if (response.status === 404) throw new ApiError(404, false, null, await detailOf(response));
       if (!response.ok) throw new ApiError(response.status);
       return await read(response, configDocSchema);
     },
@@ -394,6 +409,15 @@ export function createApi({
       const response = await send('DELETE', signInRoutes.employeePasskeys(id));
       if (!response.ok) throw new ApiError(response.status);
       return (await read(response, personPasskeysReplySchema)).count;
+    },
+
+    /** A company asks for its address and root, with no session and no company: a 409 is an address
+     * taken, kept or already waiting; a 503 a full queue, for the page to say. */
+    async signUp(request: SignUpRequest): Promise<SignUpResult> {
+      const response = await send('POST', signUpRoutes.send, request);
+      if (response.status === 409) return { kind: 'taken' };
+      if (!response.ok) throw new ApiError(response.status, true);
+      return { kind: 'sent', code: (await read(response, signUpReplySchema)).code };
     },
 
     async signOut() {

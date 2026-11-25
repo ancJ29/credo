@@ -2,14 +2,14 @@ import { Box, Button, PasswordInput, Stack, Text, TextInput, Title } from '@mant
 import { IconLock, IconPhone, IconUser } from '@tabler/icons-react';
 import { useTranslation } from 'react-i18next';
 import { ActionButton } from '../components/atoms/ActionButton';
-import { BackLink } from '../components/atoms/BackLink';
 import { DoorHeading } from '../components/atoms/DoorHeading';
 import { ActionRow } from '../components/molecules/ActionRow';
 import { DataTable } from '../components/molecules/DataTable';
 import { FormMessage } from '../components/molecules/FormMessage';
 import { DoorCard } from '../components/organisms/DoorCard';
-import { DoorPage } from '../components/organisms/DoorPage';
 import { PageShell } from '../parts/PageShell';
+import { UnknownClient } from '../pages/client/UnknownClient';
+import { WaitingClient } from '../pages/client/WaitingClient';
 import { Panel } from '../components/organisms/Panel';
 import { CREDO_BRAND } from '../brand';
 import { dayOf } from '../day';
@@ -26,7 +26,6 @@ const ASKED = Date.UTC(2026, 10, 24, 12);
 /** A company's sign-up on credo's own card, no company's logo: the form with its fields and one press, an address that was taken said on its field, or the card that says it was sent and what happens next. */
 export function SignUpCard({ state }: { state: 'form' | 'taken' | 'sent' }) {
   const { t } = useTranslation();
-  const words = SAMPLES[useLanguage()];
   return (
     <DoorCard name={CREDO_BRAND.name}>
       {state === 'sent' ? (
@@ -35,7 +34,6 @@ export function SignUpCard({ state }: { state: 'form' | 'taken' | 'sent' }) {
           <FormMessage kind="success">
             {t('signUp.sentText', { name: COMPANY, address: ADDRESS })}
           </FormMessage>
-          <BackLink href="#">{words.backToSignIn}</BackLink>
         </Stack>
       ) : (
         <Stack gap="md">
@@ -68,33 +66,17 @@ export function SignUpCard({ state }: { state: 'form' | 'taken' | 'sent' }) {
           <Button variant="gradient" size="md" fullWidth>
             {t('signUp.submit')}
           </Button>
-          <BackLink href="#">{words.backToSignIn}</BackLink>
         </Stack>
       )}
     </DoorCard>
   );
 }
 
-/** The screen at an address no company holds, or one that signed up and waits: credo's own colour on a door's page, the words and, for the unknown address, the link to sign a company up. */
+/** The screen at an address no company holds, or one that signed up and waits, as the app draws them, on a door's page cut to the plate's height. */
 export function UnknownAddressSample({ waiting }: { waiting?: boolean }) {
-  const { t } = useTranslation();
   return (
     <Box style={{ '--door-page-height': '360px' }}>
-      <DoorPage>
-        <DoorCard name={CREDO_BRAND.name}>
-          <Stack gap="md">
-            <Title order={2} size="h4">
-              {waiting ? t('signUp.waitingTitle') : t('unknownClient.title')}
-            </Title>
-            <Text>{waiting ? t('signUp.waitingText') : t('unknownClient.text')}</Text>
-            {!waiting && (
-              <ActionButton meaning="other" to="/sign-up">
-                {t('signUp.title')}
-              </ActionButton>
-            )}
-          </Stack>
-        </DoorCard>
-      </DoorPage>
+      {waiting ? <WaitingClient /> : <UnknownClient />}
     </Box>
   );
 }

@@ -913,8 +913,7 @@ describe('Gallery', () => {
     expect(part().getByRole('heading', { name: 'Đăng nhập vào tài khoản của bạn' })).toBeDefined();
     expect(part().getByRole('heading', { name: 'Đăng nhập bằng liên kết' })).toBeDefined();
     expect(part().getAllByText('hoặc')).toHaveLength(2);
-    // The link page's own back link, beside the sign-up cards' three.
-    expect(part().getAllByRole('link', { name: 'Quay lại đăng nhập' })).toHaveLength(4);
+    expect(part().getByRole('link', { name: 'Quay lại đăng nhập' })).toBeDefined();
   });
 
   it('213 case 7: a rule says in words what holds it and whether the app follows it, or the item that moves it', () => {

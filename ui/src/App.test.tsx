@@ -774,7 +774,7 @@ describe('the app', () => {
       );
       const view = setup({ ...overrides, getConfig }, kept, path);
 
-      expect((await screen.findByRole('heading', { level: 1 })).textContent, path).toBe(
+      expect((await screen.findByRole('heading', { level: 2 })).textContent, path).toBe(
         DICTIONARIES.vi.unknownClient.title,
       );
       expect(document.body.textContent, path).not.toContain('Minh Phát');

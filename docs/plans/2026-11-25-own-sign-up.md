@@ -157,10 +157,15 @@ diff" is `git diff -U0 -- visual/src/resolved.pinned.txt | grep '^+[a-z]' | cut 
       record's, the bound of 20, the waiting detail, the routes), `recordKeys.signUp` and `signUpPrefix`,
       `DEMO_SIGN_UPS` (one request, sent 3 November at noon UTC). The routes are four paths, not five: the
       public send and the operator's list, refusal and approval.
-- [ ] **3. The sign-up and the waiting screen, on the fake.** `ui/src/pages/SignUpPage.tsx`, the path
+- [x] **3. The sign-up and the waiting screen, on the fake.** `ui/src/pages/SignUpPage.tsx`, the path
       in `App.tsx`, the boot's waiting phase and its screen, `UnknownClient`'s link, the api calls and
       their fake answers. Rows 14 to 16, 18's first half. _Done when:_ `ui`'s and `visual`'s gates,
       the pinned diff naming `9-unknown-company` alone. **13 min** (241.2's step 3: 13).
+      _Done 2026-11-25 15:52:_ `ui`'s and `visual`'s gates, each run after the last edit, and the citation test, run
+      last, each exit 0; the pinned diff names `9-unknown-company` alone; rows 14 to 16 and 18's first half
+      red (no sign-up call, no page), then green. `UnknownClient` is now credo's door card with the link, and
+      `WaitingClient` its twin; the gallery draws both as the app does. A 503 on the send says "too many
+      companies are waiting", which a storage outage also earns: kept as it stands, for the review.
 - [ ] **4. The console's waiting list, on the fake.** Clients' block, Approve, Refuse and its question;
       the fake's approval making the company. Rows 17, 18's second half. _Done when:_ `ui`'s and
       `visual`'s gates, the pinned diff naming `op-5-dashboard` alone. **11 min** (241.2's step 4: 11).

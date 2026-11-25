@@ -30,6 +30,8 @@ import {
   ownPasskeyListReplySchema,
   ownPasskeyRemovedReplySchema,
   personPasskeysReplySchema,
+  SIGN_UP_WAITING,
+  SIGN_UPS_WAITING_MAX,
   operatorMeReplySchema,
   operatorSessionReplySchema,
   servicesReplySchema,
@@ -66,6 +68,7 @@ import {
   DEMO_OPERATOR_ID,
   DEMO_PASSKEYS,
   DEMO_PERSON_PASSKEYS,
+  DEMO_SIGN_UPS,
   DEMO_ORDERS,
   DEMO_PRODUCTS,
   DEMO_TODAY,
@@ -475,6 +478,7 @@ describe('the fake Api', () => {
         'ownPasskeyRemove',
         'personPasskeys',
         'removePersonPasskeys',
+        'signUp',
         'operatorPasskeyOptions',
         'operatorPasskeySignIn',
         'operatorJoinOptions',
@@ -972,6 +976,60 @@ describe('the fake Api', () => {
     );
     expect(await status(api.personPasskeys(lanId))).toBe(404);
     expect(await status(api.removePersonPasskeys(lanId))).toBe(404);
+  });
+
+  it('18: The fake takes a sign-up and shows its address waiting, refuses a taken, a kept and a waiting address, and a full queue', async () => {
+    const held: { client?: string } = {};
+    const code = { current: null as string | null };
+    const api = createFakeApi({
+      device: {
+        authId: () => held.client ?? null,
+        operatorAuthId: () => null,
+        clientCode: () => code.current,
+      },
+      cue: null,
+      signIns: false,
+    });
+    const request = {
+      code: 'phu-quy',
+      name: 'Gạch Men Phú Quý',
+      contactName: 'An',
+      contactPhone: '0901 234',
+      password: 'Correct-horse-9!',
+    };
+
+    // the data set's waiting address is waiting, and an address nobody asked for is the demo's own
+    code.current = DEMO_SIGN_UPS[0]?.code ?? '';
+    await expect(api.getConfig()).rejects.toMatchObject({ status: 404, detail: SIGN_UP_WAITING });
+    code.current = null;
+    expect((await api.getConfig()).config.name).toBe(DEMO_CONFIG.name);
+
+    expect(await api.signUp(request)).toEqual({ kind: 'sent', code: 'phu-quy' });
+    code.current = 'phu-quy';
+    await expect(api.getConfig()).rejects.toMatchObject({ status: 404, detail: SIGN_UP_WAITING });
+    code.current = null;
+
+    for (const taken of [
+      'phu-quy',
+      DEMO_CODE,
+      'hoa-sen',
+      'www',
+      'operator',
+      DEMO_SIGN_UPS[0]?.code,
+    ]) {
+      expect(await api.signUp({ ...request, code: taken ?? '' }), taken).toEqual({ kind: 'taken' });
+    }
+
+    // the queue holds 20: the data set's one, this one, then 18 more, and the next is refused
+    for (let index = 0; index < SIGN_UPS_WAITING_MAX - 2; index += 1) {
+      expect(
+        await api.signUp({ ...request, code: `co-${String(index).padStart(2, '0')}` }),
+      ).toEqual({
+        kind: 'sent',
+        code: `co-${String(index).padStart(2, '0')}`,
+      });
+    }
+    expect(await status(api.signUp({ ...request, code: 'one-more' }))).toBe(503);
   });
 
   it('C: Two fresh fakes mint the same QR link for the same person, so a screen that shows it reads the same on every build', async () => {

@@ -888,6 +888,52 @@ describe('the API client', () => {
       ]);
     });
 
+    it('C: sends a company’s sign-up, a 409 being an address taken, and any other refusal an error, the 503 of a full queue among them', async () => {
+      const request = {
+        code: 'phu-quy',
+        name: 'Phú Quý',
+        contactName: 'An',
+        contactPhone: '0901',
+        password: 'Correct-horse-9!',
+      };
+      const { calls, api } = fake(
+        json({ code: 'phu-quy' }, 201),
+        json({}, 409),
+        json({}, 503),
+        json({ nothing: true }, 201),
+      );
+
+      expect(await api.signUp(request)).toEqual({ kind: 'sent', code: 'phu-quy' });
+      expect(await api.signUp(request)).toEqual({ kind: 'taken' });
+      await expect(api.signUp(request)).rejects.toMatchObject({ status: 503, bff: true });
+      await expect(api.signUp(request)).rejects.toMatchObject({ status: null });
+      expect(calls.map((call) => [call.init.method, call.path])).toEqual([
+        ['POST', '/api/sign-up'],
+        ['POST', '/api/sign-up'],
+        ['POST', '/api/sign-up'],
+        ['POST', '/api/sign-up'],
+      ]);
+      expect(calls[0]?.init.body).toBe(JSON.stringify(request));
+    });
+
+    it('C: a settings read that fails otherwise than with a 404 is an error with its status', async () => {
+      const { api } = fake(json({}, 503));
+
+      await expect(api.getConfig()).rejects.toMatchObject({ status: 503, detail: null });
+    });
+
+    it('C: reads what a 404 of the settings marks, "waiting" for a company waiting for approval, and none where the answer marks nothing', async () => {
+      const { api } = fake(
+        json({ error: 'Not found', details: 'waiting' }, 404),
+        json({ error: 'Not found' }, 404),
+        new Response('gone', { status: 404 }),
+      );
+
+      await expect(api.getConfig()).rejects.toMatchObject({ status: 404, detail: 'waiting' });
+      await expect(api.getConfig()).rejects.toMatchObject({ status: 404, detail: null });
+      await expect(api.getConfig()).rejects.toMatchObject({ status: 404, detail: null });
+    });
+
     it('C: a 429 in the back end’s wait shape is a wait, on the sign-in and on one’s own password, and a 429 of any other shape is an error with no wait', async () => {
       const wait = { error: 'Wait', waitSeconds: 45 };
       const { api } = fake(

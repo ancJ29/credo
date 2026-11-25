@@ -62,6 +62,7 @@ export const passkeyCalls = {
   ownPasskeyRemove: down,
   personPasskeys: down,
   removePersonPasskeys: down,
+  signUp: down,
   operatorPasskeyOptions: down,
   operatorPasskeySignIn: down,
   operatorJoinOptions: down,
