@@ -7,7 +7,6 @@ import {
   CREDO_COLOUR,
   HOME_BOX,
   isMoving,
-  KEPT_CODES,
   newestFirst,
   type CStorageClient,
   type StoredClient,
@@ -18,6 +17,7 @@ import {
   type TenantConfig,
 } from '@credo/shared';
 import { hashPassword, newPassword } from '../calling/password';
+import { codeIsHeld } from './sign-ups';
 import { type RecordStore, recordTools, type TenantStorage, tenantStorage } from './records';
 
 export const ROOT_NAME = 'root';
@@ -75,11 +75,9 @@ export async function createClient(
     box?: { name: string; storage: CStorageClient };
   },
 ): Promise<{ id: string; password: string } | 'taken'> {
-  if (KEPT_CODES.includes(code)) return 'taken';
-  if (await storage.getRecord(recordKeys.client(code))) return 'taken';
-  // A deletion of an earlier client of this code still unfinished keeps the code, or its records
-  // would be left with no way to finish them.
-  if (await storage.getRecord(recordKeys.clientDeletion(code))) return 'taken';
+  // A code kept back, a client's, one a deletion still unfinished holds (or its records would be
+  // left with no way to finish them), or one a sign-up waits on, is taken.
+  if (await codeIsHeld(storage, code)) return 'taken';
   const id = randomUUID();
   const keys = recordKeys.tenant(id);
   const company = tenantStorage(box?.storage ?? storage, id);

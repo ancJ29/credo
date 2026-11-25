@@ -175,10 +175,19 @@ diff" is `git diff -U0 -- visual/src/resolved.pinned.txt | grep '^+[a-z]' | cut 
       the delete walk ends on, which now carries the data set's waiting company above it. A third, `op-7-list-failed`,
       was moved by the first build and held still by showing the block only while the clients' list is read.
       Step 8's moved list and the run line gain `dc-4-gone`.
-- [ ] **5. The sign-up and the waiting answer, in the BFF.** `bff/src/routes/sign-up.ts` and
+- [x] **5. The sign-up and the waiting answer, in the BFF.** `bff/src/routes/sign-up.ts` and
       `bff/src/records/sign-ups.ts`; `resolveTenant`'s waiting detail; `createClient`'s check of a
       waiting code. Rows 1, 2, 5 to 9, 12. _Done when:_ `bff`'s and `shared`'s gates, the operators'
       tests moved only in the route-list pin. **14 min** (241.2's steps 5 and 5b: 10 and 4).
+      _Done 2026-11-25 17:03:_ `bff`'s and `shared`'s gates, each run after the last edit, and the citation test, run
+      last, each exit 0; rows 1, 2, 5 to 9 and 12 red (no route, no waiting detail, a waiting code made), then
+      green in `bff/src/sign-up.route.test.ts`. The operators' route tests moved by their one route-list line
+      (`/api/sign-up (POST)`, read against the merge-base with `pre-merge`, since `pre-merge` has moved on); the
+      route lists read declared 35, exempt 19, total 54. The order in the route is: the body under its schema,
+      the queue counted (503 at 20), the code looked up (409), then the password hashed and the request written
+      only where none sits. The count and the write are not one step, so a burst may pass 20 by the requests in
+      flight; the stage's throttle bounds it. `tenants.route.test.ts` reads one more key of an unknown address
+      (the waiting record's).
 - [ ] **6. The approval and the refusal, in the BFF.** The three operator routes; `createClient`
       taking a password hash. Rows 3, 4, 10, 11, 13. _Done when:_ `bff`'s gate; the route lists at their
       new counts, each new route named. **8 min** (241.2's step 6: 8).

@@ -28,6 +28,7 @@ import {
   type SessionReplyBody,
   signInQrRequestSchema,
   signInRequestSchema,
+  SIGN_UP_WAITING,
   signInRoutes,
   staffConfig,
   storedClientSchema,
@@ -56,6 +57,7 @@ import {
 } from './records/staff-records';
 import { registerOperatorAuth } from './routes/operator-auth';
 import { registerOwnPasskeyRoutes } from './routes/own-passkeys';
+import { registerSignUpRoutes } from './routes/sign-up';
 import { registerListRoutes } from './routes/lists';
 import { registerDeliveryPhotoRoutes } from './routes/delivery-photo';
 import { registerOrderRoutes } from './routes/orders';
@@ -215,7 +217,11 @@ export function buildApp({
     const code = clientCodeSchema.safeParse(request.headers[CLIENT_HEADER]);
     if (!code.success) throw new HttpError(400, 'Bad request', { details: CLIENT_HEADER });
     const found = await storage.getRecord(recordKeys.client(code.data));
-    if (!found) throw new HttpError(404, 'Unknown client');
+    if (!found) {
+      // An address a company signed up for and waits on says so, in the 404's detail, and no more.
+      const waiting = await storage.getRecord(recordKeys.signUp(code.data));
+      throw new HttpError(404, 'Unknown client', waiting ? { details: SIGN_UP_WAITING } : {});
+    }
     const line = storedClientSchema.parse(found.data);
     request.tenantId = line.id;
     request.storage = tenantStorage(storeOfLine(line, 'company', request.log), line.id);
@@ -575,6 +581,7 @@ export function buildApp({
   registerDeleteClientRoutes(app, { storage, storeOfLine, now, operatorSignedIn, confirmed });
   registerMoveClientRoutes(app, { storage, boxStorage, now, operatorSignedIn, confirmed });
   registerOperatorTeamRoutes(app, { storage, now, operatorSignedIn, confirmed });
+  registerSignUpRoutes(app, { storage, now });
 
   app.get(ROUTES.operatorClients, async (request): Promise<ClientListReply> => {
     await operatorSignedIn(request);

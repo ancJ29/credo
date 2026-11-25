@@ -418,6 +418,7 @@ describe('The operator never reads or changes a client, never sees a root’s pa
         '│       ├── /confirm (POST)',
         '│       ├── /cancel (POST)',
         '│       └── /send (POST)',
+        '├── /api/sign-up (POST)',
         '├── /api/staff-setup (GET, HEAD, PUT)',
         '├── /api/employees (GET, HEAD, POST)',
         '│   ├── /import (POST)',

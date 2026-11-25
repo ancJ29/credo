@@ -51,8 +51,8 @@ describe('The route list: every route that changes data writes an entry or says 
     expect(declared.length + exempt.length).toBe(changing.length);
     expect({ declared: declared.length, exempt: exempt.length, total: changing.length }).toEqual({
       declared: 35,
-      exempt: 18,
-      total: 53,
+      exempt: 19,
+      total: 54,
     });
   });
 
@@ -89,6 +89,7 @@ describe('The route list: every route that changes data writes an entry or says 
       'POST /api/operator/passkeys/confirm-options',
       'POST /api/operator/passkeys/options',
       'POST /api/operator/sign-out',
+      'POST /api/sign-up',
     ]);
   });
 });
