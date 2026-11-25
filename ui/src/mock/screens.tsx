@@ -24,6 +24,8 @@ const brandOf = (config: TenantConfig): Brand => ({
 const picturesOf = (config: TenantConfig): SettingsProps['pictures'] => ({
   logo: config === FRESH ? null : { address: LOGO, version: 'mock' },
   'logo-on-colour': null,
+  'tab-icon': { address: LOGO, version: '' },
+  'app-icon': { address: LOGO, version: '' },
 });
 
 const settings = (

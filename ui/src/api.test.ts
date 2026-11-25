@@ -1,4 +1,4 @@
-import { photoAddressRequestOf, type TenantConfig } from '@credo/shared';
+import { NO_PICTURES, photoAddressRequestOf, type TenantConfig } from '@credo/shared';
 import {
   DEMO_DELIVERIES,
   DEMO_ORDERS,
@@ -374,7 +374,7 @@ describe('the API client', () => {
 
     expect(await api.saveConfig(config, 'v1')).toEqual({
       kind: 'saved',
-      doc: { config, version: 'v2', pictures: { logo: null, 'logo-on-colour': null } },
+      doc: { config, version: 'v2', pictures: NO_PICTURES },
     });
   });
 
@@ -385,6 +385,8 @@ describe('the API client', () => {
       pictures: {
         logo: null,
         'logo-on-colour': { address: '/api/pictures/a/logo-on-colour?v=t', version: 't' },
+        'tab-icon': null,
+        'app-icon': null,
       },
     };
     const { calls, api } = fake(
@@ -405,6 +407,17 @@ describe('the API client', () => {
       kind: 'conflict',
       doc: named,
     });
+    // the phone-app icon's second size rides with it
+    const { calls: more, api: second } = fake(json(named));
+    await second.savePicture(
+      'app-icon',
+      'data:image/png;base64,AAAA',
+      null,
+      'data:image/png;base64,BBBB',
+    );
+    expect(more[0]?.init.body).toBe(
+      '{"picture":"data:image/png;base64,AAAA","version":null,"small":"data:image/png;base64,BBBB"}',
+    );
     expect(await api.savePicture('logo', null, 'old')).toEqual({ kind: 'conflict', doc: null });
     await expect(api.savePicture('logo', null, null)).rejects.toMatchObject({ status: 400 });
   });

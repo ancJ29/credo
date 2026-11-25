@@ -1,6 +1,10 @@
 import {
   type ConfigDoc,
+  drawIcon,
   type PictureKind,
+  pngOf,
+  storedDeflate,
+  isIconKind,
   addCustomerRequestSchema,
   addDays,
   addedNewestFirst,
@@ -231,15 +235,41 @@ export function createFakeApi({
   const held: Record<PictureKind, { picture: string | null; tick: number }> = {
     logo: { picture: DEMO_LOGO, tick: 1 },
     'logo-on-colour': { picture: null, tick: 1 },
+    'tab-icon': { picture: null, tick: 1 },
+    'app-icon': { picture: null, tick: 1 },
+  };
+  /** The drawn icon of the company as it is now, as a data URL, kept by name and colour: the tab's at 64, the phone's at 192. */
+  const drawnIcons = new Map<string, string>();
+  const drawnIcon = (kind: 'tab-icon' | 'app-icon') => {
+    const key = `${kind}|${config.name}|${config.colour}`;
+    if (!drawnIcons.has(key)) {
+      const png = pngOf(
+        drawIcon(
+          { name: config.name, code: 'demo', colour: config.colour },
+          kind === 'tab-icon' ? 64 : 192,
+        ),
+        storedDeflate,
+      );
+      const text = png.reduce((so_far, byte) => so_far + String.fromCharCode(byte), '');
+      drawnIcons.set(key, `data:image/png;base64,${btoa(text)}`);
+    }
+    return drawnIcons.get(key)!;
   };
   const viewOf = (kind: PictureKind) => {
     const one = held[kind];
-    return one.picture === null ? null : { address: one.picture, version: `q${one.tick}` };
+    if (one.picture !== null) return { address: one.picture, version: `q${one.tick}` };
+    // An icon none is saved for is the drawn one, with no version: nothing to save over.
+    return isIconKind(kind) ? { address: drawnIcon(kind), version: '' } : null;
   };
   const docNow = (): ConfigDoc => ({
     config,
     version: `v${version}`,
-    pictures: { logo: viewOf('logo'), 'logo-on-colour': viewOf('logo-on-colour') },
+    pictures: {
+      logo: viewOf('logo'),
+      'logo-on-colour': viewOf('logo-on-colour'),
+      'tab-icon': viewOf('tab-icon'),
+      'app-icon': viewOf('app-icon'),
+    },
   });
   let pending = cue;
   let setup: StaffSetup = structuredClone(DEMO_STAFF_SETUP);
@@ -723,7 +753,7 @@ export function createFakeApi({
       call(
         'savePicture',
         () => {
-          if ((viewOf(kind)?.version ?? null) !== readAt) {
+          if ((viewOf(kind)?.version || null) !== readAt) {
             return { kind: 'conflict' as const, doc: docNow() };
           }
           held[kind] = { picture, tick: held[kind].tick + 1 };

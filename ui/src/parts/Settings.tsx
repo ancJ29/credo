@@ -1,5 +1,7 @@
 import {
+  type IconKind,
   isHexColour,
+  isIconKind,
   type Language,
   LANGUAGES,
   languagesAreValid,
@@ -25,7 +27,9 @@ import { LANGUAGE_NAMES } from '../i18n';
 import { Loaded } from '../frame/Loaded';
 import { ActionButton } from '../components/atoms/ActionButton';
 import { FormMessage } from '../components/molecules/FormMessage';
+import { makeIcon as makeIconReal, type MadeIcon, smallIcon } from '../icons';
 import { BrandPreview } from './BrandPreview';
+import { IconPreview } from './IconPreview';
 import { PictureField } from './PictureField';
 import { IdentityFields } from './IdentityFields';
 import { DetailCard, DetailColumns } from './DetailCards';
@@ -46,7 +50,7 @@ type Props = {
   /** The company's pictures as the settings' reply names them: each is saved at its choice, never with the rest. */
   pictures: Pictures;
   /** The page takes a picture chosen (a data URL) or removed (none), and saves it at once. */
-  onPicture: (kind: PictureKind, picture: string | null) => void;
+  onPicture: (kind: PictureKind, picture: string | null, small?: string) => void;
   /** How the last picture's save ended, and which picture it was. */
   pictureOutcome: {
     kind: PictureKind;
@@ -54,9 +58,11 @@ type Props = {
   } | null;
   /** Why a logo was refused at the chooser, where the mock draws it before any file is chosen. */
   logoRefusal?: LogoRefusal;
+  /** Makes an icon's file the sides its kind asks; the browser's canvas, which the tests put a stand-in for. */
+  makeIcon?: (file: File, kind: IconKind) => Promise<MadeIcon>;
 };
 
-type LogoRefusal = 'logoNotImage' | 'logoTooLarge';
+type LogoRefusal = 'logoNotImage' | 'logoTooLarge' | 'iconTooSmall';
 
 /** What each outcome of a picture's save says, and in which kind of message. */
 const PICTURE_OUTCOMES = {
@@ -83,6 +89,7 @@ function SettingsForm({
   onPicture,
   pictureOutcome,
   logoRefusal,
+  makeIcon = makeIconReal,
 }: Props) {
   const { t } = useTranslation();
   const [draft, setDraft] = useState(config);
@@ -99,9 +106,22 @@ function SettingsForm({
       : file.size > MAX_LOGO_BYTES
         ? 'logoTooLarge'
         : null;
-    setRefused((was) => ({ ...was, [kind]: refusal }));
-    if (!refusal) void readAsDataUrl(file).then((picture) => onPicture(kind, picture));
+    const refuse = (why: LogoRefusal | null) => setRefused((was) => ({ ...was, [kind]: why }));
+    refuse(refusal);
+    if (refusal) return;
+    if (!isIconKind(kind))
+      return void readAsDataUrl(file).then((picture) => onPicture(kind, picture));
+    // An icon is made the sides its kind asks, in the browser, and saved at once with its second size.
+    void makeIcon(file, kind).then(
+      (made) =>
+        made === 'tooSmall' ? refuse('iconTooSmall') : onPicture(kind, made.picture, made.small),
+      () => refuse('logoNotImage'),
+    );
   };
+
+  /** An icon's address where one is stored: the drawn one, which has no version, is no picture to remove. */
+  const storedIcon = (kind: IconKind) =>
+    pictures[kind]?.version ? pictures[kind].address : undefined;
 
   /** What sits under a picture's field: its refusal at the chooser, else how its save ended. */
   const messageOf = (kind: PictureKind) => {
@@ -154,16 +174,23 @@ function SettingsForm({
         <DetailColumns
           sideFirst
           side={
-            <BrandPreview
-              name={draft.name}
-              logo={pictures.logo?.address}
-              headerLogo={pictures.logo?.address}
-              headerLogoOnColour={pictures['logo-on-colour']?.address}
-              formatted={draft.formattedName}
-              description={draft.description}
-              brand={isHexColour(draft.colour) ? draft.colour : config.colour}
-              whiteHeader={draft.whiteHeader}
-            />
+            <Stack gap="lg">
+              <BrandPreview
+                name={draft.name}
+                logo={pictures.logo?.address}
+                headerLogo={pictures.logo?.address}
+                headerLogoOnColour={pictures['logo-on-colour']?.address}
+                formatted={draft.formattedName}
+                description={draft.description}
+                brand={isHexColour(draft.colour) ? draft.colour : config.colour}
+                whiteHeader={draft.whiteHeader}
+              />
+              <IconPreview
+                name={draft.name}
+                tabIcon={pictures['tab-icon']?.address ?? ''}
+                appIcon={smallIcon(pictures['app-icon']?.address ?? '')}
+              />
+            </Stack>
           }
           main={
             <Stack gap="lg">
@@ -197,6 +224,28 @@ function SettingsForm({
                     message={messageOf('logo-on-colour')}
                     onChoose={choosePicture('logo-on-colour')}
                     onRemove={() => onPicture('logo-on-colour', null)}
+                  />
+                  <PictureField
+                    label={t('settings.tabIcon')}
+                    hint={t('settings.tabIconHint')}
+                    picture={storedIcon('tab-icon')}
+                    none={t('settings.iconDrawn')}
+                    choose={t('settings.tabIconChoose')}
+                    remove={t('settings.tabIconRemove')}
+                    message={messageOf('tab-icon')}
+                    onChoose={choosePicture('tab-icon')}
+                    onRemove={() => onPicture('tab-icon', null)}
+                  />
+                  <PictureField
+                    label={t('settings.appIcon')}
+                    hint={t('settings.appIconHint')}
+                    picture={storedIcon('app-icon')}
+                    none={t('settings.iconDrawn')}
+                    choose={t('settings.appIconChoose')}
+                    remove={t('settings.appIconRemove')}
+                    message={messageOf('app-icon')}
+                    onChoose={choosePicture('app-icon')}
+                    onRemove={() => onPicture('app-icon', null)}
                   />
                 </Stack>
               </DetailCard>

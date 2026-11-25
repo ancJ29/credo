@@ -155,7 +155,12 @@ describe('Settings', () => {
     draw(
       <Settings
         {...props({
-          pictures: { logo: { address: '/api/a', version: 't' }, 'logo-on-colour': null },
+          pictures: {
+            logo: { address: '/api/a', version: 't' },
+            'logo-on-colour': null,
+            'tab-icon': null,
+            'app-icon': null,
+          },
         })}
       />,
     );
@@ -179,7 +184,12 @@ describe('Settings', () => {
         {...props({
           onPicture,
           onSave,
-          pictures: { logo: { address: '/api/a', version: 't' }, 'logo-on-colour': null },
+          pictures: {
+            logo: { address: '/api/a', version: 't' },
+            'logo-on-colour': null,
+            'tab-icon': null,
+            'app-icon': null,
+          },
         })}
       />,
     );
@@ -271,6 +281,8 @@ describe('Settings', () => {
           pictures: {
             logo: { address: '/api/a', version: 't' },
             'logo-on-colour': { address: '/api/b', version: 'u' },
+            'tab-icon': null,
+            'app-icon': null,
           },
         })}
       />,
@@ -437,7 +449,12 @@ describe('Settings in four blocks beside a preview', () => {
       <Settings
         {...props({
           onSave,
-          pictures: { logo: { address: '/api/a', version: 't' }, 'logo-on-colour': null },
+          pictures: {
+            logo: { address: '/api/a', version: 't' },
+            'logo-on-colour': null,
+            'tab-icon': null,
+            'app-icon': null,
+          },
         })}
       />,
     );
@@ -526,5 +543,128 @@ describe('Settings, the identity fields', () => {
       formattedName: FORMATTED,
       description: 'Vật liệu',
     });
+  });
+});
+
+describe('Settings, the tab icon and the phone-app icon', () => {
+  const user = userEvent.setup({ applyAccept: false });
+  const file = (type = 'image/png', size = 10) =>
+    new File([new Uint8Array(size)], 'icon', { type });
+  const input = (label: string) =>
+    field(label).querySelector<HTMLInputElement>('input[type=file]')!;
+  const drawn = (kind: 'tab-icon' | 'app-icon') => ({
+    address: `/api/pictures/minh-phat/${kind}?v=v1`,
+    version: '',
+  });
+  const held = {
+    ...NO_PICTURES,
+    'tab-icon': drawn('tab-icon'),
+    'app-icon': drawn('app-icon'),
+  };
+
+  it('12: holds both icon fields beside the logos, the drawn one named where none is stored, and the preview wears the addresses', () => {
+    draw(<Settings {...props({ pictures: held })} />);
+
+    for (const label of [words.tabIcon, words.appIcon]) {
+      const one = within(field(label));
+      expect(one.getByText(words.iconDrawn)).toBeTruthy();
+      expect(one.queryByRole('button', { name: /^Remove/ })).toBeNull();
+      expect(one.getByRole('button', { name: /^Upload/ })).toBeTruthy();
+    }
+    expect(screen.getByText(words.tabIconHint)).toBeTruthy();
+    expect(screen.getByText(words.appIconHint)).toBeTruthy();
+    expect(document.querySelector('[data-preview="tab"] img')?.getAttribute('src')).toBe(
+      '/api/pictures/minh-phat/tab-icon?v=v1',
+    );
+    expect(document.querySelector('[data-preview="home"] img')?.getAttribute('src')).toBe(
+      '/api/pictures/minh-phat/app-icon?v=v1&size=192',
+    );
+    expect(screen.getByText(words.iconPreviewTab)).toBeTruthy();
+    expect(screen.getByText(words.iconPreviewHome)).toBeTruthy();
+  });
+
+  it('12: a chosen icon is made by the browser and saved at once, the phone-app icon with its second size', async () => {
+    const onPicture = vi.fn();
+    const makeIcon = vi
+      .fn()
+      .mockResolvedValueOnce({ picture: 'data:image/png;base64,AAAA' })
+      .mockResolvedValueOnce({
+        picture: 'data:image/png;base64,BBBB',
+        small: 'data:image/png;base64,CCCC',
+      });
+    draw(<Settings {...props({ pictures: held, onPicture, makeIcon })} />);
+
+    const tab = file();
+    await user.upload(input(words.tabIcon), tab);
+    await waitFor(() =>
+      expect(onPicture).toHaveBeenLastCalledWith(
+        'tab-icon',
+        'data:image/png;base64,AAAA',
+        undefined,
+      ),
+    );
+    expect(makeIcon).toHaveBeenLastCalledWith(tab, 'tab-icon');
+    await user.upload(input(words.appIcon), file());
+    await waitFor(() =>
+      expect(onPicture).toHaveBeenLastCalledWith(
+        'app-icon',
+        'data:image/png;base64,BBBB',
+        'data:image/png;base64,CCCC',
+      ),
+    );
+  });
+
+  it('12: refuses at the chooser a file that is no image, one over 200 KB, a phone-app icon under 512 and a file the browser cannot read, each under its own field', async () => {
+    const onPicture = vi.fn();
+    const makeIcon = vi
+      .fn()
+      .mockResolvedValueOnce('tooSmall')
+      .mockRejectedValueOnce(new Error('unreadable'));
+    draw(<Settings {...props({ pictures: held, onPicture, makeIcon })} />);
+    const message = (label: string) => within(field(label)).getByRole('alert').textContent;
+
+    await user.upload(input(words.tabIcon), file('text/plain'));
+    expect(message(words.tabIcon)).toBe(words.logoNotImage);
+    await user.upload(input(words.tabIcon), file('image/png', MAX_LOGO_BYTES + 1));
+    expect(message(words.tabIcon)).toBe(
+      words.logoTooLarge.replace('{{max}}', String(MAX_LOGO_BYTES / 1024)),
+    );
+    await user.upload(input(words.appIcon), file());
+    await waitFor(() => expect(message(words.appIcon)).toBe(words.iconTooSmall));
+    await user.upload(input(words.tabIcon), file());
+    await waitFor(() => expect(message(words.tabIcon)).toBe(words.logoNotImage));
+    expect(within(field(words.appIcon)).getAllByRole('alert')).toHaveLength(1);
+    expect(onPicture).not.toHaveBeenCalled();
+  });
+
+  it('12: shows a stored icon with its remove, which sends none', async () => {
+    const onPicture = vi.fn();
+    const stored = { ...held, 'tab-icon': { address: '/api/t', version: 'tag' } };
+    draw(<Settings {...props({ pictures: stored, onPicture })} />);
+
+    expect(within(field(words.tabIcon)).queryByText(words.iconDrawn)).toBeNull();
+    await user.click(
+      within(field(words.tabIcon)).getByRole('button', { name: words.tabIconRemove }),
+    );
+    expect(onPicture).toHaveBeenLastCalledWith('tab-icon', null);
+    expect(
+      within(field(words.appIcon)).queryByRole('button', { name: words.appIconRemove }),
+    ).toBeNull();
+  });
+
+  it('12: the phone-app icon’s remove sends none, and a missing address draws no picture', async () => {
+    const onPicture = vi.fn();
+    const stored = { ...held, 'app-icon': { address: '/api/a', version: 'tag' } };
+    draw(<Settings {...props({ pictures: stored, onPicture })} />);
+    await user.click(
+      within(field(words.appIcon)).getByRole('button', { name: words.appIconRemove }),
+    );
+    expect(onPicture).toHaveBeenLastCalledWith('app-icon', null);
+  });
+
+  it('12: a reply that predates the icons names none, and the preview draws no address', () => {
+    draw(<Settings {...props()} />);
+    expect(document.querySelector('[data-preview="tab"] img')?.getAttribute('src')).toBeNull();
+    expect(within(field(words.tabIcon)).getByText(words.iconDrawn)).toBeTruthy();
   });
 });

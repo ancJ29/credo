@@ -2210,10 +2210,12 @@ describe('Gallery', () => {
     expect(basics.getAllByRole('radio')).toHaveLength(6);
     expect(basics.getAllByRole('checkbox')).toHaveLength(2);
     expect(basics.getAllByRole('switch')).toHaveLength(3);
-    // the two fields' pictures, then the preview's two, which are hidden from a reader
+    // the four fields' pictures, then the two previews' four, which are hidden from a reader
     expect(part().getByRole('figure', { name: 'The basics' }).querySelectorAll('img')).toHaveLength(
-      4,
+      8,
     );
+    expect(basics.getByRole('button', { name: 'Upload tab icon' })).toBeDefined();
+    expect(basics.getByRole('button', { name: 'Upload phone app icon' })).toBeDefined();
     expect(basics.getByRole('button', { name: 'Upload logo' })).toBeDefined();
     expect(
       basics.getByRole('button', { name: 'Upload logo for the colored header' }),
@@ -2296,6 +2298,25 @@ describe('Gallery', () => {
         expect(shown.getAttribute('aria-hidden')).toBe('true');
         expect(shown.hasAttribute('inert')).toBe(true);
       }
+  });
+
+  it('250.4 case 15: the settings page’s sample takes and removes each icon, and keeps nothing', async () => {
+    const entry = ENTRIES.find((each) => each.name === 'The settings page')!;
+    drawn(entry);
+    const basics = within(part().getByRole('figure', { name: 'The basics' }));
+    const inputs = part()
+      .getByRole('figure', { name: 'The basics' })
+      .querySelectorAll<HTMLInputElement>('input[type=file]');
+    const picture = new File(['x'], 'icon.png', { type: 'image/png' });
+    for (const [at, remove] of [
+      [2, 'Remove tab icon'],
+      [3, 'Remove phone app icon'],
+    ] as const) {
+      await userEvent.click(basics.getByRole('button', { name: remove }));
+      expect(basics.queryByRole('button', { name: remove })).toBeNull();
+      await userEvent.upload(inputs[at], picture);
+      expect(basics.getByRole('button', { name: remove })).toBeDefined();
+    }
   });
 
   it('250.1 case 10: DetailColumns draws a state with the side first', () => {

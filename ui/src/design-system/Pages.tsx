@@ -27,7 +27,7 @@ import {
   IconPhoto,
   IconUser,
 } from '@tabler/icons-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActionButton } from '../components/atoms/ActionButton';
 import { MenuRow } from '../components/atoms/MenuRow';
@@ -930,6 +930,13 @@ function SettingsPage({ state }: { state: 'basics' | 'saved' | 'refused' | 'form
   });
   const [logo, setLogo] = useState<string | undefined>(PICTURE);
   const [logoOnColour, setLogoOnColour] = useState<string | undefined>(PICTURE_ON_COLOUR);
+  // The two icons are the drawn ones the back end makes where none is uploaded, here uploaded to show a picture each.
+  const tabIcon = useMemo(() => drawnIconUrl(words.shop, 64), [words.shop]);
+  const appIcon = useMemo(() => drawnIconUrl(words.shop, 192), [words.shop]);
+  const [icons, setIcons] = useState<{ tab: string | undefined; app: string | undefined }>({
+    tab: tabIcon,
+    app: appIcon,
+  });
   return (
     <Stack p="md" gap="lg">
       <div>
@@ -941,16 +948,23 @@ function SettingsPage({ state }: { state: 'basics' | 'saved' | 'refused' | 'form
       <DetailColumns
         sideFirst
         side={
-          <BrandPreview
-            name={identity.name}
-            logo={logo}
-            headerLogo={logo}
-            headerLogoOnColour={logoOnColour}
-            formatted={identity.formattedName}
-            description={identity.description}
-            brand={PALETTES[0].shades[7]}
-            whiteHeader={!formatted}
-          />
+          <Stack gap="lg">
+            <BrandPreview
+              name={identity.name}
+              logo={logo}
+              headerLogo={logo}
+              headerLogoOnColour={logoOnColour}
+              formatted={identity.formattedName}
+              description={identity.description}
+              brand={PALETTES[0].shades[7]}
+              whiteHeader={!formatted}
+            />
+            <IconPreview
+              name={identity.name}
+              tabIcon={icons.tab ?? tabIcon}
+              appIcon={icons.app ?? appIcon}
+            />
+          </Stack>
         }
         main={
           <Stack gap="lg">
@@ -988,6 +1002,26 @@ function SettingsPage({ state }: { state: 'basics' | 'saved' | 'refused' | 'form
                   remove={t('settings.logoOnColourRemove')}
                   onChoose={() => setLogoOnColour(PICTURE_ON_COLOUR)}
                   onRemove={() => setLogoOnColour(undefined)}
+                />
+                <PictureField
+                  label={t('settings.tabIcon')}
+                  hint={t('settings.tabIconHint')}
+                  picture={icons.tab}
+                  none={t('settings.iconDrawn')}
+                  choose={t('settings.tabIconChoose')}
+                  remove={t('settings.tabIconRemove')}
+                  onChoose={() => setIcons((was) => ({ ...was, tab: tabIcon }))}
+                  onRemove={() => setIcons((was) => ({ ...was, tab: undefined }))}
+                />
+                <PictureField
+                  label={t('settings.appIcon')}
+                  hint={t('settings.appIconHint')}
+                  picture={icons.app}
+                  none={t('settings.iconDrawn')}
+                  choose={t('settings.appIconChoose')}
+                  remove={t('settings.appIconRemove')}
+                  onChoose={() => setIcons((was) => ({ ...was, app: appIcon }))}
+                  onRemove={() => setIcons((was) => ({ ...was, app: undefined }))}
                 />
               </Stack>
             </SectionCard>

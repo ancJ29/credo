@@ -87,6 +87,7 @@ describe('a picture saved at its choice on the settings page', () => {
       'logo-on-colour',
       expect.stringMatching(/^data:image\/png;base64,/),
       null,
+      undefined,
     );
     expect((await within(light()).findByRole('status')).textContent).toBe(words.settings.saved);
   });
@@ -127,7 +128,7 @@ describe('a picture saved at its choice on the settings page', () => {
       within(light()).getByRole('button', { name: words.settings.logoOnColourRemove }),
     );
     await waitFor(() => expect(onDoc).toHaveBeenCalledWith(held));
-    expect(savePicture).toHaveBeenCalledWith('logo-on-colour', null, 't');
+    expect(savePicture).toHaveBeenCalledWith('logo-on-colour', null, 't', undefined);
     expect((await within(light()).findByRole('alert')).textContent).toContain(
       words.settings.conflict,
     );

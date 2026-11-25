@@ -385,13 +385,15 @@ export function createApi({
     },
 
     /** A picture of the company saved at its choice (a data URL, or null to remove it), with the tag
-     * it was read at, null where it has none; a moved tag is a conflict, not an error. */
+     * it was read at, null where it has none, and the phone-app icon's 192-pixel size beside it; a
+     * moved tag is a conflict, not an error. */
     async savePicture(
       kind: PictureKind,
       picture: string | null,
       version: string | null,
+      small?: string,
     ): Promise<PictureResult> {
-      const response = await send('PUT', `${ROUTES.pictures}/${kind}`, { picture, version });
+      const response = await send('PUT', `${ROUTES.pictures}/${kind}`, { picture, version, small });
       if (response.status === 409) {
         return { kind: 'conflict', doc: await currentOf(response, configDocSchema) };
       }

@@ -43,10 +43,12 @@ export function SettingsPage({ api, doc, onDoc, onSignedOut, onForbidden }: Prop
 
   /** A picture saved at its choice, by its own call: the settings' version is not moved, so what is
    * typed and not yet saved stays. */
-  async function savePicture(kind: PictureKind, picture: string | null) {
+  async function savePicture(kind: PictureKind, picture: string | null, small?: string) {
     setPictureOutcome(null);
     try {
-      const result = await api.savePicture(kind, picture, doc.pictures[kind]?.version ?? null);
+      // An icon none is stored for names the drawn one with the version '': nothing to save over.
+      const read = doc.pictures[kind]?.version || null;
+      const result = await api.savePicture(kind, picture, read, small);
       if (result.doc) onDoc(result.doc);
       setPictureOutcome({ kind, outcome: result.kind === 'saved' ? 'saved' : 'conflict' });
     } catch (error) {
@@ -79,7 +81,7 @@ export function SettingsPage({ api, doc, onDoc, onSignedOut, onForbidden }: Prop
       saving={saving}
       onSave={(config) => void save(config)}
       pictures={doc.pictures}
-      onPicture={(kind, picture) => void savePicture(kind, picture)}
+      onPicture={(kind, picture, small) => void savePicture(kind, picture, small)}
       pictureOutcome={pictureOutcome}
       onRetry={() => void reload()}
       onReload={() => void reload()}
