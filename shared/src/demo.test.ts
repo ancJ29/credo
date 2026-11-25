@@ -61,7 +61,8 @@ describe('the demo data set', () => {
       personalPhone: true,
       photo: true,
       email: true,
-      qr: false,
+      // the data set's setup says nothing of it, so QR sign-in is on, as for every setup that never set it
+      qr: true,
       passkey: true,
       startDate: true,
       birthDate: true,

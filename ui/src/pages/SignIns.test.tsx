@@ -132,20 +132,20 @@ describe('an email on a person', () => {
     expect((field as HTMLInputElement).value).toBe('lan@minh-phat.example');
   });
 
-  it('C: The root’s person page offers the email where the company never set the switch', async () => {
+  it('C: The root’s person page offers the email and the QR code where the company never set the switches', async () => {
     openApp(at('EMP-0002'));
     expect(
       await screen.findByRole('heading', { level: 3, name: words.person.emailTitle }),
     ).toBeTruthy();
     expect(screen.getByLabelText(words.person.emailNew)).toBeTruthy();
-    expect(screen.queryByRole('heading', { name: words.person.qrTitle })).toBeNull();
+    expect(screen.getByRole('heading', { level: 3, name: words.person.qrTitle })).toBeTruthy();
   });
 
-  it('C: The email panel is the root’s alone, only while the company keeps the email, and not for a person who left', async () => {
+  it('C: The email panel is the root’s alone, only while the company keeps the email, and the QR panel does not follow it', async () => {
     openApp(at('EMP-0002'), { override: emailOff });
     await screen.findByRole('heading', { level: 2, name: 'Trần Văn Hùng' });
     expect(screen.queryByRole('heading', { name: words.person.emailTitle })).toBeNull();
-    expect(screen.queryByRole('heading', { name: words.person.qrTitle })).toBeNull();
+    expect(screen.getByRole('heading', { name: words.person.qrTitle })).toBeTruthy();
   });
 
   it('C: Someone allowed to change people sees neither the email nor the QR code, and nor does the page of a person who left', async () => {
@@ -162,7 +162,7 @@ describe('an email on a person', () => {
     expect(screen.queryByRole('heading', { name: words.person.qrTitle })).toBeNull();
   });
 
-  it('C: The root turns the QR sign-in on in the staff setup, where the email already is, and the person’s page then shows both', async () => {
+  it('C: The root turns the QR sign-in off in the staff setup, where it starts on beside the email, and the person’s page then shows the email alone', async () => {
     const { api } = openApp('/staff-setup');
     await screen.findByRole('heading', { level: 2, name: words.setup.title });
     const email = screen.getByRole<HTMLInputElement>('checkbox', {
@@ -171,19 +171,19 @@ describe('an email on a person', () => {
     const qr = screen.getByRole<HTMLInputElement>('checkbox', {
       name: words.setup.fieldQr,
     });
-    expect([email.checked, qr.checked]).toEqual([true, false]);
+    expect([email.checked, qr.checked]).toEqual([true, true]);
 
     await userEvent.click(qr);
     await userEvent.click(screen.getByRole('button', { name: words.setup.save }));
     await screen.findByText(words.setup.saved);
-    expect((await api.getStaffSetup()).setup.fields).toMatchObject({ email: true, qr: true });
+    expect((await api.getStaffSetup()).setup.fields).toMatchObject({ email: true, qr: false });
 
     await userEvent.click(menu().getByRole('link', { name: words.nav.staff }));
     await userEvent.click((await screen.findAllByRole('link', { name: 'Trần Văn Hùng' }))[0]);
     expect(
       await screen.findByRole('heading', { level: 3, name: words.person.emailTitle }),
     ).toBeTruthy();
-    expect(screen.getByRole('heading', { level: 3, name: words.person.qrTitle })).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: words.person.qrTitle })).toBeNull();
   });
 });
 
@@ -455,7 +455,11 @@ describe('the phone that opens a QR code', () => {
   });
 
   it('C: A company with the QR sign-in off refuses every code', async () => {
-    openApp(link(DEMO_QR_SECRET), { out: true });
+    // the fake's own switch is held in fake.test.tsx; here the refusal is what the phone draws
+    openApp(link(DEMO_QR_SECRET), {
+      out: true,
+      override: (spied) => spied.signInQr.mockRejectedValueOnce(new ApiError(401)),
+    });
 
     expect(
       await screen.findByRole('heading', { level: 2, name: words.qrSignIn.refusedTitle }),

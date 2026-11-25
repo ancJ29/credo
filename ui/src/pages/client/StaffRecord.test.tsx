@@ -45,7 +45,7 @@ const SLOW = { timeout: 20_000 };
 
 describe('the company’s optional fields', () => {
   it(
-    'The root chooses which optional fields the company keeps on a person, the second phone and the photo here, all off until turned on; a field turned off is hidden everywhere, and what was stored in it stays',
+    'The root chooses which optional fields the company keeps on a person, the second phone and the photo here, the QR code on until turned off; a field turned off is hidden everywhere, and what was stored in it stays',
     SLOW,
     async () => {
       const { api } = openApp(at('EMP-0004'));
@@ -65,7 +65,7 @@ describe('the company’s optional fields', () => {
         personalPhone: false,
         photo: false,
         email: true,
-        qr: false,
+        qr: true,
         passkey: true,
         startDate: true,
         birthDate: true,
@@ -168,7 +168,7 @@ describe('the company’s optional fields', () => {
     expect(saved.fields).toEqual({
       ...DEMO_STAFF_SETUP.fields,
       email: true,
-      qr: false,
+      qr: true,
       passkey: true,
     });
     expect(saved.customFields).toEqual(DEMO_STAFF_SETUP.customFields);

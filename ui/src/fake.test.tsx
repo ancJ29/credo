@@ -982,7 +982,7 @@ describe('the fake Api', () => {
     expect(second.link).toBe(first.link);
   });
 
-  it('C: A QR code signs in once as the person it was shown for, a new code cancels the last, and a company with the QR sign-in off shows and accepts none', async () => {
+  it('C: A QR code signs in once as the person it was shown for, a new code cancels the last, and a company whose root saved the QR sign-in off shows and accepts none', async () => {
     const api = fake('', { client: 'fake.session' }, true);
     const bao = DEMO_EMPLOYEES.find((person) => person.code === 'EMP-0004')!;
 
@@ -1011,8 +1011,13 @@ describe('the fake Api', () => {
     expect(archivedRead.employee.archived).toBe(true);
     expect(await status(api.signInQr(left.id, secretOf(issued.link)))).toBe(401);
 
-    // the data set turns the QR sign-in off: nothing is shown, and nothing signs in
+    // the root saves the QR sign-in off: nothing is shown, and nothing signs in
     const off = fake('', { client: 'fake.session' });
+    const held = await off.getStaffSetup();
+    await off.saveStaffSetup(
+      { ...held.setup, fields: { ...staffConfig(held.setup).fields, qr: false } },
+      held.version,
+    );
     expect(await status(off.issueQr(bao.id))).toBe(403);
     expect(await status(off.signInQr(bao.id, DEMO_QR_SECRET))).toBe(401);
   });

@@ -55,6 +55,10 @@ export function parseQr(raw: string | null) {
 export const issueQrReplySchema = z.strictObject({ link: z.string(), expiresAt: z.number() });
 export type IssueQrReply = z.infer<typeof issueQrReplySchema>;
 
+/** What the door may know before anyone signs in: whether the company has QR sign-in on, and nothing else of its setup. */
+export const signInMethodsReplySchema = z.strictObject({ qr: z.boolean() });
+export type SignInMethodsReply = z.infer<typeof signInMethodsReplySchema>;
+
 /** A phone opening a QR code's link. */
 export const signInQrRequestSchema = z.strictObject({ id: z.uuid(), secret: qrSecretSchema });
 export type SignInQrRequest = z.infer<typeof signInQrRequestSchema>;
@@ -105,6 +109,8 @@ export type PersonPasskeysReply = z.infer<typeof personPasskeysReplySchema>;
 /** The routes of these ways, beside `ROUTES` and `employeeRoutes`. */
 export const signInRoutes = {
   qr: '/api/auth/sign-in-qr',
+  /** What the door may ask with no session (GET): whether QR sign-in is on. */
+  methods: '/api/auth/methods',
   password: '/api/auth/password',
   email: (id: string) => `${ROUTES.employees}/${id}/email`,
   issueQr: (id: string) => `${ROUTES.employees}/${id}/qr`,

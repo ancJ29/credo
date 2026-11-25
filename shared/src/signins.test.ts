@@ -10,6 +10,7 @@ import {
   personPasskeysReplySchema,
   qrLink,
   qrSecretSchema,
+  signInMethodsReplySchema,
   setEmailRequestSchema,
   signInQrRequestSchema,
   signInRoutes,
@@ -68,6 +69,11 @@ describe('the ways to sign in', () => {
   it('C: A QR code is issued with a link and an end, and a phone opens it with the person and the secret alone', () => {
     expect(issueQrReplySchema.safeParse({ link: '/login', expiresAt: 1 }).success).toBe(true);
     expect(issueQrReplySchema.safeParse({ link: '/login' }).success).toBe(false);
+    // the door's read says whether QR is on and nothing else of the setup
+    expect(signInMethodsReplySchema.safeParse({ qr: true }).success).toBe(true);
+    expect(signInMethodsReplySchema.safeParse({ qr: false }).success).toBe(true);
+    expect(signInMethodsReplySchema.safeParse({ qr: true, email: true }).success).toBe(false);
+    expect(signInMethodsReplySchema.safeParse({}).success).toBe(false);
     expect(signInQrRequestSchema.safeParse({ id: ID, secret: SECRET }).success).toBe(true);
     expect(signInQrRequestSchema.safeParse({ id: 'x', secret: SECRET }).success).toBe(false);
     expect(signInQrRequestSchema.safeParse({ id: ID, secret: SECRET, extra: 1 }).success).toBe(
@@ -106,6 +112,7 @@ describe('the ways to sign in', () => {
     expect(signInRoutes.email(ID)).toBe(`/api/employees/${ID}/email`);
     expect(signInRoutes.issueQr(ID)).toBe(`/api/employees/${ID}/qr`);
     expect(signInRoutes.qr).toBe('/api/auth/sign-in-qr');
+    expect(signInRoutes.methods).toBe('/api/auth/methods');
     expect(signInRoutes.password).toBe('/api/auth/password');
     expect(signInRoutes.passkeyOptions).toBe('/api/auth/passkey/options');
     expect(signInRoutes.passkeySignIn).toBe('/api/auth/passkey/sign-in');
