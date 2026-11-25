@@ -191,13 +191,14 @@ diff" is `git diff -U0 -- visual/src/resolved.pinned.txt | grep '^+[a-z]' | cut 
 - [x] **6. The approval and the refusal, in the BFF.** The three operator routes; `createClient`
       taking a password hash. Rows 3, 4, 10, 11, 13. _Done when:_ `bff`'s gate; the route lists at their
       new counts, each new route named. **8 min** (241.2's step 6: 8).
-      _Done 2026-11-25 17:21:_ `bff`'s gate, run after the last edit, and the citation test, run last, each exit 0;
+      _Done 2026-11-25 17:23:_ `bff`'s gate, run after the last edit, and the citation test, run last, each exit 0;
       rows 3, 4, 10, 11 and 13 red (no operator route), then green in `bff/src/sign-up-approval.route.test.ts`.
       The route lists read declared 36, exempt 20, total 56: `POST /api/operator/sign-ups/:code/approve` is the
       one declared (`client.create`), `DELETE /api/operator/sign-ups/:code` the one exempt, and the list is a
-      `GET`; the operators' route-test diff by the merge-base is added lines only. `createClient` takes a
-      `passwordHash` (typed apart, so no first password is returned) and then lets its own waiting request
-      stand; the hash is carried over unchanged, so the root signs in by the password chosen. The request is
+      `GET`; the operators' route-test diff by the merge-base is added lines only. `createClient` and the new
+      `createClientFromSignUp` share one writer; the second takes the request's `passwordHash` (so no first
+      password is returned) and lets its own waiting request stand; the hash is carried over unchanged, so
+      the root signs in by the password chosen. The request is
       removed after the company is made, and a failure to remove it leaves a harmless request on a code the
       company holds.
 - [ ] **7. The prose.** As "Prose that goes false"; the memo's request, bound and refusals. _Done

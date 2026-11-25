@@ -14,7 +14,7 @@ import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { declare, exempt, operatorOf } from '../audit';
 import { hashPassword } from '../calling/password';
 import { HttpError, parse } from '../errors';
-import { createClient } from '../records/clients';
+import { createClientFromSignUp } from '../records/clients';
 import { recordTools } from '../records/records';
 import { addSignUp, codeIsHeld, countSignUps } from '../records/sign-ups';
 
@@ -106,12 +106,11 @@ export function registerSignUpRoutes(
       const waiting = await storage.getRecord(key);
       if (!waiting) throw new HttpError(404, 'Not found');
       const asked = storedSignUpSchema.parse(waiting.data);
-      const made = await createClient(storage, {
-        code,
-        name: asked.name,
-        madeAt: now(),
-        passwordHash: asked.passwordHash,
-      });
+      const made = await createClientFromSignUp(
+        storage,
+        { code, name: asked.name, madeAt: now() },
+        asked.passwordHash,
+      );
       if (made === 'taken') throw new HttpError(409, 'That code is taken');
       declare(request, operatorOf(operator), made.id, made.id).saved(null, {
         code,
