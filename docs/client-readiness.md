@@ -39,7 +39,7 @@ malformed or unknown stops the call at a 400 or a 404 ([`bff/src/app.ts#L100-L10
 Every key is then built from that id through the layout's one home,
 [`shared/src/records.ts`'s `recordKeys`](../shared/src/records.ts), and a tenant's sessions are its own
 records, so a handle minted under one id names no session under another
-([`app.ts#L88-L89`](../bff/src/app.ts#L88)). A search of the whole product for a record key built
+([`app.ts#L92-L93`](../bff/src/app.ts#L92)). A search of the whole product for a record key built
 by hand outside `records.ts` finds none — only test files assert the strings.
 
 The honest caveat, which a newcomer must not get wrong: **c-storage has no idea what a tenant is.**
@@ -203,7 +203,7 @@ sweep then removes at most 200 records a press
 resumes on the session alone, no touch needed
 ([`clients-delete.ts#L32-L33`](../bff/src/routes/clients-delete.ts#L32)). **If nobody presses again, the
 records stay in the file for good, reachable by nothing.** `listClients` reads the index prefix
-alone ([`clients.ts#L93-L94`](../bff/src/records/clients.ts#L93)), and nothing anywhere reads the deletion
+alone ([`clients.ts#L95-L96`](../bff/src/records/clients.ts#L95)), and nothing anywhere reads the deletion
 record to list an unfinished deletion — its only two readers are inside `clients.ts` itself
 ([`#L67`](../bff/src/records/clients.ts#L67), [`#L145`](../bff/src/records/clients.ts#L145)). So "deleted whole" is
 true of the door and not necessarily of the data. Open item 133.
@@ -417,7 +417,7 @@ In the order they would meet it, not in order of how hard each is.
    ([`bff/src/app.ts#L251-L268`](../bff/src/app.ts#L251)). So there is no forgotten-password path
    for a staff member — the root types them a new one by hand — and **none at all for the root**:
    only an operator can set it, from our console.
-7. **The app wears Adobe's logo on every page.** A client uploads its logo in Settings and sees it
+7. **Fixed 2026-11-26 (open items 76 and 103, [recap](recaps/2026-11-26-header-logo.md)): the header of every page now draws the company's own logo, and the stand-in only where none is set. As the page found it: the app wore Adobe's logo on every page.** A client uploads its logo in Settings and sees it
    on the sign-in door ([`ui/src/pages/SignIn.tsx`](../ui/src/pages/SignIn.tsx)'s `SignInFrame`, which draws the client's logo), and then every page
    inside draws Tabler's `IconBrandAdobe`, hard-coded
    ([`ui/src/frame/Shell.tsx`](../ui/src/frame/Shell.tsx)'s `Shell`, which draws the `IconBrandAdobe` icon). Already
@@ -525,8 +525,8 @@ shape of the piece, not its steps.
 3. **Correcting a confirmed order** — a decision about what "correct" means when a driver already
    holds the request, then about a day. Today it is Cancel and re-make under a new number
    ([`bff/src/routes/orders.ts#L290`](../bff/src/routes/orders.ts#L290), [`#L356`](../bff/src/routes/orders.ts#L356)).
-4. **The client's own logo in the header** ([items 76 and 103](open-items.md)). An hour, and it is
-   the first thing the client sees every time they sign in.
+4. **Done 2026-11-26: the client's own logo in the header** ([items 76 and 103](open-items.md)). The header of
+   every page draws the company's logo, the stand-in only where none is set. Open items 76 and 103, closed.
 5. **Finding an order: a search by number or customer, and a day to open at.** Half a day to a day
    for the page; a span longer than a few weeks needs an index, which [item 35](open-items.md)
    already notes. Open item 137.
