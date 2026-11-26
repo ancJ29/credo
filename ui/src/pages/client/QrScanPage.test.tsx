@@ -221,6 +221,31 @@ describe('the QR scan page', () => {
     expect(await screen.findByText(words.qrScan.signedIn)).toBeTruthy();
   });
 
+  it('1: a refused or failed code held in the camera’s view is asked once, until another is read or the person acts', async () => {
+    const other = `https://demo.example.test/login?client-code=${DEMO_CODE}&qr=${bao.id}.other-code-for-the-camera`;
+    vi.mocked(readQr).mockResolvedValue(LINK);
+    const { api } = openApp('/login/qr', {
+      out: true,
+      override: (spied) => spied.signInQr.mockRejectedValue(new ApiError(401)),
+    });
+    await userEvent.click(await screen.findByRole('button', { name: words.qrScan.scan }));
+    await waitFor(() => expect(api.signInQr).toHaveBeenCalled(), READ);
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    expect(api.signInQr).toHaveBeenCalledOnce();
+    expect(screen.getByText(words.qrSignIn.refusedText)).toBeTruthy();
+
+    vi.mocked(readQr).mockResolvedValue(other);
+    await waitFor(() => expect(api.signInQr).toHaveBeenCalledTimes(2), READ);
+    await new Promise((resolve) => setTimeout(resolve, 1000));
+    expect(api.signInQr).toHaveBeenCalledTimes(2);
+    expect(api.signInQr).toHaveBeenLastCalledWith(bao.id, 'other-code-for-the-camera');
+
+    vi.mocked(readQr).mockResolvedValue(null);
+    await new Promise((resolve) => setTimeout(resolve, 600));
+    vi.mocked(readQr).mockResolvedValue(other);
+    await waitFor(() => expect(api.signInQr).toHaveBeenCalledTimes(3), READ);
+  });
+
   it('7: a refused code is told in the landing’s words with the way back to the password; any other failure says try again and keeps the page', async () => {
     const refused = openApp('/login/qr', {
       out: true,

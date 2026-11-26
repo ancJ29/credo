@@ -171,6 +171,8 @@ export function ClientApp({
   const [qr] = useState(() => parseQr(new URLSearchParams(search).get('qr')));
   const [qrStatus, setQrStatus] = useState<'waiting' | 'refused' | 'done'>(qr ? 'waiting' : 'done');
   const qrAsked = useRef(false);
+  /** The card's "Remember me" as it stood when "Use a QR code" was pressed. */
+  const [scanRemember, setScanRemember] = useState(true);
   const navigate = useNavigate();
 
   const [attempt, setAttempt] = useState(0);
@@ -186,12 +188,12 @@ export function ClientApp({
     // A retry runs the boot again; nothing else does.
   }, [api, device, linked, attempt]);
 
-  /** A session a QR code gave: its device keeps it, as a phone's code is its own, the code is spent
-   * so the address is cleared of it, and the first page opens. The camera link's boot and the scan
-   * page both sign in by it. */
+  /** A session a QR code gave: the code is spent so the address is cleared of it, and the first
+   * page opens. The camera link's boot keeps it on the device, as a phone's code is its own; the scan
+   * page keeps it there only where the card's "Remember me" was ticked. */
   const enterByQr = useCallback(
-    (session: SessionReply) => {
-      device.setAuthId(session.authId, true);
+    (session: SessionReply, remember = true) => {
+      device.setAuthId(session.authId, remember);
       setUser(session.user);
       void navigate('/', { replace: true });
     },
@@ -540,7 +542,7 @@ export function ClientApp({
                 <QrScanPage
                   brand={config}
                   api={api}
-                  onSession={enterByQr}
+                  onSession={(session) => enterByQr(session, scanRemember)}
                   languages={config.languages}
                   onLanguage={chooseLanguage}
                 />
@@ -558,7 +560,14 @@ export function ClientApp({
                 onLanguage={chooseLanguage}
                 onSubmit={(n, p, r) => void submit(n, p, r)}
                 onPasskey={asked ? (remember) => void pressPasskey(asked, remember) : undefined}
-                onQr={qrOn ? () => void navigate('/login/qr') : undefined}
+                onQr={
+                  qrOn
+                    ? (remember) => {
+                        setScanRemember(remember);
+                        void navigate('/login/qr');
+                      }
+                    : undefined
+                }
               />
             }
           />

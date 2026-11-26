@@ -303,6 +303,40 @@ describe('the app', () => {
     expect(tab.getItem('credo.session')).toBeNull();
   });
 
+  it('2: The scan page opened from the card keeps the handle on the device only where “Remember me” was ticked', async () => {
+    const code = `${crypto.randomUUID()}.${'a'.repeat(32)}`;
+    const scanned = async (untick: boolean) => {
+      const tab = memory();
+      const opened = setup(
+        {
+          signInMethods: () => Promise.resolve({ qr: true }),
+          signInQr: () => Promise.resolve({ authId: 'q.s', expiresAt: 1, user: root }),
+        },
+        {},
+        '/',
+        undefined,
+        tab,
+      );
+      if (untick)
+        await userEvent.click(await screen.findByRole('checkbox', { name: words.auth.remember }));
+      await userEvent.click(await screen.findByRole('button', { name: words.qrScan.button }));
+      await userEvent.click(await screen.findByRole('button', { name: words.qrScan.byHand }));
+      await userEvent.type(await screen.findByRole('textbox', { name: words.qrScan.paste }), code);
+      await userEvent.click(screen.getByRole('button', { name: words.auth.submit }));
+      expect((await screen.findAllByText(words.nav.settings)).length).toBeGreaterThan(0);
+      return { ...opened, tab };
+    };
+
+    const ticked = await scanned(false);
+    expect(ticked.storage.getItem('credo.session')).toBe('q.s');
+    expect(ticked.tab.getItem('credo.session')).toBeNull();
+    ticked.unmount();
+
+    const unticked = await scanned(true);
+    expect(unticked.tab.getItem('credo.session')).toBe('q.s');
+    expect(unticked.storage.getItem('credo.session')).toBeNull();
+  });
+
   it('With both languages each user switches from the header’s button, kept on that device', async () => {
     const first = setup({}, signedIn);
     expect((await screen.findAllByText(words.nav.settings)).length).toBeGreaterThan(0);

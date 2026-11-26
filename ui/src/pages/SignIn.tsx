@@ -27,7 +27,7 @@ type Props = {
    * the company having passkeys on and the options answered. */
   onPasskey?: (remember: boolean) => void;
   /** The QR button's press, drawn only where the company has the QR sign-in on; it opens the scan page. */
-  onQr?: () => void;
+  onQr?: (remember: boolean) => void;
   /** The languages the company offers, and the caller's handler for a chosen one. */
   languages?: readonly Language[];
   onLanguage?: (language: Language) => void;
@@ -162,7 +162,7 @@ export function SignIn({
               variant="default"
               fullWidth
               leftSection={<IconQrcode size={18} />}
-              onClick={onQr}
+              onClick={() => onQr(remember)}
             >
               {t('qrScan.button')}
             </Button>

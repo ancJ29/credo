@@ -12,7 +12,7 @@ flowchart LR
 - Your answer, operator approval, is a row in `docs/decisions.md`: the app sends no mail.
 - `/sign-up`, reached from the unknown-company page, takes the company's name and address, the requester's name and phone, and the root's password, kept as its hash alone. The address then says it is waiting, and its root cannot sign in.
 - At most 20 requests wait; an address held, taken or waiting is a 409.
-- Clients gains "Waiting for approval". Approve makes the company with the chosen password; Refuse frees the address, each after a question, for a signed-in operator only.
+- Clients gains "Waiting for approval". Approve makes the company with the chosen password at once; Refuse frees the address after a question, for a signed-in operator only.
 - Not in it: mail, an expiry, a link on a company's card.
 
 ## What was proved
