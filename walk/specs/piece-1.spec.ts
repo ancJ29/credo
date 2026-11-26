@@ -9,7 +9,7 @@ import {
   STACK_ENV,
 } from '@credo/shared';
 import { DICTIONARIES, LANGUAGE_NAMES } from '@credo/ui/words';
-import { type APIRequestContext, expect, type Page, test } from '@playwright/test';
+import { type APIRequestContext, expect, type Locator, type Page, test } from '@playwright/test';
 import { required, shot, WIDTHS } from '../support';
 
 /**
@@ -105,7 +105,7 @@ test.afterEach(async ({ request }) => {
 });
 
 async function walk(page: Page, language: Language, width: number) {
-  const at = (screen: string) => shot(page, screen, language, width);
+  const at = (screen: string, mask: Locator[] = []) => shot(page, screen, language, width, mask);
   const words = DICTIONARIES[language];
   await page.addInitScript((chosen) => localStorage.setItem('credo.language', chosen), language);
 
@@ -306,11 +306,13 @@ async function walk(page: Page, language: Language, width: number) {
   await at('18-sign-up-taken');
 
   // 19. Sent: what happens next, and the address to open.
+  // The address's port differs on every run: only that element is masked, the sentence stays for the eye. Held by
+  // ui/src/pages/SignUpPage.test.tsx: the stack's port is free on every run.
   await page.goto('/sign-up');
   await fillSignUp(SIGN_UP_CODE);
   await page.getByRole('button', { name: words.signUp.submit, exact: true }).click();
   await expect(page.getByRole('heading', { level: 2, name: words.signUp.sentTitle })).toBeVisible();
-  await at('19-sign-up-sent');
+  await at('19-sign-up-sent', [page.locator('[data-sent-address]')]);
 
   // 20. The address of the company the stack's data set holds waiting.
   await page.goto('/login?client-code=son-ha');

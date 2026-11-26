@@ -16,7 +16,7 @@ admin-setup/15-formatted-saved steel c79fe38e22b2
 admin-setup/16-formatted-card steel 96af7abe291f
 admin-setup/17-sign-up steel 765bf61b063c
 admin-setup/18-sign-up-taken steel dd657ebf3119
-admin-setup/19-sign-up-sent steel 8f6a217fd7da
+admin-setup/19-sign-up-sent steel 71088af4439a
 admin-setup/20-address-waiting steel 9c01b4f3d066
 operator-setup/op-1-sign-in steel 4c94dbf4e3bb
 operator-setup/op-2-new-client steel a99d9da51da2
@@ -175,7 +175,7 @@ admin-setup/15-formatted-saved emerald a796dd534098
 admin-setup/16-formatted-card emerald 4b54242aaebc
 admin-setup/17-sign-up emerald 6c157280deff
 admin-setup/18-sign-up-taken emerald e7a31cc1d715
-admin-setup/19-sign-up-sent emerald b426b185080a
+admin-setup/19-sign-up-sent emerald 67b4ff11723f
 admin-setup/20-address-waiting emerald 733a902ec5ab
 operator-setup/op-1-sign-in emerald 33c08326eb29
 operator-setup/op-2-new-client emerald 7c8d72161c24
@@ -334,7 +334,7 @@ admin-setup/15-formatted-saved brick 8d3e0107eb64
 admin-setup/16-formatted-card brick ece257ad33d6
 admin-setup/17-sign-up brick a1407afa6bc4
 admin-setup/18-sign-up-taken brick 15a9a87b7f73
-admin-setup/19-sign-up-sent brick b9dede70ccee
+admin-setup/19-sign-up-sent brick 2f4dd63152ff
 admin-setup/20-address-waiting brick 9c99009aa4f6
 operator-setup/op-1-sign-in brick ed7cc7ecffbe
 operator-setup/op-2-new-client brick be451147e35a
@@ -493,7 +493,7 @@ admin-setup/15-formatted-saved bronze 2569c9bf7e13
 admin-setup/16-formatted-card bronze 556950bd1734
 admin-setup/17-sign-up bronze 4b3df901dbab
 admin-setup/18-sign-up-taken bronze b30184fdf063
-admin-setup/19-sign-up-sent bronze 654190968b09
+admin-setup/19-sign-up-sent bronze 24ab7daa5377
 admin-setup/20-address-waiting bronze 25c85d9162f2
 operator-setup/op-1-sign-in bronze 78f5a4af7a8b
 operator-setup/op-2-new-client bronze bd617e41e9bd
@@ -652,7 +652,7 @@ admin-setup/15-formatted-saved plum 0bdbe419fdb1
 admin-setup/16-formatted-card plum d2c98899665a
 admin-setup/17-sign-up plum f715b9789249
 admin-setup/18-sign-up-taken plum ac66e094e40c
-admin-setup/19-sign-up-sent plum dc898976653e
+admin-setup/19-sign-up-sent plum c3183cb2382b
 admin-setup/20-address-waiting plum 3806b6d65be5
 operator-setup/op-1-sign-in plum f6758d288ddd
 operator-setup/op-2-new-client plum 28b34ebe4b86
@@ -811,7 +811,7 @@ admin-setup/15-formatted-saved indigo d4dcfdcce07a
 admin-setup/16-formatted-card indigo 05ae876ec847
 admin-setup/17-sign-up indigo 96cf7d52a4fc
 admin-setup/18-sign-up-taken indigo a930264cabd6
-admin-setup/19-sign-up-sent indigo 1acf88e55dc6
+admin-setup/19-sign-up-sent indigo 46a8ce8ce6bf
 admin-setup/20-address-waiting indigo 39f4dee2b560
 operator-setup/op-1-sign-in indigo 0474bc4c62e6
 operator-setup/op-2-new-client indigo 00306c65f33d
@@ -970,7 +970,7 @@ admin-setup/15-formatted-saved company 35c3ee1866a5
 admin-setup/16-formatted-card company f048f77944f1
 admin-setup/17-sign-up company dcadb31db2cc
 admin-setup/18-sign-up-taken company 9dba0296dee8
-admin-setup/19-sign-up-sent company 6458c8826976
+admin-setup/19-sign-up-sent company cfd6942120dd
 admin-setup/20-address-waiting company 16e9fcbf010e
 operator-setup/op-1-sign-in company 4d73a3d05a55
 operator-setup/op-2-new-client company d5e16aaae30e
@@ -1129,7 +1129,7 @@ admin-setup/15-formatted-saved terracotta e88568d9d22b
 admin-setup/16-formatted-card terracotta 69387547e0d7
 admin-setup/17-sign-up terracotta 83cc4e8c70cd
 admin-setup/18-sign-up-taken terracotta 756fd219e74d
-admin-setup/19-sign-up-sent terracotta 77e2bf5756c1
+admin-setup/19-sign-up-sent terracotta dd74e30fd506
 admin-setup/20-address-waiting terracotta 7b17e46ef2c1
 operator-setup/op-1-sign-in terracotta 2096b5419ad5
 operator-setup/op-2-new-client terracotta 37bb9bb37489
@@ -1288,7 +1288,7 @@ admin-setup/15-formatted-saved red 32151a46264a
 admin-setup/16-formatted-card red 26966752a069
 admin-setup/17-sign-up red fedc14d6d056
 admin-setup/18-sign-up-taken red db1015eb262f
-admin-setup/19-sign-up-sent red e9a3a1575c8f
+admin-setup/19-sign-up-sent red 1ea70cc9b585
 admin-setup/20-address-waiting red 804f7ccc19d0
 operator-setup/op-1-sign-in red ab419333dcc4
 operator-setup/op-2-new-client red 62009853805b
@@ -1447,7 +1447,7 @@ admin-setup/15-formatted-saved amber 5387371d1579
 admin-setup/16-formatted-card amber 70f46a2350da
 admin-setup/17-sign-up amber ca642d15439f
 admin-setup/18-sign-up-taken amber c9dac2e25269
-admin-setup/19-sign-up-sent amber 1a8bfdbc6193
+admin-setup/19-sign-up-sent amber 34f524e48fef
 admin-setup/20-address-waiting amber 5668375fa123
 operator-setup/op-1-sign-in amber 705bd4ea3d32
 operator-setup/op-2-new-client amber ef1ae8addd0e

@@ -20,6 +20,9 @@ import { BRAND_GRADIENT } from '../design-system/appTheme';
  * service unavailable. */
 type Problem = 'taken' | 'codeInvalid' | 'nameInvalid' | 'passwordInvalid' | 'full' | 'unavailable';
 
+/** Stands for the address while the sent sentence is split around it; no dictionary line holds it. */
+const ADDRESS_MARK = '\u0001';
+
 const PROBLEM_WORDS = {
   taken: 'signUp.taken',
   codeInvalid: 'operator.codeInvalid',
@@ -76,6 +79,14 @@ export function SignUpPage({ api }: { api: Api }) {
     setBusy(false);
   }
 
+  // The sentence is said once with a mark where the address goes, so the address sits in its own element
+  // (the walk masks it: the stack's port is free on every run) and the words stay the dictionary's.
+  const [before = '', after = ''] = t('signUp.sentText', {
+    name: sent?.name,
+    address: ADDRESS_MARK,
+  }).split(ADDRESS_MARK);
+  const sentWords = { before, after };
+
   const onCode = problem === 'taken' || problem === 'codeInvalid';
   return (
     <DoorPage>
@@ -84,10 +95,9 @@ export function SignUpPage({ api }: { api: Api }) {
           <Stack gap="md">
             <DoorHeading title={t('signUp.sentTitle')} />
             <FormMessage kind="success">
-              {t('signUp.sentText', {
-                name: sent.name,
-                address: clientAddress(window.location.origin, sent.code),
-              })}
+              {sentWords.before}
+              <span data-sent-address>{clientAddress(window.location.origin, sent.code)}</span>
+              {sentWords.after}
             </FormMessage>
           </Stack>
         ) : (

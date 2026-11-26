@@ -131,13 +131,17 @@ describe('14: the sign-up page sends the form and says what came of it', () => {
       contactPhone: '0901 234',
       password: GOOD,
     });
-    expect(
-      screen.getByText(
-        words.signUp.sentText
-          .replace('{{name}}', 'Gạch Men Phú Quý')
-          .replace('{{address}}', clientAddress(window.location.origin, 'phu-quy')),
-      ),
-    ).toBeTruthy();
+    const address = clientAddress(window.location.origin, 'phu-quy');
+    const message = screen.getByRole('status');
+    // The whole sentence reads as the dictionary's, and the address sits alone in its own plain element
+    // (the walk masks that element: the stack's port is free on every run).
+    expect(message.textContent).toContain(
+      words.signUp.sentText.replace('{{name}}', 'Gạch Men Phú Quý').replace('{{address}}', address),
+    );
+    const own = message.querySelectorAll('[data-sent-address]');
+    expect(own).toHaveLength(1);
+    expect(own[0]?.textContent).toBe(address);
+    expect(own[0]?.children).toHaveLength(0);
     expect(screen.queryByRole('textbox')).toBeNull();
   });
 
