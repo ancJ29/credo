@@ -1,8 +1,9 @@
 import {
-  clientAddress,
+  companyOwnAddress,
   clientCodeSchema,
   passwordIsValid,
   type SignUpRequest,
+  signUpRequestSchema,
 } from '@credo/shared';
 import { Button, PasswordInput, Stack, TextInput } from '@mantine/core';
 import { IconLock, IconPhone, IconUser } from '@tabler/icons-react';
@@ -18,7 +19,16 @@ import { BRAND_GRADIENT } from '../design-system/appTheme';
 
 /** What a failed try says: the address taken, a field the rule refuses, the queue full, or the
  * service unavailable. */
-type Problem = 'taken' | 'codeInvalid' | 'nameInvalid' | 'passwordInvalid' | 'full' | 'unavailable';
+type Problem =
+  | 'taken'
+  | 'codeInvalid'
+  | 'nameInvalid'
+  | 'contactNameInvalid'
+  | 'phoneInvalid'
+  | 'passwordInvalid'
+  | 'full'
+  | 'refused'
+  | 'unavailable';
 
 /** Stands for the address while the sent sentence is split around it; no dictionary line holds it. */
 const ADDRESS_MARK = '\u0001';
@@ -27,8 +37,11 @@ const PROBLEM_WORDS = {
   taken: 'signUp.taken',
   codeInvalid: 'operator.codeInvalid',
   nameInvalid: 'operator.nameInvalid',
+  contactNameInvalid: 'signUp.contactNameInvalid',
+  phoneInvalid: 'signUp.phoneInvalid',
   passwordInvalid: 'person.passwordInvalid',
   full: 'signUp.full',
+  refused: 'signUp.refused',
   unavailable: 'common.unavailable',
 } as const satisfies Record<Problem, string>;
 
@@ -65,7 +78,12 @@ export function SignUpPage({ api }: { api: Api }) {
       password: typed.password,
     };
     if (!clientCodeSchema.safeParse(request.code).success) return setProblem('codeInvalid');
-    if (request.name === '') return setProblem('nameInvalid');
+    const fields = signUpRequestSchema.shape;
+    if (!fields.name.safeParse(request.name).success) return setProblem('nameInvalid');
+    if (!fields.contactName.safeParse(request.contactName).success)
+      return setProblem('contactNameInvalid');
+    if (!fields.contactPhone.safeParse(request.contactPhone).success)
+      return setProblem('phoneInvalid');
     if (!passwordIsValid(request.password)) return setProblem('passwordInvalid');
     setProblem(null);
     setBusy(true);
@@ -74,7 +92,8 @@ export function SignUpPage({ api }: { api: Api }) {
       if (result.kind === 'taken') setProblem('taken');
       else setSent({ name: request.name, code: result.code });
     } catch (error) {
-      setProblem(error instanceof ApiError && error.status === 503 ? 'full' : 'unavailable');
+      const status = error instanceof ApiError ? error.status : null;
+      setProblem(status === 503 ? 'full' : status === 400 ? 'refused' : 'unavailable');
     }
     setBusy(false);
   }
@@ -96,7 +115,7 @@ export function SignUpPage({ api }: { api: Api }) {
             <DoorHeading title={t('signUp.sentTitle')} />
             <FormMessage kind="success">
               {sentWords.before}
-              <span data-sent-address>{clientAddress(window.location.origin, sent.code)}</span>
+              <span data-sent-address>{companyOwnAddress(window.location.origin, sent.code)}</span>
               {sentWords.after}
             </FormMessage>
           </Stack>
@@ -104,7 +123,7 @@ export function SignUpPage({ api }: { api: Api }) {
           <form onSubmit={(event) => void submit(event)}>
             <Stack gap="md">
               <DoorHeading title={t('signUp.title')} subtitle={t('signUp.intro')} />
-              {(problem === 'full' || problem === 'unavailable') && (
+              {(problem === 'full' || problem === 'refused' || problem === 'unavailable') && (
                 <FormMessage kind="error">{t(PROBLEM_WORDS[problem])}</FormMessage>
               )}
               <TextInput
@@ -129,6 +148,9 @@ export function SignUpPage({ api }: { api: Api }) {
                 leftSection={<IconUser size={18} />}
                 value={typed.contactName}
                 onChange={set('contactName')}
+                error={
+                  problem === 'contactNameInvalid' ? t(PROBLEM_WORDS.contactNameInvalid) : undefined
+                }
                 required
               />
               <TextInput
@@ -137,6 +159,7 @@ export function SignUpPage({ api }: { api: Api }) {
                 leftSection={<IconPhone size={18} />}
                 value={typed.contactPhone}
                 onChange={set('contactPhone')}
+                error={problem === 'phoneInvalid' ? t(PROBLEM_WORDS.phoneInvalid) : undefined}
                 required
               />
               <PasswordInput

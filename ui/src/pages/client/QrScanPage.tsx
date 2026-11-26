@@ -62,11 +62,16 @@ export function QrScanPage({ brand, api, onSession, languages, onLanguage }: Pro
   const [pasted, setPasted] = useState('');
   const video = useRef<HTMLVideoElement>(null);
   const busy = useRef(false);
+  /** The text the camera last read that was refused or failed: not asked again while it stays in view. */
+  const turnedAway = useRef<string | null>(null);
 
   /** Signs in by the text a code or a link carried; the camera stops and the tick shows. */
   async function enter(text: string) {
     const qr = codeIn(text);
-    if (!qr) return setTold('notACode');
+    if (!qr) {
+      turnedAway.current = text;
+      return setTold('notACode');
+    }
     if (busy.current) return;
     busy.current = true;
     try {
@@ -76,6 +81,7 @@ export function QrScanPage({ brand, api, onSession, languages, onLanguage }: Pro
       setTimeout(() => onSession(session), TICK_MS);
     } catch (error) {
       busy.current = false;
+      turnedAway.current = text;
       setTold(error instanceof ApiError && error.status === SIGNED_OUT ? 'refused' : 'failed');
     }
   }
@@ -108,7 +114,11 @@ export function QrScanPage({ brand, api, onSession, languages, onLanguage }: Pro
           if (frame.videoWidth === 0) return;
           const pixels = pixelsOf(frame, frame.videoWidth, frame.videoHeight);
           if (!pixels) return;
-          void readQr(pixels).then((text) => text !== null && void enter(text));
+          void readQr(pixels).then((text) => {
+            // A code turned away is asked again only after another is read, or none is in view.
+            if (text === null || text !== turnedAway.current) turnedAway.current = null;
+            if (text !== null && text !== turnedAway.current) void enter(text);
+          });
         }, FRAME_MS);
       } catch {
         setTold('noCamera');

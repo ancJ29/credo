@@ -977,6 +977,9 @@ export const en = {
     submit: 'Send for approval',
     taken: 'That address is taken. Choose another.',
     full: 'Too many companies are waiting. Please try again later.',
+    contactNameInvalid: 'Enter your name, up to 100 characters.',
+    phoneInvalid: 'The phone may hold digits, spaces and + only, up to 20 characters.',
+    refused: 'Something you typed was refused. Check each field and try again.',
     sentTitle: 'Sent for approval',
     sentText:
       'A credo operator will check {{name}} and call you. Once approved, open {{address}} and sign in as root with your password.',

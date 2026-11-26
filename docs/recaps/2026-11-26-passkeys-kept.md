@@ -18,7 +18,7 @@ flowchart LR
 ## What was proved
 
 - Each business row was seen red on the old code, then green, in the BFF's route tests and the UI's. The walk gains seven scenes, Lan's two passkeys written at fixed days.
-- Your four walk runs of 26 November ended green, the last at 07:50 with 0 moved between its two passes; the first three each stopped on a walk slip, one the passkeys table's scroll offset, fixed in `5961e41b`, `8a25fe7f` and `715d1e34`. The office walk's bases are `487e5cfc`.
+- Your four walk runs of 26 November ended green, the last at 07:50 with 0 moved between its two passes; the first three each stopped on a walk slip, one the passkeys table's scroll offset, fixed in `5961e41b`, `8a25fe7f` and `715d1e34`. The office walk's bases are `572f7b6a`; More's, `487e5cfc`.
 
 ## How it closed
 

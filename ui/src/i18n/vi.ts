@@ -977,6 +977,9 @@ export const vi: Dictionary = {
     submit: 'Gửi để duyệt',
     taken: 'Địa chỉ này đã có người dùng. Hãy chọn địa chỉ khác.',
     full: 'Có quá nhiều công ty đang chờ. Vui lòng thử lại sau.',
+    contactNameInvalid: 'Vui lòng nhập tên của bạn, tối đa 100 ký tự.',
+    phoneInvalid: 'Số điện thoại chỉ gồm chữ số, dấu cách và dấu +, tối đa 20 ký tự.',
+    refused: 'Một số thông tin bị từ chối. Hãy kiểm tra từng ô rồi thử lại.',
     sentTitle: 'Đã gửi để duyệt',
     sentText:
       'Nhân viên credo sẽ kiểm tra {{name}} và gọi cho bạn. Khi được duyệt, hãy mở {{address}} và đăng nhập bằng tài khoản root với mật khẩu của bạn.',

@@ -1,4 +1,4 @@
-import { clientAddress, SIGN_UP_WAITING } from '@credo/shared';
+import { companyOwnAddress, SIGN_UP_WAITING } from '@credo/shared';
 import { screen } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it } from 'vitest';
@@ -131,7 +131,7 @@ describe('14: the sign-up page sends the form and says what came of it', () => {
       contactPhone: '0901 234',
       password: GOOD,
     });
-    const address = clientAddress(window.location.origin, 'phu-quy');
+    const address = companyOwnAddress(window.location.origin, 'phu-quy');
     const message = screen.getByRole('status');
     // The whole sentence reads as the dictionary's, and the address sits alone in its own plain element
     // (the walk masks that element: the stack's port is free on every run).
@@ -183,6 +183,51 @@ describe('14: the sign-up page sends the form and says what came of it', () => {
 
     expect(await screen.findByText(words.operator.nameInvalid)).toBeTruthy();
     expect(api.signUp).not.toHaveBeenCalled();
+  });
+
+  it('4: says a phone or a contact name the shared rule refuses on its own field, before anything is sent', async () => {
+    const { api } = openApp('/sign-up', { out: true });
+    await fill();
+    const phone = screen.getByLabelText(labelled(words.signUp.contactPhone));
+    await userEvent.clear(phone);
+    await userEvent.type(phone, '0901.234.567');
+    await send();
+
+    expect(await screen.findByText(words.signUp.phoneInvalid)).toBeTruthy();
+    expect(phone.closest('[data-error]') ?? phone.getAttribute('data-error')).toBeTruthy();
+    expect(screen.queryByText(words.common.unavailable)).toBeNull();
+    await userEvent.clear(phone);
+    await userEvent.type(phone, '+84 901 234 567');
+    const contact = screen.getByLabelText(labelled(words.signUp.contactName));
+    await userEvent.clear(contact);
+    await userEvent.type(contact, 'a'.repeat(101));
+    await send();
+
+    expect(await screen.findByText(words.signUp.contactNameInvalid)).toBeTruthy();
+    expect(screen.queryByText(words.signUp.phoneInvalid)).toBeNull();
+    expect(api.signUp).not.toHaveBeenCalled();
+  });
+
+  it('4: a 400 from the service says something was refused, never that the service is unavailable', async () => {
+    openApp('/sign-up', {
+      out: true,
+      override: (spied) => spied.signUp.mockRejectedValueOnce(new ApiError(400, true)),
+    });
+    await fill();
+    await send();
+
+    expect((await screen.findByRole('alert')).textContent).toBe(words.signUp.refused);
+  });
+
+  it('4: a failure that is no answer at all is said to be unavailable', async () => {
+    openApp('/sign-up', {
+      out: true,
+      override: (spied) => spied.signUp.mockRejectedValueOnce(new TypeError('offline')),
+    });
+    await fill();
+    await send();
+
+    expect((await screen.findByRole('alert')).textContent).toBe(words.common.unavailable);
   });
 
   it('says a full queue where the BFF answers 503, and any other failure as the service being unavailable, each keeping the form', async () => {
