@@ -41,6 +41,7 @@ import {
   DEMO_CLIENTS,
   DEMO_CODE,
   DEMO_CONFIG,
+  DEMO_LOGO,
   DEMO_CUSTOMERS,
   DEMO_DELIVERIES,
   DEMO_DELIVERY_PHOTOS,
@@ -108,6 +109,7 @@ export async function seedClient(
     name,
     madeAt,
     settings: { ...DEMO_CONFIG, name },
+    logo: DEMO_LOGO,
   });
   if (made === 'taken') throw new SeededAlready();
 

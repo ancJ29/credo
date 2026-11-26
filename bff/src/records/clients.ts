@@ -35,7 +35,6 @@ export async function createRecord(storage: RecordStore, key: string, data: unkn
 export function startingConfig(name: string, settings: Partial<TenantConfig> = {}): TenantConfig {
   return {
     name,
-    logo: null,
     colour: CREDO_COLOUR,
     whiteHeader: false,
     whiteMenu: false,
@@ -53,6 +52,8 @@ type NewClient = {
   name: string;
   madeAt: number;
   settings?: Partial<TenantConfig>;
+  /** The company's logo as a data URL, written as its `logo` picture: the operator's create gives none, the data set's does. */
+  logo?: string;
   /** The box the company lives on: its settings and root are written there and its line names
    * it. None, they sit in `storage` and the line names no box. */
   box?: { name: string; storage: CStorageClient };
@@ -63,7 +64,7 @@ type NewClient = {
  * sign-up that waits on the code, which then does not hold it against itself. */
 async function writeClient(
   storage: CStorageClient,
-  { code, name, madeAt, settings = {}, box }: NewClient,
+  { code, name, madeAt, settings = {}, logo, box }: NewClient,
   rootHash: () => Promise<string>,
   ownRequest: boolean,
 ): Promise<{ id: string } | 'taken'> {
@@ -82,6 +83,7 @@ async function writeClient(
     generation: '',
   };
   await createRecord(company, keys.config, config);
+  if (logo !== undefined) await createRecord(company, keys.picture('logo'), { picture: logo });
   await createRecord(company, keys.user(ROOT_NAME), root);
   const index: StoredClient = { id, name, madeAt, ...(box ? { box: box.name } : {}) };
   const saved = await storage.putRecord(recordKeys.client(code), index, null);

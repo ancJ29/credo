@@ -1,4 +1,4 @@
-import type { ConfigDoc, TenantConfig } from '@credo/shared';
+import { type ConfigDoc, NO_PICTURES, type TenantConfig } from '@credo/shared';
 import { cleanup, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { describe, expect, it, vi } from 'vitest';
@@ -17,7 +17,6 @@ const labelled = (word: string) => new RegExp(word.replace(/[.*+?^${}()|[\]\\]/g
 
 const config: TenantConfig = {
   name: 'Minh Phát',
-  logo: null,
   colour: '#2f7d6d',
   whiteHeader: false,
   whiteMenu: false,
@@ -27,7 +26,7 @@ const config: TenantConfig = {
   formattedName: '',
   description: '',
 };
-const doc: ConfigDoc = { config, version: 'v1' };
+const doc: ConfigDoc = { config, version: 'v1', pictures: NO_PICTURES };
 const root = { name: 'root', root: true, permissions: {} };
 
 const memory = (initial: Record<string, string> = {}) => {
@@ -65,7 +64,10 @@ function setup(
     signIn: vi.fn(() => Promise.resolve({ authId: 'd.s', expiresAt: 1, user: root })),
     signOut: vi.fn(() => Promise.resolve()),
     saveConfig: vi.fn(() =>
-      Promise.resolve({ kind: 'saved' as const, doc: { config, version: 'v2' } }),
+      Promise.resolve({
+        kind: 'saved' as const,
+        doc: { config, version: 'v2', pictures: NO_PICTURES },
+      }),
     ),
     operatorSignOut: vi.fn(() => Promise.resolve()),
     operatorMe: vi.fn(() => Promise.reject(new ApiError(401))),
@@ -101,6 +103,36 @@ async function signInAs(name = 'root', password = 'pw') {
   await userEvent.type(screen.getByLabelText(labelled(words.auth.password)), password);
   await userEvent.click(screen.getByRole('button', { name: words.auth.submit }));
 }
+
+describe('the app, the company’s pictures', () => {
+  const pictures = {
+    logo: { address: '/api/pictures/minh-phat/logo?v=t', version: 't' },
+    'logo-on-colour': { address: '/api/pictures/minh-phat/logo-on-colour?v=u', version: 'u' },
+  };
+  const named = () => Promise.resolve({ ...doc, pictures });
+
+  it('14: the header wears the logo for the coloured header the reply names, the door only the logo', async () => {
+    const door = setup({ getConfig: named });
+    await door.findByRole('heading', { level: 1 });
+    expect(document.querySelector('img')?.getAttribute('src')).toBe(pictures.logo.address);
+    expect(document.querySelectorAll('img')).toHaveLength(1);
+    door.unmount();
+
+    setup({ getConfig: named }, signedIn);
+    const header = await screen.findByRole('banner');
+    expect(header.querySelector('img')?.getAttribute('src')).toBe(
+      pictures['logo-on-colour'].address,
+    );
+  });
+
+  it('14: with no picture named the header draws the stand-in, as before', async () => {
+    setup({}, signedIn);
+    const header = await screen.findByRole('banner');
+
+    expect(header.querySelector('img')).toBeNull();
+    expect(header.querySelector('svg.tabler-icon-brand-adobe')).not.toBeNull();
+  });
+});
 
 describe('the app', () => {
   it('The sign-in already wears the company’s name, and asks nobody who they are', async () => {
@@ -432,7 +464,11 @@ describe('the app', () => {
     const gone = setup(
       {
         getConfig: () =>
-          Promise.resolve({ config: { ...config, languages: ['en'] }, version: 'v1' }),
+          Promise.resolve({
+            config: { ...config, languages: ['en'] },
+            version: 'v1',
+            pictures: NO_PICTURES,
+          }),
       },
       { 'credo.language': 'vi', 'credo.shown': 'vi' },
     );
@@ -441,7 +477,11 @@ describe('the app', () => {
   });
 
   it('A language the company no longer offers gives way to its default', async () => {
-    const saved = { config: { ...config, languages: ['en' as const] }, version: 'v2' };
+    const saved = {
+      config: { ...config, languages: ['en' as const] },
+      version: 'v2',
+      pictures: NO_PICTURES,
+    };
     setup(
       { saveConfig: () => Promise.resolve({ kind: 'saved', doc: saved }) },
       {
@@ -463,6 +503,7 @@ describe('the app', () => {
     const saved = {
       config: { ...config, name: 'Minh Phát Sài Gòn', colour: '#b4532a' },
       version: 'v2',
+      pictures: NO_PICTURES,
     };
     const saveConfig = vi.fn<Api['saveConfig']>(() =>
       Promise.resolve({ kind: 'saved', doc: saved }),
@@ -491,6 +532,7 @@ describe('the app', () => {
     const saved = {
       config: { ...config, name: 'Minh Phát Sài Gòn', colour: '#b4532a' },
       version: 'v2',
+      pictures: NO_PICTURES,
     };
     const saveConfig = vi.fn<Api['saveConfig']>(() =>
       Promise.resolve({ kind: 'saved', doc: saved }),
@@ -513,7 +555,11 @@ describe('the app', () => {
   });
 
   it('The walk’s settings step: the root picks the Brick palette by its name and the saved screens wear it', async () => {
-    const saved = { config: { ...config, colour: '#9e2d20' }, version: 'v2' };
+    const saved = {
+      config: { ...config, colour: '#9e2d20' },
+      version: 'v2',
+      pictures: NO_PICTURES,
+    };
     const saveConfig = vi.fn<Api['saveConfig']>(() =>
       Promise.resolve({ kind: 'saved', doc: saved }),
     );
@@ -575,7 +621,11 @@ describe('the app', () => {
   });
 
   it('A save over a newer one is refused, and the page offers the newer one', async () => {
-    const newer = { config: { ...config, name: 'Someone else’s name' }, version: 'v9' };
+    const newer = {
+      config: { ...config, name: 'Someone else’s name' },
+      version: 'v9',
+      pictures: NO_PICTURES,
+    };
     const getConfig = vi.fn<Api['getConfig']>().mockResolvedValueOnce(doc).mockResolvedValue(newer);
     setup(
       { getConfig, saveConfig: () => Promise.resolve({ kind: 'conflict' }) },
@@ -1037,7 +1087,11 @@ describe('the tab and the page’s language', () => {
   it('2: the walk’s formatted steps: the root types both fields, saves, the header shows the name formatted, and signing out shows the card with the description', async () => {
     const formattedName = '<b>Minh</b><br><span style="color:#1d3557">Phát</span>';
     const description = 'Vật liệu xây dựng';
-    const saved = { config: { ...config, formattedName, description }, version: 'v2' };
+    const saved = {
+      config: { ...config, formattedName, description },
+      version: 'v2',
+      pictures: NO_PICTURES,
+    };
     const saveConfig = vi.fn<Api['saveConfig']>(() =>
       Promise.resolve({ kind: 'saved', doc: saved }),
     );

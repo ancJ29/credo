@@ -9,5 +9,10 @@ export function createLambdaHandler(
   env: Record<string, string | undefined>,
   options: { now?: () => number; logger?: boolean } = {},
 ) {
-  return awsLambdaFastify(buildBff(readLambdaEnv(env), options));
+  return awsLambdaFastify(buildBff(readLambdaEnv(env), options), {
+    // The adapter sends a body as text unless its type is listed binary, which turns a picture's
+    // bytes to text on Lambda and in no local check; the BFF compresses nothing, so every image
+    // is the one case.
+    enforceBase64: (response) => String(response.headers['content-type']).startsWith('image/'),
+  });
 }

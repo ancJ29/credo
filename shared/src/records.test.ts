@@ -26,6 +26,7 @@ describe('the record keys', () => {
     expect(tenant.employee('p1').startsWith(tenant.employeePrefix)).toBe(true);
     expect(tenant.staffSetup).toBe(`tenant.${id}.staff-setup`);
     expect(tenant.employeePhoto('p1')).toBe(`tenant.${id}.employee-photo.p1`);
+    expect(tenant.picture('logo-on-colour')).toBe(`tenant.${id}.picture.logo-on-colour`);
     // a photo is never found by the staff list
     expect(tenant.employeePhoto('p1').startsWith(tenant.employeePrefix)).toBe(false);
     expect(tenant.seed).toBe(`tenant.${id}.seed`);

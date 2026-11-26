@@ -15,7 +15,7 @@ import { HeaderBrand, type Look, Shell } from './Shell';
 
 const frameCss = readFileSync(join(import.meta.dirname, 'frameLook.module.css'), 'utf8');
 const words = DICTIONARIES.en;
-const brand = { name: 'Minh Phát', logo: 'data:image/png;base64,AAAA' };
+const brand = { name: 'Minh Phát', logo: 'data:image/png;base64,AAAA', logoOnColour: null };
 
 const shell = (
   languages: ('vi' | 'en')[],
@@ -124,13 +124,29 @@ describe('Shell', () => {
     expect(screen.getByText('the page')).toBeTruthy();
   });
 
-  it('10: The header shows the company’s name beside the stand-in logo, never the stored one', () => {
+  it('10: The header shows the company’s name beside its logo, the stand-in where it has none', () => {
     shell(['en']);
 
     const header = document.querySelector('header')!;
-    expect(header.querySelector('img')).toBeNull();
-    expect(header.querySelector('svg.tabler-icon-brand-adobe')?.getAttribute('width')).toBe('36');
+    expect(header.querySelector('img')?.getAttribute('src')).toBe(brand.logo);
+    expect(header.querySelector('svg.tabler-icon-brand-adobe')).toBeNull();
     expect(within(header).getByRole('heading', { level: 1 }).textContent).toBe('Minh Phát');
+    cleanup();
+
+    draw(
+      <Shell
+        brand={{ name: 'Minh Phát', logo: null }}
+        user="root"
+        languages={['en']}
+        onLanguage={vi.fn()}
+        onSignOut={vi.fn()}
+      >
+        <p>the page</p>
+      </Shell>,
+    );
+    const bare = document.querySelector('header')!;
+    expect(bare.querySelector('img')).toBeNull();
+    expect(bare.querySelector('svg.tabler-icon-brand-adobe')?.getAttribute('width')).toBe('36');
   });
 
   it('The brand stays at 600 beside the bold page titles', () => {
@@ -630,6 +646,22 @@ describe('HeaderBrand', () => {
     expect(title.querySelector('[aria-hidden="true"]')!.innerHTML).toBe(
       '<b>Minh</b><br><span style="color: rgb(29, 53, 87);">Phát</span>',
     );
+  });
+
+  it('14: the brand draws the logos as the header’s table says, beside the name, with an empty alt', () => {
+    const pictures = (white: boolean) =>
+      draw(
+        <HeaderBrand name="Minh Phát" white={white} logo="/logo.png" logoOnColour="/light.png" />,
+      ).container.querySelector('img');
+
+    expect(pictures(false)?.getAttribute('src')).toBe('/light.png');
+    expect(pictures(false)?.getAttribute('alt')).toBe('');
+    cleanup();
+    expect(pictures(true)?.getAttribute('src')).toBe('/logo.png');
+    cleanup();
+    const alone = draw(<HeaderBrand name="Minh Phát" white={false} logo="/logo.png" />);
+    expect(alone.container.querySelector('img')?.getAttribute('src')).toBe('/logo.png');
+    expect(screen.getByRole('heading', { level: 1, name: 'Minh Phát' })).toBeDefined();
   });
 
   it('3: where no formatted name is set the plain name is drawn as bare text, as before', () => {

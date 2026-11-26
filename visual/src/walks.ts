@@ -597,6 +597,17 @@ export const WALKS: Walk[] = [
         },
         question: 'Would a person opening it know the company opens once an operator approves it?',
       },
+      {
+        id: '21-logo-on-colour',
+        number: 21,
+        path: 'main',
+        mock: { screen: 4, state: 'logo-on-colour' },
+        sentence: {
+          en: 'Saved: the header and the preview wear the logo for the coloured header',
+          vi: 'Đã lưu: đầu trang và phần xem trước hiện logo cho thanh tiêu đề màu',
+        },
+        question: 'Does the coloured header show the company’s light logo, clear on its colour?',
+      },
     ],
   },
   {

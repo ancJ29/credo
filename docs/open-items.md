@@ -618,7 +618,7 @@ A delete that stops at its roster write (an actor gone, 401; three roster moves,
 *Trigger:* two operators deleting each other, or a roster that keeps moving.
 
 
-## 76. A client's own logo in the header — the human; `[PARKED]` (legacy frame, plan 2026-11-03)
+## 76. A client's own logo in the header — the human; `[FIXED]` in piece 250.3's steps 1 to 4 (2026-11-25; was `[PARKED]`, legacy frame, plan 2026-11-03)
 
 The header shows the company's name beside a stand-in logo (Tabler's `IconBrandAdobe`), not the stored one.
 
@@ -704,7 +704,7 @@ A real browser's date input never yields a day that is not one, so `dayIsValid` 
 
 `ui/src/pages/client/QrLanding.tsx#L34` moved `role="status"` from the card onto the inner `Stack`, so the heading ("Signing you in" / "This code cannot sign you in") now sits outside the announced region and a screen reader hears only the body text and the button. Every word is unchanged and no test or walk reads the region. *Fix:* move the one attribute back to the element that holds the heading. *Trigger:* the first accessibility pass over the doors, or the next change to `QrLanding`.
 
-## 103. A door draws the client's logo, the shell does not — the machine; `[DEFERRED]` (signin-look, review, Opus, 2026-11-05, Info)
+## 103. A door draws the client's logo, the shell does not — the machine; `[FIXED]` in piece 250.3's step 1 and 2 (2026-11-25; was `[DEFERRED]`, signin-look, review, Opus, 2026-11-05, Info)
 
 A door draws `brand.logo` when there is one (`ui/src/pages/SignIn.tsx#L75-L79`), while `Shell` draws its generic mark unconditionally and never reads `brand.logo` (`ui/src/frame/Shell.tsx#L90-L114`), so a client with a logo sees its logo on the door and the generic mark one click later. `Shell` was outside this piece's bound and the human approved the mock's choice at 18:12. *Fix:* have `Shell` draw `brand.logo` when there is one, as the door does. *Trigger:* the first client with a logo, or the next change to `Shell`'s header.
 

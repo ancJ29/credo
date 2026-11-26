@@ -56,6 +56,12 @@ export const vi: Dictionary = {
     logoNone: 'Chưa tải lên logo',
     logoChoose: 'Tải lên logo',
     logoRemove: 'Xóa logo',
+    logoOnColour: 'Logo cho thanh tiêu đề màu',
+    logoOnColourHint:
+      'Không bắt buộc: bản màu sáng, hiển thị trên thanh tiêu đề màu thay cho logo.',
+    logoOnColourNone: 'Chưa tải lên logo cho thanh tiêu đề màu',
+    logoOnColourChoose: 'Tải lên logo cho thanh tiêu đề màu',
+    logoOnColourRemove: 'Xóa logo cho thanh tiêu đề màu',
     logoTooLarge: 'Tệp lớn hơn {{max}} KB nên chưa được tải lên.',
     logoNotImage: 'Tệp không đúng định dạng hình ảnh. Vui lòng thử lại.',
     colour: 'Màu thương hiệu',

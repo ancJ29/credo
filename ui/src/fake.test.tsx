@@ -61,6 +61,7 @@ import {
   DEMO_CODE,
   DEMO_COLLEAGUE_ID,
   DEMO_CONFIG,
+  DEMO_LOGO,
   DEMO_CUSTOMERS,
   DEMO_DELIVERIES,
   DEMO_DELIVERY_PHOTOS,
@@ -542,6 +543,7 @@ describe('the fake Api', () => {
         'changePassword',
         'getPhoto',
         'savePhoto',
+        'savePicture',
         'archiveEmployee',
         'restoreEmployee',
         'saveConfig',
@@ -1189,16 +1191,41 @@ describe('the fake Api', () => {
 
   it('The demo company answers as its data set holds it, and a save moves its version', async () => {
     const api = fake();
-    expect(await api.getConfig()).toEqual({ config: DEMO_CONFIG, version: 'v1' });
+    expect(await api.getConfig()).toMatchObject({ config: DEMO_CONFIG, version: 'v1' });
 
     const renamed = { ...DEMO_CONFIG, name: 'Renamed' };
     expect(await api.saveConfig(renamed, 'v1')).toEqual({
       kind: 'saved',
-      doc: { config: renamed, version: 'v2' },
+      doc: { config: renamed, version: 'v2', pictures: expect.anything() as unknown },
     });
-    expect(await api.getConfig()).toEqual({ config: renamed, version: 'v2' });
+    expect(await api.getConfig()).toMatchObject({ config: renamed, version: 'v2' });
     expect(await api.saveConfig(DEMO_CONFIG, 'v1')).toEqual({ kind: 'conflict' });
     expect((await api.getConfig()).config.name).toBe('Renamed');
+  });
+
+  it('21: the fake serves each picture as its data URL and keeps a save, a removal and a conflict', async () => {
+    const png = 'data:image/png;base64,iVBORw0KGgo=';
+    const api = fake();
+    const first = await api.getConfig();
+    expect(first.pictures.logo?.address).toBe(DEMO_LOGO);
+    expect(first.pictures['logo-on-colour']).toBeNull();
+
+    const saved = await api.savePicture('logo-on-colour', png, null);
+    expect(saved.kind === 'saved' && saved.doc.pictures['logo-on-colour']?.address).toBe(png);
+    // a picture moves nothing of the settings' version
+    expect(saved.kind === 'saved' && saved.doc.version).toBe(first.version);
+    const held = (await api.getConfig()).pictures['logo-on-colour']!;
+    expect(held.address).toBe(png);
+
+    const stale = await api.savePicture('logo-on-colour', null, 'old');
+    expect(stale.kind === 'conflict' && stale.doc?.pictures['logo-on-colour']?.address).toBe(png);
+    const gone = await api.savePicture('logo-on-colour', null, held.version);
+    expect(gone.kind === 'saved' && gone.doc.pictures['logo-on-colour']).toBeNull();
+    const again = await api.savePicture('logo-on-colour', png, null);
+    expect(again.kind).toBe('saved');
+    await expect(fake('savePicture:409').savePicture('logo', png, null)).resolves.toMatchObject({
+      kind: 'conflict',
+    });
   });
 
   it('Each load is seeded afresh: a save in one fake is not in the next', async () => {

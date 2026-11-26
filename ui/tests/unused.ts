@@ -29,6 +29,7 @@ export const staffCalls = {
   changePassword: down,
   getPhoto: down,
   savePhoto: down,
+  savePicture: down,
   archiveEmployee: down,
   restoreEmployee: down,
   listOrders: down,

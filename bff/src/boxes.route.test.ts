@@ -45,7 +45,6 @@ describe('A company whose line names no box is served from the home box', () => 
     const id = await seedTenant(t.client, 'oldco');
     await t.client.putRecord(recordKeys.tenant(id).config, {
       name: 'Old',
-      logo: null,
       colour: '#2f7d6d',
       languages: ['vi'],
       defaultLanguage: 'vi',

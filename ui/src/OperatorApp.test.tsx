@@ -521,6 +521,14 @@ describe('the operator’s page', () => {
     expect(await screen.findByRole('button', { name: 'Ops Two' })).toBeTruthy();
   });
 
+  it('20: the console’s header keeps the stand-in, with no company logo', async () => {
+    setup({}, signedIn);
+
+    const header = await screen.findByRole('banner');
+    expect(header.querySelector('img')).toBeNull();
+    expect(header.querySelector('svg.tabler-icon-brand-adobe')).not.toBeNull();
+  });
+
   it('7: More opens at /operator/more with Activity, the passkeys and sign-out', async () => {
     setup({}, signedIn, '/operator/more');
 

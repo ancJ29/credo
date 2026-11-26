@@ -10,7 +10,6 @@ import { ApiError, createApi, hopOf } from './api';
 
 const config: TenantConfig = {
   name: 'Minh Phát',
-  logo: null,
   colour: '#2f7d6d',
   whiteHeader: false,
   whiteMenu: false,
@@ -375,8 +374,39 @@ describe('the API client', () => {
 
     expect(await api.saveConfig(config, 'v1')).toEqual({
       kind: 'saved',
-      doc: { config, version: 'v2' },
+      doc: { config, version: 'v2', pictures: { logo: null, 'logo-on-colour': null } },
     });
+  });
+
+  it('21: a picture is saved by its kind with the tag it was read at, a moved tag is a conflict, any other refusal an error', async () => {
+    const named = {
+      config,
+      version: 'v1',
+      pictures: {
+        logo: null,
+        'logo-on-colour': { address: '/api/pictures/a/logo-on-colour?v=t', version: 't' },
+      },
+    };
+    const { calls, api } = fake(
+      json(named),
+      json({ error: 'Conflict', current: named }, 409),
+      json({ error: 'Conflict', current: null }, 409),
+      json({}, 400),
+    );
+
+    expect(await api.savePicture('logo-on-colour', 'data:image/png;base64,AAAA', null)).toEqual({
+      kind: 'saved',
+      doc: named,
+    });
+    expect(calls[0]?.path).toContain('/api/pictures/logo-on-colour');
+    expect(calls[0]?.init.method).toBe('PUT');
+    expect(calls[0]?.init.body).toBe('{"picture":"data:image/png;base64,AAAA","version":null}');
+    expect(await api.savePicture('logo-on-colour', null, 'old')).toEqual({
+      kind: 'conflict',
+      doc: named,
+    });
+    expect(await api.savePicture('logo', null, 'old')).toEqual({ kind: 'conflict', doc: null });
+    await expect(api.savePicture('logo', null, null)).rejects.toMatchObject({ status: 400 });
   });
 
   it('Sign-in and `me` answer the person’s resolved permissions; the UI’s parse defaults them to none', async () => {

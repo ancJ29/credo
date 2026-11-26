@@ -13,9 +13,9 @@ import { type APIRequestContext, expect, type Locator, type Page, test } from '@
 import { required, shot, WIDTHS } from '../support';
 
 /**
- * Piece 1's walk, the client's admin: twenty screens, each in Vietnamese and in English, each at
+ * Piece 1's walk, the client's admin: twenty-one screens, each in Vietnamese and in English, each at
  * the PC, tablet and phone widths the visual report draws, each saved with Playwright's own
- * screenshot check against its committed base image (20 × 2 × 3 = 120). The stack
+ * screenshot check against its committed base image (21 × 2 × 3 = 126). The stack
  * (`pnpm stack -- …`) gives the address, the demo client's code and the root's sign-in in the
  * environment, and the walk opens the client's link, as its root would. Words come from the app's
  * own dictionaries, so a renamed label turns this red where it was renamed.
@@ -50,13 +50,16 @@ const NEW_FORMATTED = '<b>Minh Phát</b><br><span style="color:#1d3557">Sài Gò
 const NEW_DESCRIPTION = 'Vật liệu xây dựng, giao tận công trình';
 /** What the other save, made through the API, calls the company. */
 const THEIR_NAME = 'Minh Phát Bình Dương';
+/** The white mark the root uploads as the logo for the coloured header: bytes from here, no file. */
+const LIGHT_MARK =
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><path d="M13 33V15l11 12 11-12v18" fill="none" stroke="#fff" stroke-width="4" stroke-linejoin="round"/></svg>';
 
 /** The settings as the stack made them, to put back after a walk saved over them. */
 let original: TenantConfig;
 
 async function write(request: APIRequestContext, route: string, body: unknown, authId?: string) {
   return await request.fetch(route, {
-    method: route === ROUTES.config ? 'PUT' : 'POST',
+    method: route === ROUTES.config || route.startsWith(ROUTES.pictures) ? 'PUT' : 'POST',
     headers: {
       'content-type': 'application/json',
       [DEVICE_HEADER]: 'device-walk-restore',
@@ -92,6 +95,17 @@ test.afterEach(async ({ request }) => {
     authId,
   );
   expect(restored.ok()).toBe(true);
+  // The picture the walk saved is taken away, so the next walk starts with the one logo alone.
+  const light = current.pictures['logo-on-colour'];
+  if (light) {
+    const removed = await write(
+      request,
+      `${ROUTES.pictures}/logo-on-colour`,
+      { picture: null, version: light.version },
+      authId,
+    );
+    expect(removed.ok()).toBe(true);
+  }
   // The company the sign-up screens sent for approval is refused by the operator, so the next test of
   // this stack meets its address free: a code no request holds is a 404, which is as good.
   const refused = await request.fetch(`/api/operator/sign-ups/${SIGN_UP_CODE}`, {
@@ -215,6 +229,22 @@ async function walk(page: Page, language: Language, width: number) {
   await expect(page.locator('header [aria-hidden="true"] b')).toBeVisible();
   await at('15-formatted-saved');
 
+  // 21. The logo for the coloured header chosen: saved at once, and the header and the preview's
+  // header wear it. Its screen follows 15 here and is numbered last.
+  const light = page.getByText(words.settings.logoOnColour, { exact: true }).locator('xpath=..');
+  await light.locator('input[type="file"]').setInputFiles({
+    name: 'light.svg',
+    mimeType: 'image/svg+xml',
+    buffer: Buffer.from(LIGHT_MARK),
+  });
+  await expect(light.getByRole('status')).toHaveText(words.settings.saved);
+  await expect(page.locator('header img')).toHaveAttribute('src', /logo-on-colour/);
+  await expect(page.locator('[data-preview="header"] img')).toHaveAttribute(
+    'src',
+    /logo-on-colour/,
+  );
+  await at('21-logo-on-colour');
+
   // 16. Signed out: the card shows the formatted name and the description. Signing in again
   // returns to Settings, for the screens after.
   await page.getByRole('button', { name: ROOT.name, exact: true }).click();
@@ -326,11 +356,11 @@ for (const [device, width] of Object.entries(WIDTHS)) {
   test.describe(`piece 1: the client's admin, on a ${device} (${width})`, () => {
     test.use({ viewport: { width, height: 800 } });
 
-    test('walks all twenty screens in Vietnamese', async ({ page }) => {
+    test('walks all twenty-one screens in Vietnamese', async ({ page }) => {
       await walk(page, 'vi', width);
     });
 
-    test('walks all twenty screens in English', async ({ page }) => {
+    test('walks all twenty-one screens in English', async ({ page }) => {
       await walk(page, 'en', width);
     });
   });

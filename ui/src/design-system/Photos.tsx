@@ -11,6 +11,10 @@ import { SPACING } from './tokens';
 export const PICTURE =
   "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' fill='lightgray'/%3E%3Cpath d='M6 34 20 6l14 28z' fill='teal'/%3E%3C/svg%3E";
 
+/** An invented white mark for the sample logo for the coloured header, drawn on a coloured ground: no real company's. */
+export const PICTURE_ON_COLOUR =
+  "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath d='M12 3 21 20H3z' fill='white'/%3E%3Cpath d='M12 11l3 6H9z' fill='lightgray'/%3E%3C/svg%3E";
+
 /** What the sign-in QR code carries in the sample: a link, never a real one. */
 const SIGN_IN_LINK = 'https://an-phat.example/login?qr=a.b';
 

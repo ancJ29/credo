@@ -440,6 +440,30 @@ add takes a session issued in the last ten minutes, else a 403. A removal, one's
 - *Held by:* `bff/src/passkey-sign-in.route.test.ts` and `bff/src/passkeys-kept.route.test.ts`.
 - *Rejected:* one relying party for every company. Item 291's fix needs the same address.
 
+## A company's picture is the one public reply that is not JSON
+
+`GET /api/pictures/<code>/<kind>` answers a stored upload's bytes, so it is the one reply of this package
+that is neither JSON nor behind a sign-in: the card shows the logo before anyone signs in, and an `img`
+sends no header, so the address names the company and nothing else. It still passes the front door's key and
+reads only the company that code names; a code or kind that is no code or kind is a 404, as an unknown one
+is. Since an SVG opened at the app's own address would run its scripts there, the reply carries
+`X-Content-Type-Options: nosniff` and `Content-Security-Policy: default-src 'none'; style-src
+'unsafe-inline'; sandbox`, and its cache is `public, max-age=31536000, immutable` only where `?v=` is the
+record's tag (CloudFront caches no `/api/*`, so the browser does), else `no-cache`. On Lambda the adapter
+sends a body as text unless its type is listed binary, which would break every picture on ridge and in no
+local check: `createLambdaHandler` passes `enforceBase64` for `image/…`, and `lambda.test.ts` reads the
+adapter's own rule. *Price of the choice:* a save of a picture for a company with no settings stores it, then
+answers 404.
+
+## A read of the settings may write once
+
+A company made before the pictures stored its logo inside its settings. `readConfig`, under the boot, the
+save and the conflict, moves it: the logo is written as the company's `logo` picture create-only (one already
+there, a newer upload or a move beside it, is kept), then the settings are rewritten without the field on the tag
+read, and a moved tag is read again, three times at most before a 503. An interruption between the two writes
+leaves the inline logo and the next read finishes it; no activity entry is written, as no one changed
+anything. *Price of the choice:* a GET that writes, once a company, in return for no script to run on ridge.
+
 ## A company signs itself up through one public route, and waits as one bounded record
 
 `POST /api/sign-up` takes no session and no company header, so anyone can call it. It makes no

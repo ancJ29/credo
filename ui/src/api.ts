@@ -25,6 +25,7 @@ import {
   type ChangeCodeRequest,
   type ConfigDoc,
   configDocSchema,
+  type PictureKind,
   type Customer,
   type CustomerDoc,
   customerDocSchema,
@@ -175,6 +176,11 @@ export function hopOf(error: unknown): Hop {
 type Schema<T> = { safeParse: (value: unknown) => { success: true; data: T } | { success: false } };
 
 export type SaveResult = { kind: 'saved'; doc: ConfigDoc } | { kind: 'conflict' };
+
+/** A picture saved, with the settings' doc as it stands, or a moved tag, which is a result: the doc
+ * as it now stands, none if it is gone. */
+export type PictureResult =
+  { kind: 'saved'; doc: ConfigDoc } | { kind: 'conflict'; doc: ConfigDoc | null };
 
 /** A client made, or the code was already taken: the answer 409 is not an error to the form. */
 export type MakeResult = { kind: 'made'; client: CreateClientReply } | { kind: 'taken' };
@@ -472,6 +478,21 @@ export function createApi({
     async saveConfig(config: TenantConfig, version: string): Promise<SaveResult> {
       const response = await send('PUT', ROUTES.config, { config, version });
       if (response.status === 409) return { kind: 'conflict' };
+      if (!response.ok) throw new ApiError(response.status);
+      return { kind: 'saved', doc: await read(response, configDocSchema) };
+    },
+
+    /** A picture of the company saved at its choice (a data URL, or null to remove it), with the tag
+     * it was read at, null where it has none; a moved tag is a conflict, not an error. */
+    async savePicture(
+      kind: PictureKind,
+      picture: string | null,
+      version: string | null,
+    ): Promise<PictureResult> {
+      const response = await send('PUT', `${ROUTES.pictures}/${kind}`, { picture, version });
+      if (response.status === 409) {
+        return { kind: 'conflict', doc: await currentOf(response, configDocSchema) };
+      }
       if (!response.ok) throw new ApiError(response.status);
       return { kind: 'saved', doc: await read(response, configDocSchema) };
     },

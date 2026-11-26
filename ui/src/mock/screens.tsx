@@ -1,11 +1,21 @@
 import type { ReactNode } from 'react';
-import { BEFORE_CONFIG } from '../brand';
+import { BEFORE_CONFIG, type Brand } from '../brand';
 import { Boot } from '../frame/Boot';
 import { Settings } from '../parts/Settings';
 import { Shell } from '../frame/Shell';
 import { SignIn } from '../pages/SignIn';
 import { UnknownClient } from '../pages/client/UnknownClient';
-import { FILLED, FORMATTED, FRESH, ROOT, TYPED, WHITE, WHITE_ICONS } from './fixtures';
+import {
+  FILLED,
+  FORMATTED,
+  FRESH,
+  LIGHT_LOGO,
+  LOGO,
+  ROOT,
+  TYPED,
+  WHITE,
+  WHITE_ICONS,
+} from './fixtures';
 import type { TenantConfig } from '@credo/shared';
 
 /** The mock's handlers do nothing: no screen here calls a service. */
@@ -14,15 +24,30 @@ const inert = () => {};
 
 type SettingsProps = Parameters<typeof Settings>[0];
 
+/** What a mock company draws: every one has the logo but the fresh one, a company just made. */
+const brandOf = (config: TenantConfig, light = false): Brand => ({
+  ...config,
+  logo: config === FRESH ? null : LOGO,
+  logoOnColour: light ? LIGHT_LOGO : null,
+});
+
+/** The pictures a mock company holds: its logo, if it has one, as the data URL itself. */
+const picturesOf = (config: TenantConfig, light = false): SettingsProps['pictures'] => ({
+  logo: config === FRESH ? null : { address: LOGO, version: 'mock' },
+  'logo-on-colour': light ? { address: LIGHT_LOGO, version: 'mock' } : null,
+});
+
 const settings = (
   config: TenantConfig,
   more: Partial<SettingsProps> = {},
   shell: { userMenuOpen?: boolean; languageMenuOpen?: boolean; shown?: boolean } = {},
   /** What the frame around the page wears, where it is not the form's: the saved look. */
   frame: TenantConfig = config,
+  /** Whether the company holds a logo for the coloured header: the page and the frame wear it. */
+  light = false,
 ) => (
   <Shell
-    brand={frame}
+    brand={brandOf(frame, light)}
     look={frame}
     user={ROOT.username}
     languages={frame.languages}
@@ -38,6 +63,9 @@ const settings = (
       onSave={inert}
       onRetry={inert}
       onReload={inert}
+      pictures={picturesOf(config, light)}
+      onPicture={inert}
+      pictureOutcome={null}
       {...more}
     />
   </Shell>
@@ -50,7 +78,7 @@ const signIn = (
   brand: TenantConfig = FILLED,
 ) => (
   <SignIn
-    brand={brand}
+    brand={brandOf(brand)}
     status={status}
     waitSeconds={waitSeconds}
     initial={initial}
@@ -186,6 +214,19 @@ export const SCREENS: MockScreen[] = [
         label: 'formatted: saved, the header shows the formatted name',
         colour: FORMATTED.colour,
         screen: settings(FORMATTED, { outcome: 'saved' }),
+      },
+      {
+        id: 'logo-on-colour',
+        label:
+          'logo for the coloured header: saved at its choice, the header and the preview wear it',
+        colour: TYPED.colour,
+        screen: settings(
+          TYPED,
+          { pictureOutcome: { kind: 'logo-on-colour', outcome: 'saved' } },
+          {},
+          TYPED,
+          true,
+        ),
       },
     ],
   },

@@ -49,6 +49,7 @@ import { numberOf, priceOf } from '../number';
 import { ListTable } from '../parts/ListTable';
 import { BrandPreview } from '../parts/BrandPreview';
 import { IdentityFields } from '../parts/IdentityFields';
+import { PictureField } from '../parts/PictureField';
 import { DetailCard, DetailColumns, FieldPair } from '../parts/DetailCards';
 import { PageShell } from '../parts/PageShell';
 import { SectionCard } from '../components/organisms/SectionCard';
@@ -56,7 +57,7 @@ import { MAX_LOGO_BYTES } from '@credo/shared';
 import { FilterBar } from './Fields';
 import { WaitingRows } from './SignUpStates';
 import { PALETTES } from './palettes';
-import { PICTURE } from './Photos';
+import { PICTURE, PICTURE_ON_COLOUR } from './Photos';
 import { SAMPLES, useLanguage } from './samples';
 import { TONES, TYPE, WEIGHTS } from './tokens';
 
@@ -1048,7 +1049,7 @@ export const ConfirmPageStates = [
   { name: 'Their removal asked', node: <PersonPasskeys asked /> },
 ];
 
-/** The settings page as the company's own draws it: four titled blocks (the name with its formatted name and description, the logo from the photos with its choose and remove, the palette, the colour and the three switches, the languages) beside a preview of the header and the sign-in card, which comes first on a phone; `saved` says so above the blocks, `refused` says why above them and under the logo. */
+/** The settings page as the company's own draws it: four titled blocks (the name with its formatted name and description, the two logos from the photos, each with its choose and remove, the palette, the colour and the three switches, the languages) beside a preview of the header and the sign-in card, which comes first on a phone; `saved` says so above the blocks, `refused` says why above them and under the logo. */
 function SettingsPage({ state }: { state: 'basics' | 'saved' | 'refused' | 'formatted' }) {
   const { t } = useTranslation();
   const words = SAMPLES[useLanguage()];
@@ -1058,6 +1059,8 @@ function SettingsPage({ state }: { state: 'basics' | 'saved' | 'refused' | 'form
     formattedName: formatted ? words.shopFormatted : '',
     description: formatted ? words.shopDescription : '',
   });
+  const [logo, setLogo] = useState<string | undefined>(PICTURE);
+  const [logoOnColour, setLogoOnColour] = useState<string | undefined>(PICTURE_ON_COLOUR);
   return (
     <Stack p="md" gap="lg">
       <div>
@@ -1071,7 +1074,9 @@ function SettingsPage({ state }: { state: 'basics' | 'saved' | 'refused' | 'form
         side={
           <BrandPreview
             name={identity.name}
-            logo={PICTURE}
+            logo={logo}
+            headerLogo={logo}
+            headerLogoOnColour={logoOnColour}
             formatted={identity.formattedName}
             description={identity.description}
             brand={PALETTES[0].shades[7]}
@@ -1087,20 +1092,34 @@ function SettingsPage({ state }: { state: 'basics' | 'saved' | 'refused' | 'form
               />
             </SectionCard>
             <SectionCard icon={<IconPhoto size={14} />} title={t('settings.pictures')}>
-              <Stack gap={6}>
-                <Text size="sm" fw={WEIGHTS.label}>
-                  {t('settings.logo')}
-                </Text>
-                <Group>
-                  <Image src={PICTURE} alt="" h={48} w={48} fit="contain" />
-                  <ActionButton meaning="other">{t('settings.logoChoose')}</ActionButton>
-                  <ActionButton meaning="quiet">{t('settings.logoRemove')}</ActionButton>
-                </Group>
-                {state === 'refused' && (
-                  <FormMessage kind="error">
-                    {t('settings.logoTooLarge', { max: MAX_LOGO_BYTES / 1024 })}
-                  </FormMessage>
-                )}
+              <Stack gap="lg">
+                <PictureField
+                  label={t('settings.logo')}
+                  picture={logo}
+                  none={t('settings.logoNone')}
+                  choose={t('settings.logoChoose')}
+                  remove={t('settings.logoRemove')}
+                  message={
+                    state === 'refused'
+                      ? {
+                          kind: 'error',
+                          text: t('settings.logoTooLarge', { max: MAX_LOGO_BYTES / 1024 }),
+                        }
+                      : undefined
+                  }
+                  onChoose={() => setLogo(PICTURE)}
+                  onRemove={() => setLogo(undefined)}
+                />
+                <PictureField
+                  label={t('settings.logoOnColour')}
+                  hint={t('settings.logoOnColourHint')}
+                  picture={logoOnColour}
+                  none={t('settings.logoOnColourNone')}
+                  choose={t('settings.logoOnColourChoose')}
+                  remove={t('settings.logoOnColourRemove')}
+                  onChoose={() => setLogoOnColour(PICTURE_ON_COLOUR)}
+                  onRemove={() => setLogoOnColour(undefined)}
+                />
               </Stack>
             </SectionCard>
             <SectionCard icon={<IconPalette size={14} />} title={t('settings.frame')}>
@@ -1161,7 +1180,7 @@ export const SettingsPageStates = [
   { name: 'A formatted name', node: <SettingsPage state="formatted" /> },
 ];
 
-/** The preview of the header and the sign-in card, in a brick colour with a logo, with the white header, with no logo, and with a formatted name. */
+/** The preview of the header and the sign-in card, in a brick colour with a logo, with the white header, with no logo, with a formatted name, and with the logo for the coloured header. */
 export const BrandPreviewStates = [
   {
     name: 'A coloured header',
@@ -1188,6 +1207,20 @@ export const BrandPreviewStates = [
     ),
   },
   { name: 'A formatted name', node: <FormattedPreview /> },
+  {
+    name: 'A logo for the coloured header',
+    node: (
+      <Stack w={480} maw="100%">
+        <BrandPreview
+          name="An Phat"
+          logo={PICTURE}
+          headerLogo={PICTURE}
+          headerLogoOnColour={PICTURE_ON_COLOUR}
+          brand={PALETTES[2].shades[7]}
+        />
+      </Stack>
+    ),
+  },
 ];
 
 /** The preview with a formatted name and a description, on a coloured header: the colours give way there and show on the card. */
@@ -1228,4 +1261,47 @@ function IdentityFieldsSample({ formatted }: { formatted?: boolean }) {
 export const IdentityFieldsStates = [
   { name: 'Empty', node: <IdentityFieldsSample /> },
   { name: 'A formatted name', node: <IdentityFieldsSample formatted /> },
+];
+
+/** The picture field as the gallery draws it: its picture goes when removed and returns when a file is chosen, whatever the file. */
+function PictureFieldSample({
+  picture: first,
+  refused,
+  saved,
+}: {
+  picture?: string;
+  refused?: boolean;
+  saved?: boolean;
+}) {
+  const { t } = useTranslation();
+  const [picture, setPicture] = useState(first);
+  return (
+    <Stack w={480} maw="100%">
+      <PictureField
+        label={t('settings.logoOnColour')}
+        hint={t('settings.logoOnColourHint')}
+        picture={picture}
+        none={t('settings.logoOnColourNone')}
+        choose={t('settings.logoOnColourChoose')}
+        remove={t('settings.logoOnColourRemove')}
+        message={
+          refused
+            ? { kind: 'error', text: t('settings.logoTooLarge', { max: MAX_LOGO_BYTES / 1024 }) }
+            : saved
+              ? { kind: 'saved', text: t('settings.saved') }
+              : undefined
+        }
+        onChoose={() => setPicture(PICTURE_ON_COLOUR)}
+        onRemove={() => setPicture(undefined)}
+      />
+    </Stack>
+  );
+}
+
+/** The picture field with a picture, with none, with a refusal under it and with its outcome said. */
+export const PictureFieldStates = [
+  { name: 'With a picture', node: <PictureFieldSample picture={PICTURE_ON_COLOUR} /> },
+  { name: 'None', node: <PictureFieldSample /> },
+  { name: 'Refused', node: <PictureFieldSample picture={PICTURE_ON_COLOUR} refused /> },
+  { name: 'Saved', node: <PictureFieldSample picture={PICTURE_ON_COLOUR} saved /> },
 ];

@@ -33,6 +33,34 @@ describe('SignIn', () => {
     expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('Minh Phát');
   });
 
+  it('16: the card draws the logo, never the logo for the coloured header', () => {
+    draw(
+      <SignIn
+        brand={{ name: 'Minh Phát', logo: '/api/l', logoOnColour: '/api/c' }}
+        status="idle"
+        onSubmit={vi.fn()}
+      />,
+    );
+
+    expect([...document.querySelectorAll('img')].map((one) => one.getAttribute('src'))).toEqual([
+      '/api/l',
+    ]);
+  });
+
+  it('16: the QR landing’s card draws the logo alone too', () => {
+    draw(
+      <QrLanding
+        brand={{ name: 'Minh Phát', logo: null, logoOnColour: '/api/c' }}
+        status="busy"
+        languages={['en']}
+        onLanguage={vi.fn()}
+        onPassword={vi.fn()}
+      />,
+    );
+
+    expect(document.querySelector('img')).toBeNull();
+  });
+
   it('16: draws a wait as one red line, in seconds under a minute and in whole minutes from one, in both languages', () => {
     const shown = (seconds: number, language: 'en' | 'vi') => {
       draw(

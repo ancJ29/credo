@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import type { PictureKind } from './config';
 
 /** What the BFF's one c-storage service holds, and under which keys. A client is a tenant: its
  * records sit under its minted id, and its code reaches the id through one index record. This is
@@ -71,6 +72,9 @@ export const recordKeys = {
     /** The last number given under each numbering prefix: its own record, so an add raises it
      * without moving the setup the root is editing. */
     staffNumbering: `tenant.${id}.staff-numbering`,
+    /** One of the company's pictures, by its kind: its own record, so a picture moves nothing of the
+     * settings'. */
+    picture: (kind: PictureKind) => `tenant.${id}.picture.${kind}`,
     /** A person's photo, by the person's minted id: its own record, so a photo moves nothing of the
      * person's. Its key does not start with `employeePrefix`, so the staff list never reads it. */
     employeePhoto: (employeeId: string) => `tenant.${id}.employee-photo.${employeeId}`,
