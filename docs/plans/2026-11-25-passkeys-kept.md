@@ -216,9 +216,17 @@ test. "The pinned diff" is
       sign-in by passkey row and `docs/memo/bff.md`'s passkey section now say the list, the removal and the
       root's removal; item 679 is narrowed to a password change that does not offer to drop passkeys;
       `docs/decisions.md` gains points 4 and 5 as two rows.
-- [ ] **9. Your walk run, then the bases.** After `pre-merge` is taken in, so 250.2's bases are under
+- [x] **9. Your walk run, then the bases.** After `pre-merge` is taken in, so 250.2's bases are under
       it if 250.2 landed first: the run line below, green; the bases committed alone, each walk's
       count matching the log; the same walks without flags, 0 moved. **2 min** (241.2's: 1 and 1).
+      _Done 2026-11-26 07:52:_ four walk runs in the human's terminal: 01:55 (five walks), 06:55
+      (the first two), 07:24 and 07:50 (the first alone). The first three were red once each on one
+      thing the walk's own steps held wrong (the title's level and a table's scroll offset, the
+      sign-up fields' starred labels, the test server's port in the sent screen's address), fixed in
+      `5961e41b`, `8a25fe7f` and `715d1e34`. The 07:50 run is green in both passes: 120 pictures,
+      0 moved between its two passes, and against the bases 30 moved and 24 new, as asked; piece 2's
+      bases were written at 06:55 and the lists', operator's and delete-client's at 01:55, in
+      `572f7b6a` and `487e5cfc`, and piece 1's in `d658045b`, alone.
 - [ ] **10. The recap and the landing.** The recap and its products row; `pre-merge` taken in, the
       gates again, the landing; the whole check, as it touches `shared` and five more packages
       (`docs/conventions/qa.md#L262-L267`); `pre-main-review` before `main`, sign-in being worth one
