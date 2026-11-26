@@ -17,14 +17,13 @@ What is missing is the ordinary day around that job, and a safe place for a real
 We list these in the order a client would meet them. Each costs the client time, not records.
 
 - **Correcting a confirmed order.** A customer often changes a quantity after we confirm. Today the order can only be cancelled and made again under a new number, and the cancel also cancels the driver's request. We must decide what "correct" means once a driver holds the request.
-- **The client's own logo.** The client sees its logo at the sign-in door, then a stand-in logo on every page inside. It is the first thing a client sees, and it is about an hour of work.
 - **Finding an older order.** The list reaches back seven days, with no search by number or customer. Last month's order means pressing "Earlier" five times. This is half a day to a day of work.
 - **A forgotten password.** Nothing sends email or text. The company's main user types a staff member's new password by hand, and only we can reset the main user's own, in the [operator console](words.md#operator-console).
 - **Prices set by hand.** Every line takes the product list's price, so there is no discount, delivery fee or free replacement. It matters the day a client sells at agreed prices. The choice is ours.
 - **One report.** No page shows a day's or a customer's totals. A client can run a month without one, so it comes last, at about a day of work.
 - **Stock.** Only an in-stock switch exists, with nothing behind it.
 
-Already fixed on 8 November: a clerk can now add a customer or a product from the list.
+Already fixed: on 26 November the client's own logo shows in the header of every page inside, and on 8 November a clerk can now add a customer or a product from the list.
 
 ## What could hurt a real client's records
 
