@@ -121,10 +121,19 @@ jobs:
           K: ${{ matrix.k }}
         run: |
           set +e
+          # On GitHub: the whole walk, 6 tests, no pattern. Under act (ACT is set in its container) a trial of
+          # the plumbing: the one test of the phone's width in English; its title is the regular expression
+          # (parentheses escaped, as walk/run.sh's regex_escape writes it) and matches that one test only.
+          want=6
+          pattern=''
+          if [ -n "${ACT:-}" ]; then
+            want=1
+            pattern='on a phone \(390\) walks all fifty-one screens in English'
+          fi
           began=$(date +%s)
           setup_s=$(( began - $(cat "$RUN_DIR/start") ))
           echo "the walk starts at $(date '+%H:%M:%S'), $setup_s s after the job's first step"
-          pnpm --filter @credo/scripts run "$SCRIPT" -- bash "$GITHUB_WORKSPACE/walk/run.sh" --inside "$PASS" piece-2 '' "$K" </dev/null
+          pnpm --filter @credo/scripts run "$SCRIPT" -- bash "$GITHUB_WORKSPACE/walk/run.sh" --inside "$PASS" piece-2 "$pattern" "$K" </dev/null
           pnpm_rc=$?
           ended=$(date +%s)
           read -r exit_code tests <<<"$(awk -v p="$PASS" '$1 == p && $2 == "piece-2" { rc = $4; n += $5; seen = 1 } END { if (seen) print rc, n + 0; else print "none 0" }' "$RUN_DIR/results.txt")"
@@ -135,12 +144,15 @@ jobs:
             echo "pnpm_exit=$pnpm_rc"
             echo "exit=$exit_code"
             echo "tests=$tests"
+            echo "tests_wanted=$want"
           } > "$RUN_DIR/timing.txt"
-          echo "the walk ended at $(date '+%H:%M:%S') after $(( ended - began )) s: pnpm exit $pnpm_rc, pass exit $exit_code, $tests of 6 tests passed"
-          [ "$pnpm_rc" = 0 ] && [ "$exit_code" = 0 ] && [ "$tests" = 6 ]
+          echo "the walk ended at $(date '+%H:%M:%S') after $(( ended - began )) s: pnpm exit $pnpm_rc, pass exit $exit_code, $tests of $want tests passed"
+          [ "$pnpm_rc" = 0 ] && [ "$exit_code" = 0 ] && [ "$tests" = "$want" ]
       # A red pass keeps its pictures and its text too, which is when they are most needed.
+      # Under act (which sets ACT) the two uploads are skipped, as the repository's other workflows skip theirs
+      # (docs.yml, seed.yml): act's artifact store is unreachable from the job's container.
       - name: Keep the pictures
-        if: always()
+        if: ${{ always() && !env.ACT }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: walk-pictures-${{ matrix.pass }}
@@ -148,7 +160,7 @@ jobs:
           retention-days: 7
           if-no-files-found: warn
       - name: Keep the output and the times
-        if: always()
+        if: ${{ always() && !env.ACT }}
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: walk-text-${{ matrix.pass }}
@@ -252,7 +264,7 @@ jobs:
             for p in fake full-1 full-2; do
               t="$in/walk-text-$p/timing.txt"
               if [ -f "$t" ]; then
-                echo "| $p | $(kv "$t" setup_s) | $(kv "$t" deps_s) | $(kv "$t" walk_s) | $(kv "$t" pnpm_exit) | $(kv "$t" exit) | $(kv "$t" tests) of 6 |"
+                echo "| $p | $(kv "$t" setup_s) | $(kv "$t" deps_s) | $(kv "$t" walk_s) | $(kv "$t" pnpm_exit) | $(kv "$t" exit) | $(kv "$t" tests) of $(kv "$t" tests_wanted) |"
               else
                 echo "| $p | no times kept | | | | | |"
               fi
