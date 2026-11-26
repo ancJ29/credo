@@ -8,6 +8,7 @@ import {
   SIGN_UP_WAITING,
   type OptionsReply,
   parseQr,
+  ROUTES,
   type SessionReply,
   type UserView,
 } from '@credo/shared';
@@ -17,6 +18,8 @@ import { AddRecordPage } from './pages/client/AddRecordPage';
 import { AddPersonPage } from './pages/client/AddPersonPage';
 import { type Api, ApiError } from './api';
 import { Boot } from './frame/Boot';
+import { CompanyHead } from './frame/CompanyHead';
+import { smallIcon } from './icons';
 import { type Brand, BEFORE_CONFIG, CREDO_BRAND } from './brand';
 import { localToday } from './day';
 import type { DeviceStore } from './device';
@@ -176,6 +179,10 @@ export function ClientApp({
   const navigate = useNavigate();
 
   const [attempt, setAttempt] = useState(0);
+  /** The company the address or the device names, for the head's link to its phone-app description. */
+  const named = clientCodeSchema.safeParse(linked ?? device.clientCode());
+  const code = named.success ? named.data : null;
+  const manifest = code === null ? null : `${ROUTES.manifest}/${code}`;
 
   useEffect(() => {
     void boot(api, device, linked).then((found) => {
@@ -243,6 +250,7 @@ export function ClientApp({
         test={test}
         {...look}
       >
+        <CompanyHead manifest={phase === 'loading' ? manifest : null} />
         <title>{CREDO_BRAND.name}</title>
         {phase === 'unknown' ? (
           <UnknownClient />
@@ -261,6 +269,8 @@ export function ClientApp({
     ...config,
     logo: pictures.logo?.address ?? null,
     logoOnColour: pictures['logo-on-colour']?.address ?? null,
+    tabIcon: pictures['tab-icon']?.address ?? null,
+    appIcon: pictures['app-icon'] ? smallIcon(pictures['app-icon'].address) : null,
   };
   // A language the company stopped offering gives way to its default.
   const language = languageShown(config, chosen);
@@ -377,6 +387,19 @@ export function ClientApp({
 
   return (
     <Providers colour={config.colour} language={language} test={test} {...look}>
+      <CompanyHead
+        manifest={manifest}
+        company={
+          brand.tabIcon
+            ? {
+                tabIcon: brand.tabIcon,
+                appIcon: brand.appIcon!,
+                colour: config.colour,
+                whiteHeader: config.whiteHeader,
+              }
+            : undefined
+        }
+      />
       <title>{config.name}</title>
       {landing ? (
         <QrLanding

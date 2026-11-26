@@ -65,6 +65,8 @@ type Deps<Who extends Signed> = {
   signedIn: (request: FastifyRequest) => Promise<Who>;
   /** The device a call names, a 400 where it names none. */
   deviceOf: (request: FastifyRequest) => string;
+  /** The company's plain name, from its settings, which a new passkey is made for. */
+  nameOf: (request: FastifyRequest) => Promise<string>;
   /** The session a passkey's handle is to be signed in with, or null where it names no person who
    * may sign in (the root, or a person there, not archived and still named by their sign-in
    * record); the session is issued as a password's is, when the closure is called. */
@@ -100,7 +102,7 @@ const itemOf = (passkey: StoredOwnPasskey) => ({
  */
 export function registerOwnPasskeyRoutes<Who extends Signed>(
   app: FastifyInstance,
-  { now, origin, serviceKey, forClient, signedIn, deviceOf, holder, renewed }: Deps<Who>,
+  { now, origin, serviceKey, forClient, signedIn, deviceOf, holder, nameOf, renewed }: Deps<Who>,
 ) {
   const challenges = createChallenges({ serviceKey, now });
 
@@ -180,6 +182,7 @@ export function registerOwnPasskeyRoutes<Who extends Signed>(
         relyingOf(request),
         { id: handle, name: who.name },
         held?.record.passkeys ?? [],
+        await nameOf(request),
       );
       return {
         options,

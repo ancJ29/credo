@@ -67,6 +67,7 @@ describe('the walks', () => {
     expect(states.get('admin-setup:15-formatted-saved')!.id).toBe('formatted');
     expect(states.get('admin-setup:16-formatted-card')!.id).toBe('formatted');
     expect(states.get('admin-setup:21-logo-on-colour')!.id).toBe('logo-on-colour');
+    expect(states.get('admin-setup:22-icons')!.id).toBe('icons');
     expect('scene' in states.get('operator-setup:op-4-code-taken')!).toBe(true);
     expect('scene' in states.get('admin-staff:staff-4-person')!).toBe(true);
     expect('scene' in states.get('admin-setup:1-sign-in')!).toBe(false);
@@ -86,14 +87,14 @@ describe('the walks', () => {
     expect(() => resolveDrawn(lacking(99, 'empty'), SCREENS)).toThrow('"99 empty"');
   });
 
-  it('18: holds piece 1’s eight screens in the app frame’s numbers, screen 9 after them, the white frame’s 10 and 11, the sign-in wait’s 12, the preview’s 13, the formatted name’s 14 to 16, the sign-up’s four as 17 to 20, and the logo for the coloured header’s 21', () => {
+  it('18: holds piece 1’s eight screens in the app frame’s numbers, screen 9 after them, the white frame’s 10 and 11, the sign-in wait’s 12, the preview’s 13, the formatted name’s 14 to 16, the sign-up’s four as 17 to 20, the logo for the coloured header’s 21, and the icons’ 22', () => {
     const screens = WALKS[0].screens;
 
     expect(screens.map((screen) => screen.number)).toEqual([
-      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21,
+      1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22,
     ]);
     expect(screens.filter((screen) => screen.path === 'main').map((s) => s.number)).toEqual([
-      1, 3, 4, 5, 10, 11, 13, 14, 15, 16, 17, 19, 21,
+      1, 3, 4, 5, 10, 11, 13, 14, 15, 16, 17, 19, 21, 22,
     ]);
     expect(screens.filter((screen) => screen.path === 'wrong').map((s) => s.number)).toEqual([
       2, 6, 7, 8, 9, 12, 18, 20,

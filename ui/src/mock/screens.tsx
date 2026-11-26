@@ -6,12 +6,14 @@ import { Shell } from '../frame/Shell';
 import { SignIn } from '../pages/SignIn';
 import { UnknownClient } from '../pages/client/UnknownClient';
 import {
+  APP_ICON,
   FILLED,
   FORMATTED,
   FRESH,
   LIGHT_LOGO,
   LOGO,
   ROOT,
+  TAB_ICON,
   TYPED,
   WHITE,
   WHITE_ICONS,
@@ -31,10 +33,16 @@ const brandOf = (config: TenantConfig, light = false): Brand => ({
   logoOnColour: light ? LIGHT_LOGO : null,
 });
 
-/** The pictures a mock company holds: its logo, if it has one, as the data URL itself. */
-const picturesOf = (config: TenantConfig, light = false): SettingsProps['pictures'] => ({
+/** The pictures a mock company holds: its logo, if it has one, as the data URL itself; its two icons, the stand-in unless it uploaded both. */
+const picturesOf = (
+  config: TenantConfig,
+  light = false,
+  icons = false,
+): SettingsProps['pictures'] => ({
   logo: config === FRESH ? null : { address: LOGO, version: 'mock' },
   'logo-on-colour': light ? { address: LIGHT_LOGO, version: 'mock' } : null,
+  'tab-icon': icons ? { address: TAB_ICON, version: 'mock' } : { address: LOGO, version: '' },
+  'app-icon': icons ? { address: APP_ICON, version: 'mock' } : { address: LOGO, version: '' },
 });
 
 const settings = (
@@ -45,6 +53,8 @@ const settings = (
   frame: TenantConfig = config,
   /** Whether the company holds a logo for the coloured header: the page and the frame wear it. */
   light = false,
+  /** Whether the company uploaded both icons: the fields and the preview wear them. */
+  icons = false,
 ) => (
   <Shell
     brand={brandOf(frame, light)}
@@ -63,7 +73,7 @@ const settings = (
       onSave={inert}
       onRetry={inert}
       onReload={inert}
-      pictures={picturesOf(config, light)}
+      pictures={picturesOf(config, light, icons)}
       onPicture={inert}
       pictureOutcome={null}
       {...more}
@@ -225,6 +235,19 @@ export const SCREENS: MockScreen[] = [
           { pictureOutcome: { kind: 'logo-on-colour', outcome: 'saved' } },
           {},
           TYPED,
+          true,
+        ),
+      },
+      {
+        id: 'icons',
+        label: 'both icons uploaded: saved at once, the fields and the preview wear them',
+        colour: TYPED.colour,
+        screen: settings(
+          TYPED,
+          { pictureOutcome: { kind: 'app-icon', outcome: 'saved' } },
+          {},
+          TYPED,
+          true,
           true,
         ),
       },

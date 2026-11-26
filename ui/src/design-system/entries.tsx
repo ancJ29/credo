@@ -58,6 +58,7 @@ import {
   ConfirmPageStates,
   SettingsPageStates,
   BrandPreviewStates,
+  IconPreviewStates,
   IdentityFieldsStates,
   PictureFieldStates,
   DaySheetStates,
@@ -882,6 +883,18 @@ export const ENTRIES: Entry[] = [
     ],
     instead: 'DoorCard',
     states: BrandPreviewStates,
+  },
+  {
+    group: 'Pages',
+    name: 'IconPreview',
+    kind: 'Layout',
+    description:
+      'The company’s tab icon in a browser tab beside its plain name, and its phone-app icon in a home-screen tile under the name cut at one line, each under its caption; both pictures are hidden from a reader and take no focus, only the two captions are read.',
+    props: 'name: string · tabIcon: string · appIcon: string',
+    useWhen: ['A page sets the company’s icons and shows them before the save, beside the fields.'],
+    dontUseWhen: ['The real tab or the real home screen: the browser and the phone draw those.'],
+    instead: 'BrandPreview',
+    states: IconPreviewStates,
   },
   {
     group: 'Pages',

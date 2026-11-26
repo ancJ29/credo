@@ -210,7 +210,18 @@ describe('A new client starts with its name, credo’s colour, no logo and both 
 
     const read = await app.inject({ method: 'GET', url: '/api/config' });
     const doc = configDocSchema.parse(read.json());
-    expect(doc.pictures).toEqual({ logo: null, 'logo-on-colour': null });
+    expect(doc.pictures).toEqual({
+      logo: null,
+      'logo-on-colour': null,
+      'tab-icon': {
+        address: expect.stringMatching(/^\/api\/pictures\/[a-z-]+\/tab-icon\?v=/) as string,
+        version: '',
+      },
+      'app-icon': {
+        address: expect.stringMatching(/^\/api\/pictures\/[a-z-]+\/app-icon\?v=/) as string,
+        version: '',
+      },
+    });
     expect(doc.config).toEqual({
       name: 'Acme Trading',
       colour: CREDO_COLOUR,
@@ -385,6 +396,8 @@ describe('The operator never reads or changes a client, never sees a root’s pa
         '├── /api/customers (GET, HEAD, POST)',
         '│   ├── /import (POST)',
         '│   └── /:id (GET, HEAD, PUT)',
+        '├── /api/manifest/:code (GET, HEAD)',
+        '├── /api/my-deliveries (GET, HEAD)',
         '├── /api/pictures/:code|:kind (PUT)',
         '│   └── /:kind (GET, HEAD)',
         '├── /api/products (GET, HEAD, POST)',
@@ -449,7 +462,6 @@ describe('The operator never reads or changes a client, never sees a root’s pa
         '│       └── /photo (GET, HEAD)',
         '│           └── -address (POST)',
         '├── /api/drivers (GET, HEAD)',
-        '├── /api/my-deliveries (GET, HEAD)',
         '└── /api/reconciliations (GET, HEAD)',
         '    └── /:day/:driverId/close (POST)',
       ].join('\n')}\n`,

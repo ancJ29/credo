@@ -11,6 +11,7 @@ import {
   type ServicesReply,
   type ConfigDoc,
   PICTURE_KINDS,
+  isIconKind,
   pictureAddress,
   createClientRequestSchema,
   type CreateClientReply,
@@ -60,6 +61,7 @@ import {
   readSignIn,
 } from './records/staff-records';
 import { registerOperatorAuth } from './routes/operator-auth';
+import { OPERATORS_RP_NAME } from './calling/passkeys';
 import { registerOwnPasskeyRoutes } from './routes/own-passkeys';
 import { registerSignUpRoutes } from './routes/sign-up';
 import { registerListRoutes } from './routes/lists';
@@ -71,6 +73,7 @@ import { registerOperatorTeamRoutes } from './routes/operator-team';
 import { registerDeleteClientRoutes } from './routes/clients-delete';
 import { registerMoveClientRoutes } from './routes/client-move';
 import { registerRootPasswordRoutes } from './routes/root-password';
+import { registerManifestRoute } from './routes/manifest';
 import { registerPictureRoutes } from './routes/pictures';
 import { registerStaffRoutes } from './routes/staff';
 
@@ -355,15 +358,23 @@ export function buildApp({
         const views = await Promise.all(
           PICTURE_KINDS.map(async (kind) => {
             const held = await storage.getRecord(keys.picture(kind));
-            return held
-              ? { address: pictureAddress(code, kind, held.tag), version: held.tag }
-              : null;
+            // An icon none is stored for is the drawn one, at the settings' version, with no picture's version.
+            if (!held)
+              return isIconKind(kind)
+                ? { address: pictureAddress(code, kind, found.tag), version: '' }
+                : null;
+            return { address: pictureAddress(code, kind, held.tag), version: held.tag };
           }),
         );
         return {
           config: tenantConfigSchema.parse(stored),
           version: found.tag,
-          pictures: { logo: views[0] ?? null, 'logo-on-colour': views[1] ?? null },
+          pictures: {
+            logo: views[0] ?? null,
+            'logo-on-colour': views[1] ?? null,
+            'tab-icon': views[2]!,
+            'app-icon': views[3]!,
+          },
         };
       }
       // A logo of null is dropped alike: nothing to keep. A picture there is kept over this one.
@@ -436,6 +447,7 @@ export function buildApp({
     },
   );
 
+  registerManifestRoute(app, { readConfig, tenantOfCode });
   registerPictureRoutes(app, {
     now,
     forClient,
@@ -639,6 +651,8 @@ export function buildApp({
     signedIn,
     deviceOf,
     holder,
+    nameOf: async (request) =>
+      (await readConfig(request.storage, codeOf(request)))?.config.name ?? OPERATORS_RP_NAME,
     renewed,
   });
 

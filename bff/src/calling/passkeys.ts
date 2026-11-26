@@ -14,7 +14,8 @@ import type { StoredPasskey } from '@credo/shared';
  * returns what the library says and decides nothing about who may.
  */
 
-const RP_NAME = 'Credo';
+/** The name the operators' passkeys are made for; a company's own is its plain name. */
+export const OPERATORS_RP_NAME = 'Credo';
 /** The COSE algorithms a passkey may use (EdDSA, ES256, RS256), named so the library's default is
  * never read: it asks the runtime about ML-DSA-44, which Node 24 and later warn about as
  * experimental. Held by operator-algorithms.route.test.ts. */
@@ -31,15 +32,16 @@ export const relyingOn = (origin: string): Relying => ({
 
 const bytesOf = (base64url: string) => new Uint8Array(Buffer.from(base64url, 'base64url'));
 
-/** The options a new passkey is made with, for `user` (the id the device keeps and the name it
- * shows), leaving out the passkeys already `held`. */
+/** The options a new passkey is made with, for the relying party named `rpName`, for `user` (the id
+ * the device keeps and the name it shows), leaving out the passkeys already `held`. */
 export async function registrationOptions(
   relying: Relying,
   user: { id: string; name: string },
   held: StoredPasskey[],
+  rpName: string,
 ) {
   return await generateRegistrationOptions({
-    rpName: RP_NAME,
+    rpName,
     rpID: relying.rpID,
     userName: user.name,
     userID: new TextEncoder().encode(user.id),

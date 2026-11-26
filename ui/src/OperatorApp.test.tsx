@@ -120,6 +120,14 @@ describe('the operator’s page', () => {
     ).toBe('#3e618c');
     expect(document.querySelector('[aria-hidden="true"] b')).toBeNull();
     expect(document.title).not.toBe('Minh Phát');
+    // 13: the console draws no company's icon, manifest or bar colour
+    for (const selector of [
+      'link[rel="manifest"]',
+      'link[rel="icon"]',
+      'link[rel="apple-touch-icon"]',
+      'meta[name="theme-color"]',
+    ])
+      expect(document.head.querySelector(selector), selector).toBeNull();
     expect(api.getConfig).not.toHaveBeenCalled();
     expect(api.operatorMe).not.toHaveBeenCalled();
   });

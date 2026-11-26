@@ -874,6 +874,44 @@ export const GUIDELINE: {
       followed: 'yes',
     },
     {
+      part: 'IconPreview',
+      takes: [
+        {
+          prop: 'name',
+          is: 'content',
+          line: 'The company’s plain name, beside the tab icon and under the tile.',
+        },
+        { prop: 'tabIcon', is: 'content', line: 'The picture drawn in the browser tab.' },
+        { prop: 'appIcon', is: 'content', line: 'The picture drawn in the home-screen tile.' },
+      ],
+      decides: [
+        { what: 'The gap between its two pictures.', from: [{ table: 'SPACING', key: 'lg' }] },
+        {
+          what: 'The gap between a caption and its picture.',
+          from: [{ table: 'SPACING', key: 'xs' }],
+        },
+      ],
+      fixes: [
+        'Its pictures: a browser tab with the icon at sixteen pixels, and a tile of sixty with rounded corners.',
+        'The name cut at one line, in the tab and under the tile.',
+        'Its pictures: hidden from a reader and out of the tab order; only the two captions are read.',
+      ],
+      states: [
+        { name: 'Uploaded', line: 'A picture the company uploaded, in the tab and in the tile.' },
+        {
+          name: 'Drawn',
+          line: 'The mark drawn from the colour and the first letter, where none was uploaded.',
+        },
+        {
+          name: 'A long name',
+          line: 'A name too long for one line, cut in the tab and under the tile.',
+        },
+      ],
+      serves: 'A screen picks parts, never a style',
+      heldBy: { check: 'ui/src/parts/IconPreview.test.tsx' },
+      followed: 'yes',
+    },
+    {
       part: 'IdentityFields',
       takes: [
         { prop: 'name', is: 'content', line: 'The company’s name as typed.' },

@@ -60,10 +60,18 @@ describe('The root sets the company’s name, logo and brand colour; every scree
 
     const read = await t.read();
     expect(read.statusCode).toBe(200);
-    // 21: until the picture route answers, each picture is named null, in the reply itself
+    // 21: each picture is named in the reply itself: none stored is null, an icon's the drawn one
     expect(read.json<{ pictures: unknown }>().pictures).toEqual({
       logo: null,
       'logo-on-colour': null,
+      'tab-icon': {
+        address: expect.stringMatching(/^\/api\/pictures\/[a-z-]+\/tab-icon\?v=/) as string,
+        version: '',
+      },
+      'app-icon': {
+        address: expect.stringMatching(/^\/api\/pictures\/[a-z-]+\/app-icon\?v=/) as string,
+        version: '',
+      },
     });
     const doc = configDocSchema.parse(read.json());
     expect(doc.config).toEqual(company);
@@ -244,7 +252,18 @@ describe('A department, a position or a person may be allowed to change the comp
     ).toEqual({
       config: company,
       version,
-      pictures: { logo: null, 'logo-on-colour': null },
+      pictures: {
+        logo: null,
+        'logo-on-colour': null,
+        'tab-icon': {
+          address: expect.stringMatching(/^\/api\/pictures\/[a-z-]+\/tab-icon\?v=/) as string,
+          version: '',
+        },
+        'app-icon': {
+          address: expect.stringMatching(/^\/api\/pictures\/[a-z-]+\/app-icon\?v=/) as string,
+          version: '',
+        },
+      },
     });
 
     let latest = version;

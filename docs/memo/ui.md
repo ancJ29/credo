@@ -349,6 +349,20 @@ comments with their text, and builds React elements from what it kept, never mar
   (the header), `ui/src/design-system/literals.test.ts` (no markup from a string).
 - _Not covered:_ a mail or a document that draws the name later; revisit the cleaning at save then.
 
+## The head per company is drawn by `CompanyHead`, above both branches
+
+`ui/src/frame/CompanyHead.tsx` draws the manifest link, the tab icon, the icon an iPhone's home screen
+takes (the 192) and the bar's colour; React hoists them into the head and removes them when the
+branch that drew them leaves. It is drawn first in both branches of `ClientApp`, so the manifest link
+is one element from the first draw to the signed-in page and is never redrawn as the settings
+arrive. Before the settings the bar is credo's colour and there is no icon; the unknown-company and
+failure screens put nothing of a company in the head, and the console never draws it.
+
+- _The surprise:_ **the bar's colour is the shade the header's gradient starts at** (`barColour`),
+  white for a white header; the manifest's `theme_color` is the plain colour, which the page's wins over.
+- _Held by:_ `ui/src/frame/CompanyHead.test.tsx`, `ui/src/App.test.tsx`, `ui/src/indexHtml.test.ts`.
+- _Not covered:_ the sizes made on a canvas (`ui/src/icons.ts`); the walk and an iPhone hold them.
+
 ## Where the rest is
 
 - What belongs in this package and the file to copy: [`ui/CLAUDE.md`](../../ui/CLAUDE.md).

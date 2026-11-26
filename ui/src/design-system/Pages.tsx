@@ -29,7 +29,7 @@ import {
   IconPhoto,
   IconUser,
 } from '@tabler/icons-react';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActionButton } from '../components/atoms/ActionButton';
 import { MenuRow } from '../components/atoms/MenuRow';
@@ -48,12 +48,13 @@ import { LISTS } from '../listSheet';
 import { numberOf, priceOf } from '../number';
 import { ListTable } from '../parts/ListTable';
 import { BrandPreview } from '../parts/BrandPreview';
+import { IconPreview } from '../parts/IconPreview';
 import { IdentityFields } from '../parts/IdentityFields';
 import { PictureField } from '../parts/PictureField';
 import { DetailCard, DetailColumns, FieldPair } from '../parts/DetailCards';
 import { PageShell } from '../parts/PageShell';
 import { SectionCard } from '../components/organisms/SectionCard';
-import { MAX_LOGO_BYTES } from '@credo/shared';
+import { drawIcon, MAX_LOGO_BYTES, pngOf, storedDeflate } from '@credo/shared';
 import { FilterBar } from './Fields';
 import { WaitingRows } from './SignUpStates';
 import { PALETTES } from './palettes';
@@ -1061,6 +1062,13 @@ function SettingsPage({ state }: { state: 'basics' | 'saved' | 'refused' | 'form
   });
   const [logo, setLogo] = useState<string | undefined>(PICTURE);
   const [logoOnColour, setLogoOnColour] = useState<string | undefined>(PICTURE_ON_COLOUR);
+  // The two icons are the drawn ones the back end makes where none is uploaded, here uploaded to show a picture each.
+  const tabIcon = useMemo(() => drawnIconUrl(words.shop, 64), [words.shop]);
+  const appIcon = useMemo(() => drawnIconUrl(words.shop, 192), [words.shop]);
+  const [icons, setIcons] = useState<{ tab: string | undefined; app: string | undefined }>({
+    tab: tabIcon,
+    app: appIcon,
+  });
   return (
     <Stack p="md" gap="lg">
       <div>
@@ -1072,16 +1080,23 @@ function SettingsPage({ state }: { state: 'basics' | 'saved' | 'refused' | 'form
       <DetailColumns
         sideFirst
         side={
-          <BrandPreview
-            name={identity.name}
-            logo={logo}
-            headerLogo={logo}
-            headerLogoOnColour={logoOnColour}
-            formatted={identity.formattedName}
-            description={identity.description}
-            brand={PALETTES[0].shades[7]}
-            whiteHeader={!formatted}
-          />
+          <Stack gap="lg">
+            <BrandPreview
+              name={identity.name}
+              logo={logo}
+              headerLogo={logo}
+              headerLogoOnColour={logoOnColour}
+              formatted={identity.formattedName}
+              description={identity.description}
+              brand={PALETTES[0].shades[7]}
+              whiteHeader={!formatted}
+            />
+            <IconPreview
+              name={identity.name}
+              tabIcon={icons.tab ?? tabIcon}
+              appIcon={icons.app ?? appIcon}
+            />
+          </Stack>
         }
         main={
           <Stack gap="lg">
@@ -1119,6 +1134,26 @@ function SettingsPage({ state }: { state: 'basics' | 'saved' | 'refused' | 'form
                   remove={t('settings.logoOnColourRemove')}
                   onChoose={() => setLogoOnColour(PICTURE_ON_COLOUR)}
                   onRemove={() => setLogoOnColour(undefined)}
+                />
+                <PictureField
+                  label={t('settings.tabIcon')}
+                  hint={t('settings.tabIconHint')}
+                  picture={icons.tab}
+                  none={t('settings.iconDrawn')}
+                  choose={t('settings.tabIconChoose')}
+                  remove={t('settings.tabIconRemove')}
+                  onChoose={() => setIcons((was) => ({ ...was, tab: tabIcon }))}
+                  onRemove={() => setIcons((was) => ({ ...was, tab: undefined }))}
+                />
+                <PictureField
+                  label={t('settings.appIcon')}
+                  hint={t('settings.appIconHint')}
+                  picture={icons.app}
+                  none={t('settings.iconDrawn')}
+                  choose={t('settings.appIconChoose')}
+                  remove={t('settings.appIconRemove')}
+                  onChoose={() => setIcons((was) => ({ ...was, app: appIcon }))}
+                  onRemove={() => setIcons((was) => ({ ...was, app: undefined }))}
                 />
               </Stack>
             </SectionCard>
@@ -1238,6 +1273,33 @@ function FormattedPreview() {
     </Stack>
   );
 }
+
+/** The company's drawn icon, `side` pixels square, as a PNG data URL: the pixels the back end draws where none is uploaded. */
+function drawnIconUrl(name: string, side: number) {
+  const png = pngOf(
+    drawIcon({ name, code: 'an-phat', colour: PALETTES[2].shades[7] }, side),
+    storedDeflate,
+  );
+  let binary = '';
+  for (const byte of png) binary += String.fromCharCode(byte);
+  return `data:image/png;base64,${btoa(binary)}`;
+}
+
+/** The preview of the tab icon and the phone-app icon: one uploaded, the drawn ones, and a long name cut at one line. */
+function IconPreviewSample({ shown }: { shown: 'uploaded' | 'drawn' | 'long' }) {
+  const words = SAMPLES[useLanguage()];
+  const name = shown === 'long' ? `${words.shop} ${words.shopDescription}` : words.shop;
+  const [tab, app] =
+    shown === 'uploaded' ? [PICTURE, PICTURE] : [drawnIconUrl(name, 64), drawnIconUrl(name, 192)];
+  return <IconPreview name={name} tabIcon={tab} appIcon={app} />;
+}
+
+/** The preview of the two icons, uploaded, drawn from the colour and the first letter, and with a name too long for one line. */
+export const IconPreviewStates = [
+  { name: 'Uploaded', node: <IconPreviewSample shown="uploaded" /> },
+  { name: 'Drawn', node: <IconPreviewSample shown="drawn" /> },
+  { name: 'A long name', node: <IconPreviewSample shown="long" /> },
+];
 
 /** The identity fields as the gallery draws them: what is typed is kept, so the preview of the formatted name redraws. */
 function IdentityFieldsSample({ formatted }: { formatted?: boolean }) {

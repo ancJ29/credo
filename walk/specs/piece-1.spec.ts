@@ -1,9 +1,12 @@
+import { deflateSync } from 'node:zlib';
 import {
   AUTH_HEADER,
   CLIENT_HEADER,
   type ConfigDoc,
   DEVICE_HEADER,
+  drawIcon,
   type Language,
+  pngOf,
   ROUTES,
   type TenantConfig,
   STACK_ENV,
@@ -13,9 +16,9 @@ import { type APIRequestContext, expect, type Locator, type Page, test } from '@
 import { required, shot, WIDTHS } from '../support';
 
 /**
- * Piece 1's walk, the client's admin: twenty-one screens, each in Vietnamese and in English, each at
+ * Piece 1's walk, the client's admin: twenty-two screens, each in Vietnamese and in English, each at
  * the PC, tablet and phone widths the visual report draws, each saved with Playwright's own
- * screenshot check against its committed base image (21 × 2 × 3 = 126). The stack
+ * screenshot check against its committed base image (22 × 2 × 3 = 132). The stack
  * (`pnpm stack -- …`) gives the address, the demo client's code and the root's sign-in in the
  * environment, and the walk opens the client's link, as its root would. Words come from the app's
  * own dictionaries, so a renamed label turns this red where it was renamed.
@@ -53,6 +56,16 @@ const THEIR_NAME = 'Minh Phát Bình Dương';
 /** The white mark the root uploads as the logo for the coloured header: bytes from here, no file. */
 const LIGHT_MARK =
   '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><path d="M13 33V15l11 12 11-12v18" fill="none" stroke="#fff" stroke-width="4" stroke-linejoin="round"/></svg>';
+/** The icons the root uploads, drawn by `shared`'s drawer in another colour than the company's, as
+ * PNG bytes from here, no file: a phone-app icon of 512 pixels is the least the field takes. */
+const ICON_OF = (side: number) =>
+  Buffer.from(
+    pngOf(drawIcon({ name: NEW_NAME, code: CODE, colour: '#6a4c93' }, side), (raw) =>
+      deflateSync(raw),
+    ),
+  );
+const TAB_ICON_PNG = ICON_OF(64);
+const APP_ICON_PNG = ICON_OF(512);
 
 /** The settings as the stack made them, to put back after a walk saved over them. */
 let original: TenantConfig;
@@ -95,16 +108,19 @@ test.afterEach(async ({ request }) => {
     authId,
   );
   expect(restored.ok()).toBe(true);
-  // The picture the walk saved is taken away, so the next walk starts with the one logo alone.
-  const light = current.pictures['logo-on-colour'];
-  if (light) {
-    const removed = await write(
-      request,
-      `${ROUTES.pictures}/logo-on-colour`,
-      { picture: null, version: light.version },
-      authId,
-    );
-    expect(removed.ok()).toBe(true);
+  // The pictures the walk saved are taken away, so the next walk starts with the one logo alone and
+  // the drawn icons: an icon none is stored for has the version ''.
+  for (const kind of ['logo-on-colour', 'tab-icon', 'app-icon'] as const) {
+    const held = current.pictures[kind];
+    if (held?.version) {
+      const removed = await write(
+        request,
+        `${ROUTES.pictures}/${kind}`,
+        { picture: null, version: held.version },
+        authId,
+      );
+      expect(removed.ok()).toBe(true);
+    }
   }
   // The company the sign-up screens sent for approval is refused by the operator, so the next test of
   // this stack meets its address free: a code no request holds is a 404, which is as good.
@@ -118,6 +134,14 @@ test.afterEach(async ({ request }) => {
   expect([204, 404]).toContain(refused.status());
 });
 
+/** The address a head link of the page names. */
+const linked = async (page: Page, rel: string) =>
+  (await page.locator(`head link[rel="${rel}"]`).getAttribute('href'))!;
+
+/** A picture field of the settings page by its label, the label's own box. */
+const fieldOf = (page: Page, label: string) =>
+  page.getByText(label, { exact: true }).locator('xpath=..');
+
 async function walk(page: Page, language: Language, width: number) {
   const at = (screen: string, mask: Locator[] = []) => shot(page, screen, language, width, mask);
   const words = DICTIONARIES[language];
@@ -126,6 +150,20 @@ async function walk(page: Page, language: Language, width: number) {
   // 1. Sign in, in the company's name and colours, from the client's own link.
   await page.goto(LINK);
   await expect(page.getByRole('heading', { level: 1, name: 'Minh Phát' })).toBeVisible();
+  // The head, before any picture: the tab's and the home screen's icons answer PNGs, the manifest
+  // the company's name and the start that names it.
+  for (const rel of ['icon', 'apple-touch-icon']) {
+    await expect(page.locator(`head link[rel="${rel}"]`)).toHaveAttribute(
+      'href',
+      /\/api\/pictures\//,
+    );
+    const answer = await page.request.get(await linked(page, rel));
+    expect(answer.ok(), rel).toBe(true);
+    expect(answer.headers()['content-type'], rel).toMatch(/^image\/png/);
+  }
+  const manifest = await page.request.get(await linked(page, 'manifest'));
+  expect(manifest.ok()).toBe(true);
+  expect(await manifest.json()).toMatchObject({ name: original.name, start_url: LINK });
   await at('1-sign-in');
 
   // 2. Sign-in refused.
@@ -245,6 +283,47 @@ async function walk(page: Page, language: Language, width: number) {
   );
   await at('21-logo-on-colour');
 
+  // 22. Both icons chosen: each made by the browser and saved at once; the fields and the preview's
+  // tab and home-screen tile wear them, and the head's links name their new tags.
+  const tabField = fieldOf(page, words.settings.tabIcon);
+  await tabField.locator('input[type="file"]').setInputFiles({
+    name: 'tab.png',
+    mimeType: 'image/png',
+    buffer: TAB_ICON_PNG,
+  });
+  await expect(tabField.getByRole('status')).toHaveText(words.settings.saved);
+  const appField = fieldOf(page, words.settings.appIcon);
+  await appField.locator('input[type="file"]').setInputFiles({
+    name: 'app.png',
+    mimeType: 'image/png',
+    buffer: APP_ICON_PNG,
+  });
+  await expect(appField.getByRole('status')).toHaveText(words.settings.saved);
+  const kept = (await (
+    await page.request.get(ROUTES.config, { headers: SCOPE })
+  ).json()) as ConfigDoc;
+  const tabTag = kept.pictures['tab-icon']?.version ?? '';
+  const appTag = kept.pictures['app-icon']?.version ?? '';
+  expect(tabTag).not.toBe('');
+  expect(appTag).not.toBe('');
+  await expect(page.locator('[data-preview="tab"] img')).toHaveAttribute(
+    'src',
+    new RegExp(`/tab-icon\\?v=${tabTag}$`),
+  );
+  await expect(page.locator('[data-preview="home"] img')).toHaveAttribute(
+    'src',
+    new RegExp(`/app-icon\\?v=${appTag}&size=192$`),
+  );
+  await expect(page.locator('head link[rel="icon"]')).toHaveAttribute(
+    'href',
+    new RegExp(`/tab-icon\\?v=${tabTag}$`),
+  );
+  await expect(page.locator('head link[rel="apple-touch-icon"]')).toHaveAttribute(
+    'href',
+    new RegExp(`/app-icon\\?v=${appTag}&size=192$`),
+  );
+  await at('22-icons');
+
   // 16. Signed out: the card shows the formatted name and the description. Signing in again
   // returns to Settings, for the screens after.
   await page.getByRole('button', { name: ROOT.name, exact: true }).click();
@@ -356,11 +435,11 @@ for (const [device, width] of Object.entries(WIDTHS)) {
   test.describe(`piece 1: the client's admin, on a ${device} (${width})`, () => {
     test.use({ viewport: { width, height: 800 } });
 
-    test('walks all twenty-one screens in Vietnamese', async ({ page }) => {
+    test('walks all twenty-two screens in Vietnamese', async ({ page }) => {
       await walk(page, 'vi', width);
     });
 
-    test('walks all twenty-one screens in English', async ({ page }) => {
+    test('walks all twenty-two screens in English', async ({ page }) => {
       await walk(page, 'en', width);
     });
   });

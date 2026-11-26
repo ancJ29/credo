@@ -42,8 +42,8 @@ export const CREDO_COLOUR = '#3e618c';
 
 export const MAX_LOGO_BYTES = 200 * 1024;
 
-/** The company's pictures, each a record of its own: the logo, and the logo for the coloured header. */
-export const PICTURE_KINDS = ['logo', 'logo-on-colour'] as const;
+/** The company's pictures, each a record of its own: the logo, the logo for the coloured header, the tab icon and the phone-app icon. */
+export const PICTURE_KINDS = ['logo', 'logo-on-colour', 'tab-icon', 'app-icon'] as const;
 export type PictureKind = (typeof PICTURE_KINDS)[number];
 export const pictureKindSchema = z.enum(PICTURE_KINDS);
 
@@ -77,6 +77,8 @@ export function logoIsValid(logo: string) {
 /** A picture as stored: an image data URL within the bound, in a record of its own. */
 export const storedPictureSchema = z.strictObject({
   picture: z.string().refine(logoIsValid, 'an image of at most 200 KB'),
+  /** The phone-app icon's smaller size, which an iPhone is served: no other kind holds one. */
+  small: z.string().refine(logoIsValid, 'an image of at most 200 KB').optional(),
 });
 export type StoredPicture = z.infer<typeof storedPictureSchema>;
 

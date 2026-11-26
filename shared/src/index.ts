@@ -6,6 +6,7 @@ export * from './env';
 export * from './extra';
 export * from './fields';
 export * from './hash';
+export * from './icons';
 export * from './import';
 export * from './lists';
 export * from './orders';

@@ -1660,7 +1660,7 @@ describe('Gallery', () => {
   });
 
   it('213 case 1: every entry carries one to three use lines and one to three don’t-use lines', () => {
-    expect(ENTRIES).toHaveLength(50);
+    expect(ENTRIES).toHaveLength(51);
     for (const entry of ENTRIES) {
       for (const lines of [entry.useWhen, entry.dontUseWhen]) {
         expect(lines.length, entry.name).toBeGreaterThanOrEqual(1);
@@ -1915,6 +1915,7 @@ describe('Gallery', () => {
       'The confirm page',
       'The settings page',
       'BrandPreview',
+      'IconPreview',
       'IdentityFields',
       'PictureField',
     ]);
@@ -2002,7 +2003,7 @@ describe('Gallery', () => {
         entry.kind !== KIND_OF_PAGE,
     );
     // A set that found nothing would quiet the loop.
-    expect(parts.length).toBe(31);
+    expect(parts.length).toBe(32);
     expect(GUIDELINE.contracts.map((contract) => contract.part).sort()).toEqual(
       parts.map((entry) => entry.name).sort(),
     );
@@ -2453,10 +2454,12 @@ describe('Gallery', () => {
     expect(basics.getAllByRole('radio')).toHaveLength(6);
     expect(basics.getAllByRole('checkbox')).toHaveLength(2);
     expect(basics.getAllByRole('switch')).toHaveLength(3);
-    // the two fields' pictures, then the preview's two, which are hidden from a reader
+    // the four fields' pictures, then the two previews' four, which are hidden from a reader
     expect(part().getByRole('figure', { name: 'The basics' }).querySelectorAll('img')).toHaveLength(
-      4,
+      8,
     );
+    expect(basics.getByRole('button', { name: 'Upload tab icon' })).toBeDefined();
+    expect(basics.getByRole('button', { name: 'Upload phone app icon' })).toBeDefined();
     expect(basics.getByRole('button', { name: 'Upload logo' })).toBeDefined();
     expect(
       basics.getByRole('button', { name: 'Upload logo for the colored header' }),
@@ -2512,6 +2515,51 @@ describe('Gallery', () => {
           .getAllByRole('heading')
           .map((one) => one.textContent),
       ).toEqual(['Preview']);
+    }
+  });
+
+  it('250.4 case 15: IconPreview draws an uploaded icon, the drawn one and a long name, hidden from a reader', () => {
+    const entry = ENTRIES.find((each) => each.name === 'IconPreview')!;
+    expect(entry.group).toBe('Pages');
+    expect(entry.states.map((state) => state.name)).toEqual(['Uploaded', 'Drawn', 'A long name']);
+    drawn(entry);
+    const [uploaded, drawnOne, long] = ['Uploaded', 'Drawn', 'A long name'].map((name) =>
+      part().getByRole('figure', { name }),
+    );
+    const src = (figure: HTMLElement, which: 'tab' | 'home') =>
+      figure.querySelector(`[data-preview="${which}"] img`)?.getAttribute('src') ?? '';
+    // an uploaded picture is the sample's; the drawn ones are PNGs the shared drawer made
+    expect(src(uploaded, 'tab')).toContain('image/svg+xml');
+    for (const which of ['tab', 'home'] as const)
+      expect(src(drawnOne, which)).toMatch(/^data:image\/png;base64,iVBORw0KGgo/);
+    expect(src(drawnOne, 'tab')).not.toBe(src(drawnOne, 'home'));
+    expect(long.querySelector('[data-preview="tab"]')?.textContent).toContain(
+      'Rice and food, delivered to your door',
+    );
+    for (const each of [uploaded, drawnOne, long])
+      for (const which of ['tab', 'home']) {
+        const shown = each.querySelector(`[data-preview="${which}"]`)!;
+        expect(shown.getAttribute('aria-hidden')).toBe('true');
+        expect(shown.hasAttribute('inert')).toBe(true);
+      }
+  });
+
+  it('250.4 case 15: the settings page’s sample takes and removes each icon, and keeps nothing', async () => {
+    const entry = ENTRIES.find((each) => each.name === 'The settings page')!;
+    drawn(entry);
+    const basics = within(part().getByRole('figure', { name: 'The basics' }));
+    const inputs = part()
+      .getByRole('figure', { name: 'The basics' })
+      .querySelectorAll<HTMLInputElement>('input[type=file]');
+    const picture = new File(['x'], 'icon.png', { type: 'image/png' });
+    for (const [at, remove] of [
+      [2, 'Remove tab icon'],
+      [3, 'Remove phone app icon'],
+    ] as const) {
+      await userEvent.click(basics.getByRole('button', { name: remove }));
+      expect(basics.queryByRole('button', { name: remove })).toBeNull();
+      await userEvent.upload(inputs[at], picture);
+      expect(basics.getByRole('button', { name: remove })).toBeDefined();
     }
   });
 

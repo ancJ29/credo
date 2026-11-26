@@ -192,6 +192,8 @@ describe('An operator’s first passkey is made from a one-time link', () => {
     const orphan = await inviteOperator(t, 'second', '3f2a91bc-0000-4000-8000-000000000999');
     const a = await post(t.app, '/api/operator/join/options', { link: fromTerminal.token });
     const b = await post(t.app, '/api/operator/join/options', { link: orphan.token });
+    // an operator's passkey is made for the machine's own name
+    expect(a.json()).toMatchObject({ options: { rp: { name: 'Credo' } } });
     expect(a.json()).toMatchObject({ madeBy: null, madeByTerminal: true });
     expect(b.json()).toMatchObject({ madeBy: null, madeByTerminal: false });
   });

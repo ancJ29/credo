@@ -1,12 +1,19 @@
+import { deflateSync } from 'node:zlib';
 import {
   CLIENT_HEADER,
   clientCodeSchema,
   type ConfigDoc,
+  drawIcon,
+  ICON_SIDES,
   imageDataUrl,
+  isIconKind,
+  pictureIsValid,
   pictureKindSchema,
+  pngOf,
   recordKeys,
   ROUTES,
   savePictureRequestSchema,
+  SMALL_SIDE,
   storedPictureSchema,
 } from '@credo/shared';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
@@ -42,18 +49,36 @@ export function registerPictureRoutes(app: FastifyInstance, deps: PictureDeps) {
     if (!code.success || !kind.success) throw new HttpError(404, 'Not found');
     const { storage } = await tenantOfCode(code.data, request);
     const found = await storage.getRecord(recordKeys.tenant(storage.tenantId).picture(kind.data));
-    if (!found) throw new HttpError(404, 'Not found');
+    const small = (request.query as { size?: unknown }).size === String(SMALL_SIDE);
+    if (!found) {
+      // An icon none is stored for is drawn from the company's colour and name, never cached.
+      const doc = isIconKind(kind.data) ? await readConfig(storage, code.data) : null;
+      if (!doc || !isIconKind(kind.data)) throw new HttpError(404, 'Not found');
+      const side = small && kind.data === 'app-icon' ? SMALL_SIDE : ICON_SIDES[kind.data];
+      const drawn = pngOf(
+        drawIcon({ name: doc.config.name, code: code.data, colour: doc.config.colour }, side),
+        (raw) => deflateSync(raw),
+      );
+      return reply
+        .header('content-type', 'image/png')
+        .header('x-content-type-options', 'nosniff')
+        .header('content-security-policy', POLICY)
+        .header('cache-control', 'no-cache')
+        .send(Buffer.from(drawn));
+    }
     const stored = storedPictureSchema.safeParse(found.data);
     // A fault of the back end, named by its kind and never by its key.
     if (!stored.success) throw new Error('a picture record does not parse');
-    const image = imageDataUrl(stored.data.picture)!;
+    // The phone-app icon's 192-pixel size is asked by `size`; any other kind has the one picture.
+    const shown = small && stored.data.small ? stored.data.small : stored.data.picture;
+    const image = imageDataUrl(shown)!;
     const asked = (request.query as { v?: unknown }).v;
     return reply
       .header('content-type', `image/${image.type}`)
       .header('x-content-type-options', 'nosniff')
       .header('content-security-policy', POLICY)
       .header('cache-control', asked === found.tag ? FOR_A_YEAR : 'no-cache')
-      .send(Buffer.from(stored.data.picture.slice(stored.data.picture.indexOf(',') + 1), 'base64'));
+      .send(Buffer.from(shown.slice(shown.indexOf(',') + 1), 'base64'));
   });
 
   app.put(
@@ -67,12 +92,22 @@ export function registerPictureRoutes(app: FastifyInstance, deps: PictureDeps) {
       const kind = pictureKindSchema.safeParse(paramsOf(request).kind);
       if (!kind.success) throw new HttpError(404, 'Not found');
       const body = parse(savePictureRequestSchema, request.body);
+      // An icon is a PNG of its kind's side, the phone-app icon with its smaller size beside it.
+      if (
+        body.picture === null
+          ? body.small !== undefined
+          : !pictureIsValid(kind.data, body.picture, body.small)
+      )
+        throw new HttpError(400, 'Bad request');
       const code = request.headers[CLIENT_HEADER] as string;
       const key = recordKeys.tenant(request.tenantId).picture(kind.data);
       const moved =
         body.picture !== null
-          ? (await request.storage.putRecord(key, { picture: body.picture }, body.version)) ===
-            'moved'
+          ? (await request.storage.putRecord(
+              key,
+              { picture: body.picture, ...(body.small === undefined ? {} : { small: body.small }) },
+              body.version,
+            )) === 'moved'
           : body.version === null
             ? (await request.storage.getRecord(key)) !== null
             : (await request.storage.removeRecord(key, body.version)) === 'moved';

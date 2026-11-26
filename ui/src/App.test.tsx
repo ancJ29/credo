@@ -6,6 +6,8 @@ import { drawApp } from '../tests/render';
 import { noPasskeys, passkeyCalls, staffCalls } from '../tests/unused';
 import { type Api, ApiError } from './api';
 import { App } from './App';
+import { BEFORE_CONFIG } from './brand';
+import { barColour } from './design-system/barColour';
 import { DICTIONARIES, LANGUAGE_NAMES } from './i18n';
 import { createDeviceStore, type DeviceStore } from './device';
 import { PasskeyNotGiven, type Passkeys } from './passkeys';
@@ -108,6 +110,8 @@ describe('the app, the company’s pictures', () => {
   const pictures = {
     logo: { address: '/api/pictures/minh-phat/logo?v=t', version: 't' },
     'logo-on-colour': { address: '/api/pictures/minh-phat/logo-on-colour?v=u', version: 'u' },
+    'tab-icon': { address: '/api/pictures/minh-phat/tab-icon?v=v1', version: '' },
+    'app-icon': { address: '/api/pictures/minh-phat/app-icon?v=v1', version: '' },
   };
   const named = () => Promise.resolve({ ...doc, pictures });
 
@@ -1126,5 +1130,90 @@ describe('the tab and the page’s language', () => {
     expect(
       await screen.findByRole('heading', { level: 2, name: words.settings.title }),
     ).toBeTruthy();
+  });
+});
+
+describe('the app, the head of the page', () => {
+  const head = (selector: string) => document.head.querySelector<HTMLElement>(selector);
+  const named = {
+    ...doc,
+    pictures: {
+      ...NO_PICTURES,
+      'tab-icon': { address: '/api/pictures/minh-phat/tab-icon?v=v1', version: '' },
+      'app-icon': { address: '/api/pictures/minh-phat/app-icon?v=v1', version: '' },
+    },
+  };
+
+  it('9: once the settings are known the head holds the tab icon, the 192 as the home-screen icon and the bar in the header’s colour', async () => {
+    setup({ getConfig: () => Promise.resolve(named) });
+    await screen.findByRole('heading', { level: 1 });
+
+    expect(head('link[rel="icon"]')?.getAttribute('href')).toBe(
+      '/api/pictures/minh-phat/tab-icon?v=v1',
+    );
+    expect(head('link[rel="apple-touch-icon"]')?.getAttribute('href')).toBe(
+      '/api/pictures/minh-phat/app-icon?v=v1&size=192',
+    );
+    expect(head('meta[name="theme-color"]')?.getAttribute('content')).toBe(
+      barColour(config.colour, false),
+    );
+  });
+
+  it('9: before the settings the head holds the manifest and credo’s colour, no icon', async () => {
+    const wait = Promise.withResolvers<ConfigDoc>();
+    const { unmount } = setup({ getConfig: () => wait.promise });
+
+    await waitFor(() => expect(head('link[rel="manifest"]')).not.toBeNull());
+    expect(head('meta[name="theme-color"]')?.getAttribute('content')).toBe(BEFORE_CONFIG.colour);
+    expect(head('link[rel="icon"]')).toBeNull();
+    expect(head('link[rel="apple-touch-icon"]')).toBeNull();
+    wait.resolve(named);
+    await screen.findByRole('heading', { level: 1 });
+    unmount();
+  });
+
+  it('10: the manifest link is one element from the first draw to the signed-in page', async () => {
+    const wait = Promise.withResolvers<ConfigDoc>();
+    setup({ getConfig: () => wait.promise }, signedIn);
+    await waitFor(() => expect(head('link[rel="manifest"]')).not.toBeNull());
+    const first = head('link[rel="manifest"]');
+    expect(first?.getAttribute('href')).toBe('/api/manifest/minh-phat');
+
+    wait.resolve(named);
+    await screen.findByRole('banner');
+
+    expect(head('link[rel="manifest"]')).toBe(first);
+    expect(document.head.querySelectorAll('link[rel="manifest"]')).toHaveLength(1);
+  });
+
+  it('9: a white header makes the bar white; a device naming no company has no manifest', async () => {
+    const { unmount } = setup({
+      getConfig: () => Promise.resolve({ ...named, config: { ...config, whiteHeader: true } }),
+    });
+    await screen.findByRole('heading', { level: 1 });
+    expect(head('meta[name="theme-color"]')?.getAttribute('content')).toBe('#ffffff');
+    unmount();
+
+    setup({ getConfig: () => Promise.resolve(named) }, unlinked);
+    await screen.findByRole('heading', { level: 1 });
+    expect(head('link[rel="manifest"]')).toBeNull();
+  });
+
+  it('9: the unknown-company and failure screens put nothing of a company in the head', async () => {
+    const { unmount } = setup({ getConfig: () => Promise.reject(new ApiError(404)) });
+    await screen.findByRole('heading', { name: wordsVi.unknownClient.title });
+    for (const selector of [
+      'link[rel="manifest"]',
+      'link[rel="icon"]',
+      'link[rel="apple-touch-icon"]',
+    ])
+      expect(head(selector), selector).toBeNull();
+    expect(head('meta[name="theme-color"]')?.getAttribute('content')).toBe(BEFORE_CONFIG.colour);
+    unmount();
+
+    setup({ getConfig: () => Promise.reject(new ApiError(503)) });
+    expect((await screen.findByRole('alert')).textContent).toContain(wordsVi.common.unavailable);
+    expect(head('link[rel="manifest"]')).toBeNull();
+    expect(head('link[rel="icon"]')).toBeNull();
   });
 });

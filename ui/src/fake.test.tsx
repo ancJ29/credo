@@ -1228,6 +1228,31 @@ describe('the fake Api', () => {
     });
   });
 
+  it('14: the fake serves each icon as a data URL, the drawn one where none is saved, and keeps a save', async () => {
+    const api = fake();
+    const first = await api.getConfig();
+    for (const kind of ['tab-icon', 'app-icon'] as const) {
+      expect(first.pictures[kind]?.address).toMatch(/^data:image\/png;base64,iVBORw0KGgo/);
+      expect(first.pictures[kind]?.version).toBe('');
+    }
+    // the same company draws the same icon, and a renamed one draws another
+    expect((await api.getConfig()).pictures['tab-icon']).toEqual(first.pictures['tab-icon']);
+    await api.saveConfig({ ...DEMO_CONFIG, name: 'Zed Trading' }, first.version);
+    expect((await api.getConfig()).pictures['tab-icon']?.address).not.toBe(
+      first.pictures['tab-icon']?.address,
+    );
+
+    const uploaded = 'data:image/png;base64,AAAA';
+    const saved = await api.savePicture('app-icon', uploaded, null, 'data:image/png;base64,BBBB');
+    expect(saved.kind === 'saved' && saved.doc.pictures['app-icon']?.address).toBe(uploaded);
+    const held = (await api.getConfig()).pictures['app-icon']!;
+    expect(held.version).not.toBe('');
+    const stale = await api.savePicture('app-icon', null, null);
+    expect(stale.kind).toBe('conflict');
+    const gone = await api.savePicture('app-icon', null, held.version);
+    expect(gone.kind === 'saved' && gone.doc.pictures['app-icon']?.version).toBe('');
+  });
+
   it('Each load is seeded afresh: a save in one fake is not in the next', async () => {
     const [first, second] = [fake(), fake()];
     await first.saveConfig({ ...DEMO_CONFIG, name: 'Renamed' }, 'v1');
