@@ -112,6 +112,18 @@ jobs:
           pnpm --filter @credo/walk exec playwright install-deps chromium
           echo "$(( $(date +%s) - began ))" > "$RUN_DIR/deps_s"
           echo "system packages took $(cat "$RUN_DIR/deps_s") s, read at $(date '+%H:%M:%S')"
+      # The runner's processor, read once: lscpu, else /proc/cpuinfo, else "unread"; never a failed step.
+      - name: The runner's processor
+        run: |
+          cpu=$(lscpu 2>/dev/null | sed -n 's/^Model name: *//p' | head -n 1)
+          [ -n "$cpu" ] || cpu=$(sed -n 's/^model name[[:space:]]*: *//p' /proc/cpuinfo 2>/dev/null | head -n 1)
+          cores=$(lscpu 2>/dev/null | sed -n 's/^CPU(s): *//p' | head -n 1)
+          [ -n "$cores" ] || cores=$(grep -c '^processor' /proc/cpuinfo 2>/dev/null)
+          cpu=$(printf '%s' "$cpu" | tr '|=' '//')
+          echo "cpu=${cpu:-unread}" > "$RUN_DIR/cpu.txt"
+          echo "cores=${cores:-unread}" >> "$RUN_DIR/cpu.txt"
+          echo "the runner's processor: ${cpu:-unread}, ${cores:-unread} processors, read at $(date '+%H:%M:%S')"
+          true
       # run.sh --inside always ends 0; the pass's exit and its tests passed are in results.txt. The step
       # writes the seconds down before it judges, so a red pass still has its times.
       - name: The walk, one pass
@@ -145,6 +157,7 @@ jobs:
             echo "exit=$exit_code"
             echo "tests=$tests"
             echo "tests_wanted=$want"
+            cat "$RUN_DIR/cpu.txt" 2>/dev/null || echo "cpu=unread"
           } > "$RUN_DIR/timing.txt"
           echo "the walk ended at $(date '+%H:%M:%S') after $(( ended - began )) s: pnpm exit $pnpm_rc, pass exit $exit_code, $tests of $want tests passed"
           [ "$pnpm_rc" = 0 ] && [ "$exit_code" = 0 ] && [ "$tests" = "$want" ]
@@ -229,21 +242,34 @@ jobs:
           mkdir -p "$out"
           : > "$out/raw.txt"
           worst=0
+          # No `set -e` here (the step's shell is `bash -e`): a red comparison must not end the function before it
+          # has written its exit code, its "ended at" line and its moved pictures.
+          set +e
           one() { # <name> <label> <left pass> <right pass>
-            local left="$in/walk-pictures-$3" right="$in/walk-pictures-$4" rc
+            local left="$in/walk-pictures-$3" right="$in/walk-pictures-$4" rc=0 names n kept=0 total=0
             if [ ! -d "$left" ] || [ ! -d "$right" ]; then
               echo "no pictures of $3 or of $4: the pass kept none" > "$out/$1.txt"
               echo 2 > "$out/$1.rc"
               worst=1
-              return
+              return 0
             fi
             echo "compare $2 starts at $(date '+%H:%M:%S')"
-            (cd "$GITHUB_WORKSPACE/scripts" && node --import tsx src/walks-main.ts compare "$2" "$left" "$right" --raw "$out/raw.txt") > "$out/$1.txt" 2>&1
-            rc=$?
+            (cd "$GITHUB_WORKSPACE/scripts" && node --import tsx src/walks-main.ts compare "$2" "$left" "$right" --raw "$out/raw.txt") > "$out/$1.txt" 2>&1 || rc=$?
             echo "$rc" > "$out/$1.rc"
             cat "$out/$1.txt"
             echo "compare $2 ended at $(date '+%H:%M:%S'), exit $rc"
             [ "$rc" = 0 ] || worst=1
+            # The pictures it names as moved, both sides, at most 12 a comparison, so the artifact stays small.
+            names=$(sed -n 's/^  moved \(.*\.png\): .*/\1/p' "$out/$1.txt")
+            while IFS= read -r n; do
+              [ -n "$n" ] || continue
+              total=$((total + 1))
+              [ "$kept" -lt 12 ] || continue
+              mkdir -p "$out/moved/$1/$3" "$out/moved/$1/$4"
+              if cp "$left/$n" "$out/moved/$1/$3/$n" && cp "$right/$n" "$out/moved/$1/$4/$n"; then kept=$((kept + 1)); fi
+            done <<<"$names"
+            echo "$kept of $total moved pictures kept" > "$out/$1.kept"
+            echo "$1: $kept of $total moved pictures kept in the walk-compare artifact"
           }
           one fake-full-1 "fake to full-1: piece-2" fake full-1
           one full-1-full-2 "full-1 to full-2: piece-2" full-1 full-2
@@ -259,21 +285,21 @@ jobs:
             echo
             echo "Each pass ran at once on a runner of its own. Setup is the seconds from the job's first step to the walk's start (checkout, toolchains, install, Chromium, system packages); the system packages' seconds are inside it. The walk's seconds include the stack's own build (c-storage, the audit service, the UI) for the full passes."
             echo
-            echo "| pass | setup s | of it system packages s | walk s | pnpm exit | pass exit | tests passed |"
-            echo "| --- | --- | --- | --- | --- | --- | --- |"
+            echo "| pass | setup s | of it system packages s | walk s | pnpm exit | pass exit | tests passed | processor | cores |"
+            echo "| --- | --- | --- | --- | --- | --- | --- | --- | --- |"
             for p in fake full-1 full-2; do
               t="$in/walk-text-$p/timing.txt"
               if [ -f "$t" ]; then
-                echo "| $p | $(kv "$t" setup_s) | $(kv "$t" deps_s) | $(kv "$t" walk_s) | $(kv "$t" pnpm_exit) | $(kv "$t" exit) | $(kv "$t" tests) of $(kv "$t" tests_wanted) |"
+                echo "| $p | $(kv "$t" setup_s) | $(kv "$t" deps_s) | $(kv "$t" walk_s) | $(kv "$t" pnpm_exit) | $(kv "$t" exit) | $(kv "$t" tests) of $(kv "$t" tests_wanted) | $(kv "$t" cpu) | $(kv "$t" cores) |"
               else
-                echo "| $p | no times kept | | | | | |"
+                echo "| $p | no times kept | | | | | | | |"
               fi
             done
             echo
             echo "### Pictures that differ between the passes (raw count, no threshold)"
             echo
             for c in fake-full-1 full-1-full-2; do
-              echo "**$c** (exit $(cat "$out/$c.rc" 2>/dev/null || echo unread))"
+              echo "**$c** (exit $(cat "$out/$c.rc" 2>/dev/null || echo unread); $(cat "$out/$c.kept" 2>/dev/null || echo "no pictures kept"))"
               echo
               echo '```'
               head -n 40 "$out/$c.txt" 2>/dev/null || echo "not run"
