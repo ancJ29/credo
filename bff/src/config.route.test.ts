@@ -1,4 +1,9 @@
-import { configDocSchema, conflictReplySchema, type TenantConfig } from '@credo/shared';
+import {
+  configDocSchema,
+  conflictReplySchema,
+  PICTURE_KINDS,
+  type TenantConfig,
+} from '@credo/shared';
 import { afterAll, beforeAll, describe, expect, inject, it } from 'vitest';
 import { type RunningCStorage, startCStorage } from '../tests/c-storage';
 import { personCalls, staffTenant } from '../tests/staff';
@@ -76,6 +81,26 @@ describe('The root sets the company’s name, logo and brand colour; every scree
     const doc = configDocSchema.parse(read.json());
     expect(doc.config).toEqual(company);
     expect(doc.version).toBe(configDocSchema.parse(saved.json()).version);
+  });
+
+  it('names each picture by its kind, whatever order the kinds are listed in', async () => {
+    const t = await rootSession();
+    await t.save(company, null);
+    // A kind inserted before another reorders the list: the reply must not follow the position.
+    const kinds = PICTURE_KINDS as unknown as string[];
+    const order = [...kinds];
+    kinds.reverse();
+    try {
+      const pictures = (await t.read()).json<{
+        pictures: Record<string, { address: string } | null>;
+      }>().pictures;
+      expect(pictures.logo).toBeNull();
+      expect(pictures['logo-on-colour']).toBeNull();
+      expect(pictures['tab-icon']?.address).toContain('/tab-icon?');
+      expect(pictures['app-icon']?.address).toContain('/app-icon?');
+    } finally {
+      kinds.splice(0, kinds.length, ...order);
+    }
   });
 
   it('answers 404 before the settings exist, and refuses a save by a caller who has not signed in', async () => {

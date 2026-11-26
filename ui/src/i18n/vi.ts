@@ -103,6 +103,7 @@ export const vi: Dictionary = {
     appIconRemove: 'Xóa biểu tượng ứng dụng',
     iconDrawn: 'Chưa tải lên: dùng biểu tượng vẽ từ màu và chữ cái đầu của tên.',
     iconTooSmall: 'Ảnh phải có cạnh ngắn tối thiểu 512 điểm ảnh.',
+    iconTooLarge: 'Biểu tượng tạo từ ảnh này vượt quá {{max}} KB. Vui lòng chọn ảnh đơn giản hơn.',
     iconPreviewTab: 'Trên tab trình duyệt',
     iconPreviewHome: 'Trên màn hình chính của điện thoại',
     formattedName: 'Tên có định dạng',

@@ -255,6 +255,30 @@ describe('Settings', () => {
     expect(screen.queryByRole('alert')).toBeNull();
   });
 
+  it('17: a refusal at the chooser goes with the remove that follows it', async () => {
+    const onPicture = vi.fn();
+    draw(
+      <Settings
+        {...props({
+          onPicture,
+          pictures: { ...NO_PICTURES, logo: { address: '/api/a', version: 't' } },
+        })}
+      />,
+    );
+    const input = document.querySelectorAll<HTMLInputElement>('input[type=file]')[0];
+
+    await userEvent.upload(
+      input,
+      new File([new Uint8Array(MAX_LOGO_BYTES + 1)], 'big.png', { type: 'image/png' }),
+    );
+    expect(await screen.findByRole('alert')).toBeTruthy();
+    await userEvent.click(
+      within(field(words.logo)).getByRole('button', { name: words.logoRemove }),
+    );
+    expect(onPicture).toHaveBeenLastCalledWith('logo', null);
+    expect(screen.queryByRole('alert')).toBeNull();
+  });
+
   it('17: a picture’s save says how it ended under its own field only', () => {
     const outcome = (
       kind: 'logo' | 'logo-on-colour',
@@ -635,6 +659,30 @@ describe('Settings, the tab icon and the phone-app icon', () => {
     await waitFor(() => expect(message(words.tabIcon)).toBe(words.logoNotImage));
     expect(within(field(words.appIcon)).getAllByRole('alert')).toHaveLength(1);
     expect(onPicture).not.toHaveBeenCalled();
+  });
+
+  it('12: refuses at the chooser an icon the browser makes over 200 KB at either size, under its own field with its own word, and takes one at the limit', async () => {
+    const onPicture = vi.fn();
+    const url = (bytes: number) =>
+      `data:image/png;base64,${'A'.repeat(Math.ceil(bytes / 3) * 4 - ((3 - (bytes % 3)) % 3))}${'='.repeat((3 - (bytes % 3)) % 3)}`;
+    const small = { picture: url(10), small: url(MAX_LOGO_BYTES + 1) };
+    const makeIcon = vi
+      .fn()
+      .mockResolvedValueOnce({ picture: url(MAX_LOGO_BYTES + 1) })
+      .mockResolvedValueOnce(small)
+      .mockResolvedValueOnce({ picture: url(MAX_LOGO_BYTES), small: url(MAX_LOGO_BYTES) });
+    draw(<Settings {...props({ pictures: held, onPicture, makeIcon })} />);
+    const message = (label: string) => within(field(label)).getByRole('alert').textContent;
+    const tooLarge = words.iconTooLarge.replace('{{max}}', String(MAX_LOGO_BYTES / 1024));
+
+    await user.upload(input(words.tabIcon), file());
+    await waitFor(() => expect(message(words.tabIcon)).toBe(tooLarge));
+    await user.upload(input(words.appIcon), file());
+    await waitFor(() => expect(message(words.appIcon)).toBe(tooLarge));
+    expect(onPicture).not.toHaveBeenCalled();
+    await user.upload(input(words.appIcon), file());
+    await waitFor(() => expect(onPicture).toHaveBeenCalledOnce());
+    expect(within(field(words.appIcon)).queryByRole('alert')).toBeNull();
   });
 
   it('12: shows a stored icon with its remove, which sends none', async () => {
