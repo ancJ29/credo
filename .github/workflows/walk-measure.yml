@@ -9,6 +9,9 @@ on:
   push:
     branches:
       - exp-walk-on-runner
+    # Only a change to this file starts the measure again, not every later push (the probe has its own file).
+    paths:
+      - .github/workflows/walk-measure.yml
 
 permissions:
   contents: read

@@ -1,0 +1,428 @@
+# A probe, not a gate: which browser setting makes the walk's `staff-3-added` pictures steady on GitHub's
+# runners. On a runner that picture comes out in one of two versions (the menu's gradient, one colour step,
+# from the second row of tiles down), a version holding for one test and changing between tests. Each job
+# here takes the four menu tests of piece 2 (pc and tablet, Vietnamese and English) three times, each take on
+# a fresh stack (or fresh demo data) and a fresh browser, under one browser setting, and lists every picture
+# with its SHA-256. The `table` job gathers the lists and writes the run's summary page: for each setting, how
+# many versions each `staff-3-added` picture came out in, how many other pictures were unsteady, and how many
+# pictures the setting would move against today's. It starts on a push to this branch that changes this file;
+# nothing here is deployed and no secret is read. Why: worktrees/plans/walk-probe.md and walk-on-runner.md in
+# the exp-orch worktree.
+#
+# The settings, each added to today's `--disable-partial-raster` (the walk's own config), and the Chromium
+# source each switch was read in (checked against the source of Chromium's main branch, for the Chromium
+# Playwright 1.64 ships):
+#   today        no switch added.
+#   nogpu        --disable-gpu: content/public/common/content_switches.cc ("disables GPU hardware acceleration").
+#   nogpuraster  --disable-gpu-rasterization: gpu/config/gpu_switches.cc ("rasterizes on the CPU only").
+#   oneraster    --num-raster-threads=1: cc/base/switches.cc ("the number of threads to use for raster tasks").
+#   onetile      the menu and the page as one tile: third_party/blink/common/switches.cc has
+#                --default-tile-width / --default-tile-height ("the tile size used by composited layers") and
+#                --max-untiled-layer-width / --max-untiled-layer-height ("the width and height above which a
+#                composited layer will get tiled"); all four are 4096, larger than any page the walk shows.
+#   allstages    --run-all-compositor-stages-before-draw: components/viz/common/switches.cc ("effectively
+#                disables pipelining of compositor frame production stages").
+#   baseline     --disable-skia-runtime-opts: content/public/common/content_switches.cc (Skia does not use the
+#                optimised paths it detects at run time, so a gradient is drawn by one code path). The one
+#                candidate added to the plan's five.
+# Not verified without a run: whether the headless shell Playwright launches honours a switch; a switch it
+# ignores gives today's result, which the table then shows.
+name: walk-probe
+
+on:
+  push:
+    branches:
+      - exp-walk-on-runner
+    # Only a change to this file starts the probe: it costs about 300 runner minutes.
+    paths:
+      - .github/workflows/walk-probe.yml
+
+permissions:
+  contents: read
+
+jobs:
+  # Three takes of the four menu tests, under one setting, on one runner. Every take ends in the list of its
+  # pictures; a take whose tests do not all pass makes the job red after the other takes ran and the lists
+  # are kept.
+  take:
+    name: take ${{ matrix.setting }} ${{ matrix.where }} r${{ matrix.runner }}
+    runs-on: ubuntu-24.04
+    # Three times the job's expected length (about 19 minutes on the stack: 1 of setup, three takes of 6;
+    # about 10 on demo data), to a whole minute and never under 15.
+    timeout-minutes: ${{ matrix.limit }}
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { setting: today, where: stack, runner: 1, args: '', limit: 57, step_limit: 55 }
+          - { setting: today, where: stack, runner: 2, args: '', limit: 57, step_limit: 55 }
+          - { setting: today, where: fake, runner: 1, args: '', limit: 30, step_limit: 28 }
+          - { setting: today, where: fake, runner: 2, args: '', limit: 30, step_limit: 28 }
+          - { setting: nogpu, where: stack, runner: 1, args: '--disable-gpu', limit: 57, step_limit: 55 }
+          - { setting: nogpu, where: stack, runner: 2, args: '--disable-gpu', limit: 57, step_limit: 55 }
+          - { setting: nogpuraster, where: stack, runner: 1, args: '--disable-gpu-rasterization', limit: 57, step_limit: 55 }
+          - { setting: nogpuraster, where: stack, runner: 2, args: '--disable-gpu-rasterization', limit: 57, step_limit: 55 }
+          - { setting: oneraster, where: stack, runner: 1, args: '--num-raster-threads=1', limit: 57, step_limit: 55 }
+          - { setting: oneraster, where: stack, runner: 2, args: '--num-raster-threads=1', limit: 57, step_limit: 55 }
+          - { setting: onetile, where: stack, runner: 1, args: '--default-tile-width=4096 --default-tile-height=4096 --max-untiled-layer-width=4096 --max-untiled-layer-height=4096', limit: 57, step_limit: 55 }
+          - { setting: onetile, where: stack, runner: 2, args: '--default-tile-width=4096 --default-tile-height=4096 --max-untiled-layer-width=4096 --max-untiled-layer-height=4096', limit: 57, step_limit: 55 }
+          - { setting: allstages, where: stack, runner: 1, args: '--run-all-compositor-stages-before-draw', limit: 57, step_limit: 55 }
+          - { setting: allstages, where: stack, runner: 2, args: '--run-all-compositor-stages-before-draw', limit: 57, step_limit: 55 }
+          - { setting: baseline, where: stack, runner: 1, args: '--disable-skia-runtime-opts', limit: 57, step_limit: 55 }
+          - { setting: baseline, where: stack, runner: 2, args: '--disable-skia-runtime-opts', limit: 57, step_limit: 55 }
+    env:
+      SETTING: ${{ matrix.setting }}
+      WHERE: ${{ matrix.where }}
+      PROBE_RUNNER: ${{ matrix.runner }}
+      PROBE_ARGS: ${{ matrix.args }}
+      ID: ${{ matrix.setting }}-${{ matrix.where }}-r${{ matrix.runner }}
+    steps:
+      # Setup is counted from here (the checkout before it is a second or two).
+      - name: The clock starts
+        run: |
+          run_dir="$RUNNER_TEMP/probe"
+          mkdir -p "$run_dir/shots" "$run_dir/pw" "$run_dir/out" "$run_dir/keep" "$run_dir/text"
+          echo "RUN_DIR=$run_dir" >> "$GITHUB_ENV"
+          date +%s > "$run_dir/start"
+          echo "job $ID starts at $(date '+%H:%M:%S')"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # The versions the toolchain cache below is keyed on: .node-version, and Go's own, read from go.mod.
+      - name: The pinned versions
+        id: pins
+        run: |
+          echo "node=$(cat .node-version)" >> "$GITHUB_OUTPUT"
+          go=$(awk '$1 == "toolchain" {t = substr($2, 3)} $1 == "go" {g = $2} END {print t ? t : g}' services/c-storage/go.mod)
+          [ -n "$go" ] || { echo "no Go version in services/c-storage/go.mod" >&2; exit 1; }
+          echo "go=$go" >> "$GITHUB_OUTPUT"
+      # GitHub's cache is optional: a miss, or an unreachable service, leaves the setup actions to download as before.
+      - name: Restore the toolchains
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ${{ runner.tool_cache }}/node/${{ steps.pins.outputs.node }}
+            ${{ runner.tool_cache }}/go/${{ steps.pins.outputs.go }}
+            ~/.npm
+          key: tools-${{ runner.os }}-${{ runner.arch }}-node-${{ steps.pins.outputs.node }}-go-${{ steps.pins.outputs.go }}-pnpm-12.10.1
+      # Go builds c-storage and the audit service for the stack; the fake builds only the UI.
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        if: matrix.where == 'stack'
+        with:
+          go-version-file: services/c-storage/go.mod
+          cache-dependency-path: services/c-storage/go.sum
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+      - name: pnpm 12.10.1
+        run: npm install -g --ignore-scripts pnpm@12.10.1
+      - name: The pnpm store's path
+        id: store
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+      # A new lock file restores the nearest older store and adds what it lacks; the store is content-addressed.
+      - name: Restore the pnpm store
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ steps.store.outputs.path }}
+          key: pnpm-store-${{ runner.os }}-${{ runner.arch }}-12.10.1-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            pnpm-store-${{ runner.os }}-${{ runner.arch }}-12.10.1-
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      # Playwright's version is read from the install; Chromium and its headless shell (the one the walk
+      # launches) are kept in GitHub's cache under it. The system packages a browser needs on Ubuntu live
+      # outside any cache folder, so they are installed on every run: their seconds are written down.
+      - name: Playwright's version
+        id: playwright
+        run: echo "version=$(node -p "require('./walk/node_modules/@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+      - name: Restore Chromium
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ runner.arch }}-${{ steps.playwright.outputs.version }}
+      - name: Chromium
+        run: pnpm --filter @credo/walk exec playwright install chromium
+      - name: The browser's system packages
+        timeout-minutes: 10
+        run: |
+          began=$(date +%s)
+          pnpm --filter @credo/walk exec playwright install-deps chromium
+          echo "$(( $(date +%s) - began ))" > "$RUN_DIR/deps_s"
+          echo "system packages took $(cat "$RUN_DIR/deps_s") s, read at $(date '+%H:%M:%S')"
+      # The runner's processor, read once: lscpu, else /proc/cpuinfo, else "unread"; never a failed step.
+      - name: The runner's processor
+        run: |
+          cpu=$(lscpu 2>/dev/null | sed -n 's/^Model name: *//p' | head -n 1)
+          [ -n "$cpu" ] || cpu=$(sed -n 's/^model name[[:space:]]*: *//p' /proc/cpuinfo 2>/dev/null | head -n 1)
+          cores=$(lscpu 2>/dev/null | sed -n 's/^CPU(s): *//p' | head -n 1)
+          [ -n "$cores" ] || cores=$(grep -c '^processor' /proc/cpuinfo 2>/dev/null)
+          cpu=$(printf '%s' "$cpu" | tr '|=' '//')
+          echo "cpu=${cpu:-unread}" > "$RUN_DIR/cpu.txt"
+          echo "cores=${cores:-unread}" >> "$RUN_DIR/cpu.txt"
+          echo "the runner's processor: ${cpu:-unread}, ${cores:-unread} processors, read at $(date '+%H:%M:%S')"
+          true
+      # The setting's own Playwright config, written beside the walk's and never committed (nothing later in
+      # the job reads git's state): it is the walk's config whole, with the setting's arguments added to the
+      # browser's. Same folder, so `testDir` ('specs'), the tsconfig, the ESM reading of walk/package.json and
+      # the `STACK_ENV` base URL are the walk's; the reporter and the output folder are given on the command line.
+      # The first line it prints (the main process only, never a worker) names the arguments the browser gets.
+      - name: The setting's Playwright config and the take script
+        run: |
+          cat > walk/playwright.probe.config.ts <<'EOF'
+          import base from './playwright.config';
+
+          const extra = (process.env.PROBE_ARGS ?? '').split(/\s+/).filter(Boolean);
+          const args = [...(base.use?.launchOptions?.args ?? []), ...extra];
+          if (!process.env.TEST_WORKER_INDEX) console.log(`probe config: browser arguments ${args.join(' ')}`);
+
+          export default {
+            ...base,
+            use: { ...base.use, launchOptions: { ...base.use?.launchOptions, args } },
+          };
+          EOF
+          # One take inside a stack or the fake, as walk/run.sh --inside calls Playwright, with the probe's config.
+          cat > "$RUN_DIR/take.sh" <<'EOF'
+          #!/usr/bin/env bash
+          cd "$GITHUB_WORKSPACE" || exit 97
+          pnpm --filter @credo/walk exec playwright test --config "$GITHUB_WORKSPACE/walk/playwright.probe.config.ts" --project "$PROJECT" --reporter=list --output "$PW_OUT" -g "$PATTERN" 2>&1 </dev/null | tee "$TAKE_OUT"
+          echo "${PIPESTATUS[0]}" > "$TAKE_OUT.rc"
+          exit 0
+          EOF
+          echo "the probe config written; its arguments for this setting: ${PROBE_ARGS:-none added}"
+      # The takes. The step's exit is read at the end, so a red take still leaves its list and the others.
+      - name: The takes
+        timeout-minutes: ${{ matrix.step_limit }}
+        run: |
+          set +e
+          # On GitHub: three takes of the four menu tests (pc and tablet, Vietnamese and English; the title is the
+          # regular expression, parentheses escaped). Under act (ACT is set in its container) a trial of the
+          # plumbing: one take of the tablet's English test.
+          want=4
+          takes=3
+          pattern='on a (pc \(1280\)|tablet \(768\)) walks all fifty-one screens'
+          if [ -n "${ACT:-}" ]; then
+            want=1
+            takes=1
+            pattern='on a tablet \(768\) walks all fifty-one screens in English'
+          fi
+          case "$WHERE" in
+            stack) script=stack project=full ;;
+            *) script=fake project=fake ;;
+          esac
+          began_all=$(date +%s)
+          setup_s=$(( began_all - $(cat "$RUN_DIR/start") ))
+          echo "the probe starts at $(date '+%H:%M:%S'), $setup_s s after the job's first step: setting $SETTING (${PROBE_ARGS:-none added}) on $WHERE, runner $PROBE_RUNNER, $takes take(s) of $want test(s)"
+          list="$RUN_DIR/text/list-$ID.tsv"
+          timing="$RUN_DIR/text/timing-$ID.txt"
+          : > "$list"
+          {
+            echo "id=$ID"
+            echo "setting=$SETTING"
+            echo "where=$WHERE"
+            echo "runner=$PROBE_RUNNER"
+            echo "setup_s=$setup_s"
+            echo "deps_s=$(cat "$RUN_DIR/deps_s" 2>/dev/null || echo none)"
+            cat "$RUN_DIR/cpu.txt" 2>/dev/null || echo "cpu=unread"
+          } > "$timing"
+          good=0
+          tests_total=0
+          pics_total=0
+          for k in $(seq 1 "$takes"); do
+            dir="$RUN_DIR/shots/take-$k"
+            mkdir -p "$dir"
+            export CREDO_SHOTS_DIR="$dir" PROJECT="$project" PATTERN="$pattern" PW_OUT="$RUN_DIR/pw/take-$k" TAKE_OUT="$RUN_DIR/out/take-$k.out"
+            began=$(date +%s)
+            echo "take $k of $takes starts at $(date '+%H:%M:%S')"
+            pnpm --filter @credo/scripts run "$script" -- bash "$RUN_DIR/take.sh" </dev/null
+            pnpm_rc=$?
+            ended=$(date +%s)
+            pw_rc=$(cat "$TAKE_OUT.rc" 2>/dev/null || echo none)
+            tests=$(sed 's/\x1b\[[0-9;]*m//g' "$TAKE_OUT" 2>/dev/null | awk '/^[[:space:]]+[0-9]+ passed/ { p += $1 } END { print p + 0 }')
+            pics=0
+            for f in "$dir"/*.png; do
+              [ -f "$f" ] || continue
+              pics=$(( pics + 1 ))
+              sum=$(sha256sum "$f" | cut -d' ' -f1)
+              printf '%s\t%s\t%s\t%s\t%s\t%s\n' "$SETTING" "$WHERE" "$PROBE_RUNNER" "$k" "$(basename "$f")" "$sum" >> "$list"
+            done
+            for f in "$dir"/staff-3-added-*.png; do
+              [ -f "$f" ] || continue
+              cp "$f" "$RUN_DIR/keep/take$k-$(basename "$f")"
+            done
+            {
+              echo "take${k}_s=$(( ended - began ))"
+              echo "take${k}_pnpm_exit=$pnpm_rc"
+              echo "take${k}_playwright_exit=$pw_rc"
+              echo "take${k}_tests=$tests"
+              echo "take${k}_pictures=$pics"
+            } >> "$timing"
+            echo "take $k ended at $(date '+%H:%M:%S') after $(( ended - began )) s: pnpm exit $pnpm_rc, playwright exit $pw_rc, $tests of $want tests passed, $pics pictures listed"
+            tests_total=$(( tests_total + tests ))
+            pics_total=$(( pics_total + pics ))
+            if [ "$pnpm_rc" = 0 ] && [ "$pw_rc" = 0 ] && [ "$tests" = "$want" ] && [ "$pics" -gt 0 ]; then
+              good=$(( good + 1 ))
+            fi
+          done
+          ended_all=$(date +%s)
+          {
+            echo "takes_ok=$good"
+            echo "takes_wanted=$takes"
+            echo "takes_s=$(( ended_all - began_all ))"
+          } >> "$timing"
+          echo "the probe ended at $(date '+%H:%M:%S') after $(( ended_all - began_all )) s: $good of $takes takes ok, $tests_total of $(( want * takes )) tests passed, $pics_total pictures listed"
+          [ "$good" = "$takes" ]
+      # A red take keeps its list and its pictures too. Under act (which sets ACT) the uploads are skipped, as
+      # walk-measure.yml's are: act's artifact store is unreachable from the job's container.
+      - name: Keep the list and the times
+        if: ${{ always() && !env.ACT }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: probe-list-${{ matrix.setting }}-${{ matrix.where }}-r${{ matrix.runner }}
+          path: ${{ runner.temp }}/probe/text
+          retention-days: 7
+          if-no-files-found: warn
+      - name: Keep the staff-3-added pictures
+        if: ${{ always() && !env.ACT }}
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: probe-staff3-${{ matrix.setting }}-${{ matrix.where }}-r${{ matrix.runner }}
+          path: ${{ runner.temp }}/probe/keep
+          retention-days: 7
+          if-no-files-found: warn
+
+  # The table, from every job's list. It runs after a red job too, so the table is always written; plain shell
+  # and awk, no install. A version is a picture's SHA-256.
+  table:
+    needs: take
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: The lists and the times
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: probe-list-*
+          path: ${{ runner.temp }}/probe-in
+          merge-multiple: true
+      - name: The table
+        run: |
+          in="$RUNNER_TEMP/probe-in"
+          out="$RUNNER_TEMP/probe-table"
+          mkdir -p "$out"
+          cat > "$out/table.awk" <<'EOF'
+          # Reads every job's list: setting, where, runner, take, picture, sha (tabs). Writes the detail to
+          # stdout and the compact table's rows to the file named by `compact`.
+          BEGIN { FS = "\t" }
+          NF == 6 {
+            c = $1 SUBSEP $2
+            seen[c, $3 "t" $4] = 1
+            k = c SUBSEP $5
+            if (!(k in known)) { known[k] = 1; pl[c] = pl[c] " " $5 }
+            if (!((k, $6) in cnt)) { nv[k]++; vl[k] = vl[k] " " $6 }
+            cnt[k, $6]++
+          }
+          function mode(k,   n, i, a, best, bc) {
+            n = split(vl[k], a, " "); best = ""; bc = 0
+            for (i = 1; i <= n; i++) if (cnt[k, a[i]] > bc || (cnt[k, a[i]] == bc && a[i] < best)) { best = a[i]; bc = cnt[k, a[i]] }
+            return best
+          }
+          function splits(k,   n, i, j, a, v, x, t) {
+            n = split(vl[k], a, " ")
+            for (i = 1; i <= n; i++) v[i] = cnt[k, a[i]]
+            for (i = 2; i <= n; i++) { x = v[i]; j = i - 1; while (j >= 1 && v[j] < x) { v[j + 1] = v[j]; j-- } v[j + 1] = x }
+            t = v[1]
+            for (i = 2; i <= n; i++) t = t " and " v[i]
+            return t
+          }
+          END {
+            ns = split("staff-3-added-vi-1280.png staff-3-added-en-1280.png staff-3-added-vi-768.png staff-3-added-en-768.png", sp, " ")
+            n = split(order, o, " ")
+            ref = "today" SUBSEP "stack"
+            for (x = 1; x <= n; x++) {
+              split(o[x], sw, ":")
+              s = sw[1]; w = sw[2]; c = s SUBSEP w
+              have = 0; miss = ""
+              for (r = 1; r <= runners; r++) for (t = 1; t <= takes; t++) {
+                if ((c, r "t" t) in seen) have++; else miss = miss " r" r "t" t
+              }
+              printf "## %s on %s: %d of %d takes read%s\n", s, w, have, runners * takes, (miss == "" ? "" : "; missing:" miss)
+              row = "| " s " | " w " | " have "/" (runners * takes) " |"
+              for (i = 1; i <= ns; i++) {
+                k = c SUBSEP sp[i]
+                if (k in known) {
+                  printf "  %s: %d version(s), takes split %s\n", sp[i], nv[k], splits(k)
+                  row = row " " nv[k] " (" splits(k) ") |"
+                } else {
+                  printf "  %s: not read\n", sp[i]
+                  row = row " not read |"
+                }
+              }
+              np = split(pl[c], pa, " ")
+              others = 0; names = ""
+              for (i = 1; i <= np; i++) {
+                if (pa[i] ~ /^staff-3-added-/) continue
+                if (nv[c SUBSEP pa[i]] > 1) { others++; if (others <= 20) names = names " " pa[i] }
+              }
+              printf "  other pictures with more than one version: %d%s\n", others, (names == "" ? "" : " (" (others > 20 ? "the first 20: " : "") substr(names, 2) ")")
+              if (c == ref) {
+                mv = "reference"
+                printf "  moved against today's setting on the stack: it is the reference\n"
+              } else {
+                cmp = 0; moved = 0
+                for (i = 1; i <= np; i++) {
+                  kb = ref SUBSEP pa[i]
+                  if (kb in known) { cmp++; if (mode(c SUBSEP pa[i]) != mode(kb)) moved++ }
+                }
+                mv = (cmp == 0 ? "not read" : moved " of " cmp)
+                printf "  pictures whose most common version differs from today's on the stack: %s%s\n", mv, (cmp == 0 ? "" : " compared")
+              }
+              row = row " " others " | " mv " |"
+              print row > compact
+              print ""
+            }
+          }
+          EOF
+          order="today:stack today:fake nogpu:stack nogpuraster:stack oneraster:stack onetile:stack allstages:stack baseline:stack"
+          cat "$in"/list-*.tsv 2>/dev/null | awk -v order="$order" -v runners=2 -v takes=3 -v compact="$out/compact.md" -f "$out/table.awk" > "$out/detail.txt"
+          if [ ! -s "$out/detail.txt" ]; then echo "no list was kept by any job" > "$out/detail.txt"; : > "$out/compact.md"; fi
+          kv() { sed -n "s/^$2=//p" "$1" 2>/dev/null | head -n 1; }
+          {
+            echo "## Which browser setting makes the walk's staff-3-added pictures steady, on GitHub's runners, $(date '+%Y-%m-%d %H:%M:%S %Z')"
+            echo
+            echo "Six takes a setting (two runners, three takes each) of the walk's four menu tests (pc and tablet, Vietnamese and English), each take on a fresh stack or fresh demo data. A version is a picture's SHA-256. \"staff-3-added\" columns: how many versions the picture came out in, and how the takes split. \"Other unsteady\": other pictures with more than one version. \"Moved\": pictures whose most common version differs from today's on the stack (what adopting the setting would move); a tie in the count is read as the smaller SHA-256."
+            echo
+            echo "| setting | where | takes read | vi 1280 | en 1280 | vi 768 | en 768 | other unsteady | moved against today's |"
+            echo "| --- | --- | --- | --- | --- | --- | --- | --- | --- |"
+            cat "$out/compact.md"
+            echo
+            echo "### The jobs' times"
+            echo
+            echo "| job | processor | cores | setup s | takes s | take seconds | tests passed a take | takes ok |"
+            echo "| --- | --- | --- | --- | --- | --- | --- | --- |"
+            for t in "$in"/timing-*.txt; do
+              [ -f "$t" ] || continue
+              echo "| $(kv "$t" id) | $(kv "$t" cpu) | $(kv "$t" cores) | $(kv "$t" setup_s) | $(kv "$t" takes_s) | $(kv "$t" take1_s) $(kv "$t" take2_s) $(kv "$t" take3_s) | $(kv "$t" take1_tests) $(kv "$t" take2_tests) $(kv "$t" take3_tests) | $(kv "$t" takes_ok) of $(kv "$t" takes_wanted) |"
+            done
+            echo
+            echo "### The detail"
+            echo
+            echo '```'
+            cat "$out/detail.txt"
+            echo '```'
+          } > "$out/summary.md"
+          cat "$out/summary.md" >> "$GITHUB_STEP_SUMMARY"
+          { cat "$out/detail.txt"; echo; echo "-- the jobs' times"; for t in "$in"/timing-*.txt; do [ -f "$t" ] && { echo; cat "$t"; }; done; } > "$out/table.txt"
+          rm -f "$out/table.awk"
+          cat "$out/detail.txt"
+      - name: Keep the table
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: probe-table
+          path: ${{ runner.temp }}/probe-table
+          retention-days: 7
+          if-no-files-found: warn
