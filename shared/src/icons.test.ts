@@ -117,7 +117,8 @@ describe('the drawn icon as a PNG', () => {
         expect(back.side).toBe(side);
         expect(back.header).toEqual([8, 2, 0, 0, 0]);
         expect(back.end).toBe(0);
-        expect(back.rgb).toEqual(icon.rgb);
+        // byte for byte; toEqual on 786,432 typed-array elements cost 1.8 s of the test
+        expect(Buffer.from(back.rgb).equals(Buffer.from(icon.rgb)), 'the pixels drawn').toBe(true);
         expect(pngSides(png)).toEqual({ width: side, height: side });
       }
       expect(packed.length).toBeLessThan(stored.length);
