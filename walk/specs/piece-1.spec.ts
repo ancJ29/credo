@@ -31,6 +31,10 @@ const ROOT = {
 };
 const SCOPE = { [CLIENT_HEADER]: CODE };
 
+/** A label as a whole, the star of a required one allowed. */
+const exactly = (label: string) =>
+  new RegExp(`^${label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*\\*?$`);
+
 /** The company the sign-up screens ask for, and the address they ask for. */
 const SIGN_UP_CODE = 'phu-quy';
 const SIGN_UP = {
@@ -283,11 +287,11 @@ async function walk(page: Page, language: Language, width: number) {
 
   // 17. A company asks for its address: the form filled, in credo's own card.
   const fillSignUp = async (code: string) => {
-    await page.getByLabel(words.signUp.name, { exact: true }).fill(SIGN_UP.name);
-    await page.getByLabel(words.signUp.code, { exact: true }).fill(code);
-    await page.getByLabel(words.signUp.contactName, { exact: true }).fill(SIGN_UP.contactName);
-    await page.getByLabel(words.signUp.contactPhone, { exact: true }).fill(SIGN_UP.contactPhone);
-    await page.getByLabel(words.signUp.password, { exact: true }).fill(SIGN_UP.password);
+    await page.getByLabel(exactly(words.signUp.name)).fill(SIGN_UP.name);
+    await page.getByLabel(exactly(words.signUp.code)).fill(code);
+    await page.getByLabel(exactly(words.signUp.contactName)).fill(SIGN_UP.contactName);
+    await page.getByLabel(exactly(words.signUp.contactPhone)).fill(SIGN_UP.contactPhone);
+    await page.getByLabel(exactly(words.signUp.password)).fill(SIGN_UP.password);
   };
   await page.goto('/sign-up');
   await expect(page.getByRole('heading', { level: 2, name: words.signUp.title })).toBeVisible();
