@@ -22,7 +22,7 @@
 #                composited layer will get tiled"); all four are 4096, larger than any page the walk shows.
 #   allstages    --run-all-compositor-stages-before-draw: components/viz/common/switches.cc ("effectively
 #                disables pipelining of compositor frame production stages").
-#   baseline     --disable-skia-runtime-opts: content/public/common/content_switches.cc (Skia does not use the
+#   plainskia    --disable-skia-runtime-opts: content/public/common/content_switches.cc (Skia does not use the
 #                optimised paths it detects at run time, so a gradient is drawn by one code path). The one
 #                candidate added to the plan's five.
 # Not verified without a run: whether the headless shell Playwright launches honours a switch; a switch it
@@ -70,8 +70,8 @@ jobs:
           - { setting: onetile, where: stack, runner: 2, args: '--default-tile-width=4096 --default-tile-height=4096 --max-untiled-layer-width=4096 --max-untiled-layer-height=4096', limit: 57, step_limit: 55 }
           - { setting: allstages, where: stack, runner: 1, args: '--run-all-compositor-stages-before-draw', limit: 57, step_limit: 55 }
           - { setting: allstages, where: stack, runner: 2, args: '--run-all-compositor-stages-before-draw', limit: 57, step_limit: 55 }
-          - { setting: baseline, where: stack, runner: 1, args: '--disable-skia-runtime-opts', limit: 57, step_limit: 55 }
-          - { setting: baseline, where: stack, runner: 2, args: '--disable-skia-runtime-opts', limit: 57, step_limit: 55 }
+          - { setting: plainskia, where: stack, runner: 1, args: '--disable-skia-runtime-opts', limit: 57, step_limit: 55 }
+          - { setting: plainskia, where: stack, runner: 2, args: '--disable-skia-runtime-opts', limit: 57, step_limit: 55 }
     env:
       SETTING: ${{ matrix.setting }}
       WHERE: ${{ matrix.where }}
@@ -386,7 +386,7 @@ jobs:
             }
           }
           EOF
-          order="today:stack today:fake nogpu:stack nogpuraster:stack oneraster:stack onetile:stack allstages:stack baseline:stack"
+          order="today:stack today:fake nogpu:stack nogpuraster:stack oneraster:stack onetile:stack allstages:stack plainskia:stack"
           cat "$in"/list-*.tsv 2>/dev/null | awk -v order="$order" -v runners=2 -v takes=3 -v compact="$out/compact.md" -f "$out/table.awk" > "$out/detail.txt"
           if [ ! -s "$out/detail.txt" ]; then echo "no list was kept by any job" > "$out/detail.txt"; : > "$out/compact.md"; fi
           kv() { sed -n "s/^$2=//p" "$1" 2>/dev/null | head -n 1; }
