@@ -10,7 +10,7 @@ the company, so milestone 4's icons reuse the route. The cheapest path: the pers
 is a record of its own with its read and save (`bff/src/routes/staff.ts#L734-L776`), copied; the door's
 `LogoTile` and the header's `HeaderBrand` take an address instead of a data URL; each company's logo
 moved at its first read. The price: about 158 machine minutes in eight steps, one landing with the
-whole check and a review, your one walk run (576 pictures moved, 6 new), three looks.
+whole check and a review, your one walk run (618 pictures moved, 6 new), three looks.
 
 **Your two asks:** "components should be viewable from the gallery before integration with BFF":
 step 1 draws every new and changed part in the gallery on invented data, before any record or route;
@@ -181,7 +181,7 @@ Rows 1 to 6 are the move's, each seen red before its code; rows 7 to 13, the rou
 | 22 | The gallery draws `HeaderLogo`'s states and the new states of 6 | ui, `Gallery.test.tsx` |
 | 23 | Where nothing is set, the header, every door and the preview draw as before | visual, the pinned diff empty in step 1 |
 | 24 | Both dictionaries hold 785 keys, every Vietnamese one its own | scripts, `words.test.ts`; ui, `i18n.test.ts` |
-| 25 | The admin's setup walk holds 17 screens, 17 on the main path, from its mock state | visual, `walks.test.ts` |
+| 25 | The admin's setup walk holds 21 screens, 13 on the main path and 8 on the wrong one, from its mock state | visual, `walks.test.ts` |
 | 26 | A walk's picture waits for every image on the page to have loaded | walk, `support.ts`'s `shot`, typechecked; its run |
 
 ## The steps
@@ -243,8 +243,14 @@ is `git diff -U0 -- visual/src/resolved.pinned.txt | grep '^+[a-z]' | cut -d' ' 
       `[FIXED]`. _Done when:_ the citation test. **4 min** (250.2's step 5: 4).
       Done 25 November: the words line already read 785 (step 1), so no count line moved; the citation test
       at 21:25.
-- [ ] **7. Your walk run, then the bases.** The run below, green; the bases committed alone, each
+- [x] **7. Your walk run, then the bases.** The run below, green; the bases committed alone, each
       walk's count matching the log, no door or console base among them. **3 min** (250.2's step 6: 3).
+      Done 26 November: the human's walk run, started 14:13 and 22 minutes long, green, 17 comparisons,
+      every raw count as asked; full-1 to the bases moved 618 and 6 new (piece-1 60 and 6, piece-2 258,
+      admin-lists 126, office-orders 90, driver-deliveries 36, office-reconcile 48); the 624 changed
+      files are exactly the screens the comparisons name, each walk's file count equal to its moved
+      plus new, none a door or console base (the new six are `21-logo-on-colour`); the bases committed
+      alone (1a8b713b).
 - [ ] **8. The recap and the landing.** The recap and its products row; `pre-merge` taken in, the
       gates again, the landing; the whole check; `pre-main-review` before `main`, at most once a push.
       **44 min** (250.2's recap: 4; a whole check and a review about 20 each).
@@ -256,24 +262,24 @@ Total: 158 minutes, 44 of them the landing's.
 **Moved: every picture of a company's signed-in screen**, its header now drawing the logo. From the
 snapshot folders, less the doors (piece 1's `1-sign-in`, `2-sign-in-refused`, `6-service-down`,
 `9-unknown-company`, `12-sign-in-wait`, `16-formatted-card`; piece 2's `staff-24-email-sign-in`,
-`staff-28-passkey-not-given`, `staff-29-passkey-refused`, `phone-2-code-used`): 96 screens, 576
-pictures, in six walks (piece-1 60, piece-2 216, admin-lists 126, office-orders 90, driver-deliveries
+`staff-28-passkey-not-given`, `staff-29-passkey-refused`, `phone-2-code-used`): 103 screens, 618
+pictures, in six walks (piece-1 60, piece-2 258, admin-lists 126, office-orders 90, driver-deliveries
 36, office-reconcile 48). The doors draw the same bytes and do not move; the operators' walks wear the
 stand-in. **The walks' company** has a logo (`shared/src/demo.ts#L21-L23`), on the door only today; it
 keeps it, as a picture, and gains no second.
 
-**New:** one scene on the main path after `15-formatted-saved` (`walk/specs/piece-1.spec.ts#L188-L193`),
+**New:** one scene on the main path after `15-formatted-saved` (`walk/specs/piece-1.spec.ts#L225-L246`),
 the header in Brick: the root uploads a white mark, bytes from the spec, as the logo for the coloured
-header; saved at once, the header and the preview's wear it (`17-logo-on-colour`, 6 pictures). After
-it `5-language-menu` wears it, `10-saved-white` (`#L218-L225`) the logo on white; the restore
-(`#L70-L82`) removes it. 16 screens become 17 (`visual/src/walks.test.ts#L88-L95`,
-`piece-1.spec.ts#L15-L18`, `#L270`, `#L274`). `shot` (`walk/support.ts#L46-L87`) settles on two equal
+header; saved at once, the header and the preview's wear it (`21-logo-on-colour`, 6 pictures). After
+it `5-language-menu` wears it, `10-saved-white` (`#L272-L278`) the logo on white; the restore
+(`#L98-L108`) removes it. 20 screens become 21 (`visual/src/walks.test.ts#L89-L101`,
+`piece-1.spec.ts#L16-L18`, `#L359`, `#L363`). `shot` (`walk/support.ts#L46-L89`) settles on two equal
 pictures; it gains a wait for every image loaded, so a header taken before its logo arrives cannot
 pass as settled.
 
 | Scene | What it shows | Its question |
 | --- | --- | --- |
-| `17-logo-on-colour` | the logo for the coloured header just uploaded and saved; the header and the preview's header wearing it | Does the coloured header show the company's light logo, clear on its colour? |
+| `21-logo-on-colour` | the logo for the coloured header just uploaded and saved; the header and the preview's header wearing it | Does the coloured header show the company's light logo, clear on its colour? |
 
 The question is a key of `visual/site/questions-vi.json`, with its Vietnamese.
 
@@ -283,7 +289,7 @@ The question is a key of `visual/site/questions-vi.json`, with its Vietnamese.
 bash walk/run.sh piece-1 piece-2 admin-lists office-orders driver-deliveries office-reconcile --moved all --write
 ```
 
-You will see "== verdict: green": 576 pictures moved and 6 new, none of them a door; your run of two
+You will see "== verdict: green": 618 pictures moved and 6 new, none of them a door; your run of two
 walks on 25 November took 15 minutes, and this one's minutes are read from its log.
 
 ## Your points
@@ -294,7 +300,7 @@ walks on 25 November took 15 minutes, and this one's minutes are read from its l
    on the coloured header on its white tile, and the logo for the coloured header bare?
    **Recommendation: yes.** A no draws the one logo bare there, as the legacy does, one line in
    `HeaderLogo`.
-2. **The walks page** (after step 7). 97 screens ask: every signed-in screen with the logo in its
+2. **The walks page** (after step 7). 104 screens ask: every signed-in screen with the logo in its
    header, the settings screens with the second logo's field, and the new one, the light logo on the
    coloured header. **Recommendation: yes**, screen by screen. A no reopens the piece while the rest
    goes on.
