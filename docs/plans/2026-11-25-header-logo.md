@@ -251,9 +251,11 @@ is `git diff -U0 -- visual/src/resolved.pinned.txt | grep '^+[a-z]' | cut -d' ' 
       files are exactly the screens the comparisons name, each walk's file count equal to its moved
       plus new, none a door or console base (the new six are `21-logo-on-colour`); the bases committed
       alone (1a8b713b).
-- [ ] **8. The recap and the landing.** The recap and its products row; `pre-merge` taken in, the
+- [x] **8. The recap and the landing.** The recap and its products row; `pre-merge` taken in, the
       gates again, the landing; the whole check; `pre-main-review` before `main`, at most once a push.
       **44 min** (250.2's recap: 4; a whole check and a review about 20 each).
+      Done 26 November: the recap closed with the looks yes; the landing, its whole check green, the review's
+      three blocks fixed in one pass, `main` pushed at `8b4191a0`.
 
 Total: 158 minutes, 44 of them the landing's.
 
