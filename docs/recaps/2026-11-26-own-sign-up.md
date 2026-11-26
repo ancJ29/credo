@@ -23,5 +23,5 @@ flowchart LR
 ## How it closed
 
 - Your answer: yes, 25 November. Point 1, the gallery: yes.
-- The landing on `pre-merge`, the whole check and the review: <!-- FILL: the landing, the whole check's verdict and the review's findings, once they have run -->
-- Point 2, the walks page, and ridge after the push: <!-- FILL: your answers, once the page and ridge are open -->
+- The landing on `pre-merge`, the whole check and the review: The three milestones landed together on `pre-merge` on 26 November. The whole check went red twice that morning (a package never installed there, then the dev scripts' tests stalling on a loaded machine), green on its third run and again after the fix pass. The review found eight blocks, four in the screens, four in the docs, all fixed in one pass; `main` moved to that landing.
+- Point 2, the walks page, and ridge after the push: Your answers, 26 November: the ridge look "Tested and all ok", the walks page's 44 screens "YES for all". You pushed `main` to ridge the same day.
