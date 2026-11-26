@@ -1,0 +1,279 @@
+# A measurement, not a gate: piece 2's walk on GitHub's runners, each pass on a runner of its own, and
+# how many pictures differ between the passes. It starts on a push to this branch only; nothing here is
+# deployed and no secret is read. The run's summary page holds the table: each pass's minutes and the
+# counts. Why: worktrees/plans/walk-on-runner.md in the exp-orch worktree (a number in place of an
+# estimate, before any base picture moves to a runner).
+name: walk-measure
+
+on:
+  push:
+    branches:
+      - exp-walk-on-runner
+
+permissions:
+  contents: read
+
+jobs:
+  # One pass of the walk, as walk/run.sh's outer part calls it: `--inside <pass> piece-2 '' <k>` under
+  # `pnpm fake` (the fake UI) or `pnpm stack` (c-storage, the BFF and the UI built here). The pass ends
+  # 0 whatever the walk did, so the verdict is read from results.txt: 6 tests passed, exit 0.
+  pass:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - pass: fake
+            script: fake
+            k: 1
+          - pass: full-1
+            script: stack
+            k: 2
+          - pass: full-2
+            script: stack
+            k: 3
+    env:
+      PASS: ${{ matrix.pass }}
+    steps:
+      # Setup is counted from here (the checkout before it is a second or two).
+      - name: The clock starts
+        run: |
+          run_dir="$RUNNER_TEMP/walk-run"
+          mkdir -p "$run_dir/out" "$run_dir/pw" "$run_dir/$PASS/piece-2"
+          : > "$run_dir/results.txt"
+          echo "RUN_DIR=$run_dir" >> "$GITHUB_ENV"
+          echo "CREDO_SHOTS_DIR=$run_dir/$PASS/piece-2" >> "$GITHUB_ENV"
+          date +%s > "$run_dir/start"
+          echo "pass $PASS starts at $(date '+%H:%M:%S')"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # The versions the toolchain cache below is keyed on: .node-version, and Go's own, read from go.mod.
+      - name: The pinned versions
+        id: pins
+        run: |
+          echo "node=$(cat .node-version)" >> "$GITHUB_OUTPUT"
+          go=$(awk '$1 == "toolchain" {t = substr($2, 3)} $1 == "go" {g = $2} END {print t ? t : g}' services/c-storage/go.mod)
+          [ -n "$go" ] || { echo "no Go version in services/c-storage/go.mod" >&2; exit 1; }
+          echo "go=$go" >> "$GITHUB_OUTPUT"
+      # GitHub's cache is optional: a miss, or an unreachable service, leaves the setup actions to download as before.
+      - name: Restore the toolchains
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ${{ runner.tool_cache }}/node/${{ steps.pins.outputs.node }}
+            ${{ runner.tool_cache }}/go/${{ steps.pins.outputs.go }}
+            ~/.npm
+          key: tools-${{ runner.os }}-${{ runner.arch }}-node-${{ steps.pins.outputs.node }}-go-${{ steps.pins.outputs.go }}-pnpm-12.10.1
+      # Go builds c-storage and the audit service for the stack; the fake builds only the UI.
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        if: matrix.script == 'stack'
+        with:
+          go-version-file: services/c-storage/go.mod
+          cache-dependency-path: services/c-storage/go.sum
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+      - name: pnpm 12.10.1
+        run: npm install -g --ignore-scripts pnpm@12.10.1
+      - name: The pnpm store's path
+        id: store
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+      # A new lock file restores the nearest older store and adds what it lacks; the store is content-addressed.
+      - name: Restore the pnpm store
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ steps.store.outputs.path }}
+          key: pnpm-store-${{ runner.os }}-${{ runner.arch }}-12.10.1-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            pnpm-store-${{ runner.os }}-${{ runner.arch }}-12.10.1-
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      # Playwright's version is read from the install; Chromium and its headless shell (the one the walk
+      # launches) are kept in GitHub's cache under it. The system packages a browser needs on Ubuntu live
+      # outside any cache folder, so they are installed on every run: their seconds are written down.
+      - name: Playwright's version
+        id: playwright
+        run: echo "version=$(node -p "require('./walk/node_modules/@playwright/test/package.json').version")" >> "$GITHUB_OUTPUT"
+      - name: Restore Chromium
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ runner.arch }}-${{ steps.playwright.outputs.version }}
+      - name: Chromium
+        run: pnpm --filter @credo/walk exec playwright install chromium
+      - name: The browser's system packages
+        timeout-minutes: 10
+        run: |
+          began=$(date +%s)
+          pnpm --filter @credo/walk exec playwright install-deps chromium
+          echo "$(( $(date +%s) - began ))" > "$RUN_DIR/deps_s"
+          echo "system packages took $(cat "$RUN_DIR/deps_s") s, read at $(date '+%H:%M:%S')"
+      # run.sh --inside always ends 0; the pass's exit and its tests passed are in results.txt. The step
+      # writes the seconds down before it judges, so a red pass still has its times.
+      - name: The walk, one pass
+        timeout-minutes: 35
+        env:
+          SCRIPT: ${{ matrix.script }}
+          K: ${{ matrix.k }}
+        run: |
+          set +e
+          began=$(date +%s)
+          setup_s=$(( began - $(cat "$RUN_DIR/start") ))
+          echo "the walk starts at $(date '+%H:%M:%S'), $setup_s s after the job's first step"
+          pnpm --filter @credo/scripts run "$SCRIPT" -- bash "$GITHUB_WORKSPACE/walk/run.sh" --inside "$PASS" piece-2 '' "$K" </dev/null
+          pnpm_rc=$?
+          ended=$(date +%s)
+          read -r exit_code tests <<<"$(awk -v p="$PASS" '$1 == p && $2 == "piece-2" { rc = $4; n += $5; seen = 1 } END { if (seen) print rc, n + 0; else print "none 0" }' "$RUN_DIR/results.txt")"
+          {
+            echo "setup_s=$setup_s"
+            echo "deps_s=$(cat "$RUN_DIR/deps_s" 2>/dev/null || echo none)"
+            echo "walk_s=$(( ended - began ))"
+            echo "pnpm_exit=$pnpm_rc"
+            echo "exit=$exit_code"
+            echo "tests=$tests"
+          } > "$RUN_DIR/timing.txt"
+          echo "the walk ended at $(date '+%H:%M:%S') after $(( ended - began )) s: pnpm exit $pnpm_rc, pass exit $exit_code, $tests of 6 tests passed"
+          [ "$pnpm_rc" = 0 ] && [ "$exit_code" = 0 ] && [ "$tests" = 6 ]
+      # A red pass keeps its pictures and its text too, which is when they are most needed.
+      - name: Keep the pictures
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: walk-pictures-${{ matrix.pass }}
+          path: ${{ runner.temp }}/walk-run/${{ matrix.pass }}/piece-2
+          retention-days: 7
+          if-no-files-found: warn
+      - name: Keep the output and the times
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: walk-text-${{ matrix.pass }}
+          path: |
+            ${{ runner.temp }}/walk-run/timing.txt
+            ${{ runner.temp }}/walk-run/results.txt
+            ${{ runner.temp }}/walk-run/out
+          retention-days: 7
+          if-no-files-found: warn
+
+  # The raw count the Mac runs (scripts/src/walks-main.ts compare): fake to full-1 and full-1 to full-2,
+  # no threshold. Its exit code is the verdict. Nothing is compared with the committed base images: those
+  # are the Mac's. It runs after a red pass too, so the table is always written.
+  compare:
+    needs: pass
+    if: always()
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      # The version the toolchain cache below is keyed on: .node-version.
+      - name: The pinned versions
+        id: pins
+        run: |
+          echo "node=$(cat .node-version)" >> "$GITHUB_OUTPUT"
+      # GitHub's cache is optional: a miss, or an unreachable service, leaves the setup actions to download as before.
+      - name: Restore the toolchains
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            ${{ runner.tool_cache }}/node/${{ steps.pins.outputs.node }}
+            ~/.npm
+          key: tools-${{ runner.os }}-${{ runner.arch }}-node-${{ steps.pins.outputs.node }}-pnpm-12.10.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version-file: .node-version
+      - name: pnpm 12.10.1
+        run: npm install -g --ignore-scripts pnpm@12.10.1
+      - name: The pnpm store's path
+        id: store
+        run: echo "path=$(pnpm store path --silent)" >> "$GITHUB_OUTPUT"
+      # A new lock file restores the nearest older store and adds what it lacks; the store is content-addressed.
+      - name: Restore the pnpm store
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ${{ steps.store.outputs.path }}
+          key: pnpm-store-${{ runner.os }}-${{ runner.arch }}-12.10.1-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            pnpm-store-${{ runner.os }}-${{ runner.arch }}-12.10.1-
+      - name: Install
+        run: pnpm install --frozen-lockfile
+      # One folder a pass, named by its artifact: walk-pictures-fake, walk-pictures-full-1, walk-pictures-full-2.
+      - name: The passes' pictures and times
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          pattern: walk-*
+          path: ${{ runner.temp }}/walk-in
+      - name: The raw count
+        run: |
+          in="$RUNNER_TEMP/walk-in"
+          out="$RUNNER_TEMP/walk-compare"
+          mkdir -p "$out"
+          : > "$out/raw.txt"
+          worst=0
+          one() { # <name> <label> <left pass> <right pass>
+            local left="$in/walk-pictures-$3" right="$in/walk-pictures-$4" rc
+            if [ ! -d "$left" ] || [ ! -d "$right" ]; then
+              echo "no pictures of $3 or of $4: the pass kept none" > "$out/$1.txt"
+              echo 2 > "$out/$1.rc"
+              worst=1
+              return
+            fi
+            echo "compare $2 starts at $(date '+%H:%M:%S')"
+            (cd "$GITHUB_WORKSPACE/scripts" && node --import tsx src/walks-main.ts compare "$2" "$left" "$right" --raw "$out/raw.txt") > "$out/$1.txt" 2>&1
+            rc=$?
+            echo "$rc" > "$out/$1.rc"
+            cat "$out/$1.txt"
+            echo "compare $2 ended at $(date '+%H:%M:%S'), exit $rc"
+            [ "$rc" = 0 ] || worst=1
+          }
+          one fake-full-1 "fake to full-1: piece-2" fake full-1
+          one full-1-full-2 "full-1 to full-2: piece-2" full-1 full-2
+          [ "$worst" = 0 ]
+      - name: The summary page
+        if: always()
+        run: |
+          in="$RUNNER_TEMP/walk-in"
+          out="$RUNNER_TEMP/walk-compare"
+          kv() { sed -n "s/^$2=//p" "$1" 2>/dev/null | head -n 1; }
+          {
+            echo "## Piece 2's walk on GitHub's runners (ubuntu-24.04), $(date '+%Y-%m-%d %H:%M:%S %Z')"
+            echo
+            echo "Each pass ran at once on a runner of its own. Setup is the seconds from the job's first step to the walk's start (checkout, toolchains, install, Chromium, system packages); the system packages' seconds are inside it. The walk's seconds include the stack's own build (c-storage, the audit service, the UI) for the full passes."
+            echo
+            echo "| pass | setup s | of it system packages s | walk s | pnpm exit | pass exit | tests passed |"
+            echo "| --- | --- | --- | --- | --- | --- | --- |"
+            for p in fake full-1 full-2; do
+              t="$in/walk-text-$p/timing.txt"
+              if [ -f "$t" ]; then
+                echo "| $p | $(kv "$t" setup_s) | $(kv "$t" deps_s) | $(kv "$t" walk_s) | $(kv "$t" pnpm_exit) | $(kv "$t" exit) | $(kv "$t" tests) of 6 |"
+              else
+                echo "| $p | no times kept | | | | | |"
+              fi
+            done
+            echo
+            echo "### Pictures that differ between the passes (raw count, no threshold)"
+            echo
+            for c in fake-full-1 full-1-full-2; do
+              echo "**$c** (exit $(cat "$out/$c.rc" 2>/dev/null || echo unread))"
+              echo
+              echo '```'
+              head -n 40 "$out/$c.txt" 2>/dev/null || echo "not run"
+              echo '```'
+              echo
+            done
+          } >> "$GITHUB_STEP_SUMMARY"
+      - name: Keep the raw count
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: walk-compare
+          path: ${{ runner.temp }}/walk-compare
+          retention-days: 7
+          if-no-files-found: warn
