@@ -235,7 +235,7 @@ diff" is `git diff -U0 -- visual/src/resolved.pinned.txt | grep '^+[a-z]' | cut 
       0 moved between its two passes, and against the bases 30 moved and 24 new, as asked; piece 2's
       bases were written at 06:55 and the lists', operator's and delete-client's at 01:55, in
       `572f7b6a` and `487e5cfc`, and piece 1's in `d658045b`, alone.
-- [ ] **10. The recap and the landing.** The recap and its products row; the landing; the whole check,
+- [x] **10. The recap and the landing.** The recap and its products row; the landing; the whole check,
       as it touches `shared` and five more packages (`docs/conventions/qa.md#L262-L267`);
       `pre-main-review` before `main`, a public route that makes records being worth one
       (`qa.md#L106`), and its one fix pass. **52 min** (a recap 5; a whole check about 20; 241.2's
