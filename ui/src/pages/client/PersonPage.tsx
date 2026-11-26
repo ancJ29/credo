@@ -38,7 +38,7 @@ import {
 import { type PageProps, refusal, useLoad } from '../../page';
 import { PermissionEditor } from '../../parts/PermissionEditor';
 import { PhotoPanel } from '../../parts/PhotoPanel';
-import { EmailPanel, QrPanel } from '../../parts/SignInPanels';
+import { EmailPanel, PasskeysPanel, QrPanel } from '../../parts/SignInPanels';
 import {
   PersonalFields,
   type PersonalTexts,
@@ -285,6 +285,9 @@ type FormProps = {
   archiveFailed: boolean;
   photo: PhotoReply | null;
   onPhoto: (photo: PhotoReply) => void;
+  /** How many passkeys the person holds, read for the root where passkeys are on; null unread. */
+  passkeys: number | null;
+  onPasskeysRemoved: () => void;
   /** The code the person was just given, or null. */
   codeChanged: string | null;
   onCodeChanged: (doc: EmployeeDoc) => void;
@@ -307,6 +310,8 @@ function PersonForm({
   archiveFailed,
   photo,
   onPhoto,
+  passkeys,
+  onPasskeysRemoved,
   codeChanged,
   ...actions
 }: FormProps) {
@@ -574,6 +579,15 @@ function PersonForm({
             {user.root && !employee.archived && fields.qr && (
               <QrPanel page={page} id={employee.id} />
             )}
+            {passkeys !== null && (
+              <PasskeysPanel
+                page={page}
+                id={employee.id}
+                name={employee.name}
+                held={passkeys}
+                onRemoved={onPasskeysRemoved}
+              />
+            )}
             {can(user, 'staff.canDelete') && (
               <ArchivePanel
                 name={employee.name}
@@ -599,7 +613,12 @@ export function PersonPage(page: PageProps) {
       const doc = await api.getEmployee(id);
       const { setup } = await api.getStaffSetup();
       const photo = staffConfig(setup).fields.photo ? await api.getPhoto(id) : null;
-      return { doc, setup, photo };
+      // Only the root reads a person's passkeys, where the company keeps them and the person stays.
+      const passkeys =
+        page.user.root && !doc.employee.archived && staffConfig(setup).fields.passkey
+          ? await api.personPasskeys(id)
+          : null;
+      return { doc, setup, photo, passkeys };
     },
     page,
     [api, id],
@@ -613,6 +632,8 @@ export function PersonPage(page: PageProps) {
   // The photo as last saved or taken from a conflict, held here and not in the form: a save of the
   // details redraws the form, and its photo would go back to the one first read.
   const [photoNow, setPhotoNow] = useState<PhotoReply | null>(null);
+  // The passkeys held once the root removed them: none, held here as the photo is.
+  const [passkeysNow, setPasskeysNow] = useState<number | null>(null);
   // The form starts afresh from the stored person when this changes: after a save or an archive,
   // not after a new code, so what was typed in the details survives it.
   const [formKey, setFormKey] = useState(0);
@@ -687,6 +708,8 @@ export function PersonPage(page: PageProps) {
           archiveFailed={archiveFailed}
           photo={photoNow ?? data.photo}
           onPhoto={setPhotoNow}
+          passkeys={passkeysNow ?? data.passkeys}
+          onPasskeysRemoved={() => setPasskeysNow(0)}
           codeChanged={codeChanged}
           onCodeChanged={(next) => {
             setCurrent(next);
@@ -702,6 +725,7 @@ export function PersonPage(page: PageProps) {
           onReload={() => {
             setCurrent(null);
             setPhotoNow(null);
+            setPasskeysNow(null);
             setFormKey((n) => n + 1);
             setOutcome(null);
             setCodeChanged(null);

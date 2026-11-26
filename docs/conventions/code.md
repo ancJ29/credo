@@ -91,7 +91,7 @@ layer, and a screen's test sits beside it as `<Name>Page.test.tsx`.
 | whether a call is allowed | `bff/src/app.ts#L188-L192` (`mustCan`); the note at `#L184` is why the UI is never the guard | who the caller is, `#L157` (`signedIn`); the booleans, `shared/src/permissions.ts#L48`; the catalogue, `#L9` |
 | what a failure becomes on the wire | `bff/src/errors.ts#L19` (`replyFor`) | a 400 that names its field, `#L35-L41` |
 | a person's sign-in | `bff/src/app.ts#L251` | the refusal and why it names nothing, `#L261-L264` |
-| which records exist, and under which key | `shared/src/records.ts#L7` (`recordKeys`), the layout's one home | — |
+| which records exist, and under which key | `shared/src/records.ts#L9` (`recordKeys`), the layout's one home | — |
 | how the back end reaches storage, and how long it waits | `shared/src/c-storage.ts#L24` (5 s), the signal, `AbortSignal.timeout(timeoutMs)` | `bff/src/server.ts`'s `buildBff` builds the one client |
 | what [c-storage](../partners/words.md#c-storage) will answer | `Server.handle` in `services/c-storage/internal/server/server.go`, which registers a route and appends its pattern to the list a test reads | `services/c-storage/internal/` by package |
 | what `pnpm stack`, `pnpm fake` and `pnpm demo` do | `scripts/src/cli.ts`, which drives `withStack`, `withFake` and `startDemo` (imported from `./fake`, `./demo/apply` and `./stack`) | `scripts/src/stack.ts`, `fake.ts` |

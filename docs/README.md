@@ -12,7 +12,7 @@
 ## "An operator changed this wrongly — put it back"
 
 **Read this before promising anything: the old value cannot be recovered from the system.** Every
-record is one key holding its current value ([`shared/src/records.ts#L7`](../shared/src/records.ts#L7)),
+record is one key holding its current value ([`shared/src/records.ts#L9`](../shared/src/records.ts#L9)),
 so a save overwrites. No record carries who wrote it or what it held before — searched for
 `changedBy`, `updatedBy`, a revision and a history across `shared/src`, `bff/src` and
 `services/c-storage/internal`, and there is none — and no copy of a real client's records has yet been
@@ -24,7 +24,7 @@ What **can** be established in the first minutes:
 | The question | Where |
 | --- | --- |
 | Which call touched which record, when, and whether it succeeded | the door's access log — its path names the record id on a detail route ([`ops/env.yml`](../ops/env.yml), `AccessLogSettings` of the API stage; see [the logs](#where-the-system-answers-faster-than-any-file)) |
-| What the record holds now | the key it sits under, [`shared/src/records.ts#L7`](../shared/src/records.ts#L7) |
+| What the record holds now | the key it sits under, [`shared/src/records.ts#L9`](../shared/src/records.ts#L9) |
 | Whether the write was refused rather than applied | the status in the same log line; a refused save carries the field that failed, [`bff/src/errors.ts#L35-L41`](../bff/src/errors.ts#L35) |
 
 What cannot be established at all, and is the honest answer to the client: **which person made the

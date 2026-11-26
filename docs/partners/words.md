@@ -52,7 +52,7 @@ The part of the app for the people who run credo. It is opened at its own addres
 
 ## passkey
 
-What a person signs in with, by face, fingerprint or device PIN. A company's person adds their own from the user menu (More on a phone), "Add a passkey", within ten minutes of signing in; the password keeps working, and the root may switch passkeys off for the company. An operator makes the first one by opening a one-time link, which works once and expires after a day. A passkey is tied to the app's address for good. A lost operator's one is replaced by a new link, which replaces every passkey that operator held.
+What a person signs in with, by face, fingerprint or device PIN. A company's person sees their own under "Passkeys" in the user menu (More on a phone), each with its device and the days it was added and last used, adds one there ("Add a passkey", within ten minutes of signing in) and removes one after a question; the password keeps working, and the root may switch passkeys off for the company, or remove all of a person's passkeys from their page, which signs that person out everywhere. An operator makes the first one by opening a one-time link, which works once and expires after a day. A passkey is tied to the app's address for good. A lost operator's one is replaced by a new link, which replaces every passkey that operator held.
 
 ## pre-merge
 

@@ -1,7 +1,13 @@
 import { z } from 'zod';
 import { emailSchema } from './records';
 import { passwordIsValid } from './staff';
-import { passkeySignInRequestSchema, registrationResponseSchema, ROUTES, tagSchema } from './wire';
+import {
+  passkeySignInRequestSchema,
+  registrationResponseSchema,
+  ROUTES,
+  sessionReplySchema,
+  tagSchema,
+} from './wire';
 
 // The ways to sign in beyond a code and a password: an email, a QR code, and one's own password.
 // The email is a second sign-in name the root gives, and no mail is ever sent to it.
@@ -49,6 +55,10 @@ export function parseQr(raw: string | null) {
 export const issueQrReplySchema = z.strictObject({ link: z.string(), expiresAt: z.number() });
 export type IssueQrReply = z.infer<typeof issueQrReplySchema>;
 
+/** What the door may know before anyone signs in: whether the company has QR sign-in on, and nothing else of its setup. */
+export const signInMethodsReplySchema = z.strictObject({ qr: z.boolean() });
+export type SignInMethodsReply = z.infer<typeof signInMethodsReplySchema>;
+
 /** A phone opening a QR code's link. */
 export const signInQrRequestSchema = z.strictObject({ id: z.uuid(), secret: qrSecretSchema });
 export type SignInQrRequest = z.infer<typeof signInQrRequestSchema>;
@@ -68,9 +78,39 @@ export const ownPasskeyAddRequestSchema = z.strictObject({
 });
 export type OwnPasskeyAddRequest = z.infer<typeof ownPasskeyAddRequestSchema>;
 
+/** A person's passkey as they are shown it: its device (null for none named), the day added and
+ * the day last used, and no secret. */
+export const ownPasskeyItemSchema = z.strictObject({
+  id: z.string(),
+  device: z.string().nullable(),
+  addedAt: z.number(),
+  lastUsedAt: z.number().nullable(),
+});
+export type OwnPasskeyItem = z.infer<typeof ownPasskeyItemSchema>;
+
+/** One's own list, and what is left after a removal. */
+export const ownPasskeyListReplySchema = z.strictObject({
+  passkeys: z.array(ownPasskeyItemSchema),
+});
+export type OwnPasskeyListReply = z.infer<typeof ownPasskeyListReplySchema>;
+
+/** A removal of one's own: the passkeys left, and the session that replaces the one held, since
+ * every other of the person's is signed out. */
+export const ownPasskeyRemovedReplySchema = z.strictObject({
+  passkeys: z.array(ownPasskeyItemSchema),
+  session: sessionReplySchema,
+});
+export type OwnPasskeyRemovedReply = z.infer<typeof ownPasskeyRemovedReplySchema>;
+
+/** The root's view of a person's passkeys: how many they hold, and after the removal of all, none. */
+export const personPasskeysReplySchema = z.strictObject({ count: z.number().int().min(0) });
+export type PersonPasskeysReply = z.infer<typeof personPasskeysReplySchema>;
+
 /** The routes of these ways, beside `ROUTES` and `employeeRoutes`. */
 export const signInRoutes = {
   qr: '/api/auth/sign-in-qr',
+  /** What the door may ask with no session (GET): whether QR sign-in is on. */
+  methods: '/api/auth/methods',
   password: '/api/auth/password',
   email: (id: string) => `${ROUTES.employees}/${id}/email`,
   issueQr: (id: string) => `${ROUTES.employees}/${id}/qr`,
@@ -80,6 +120,11 @@ export const signInRoutes = {
   /** One's own passkey add, behind a session: its options, then the add. */
   ownPasskeyOptions: '/api/auth/passkey/add-options',
   ownPasskeyAdd: '/api/auth/passkey/add',
+  /** One's own passkeys: the list (GET), and one removed (DELETE) by its id. */
+  ownPasskeys: '/api/auth/passkeys',
+  ownPasskey: (id: string) => `/api/auth/passkeys/${id}`,
+  /** The root's: a person's count (GET) and all of theirs removed (DELETE). */
+  employeePasskeys: (id: string) => `${ROUTES.employees}/${id}/passkeys`,
 };
 
 /** Wrong tries a name has free before any wait. */

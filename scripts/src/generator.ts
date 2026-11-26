@@ -1,6 +1,7 @@
-import { generateKeyPairSync } from 'node:crypto';
+import { generateKeyPairSync, randomUUID } from 'node:crypto';
 import { buildApp } from '@credo/bff';
 import { createClient, ROOT_NAME } from '@credo/bff/clients';
+import { hashPassword } from '@credo/bff/password';
 import { createOperator, makeLink } from '@credo/bff/operators';
 import { createSessions, OPERATOR_SESSION } from '@credo/bff/sessions';
 import {
@@ -31,6 +32,7 @@ import {
   type SessionReply,
   type StaffSetupDoc,
   type StoredAccount,
+  type StoredOwnPasskeys,
   type StoredRoster,
   AUTH_HEADER,
   recordKeys,
@@ -49,6 +51,9 @@ import {
   DEMO_INVITED_NAME,
   DEMO_OPERATOR_ID,
   DEMO_PASSKEYS,
+  DEMO_PERSON_PASSKEYS,
+  DEMO_PERSON_PASSKEYS_CODE,
+  DEMO_SIGN_UPS,
   DEMO_PHOTOS,
   DEMO_PRODUCTS,
   DEMO_TEAM,
@@ -182,6 +187,25 @@ export async function seedClient(
         extra: person.extra,
         permissions: person.permissions,
       });
+    }
+    if (person.code === DEMO_PERSON_PASSKEYS_CODE) {
+      // The person's own list: two passkeys at their fixed days, one record under the minted id; the
+      // public keys are forgotten ones, so nothing signs in with them and the list alone shows them.
+      const key = recordKeys.tenant(made.id).passkeys(doc.employee.id);
+      const held: StoredOwnPasskeys = {
+        passkeys: DEMO_PERSON_PASSKEYS.map(({ id, device, addedAt, lastUsedAt }) => ({
+          id,
+          publicKey: forgottenPublicKey(),
+          counter: 0,
+          transports: ['internal'],
+          addedAt,
+          lastUsedAt,
+          device,
+        })),
+        spent: [],
+      };
+      /* v8 ignore next -- unreachable: the client and its person were made a moment ago */
+      if ((await storage.putRecord(key, held, null)) === 'moved') throw new SeededAlready();
     }
     const photo = DEMO_PHOTOS[person.id];
     if (photo) {
@@ -538,6 +562,21 @@ export async function seedDemo(
   // The operator's list shows three clients: the other two are only made, with their fixed times.
   for (const { code, name, madeAt } of DEMO_CLIENTS.filter((client) => client !== demo)) {
     if ((await createClient(storage, { code, name, madeAt })) === 'taken') {
+      throw new Error('the service already holds data: not seeded over');
+    }
+  }
+  // The company waiting for an operator, at its fixed day: a request beside the client index, holding
+  // a hash of a password no one is given, as the fake's waiting company does.
+  for (const { code, name, contactName, contactPhone, sentAt } of DEMO_SIGN_UPS) {
+    const passwordHash = await hashPassword(randomUUID());
+    /* v8 ignore next 9 -- unreachable: the operators and the demo client were written a moment ago over nothing */
+    if (
+      (await storage.putRecord(
+        recordKeys.signUp(code),
+        { name, contactName, contactPhone, passwordHash, sentAt },
+        null,
+      )) === 'moved'
+    ) {
       throw new Error('the service already holds data: not seeded over');
     }
   }

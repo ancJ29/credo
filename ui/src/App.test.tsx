@@ -339,6 +339,40 @@ describe('the app', () => {
     expect(tab.getItem('credo.session')).toBeNull();
   });
 
+  it('2: The scan page opened from the card keeps the handle on the device only where “Remember me” was ticked', async () => {
+    const code = `${crypto.randomUUID()}.${'a'.repeat(32)}`;
+    const scanned = async (untick: boolean) => {
+      const tab = memory();
+      const opened = setup(
+        {
+          signInMethods: () => Promise.resolve({ qr: true }),
+          signInQr: () => Promise.resolve({ authId: 'q.s', expiresAt: 1, user: root }),
+        },
+        {},
+        '/',
+        undefined,
+        tab,
+      );
+      if (untick)
+        await userEvent.click(await screen.findByRole('checkbox', { name: words.auth.remember }));
+      await userEvent.click(await screen.findByRole('button', { name: words.qrScan.button }));
+      await userEvent.click(await screen.findByRole('button', { name: words.qrScan.byHand }));
+      await userEvent.type(await screen.findByRole('textbox', { name: words.qrScan.paste }), code);
+      await userEvent.click(screen.getByRole('button', { name: words.auth.submit }));
+      expect((await screen.findAllByText(words.nav.settings)).length).toBeGreaterThan(0);
+      return { ...opened, tab };
+    };
+
+    const ticked = await scanned(false);
+    expect(ticked.storage.getItem('credo.session')).toBe('q.s');
+    expect(ticked.tab.getItem('credo.session')).toBeNull();
+    ticked.unmount();
+
+    const unticked = await scanned(true);
+    expect(unticked.tab.getItem('credo.session')).toBe('q.s');
+    expect(unticked.storage.getItem('credo.session')).toBeNull();
+  });
+
   it('With both languages each user switches from the header’s button, kept on that device', async () => {
     const first = setup({}, signedIn);
     expect((await screen.findAllByText(words.nav.settings)).length).toBeGreaterThan(0);
@@ -364,7 +398,7 @@ describe('the app', () => {
       '/customers',
       '/products',
       '/password',
-      '/passkey',
+      '/passkeys',
     ]);
     expect(device.menuShown()).toBe(true);
 
@@ -372,7 +406,7 @@ describe('the app', () => {
     expect(device.menuShown()).toBe(false);
   });
 
-  it('18: The root’s user menu lists Add a passkey after Change password, and it opens the add page', async () => {
+  it('18: The root’s user menu lists Passkeys after Change password, and it opens the list', async () => {
     setup({}, signedIn);
 
     await userEvent.click(await screen.findByRole('button', { name: 'root' }));
@@ -384,7 +418,7 @@ describe('the app', () => {
     await userEvent.click(screen.getByRole('menuitem', { name: words.user.passkey }));
 
     expect(
-      await screen.findByRole('heading', { level: 2, name: words.ownPasskey.title }),
+      await screen.findByRole('heading', { level: 2, name: words.ownPasskeys.title }),
     ).toBeTruthy();
   });
 
@@ -830,7 +864,7 @@ describe('the app', () => {
       );
       const view = setup({ ...overrides, getConfig }, kept, path);
 
-      expect((await screen.findByRole('heading', { level: 1 })).textContent, path).toBe(
+      expect((await screen.findByRole('heading', { level: 2 })).textContent, path).toBe(
         DICTIONARIES.vi.unknownClient.title,
       );
       expect(document.body.textContent, path).not.toContain('Minh Phát');

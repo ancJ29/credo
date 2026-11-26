@@ -265,6 +265,18 @@ export const clientAddress = (origin: string, code: string): string => {
     : `${origin}${clientLinkPath(code)}`;
 };
 
+/** The address a company asked for is opened at, told from any origin that reaches the sign-up page:
+ * the company's code under the rest of the host, where the host has three parts or more and is no
+ * IP address nor CloudFront's own (whatever its first part, a visitor may have mistyped it);
+ * anywhere else today's link, the code in the query. */
+export const companyOwnAddress = (origin: string, code: string): string => {
+  const { protocol, host, hostname } = new URL(origin);
+  const named = hostname.split('.').length >= 3 && !hostname.endsWith('.cloudfront.net');
+  return named && !/^[0-9.]+$/.test(hostname)
+    ? `${protocol}//${code}.${host.slice(host.indexOf('.') + 1)}/login`
+    : `${origin}${clientLinkPath(code)}`;
+};
+
 /** One client in the operator's list: its code, the name as made, when it was made (null for a
  * client made before the time was kept) and the path of its link. */
 export const clientListItemSchema = z.strictObject({

@@ -87,6 +87,10 @@ const MAIN_MORE_THAN_ONCE: Record<string, number> = {
   'pages/client/ListImportPage.tsx': 3,
   // The driver's take-a-photo, then the send of the photo taken: the photo decides which.
   'pages/client/MyDeliveryPage.tsx': 2,
+  // The passkeys panel's removal, and the QR panel's new code: each shows only once asked, on a person's page that draws one panel's question at a time.
+  'parts/SignInPanels.tsx': 2,
+  // The scan's start and the paste's read: two views of one sign-in page, one drawn at a time.
+  'pages/client/QrScanPage.tsx': 2,
   // The record's save, and the confirm of a lock or unlock that shows only while asked.
   'pages/client/PersonPage.tsx': 2,
   // The move's go-on after a stop and after a failure, and its send: three steps of one move, one drawn at a time.
@@ -344,6 +348,7 @@ const DOOR_FILES = [
   'pages/SignIn.tsx',
   'pages/operator/JoinPage.tsx',
   'pages/operator/OperatorSignIn.tsx',
+  'pages/SignUpPage.tsx',
 ];
 
 /** What a source draws itself that a part decides: a page title, a table's least width, a `Button`. */
@@ -356,7 +361,7 @@ function drawnRaw(source: string) {
 }
 
 describe('The screens’ page base', () => {
-  it('222 case 15: no screen draws a page title, a least width or a Button, but the three door files, whose Buttons stay', () => {
+  it('222 case 15: no screen draws a page title, a least width or a Button, but the four door files, whose Buttons stay', () => {
     expect(drawnRaw('<Title {...TYPE.pageTitle}>x</Title>')).toEqual(['a page title']);
     expect(drawnRaw('<Table.ScrollContainer minWidth={640}>')).toEqual(['a least width']);
     expect(drawnRaw('<Button>x</Button>')).toEqual(['a Button']);
@@ -376,7 +381,7 @@ describe('The screens’ page base', () => {
     const doors = screens
       .filter(([path]) => DOOR_FILES.includes(path))
       .flatMap(([, source]) => drawnRaw(source));
-    expect(doors.sort()).toEqual(['a Button', 'a Button', 'a Button']);
+    expect(doors.sort()).toEqual(['a Button', 'a Button', 'a Button', 'a Button']);
   });
 });
 

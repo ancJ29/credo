@@ -132,20 +132,20 @@ describe('an email on a person', () => {
     expect((field as HTMLInputElement).value).toBe('lan@minh-phat.example');
   });
 
-  it('C: The root’s person page offers the email where the company never set the switch', async () => {
+  it('C: The root’s person page offers the email and the QR code where the company never set the switches', async () => {
     openApp(at('EMP-0002'));
     expect(
       await screen.findByRole('heading', { level: 3, name: words.person.emailTitle }),
     ).toBeTruthy();
     expect(screen.getByLabelText(words.person.emailNew)).toBeTruthy();
-    expect(screen.queryByRole('heading', { name: words.person.qrTitle })).toBeNull();
+    expect(screen.getByRole('heading', { level: 3, name: words.person.qrTitle })).toBeTruthy();
   });
 
-  it('C: The email panel is the root’s alone, only while the company keeps the email, and not for a person who left', async () => {
+  it('C: The email panel is the root’s alone, only while the company keeps the email, and the QR panel does not follow it', async () => {
     openApp(at('EMP-0002'), { override: emailOff });
     await screen.findByRole('heading', { level: 2, name: 'Trần Văn Hùng' });
     expect(screen.queryByRole('heading', { name: words.person.emailTitle })).toBeNull();
-    expect(screen.queryByRole('heading', { name: words.person.qrTitle })).toBeNull();
+    expect(screen.getByRole('heading', { name: words.person.qrTitle })).toBeTruthy();
   });
 
   it('C: Someone allowed to change people sees neither the email nor the QR code, and nor does the page of a person who left', async () => {
@@ -162,7 +162,7 @@ describe('an email on a person', () => {
     expect(screen.queryByRole('heading', { name: words.person.qrTitle })).toBeNull();
   });
 
-  it('C: The root turns the QR sign-in on in the staff setup, where the email already is, and the person’s page then shows both', async () => {
+  it('C: The root turns the QR sign-in off in the staff setup, where it starts on beside the email, and the person’s page then shows the email alone', async () => {
     const { api } = openApp('/staff-setup');
     await screen.findByRole('heading', { level: 2, name: words.setup.title });
     const email = screen.getByRole<HTMLInputElement>('checkbox', {
@@ -171,19 +171,19 @@ describe('an email on a person', () => {
     const qr = screen.getByRole<HTMLInputElement>('checkbox', {
       name: words.setup.fieldQr,
     });
-    expect([email.checked, qr.checked]).toEqual([true, false]);
+    expect([email.checked, qr.checked]).toEqual([true, true]);
 
     await userEvent.click(qr);
     await userEvent.click(screen.getByRole('button', { name: words.setup.save }));
     await screen.findByText(words.setup.saved);
-    expect((await api.getStaffSetup()).setup.fields).toMatchObject({ email: true, qr: true });
+    expect((await api.getStaffSetup()).setup.fields).toMatchObject({ email: true, qr: false });
 
     await userEvent.click(menu().getByRole('link', { name: words.nav.staff }));
     await userEvent.click((await screen.findAllByRole('link', { name: 'Trần Văn Hùng' }))[0]);
     expect(
       await screen.findByRole('heading', { level: 3, name: words.person.emailTitle }),
     ).toBeTruthy();
-    expect(screen.getByRole('heading', { level: 3, name: words.person.qrTitle })).toBeTruthy();
+    expect(screen.queryByRole('heading', { name: words.person.qrTitle })).toBeNull();
   });
 });
 
@@ -251,10 +251,155 @@ describe('the walk spec’s passkey scenes, replayed on the real router', () => 
   });
 });
 
+describe('the walk spec’s own-passkey and person-passkey scenes, replayed on the real router', () => {
+  const PC = `${words.ownPasskeys.remove}: Windows · Chrome`;
+
+  it('WK6: The office’s manager sees her two passkeys, is asked before the PC’s goes, and one row is left with the message', async () => {
+    openApp('/passkeys', { as: 'EMP-0001' });
+    expect(
+      await screen.findByRole('heading', { level: 2, name: words.ownPasskeys.title }),
+    ).toBeTruthy();
+    expect(screen.getByRole('cell', { name: 'iPhone · Safari' })).toBeTruthy();
+    expect(screen.getByRole('cell', { name: 'Windows · Chrome' })).toBeTruthy();
+
+    await userEvent.click(screen.getByRole('button', { name: PC }));
+    expect(screen.getByText(words.ownPasskeys.removeAsk)).toBeTruthy();
+    await userEvent.click(screen.getByRole('button', { name: words.ownPasskeys.removeConfirm }));
+    expect((await screen.findByRole('status')).textContent).toBe(words.ownPasskeys.removed);
+    expect(screen.queryByRole('cell', { name: 'Windows · Chrome' })).toBeNull();
+    // The walk's finder for the table's scroll container, and its reset before office-10's picture.
+    const viewport = screen.getByRole('table').closest('.mantine-ScrollArea-viewport');
+    expect(viewport).toBeTruthy();
+    if (viewport) viewport.scrollLeft = 0;
+    expect(viewport?.scrollLeft).toBe(0);
+    expect(screen.getByRole('cell', { name: 'iPhone · Safari' })).toBeTruthy();
+  });
+
+  it('WK6: A person with no passkey is told so, with the way to add one', async () => {
+    openApp('/passkeys', { as: 'EMP-0002' });
+    expect(await screen.findByText(words.ownPasskeys.none)).toBeTruthy();
+    expect(screen.getByRole('link', { name: words.ownPasskey.submit })).toBeTruthy();
+  });
+
+  it('WK6: The root sees the manager hold two passkeys, is asked, and removes them with the person signed out said by name', async () => {
+    openApp(`/staff/${person('EMP-0001').id}`);
+    expect(await screen.findByText(filled(words.person.passkeysHeld, { count: '2' }))).toBeTruthy();
+    const name = person('EMP-0001').name;
+    await userEvent.click(screen.getByRole('button', { name: words.person.passkeysRemove }));
+    await userEvent.click(
+      screen.getByRole('button', { name: filled(words.person.passkeysConfirm, { name }) }),
+    );
+    expect((await screen.findAllByRole('status'))[0]?.textContent).toBe(
+      filled(words.person.passkeysRemoved, { name }),
+    );
+  });
+});
+
+/** A company whose root saved the passkey sign-in off: the setup read says so. */
+const passkeysOff = (spied: Spied, original: Api) =>
+  spied.getStaffSetup.mockImplementation(async () => {
+    const read = await original.getStaffSetup();
+    const fields = { ...staffConfig(read.setup).fields, passkey: false };
+    return { ...read, setup: { ...read.setup, fields } };
+  });
+
+describe('16: the passkeys panel on a person’s page', () => {
+  const lan = person('EMP-0001');
+  const heldWords = (count: number) => filled(words.person.passkeysHeld, { count: String(count) });
+
+  it('shows the root how many passkeys a person holds and why to remove them all, and a press asks first', async () => {
+    const { api } = openApp(at('EMP-0001'));
+
+    expect(
+      await screen.findByRole('heading', { level: 3, name: words.person.passkeysTitle }),
+    ).toBeTruthy();
+    expect(screen.getByText(heldWords(2))).toBeTruthy();
+    expect(screen.getByText(filled(words.person.passkeysText, { name: lan.name }))).toBeTruthy();
+    expect(api.personPasskeys).toHaveBeenCalledExactlyOnceWith(lan.id);
+
+    await userEvent.click(screen.getByRole('button', { name: words.person.passkeysRemove }));
+    expect(screen.queryByRole('button', { name: words.person.passkeysRemove })).toBeNull();
+    expect(
+      screen.getByRole('button', {
+        name: filled(words.person.passkeysConfirm, { name: lan.name }),
+      }),
+    ).toBeTruthy();
+    expect(api.removePersonPasskeys).not.toHaveBeenCalled();
+    await userEvent.click(screen.getByRole('button', { name: words.person.passkeysCancel }));
+
+    expect(screen.getByRole('button', { name: words.person.passkeysRemove })).toBeTruthy();
+    expect(screen.getByText(heldWords(2))).toBeTruthy();
+    expect(api.removePersonPasskeys).not.toHaveBeenCalled();
+  });
+
+  it('a confirmed removal tells the outcome by the person’s name and leaves none to remove', async () => {
+    const { api } = openApp(at('EMP-0001'));
+    await userEvent.click(await screen.findByRole('button', { name: words.person.passkeysRemove }));
+    await userEvent.click(
+      screen.getByRole('button', {
+        name: filled(words.person.passkeysConfirm, { name: lan.name }),
+      }),
+    );
+
+    expect((await screen.findByRole('status')).textContent).toContain(
+      filled(words.person.passkeysRemoved, { name: lan.name }),
+    );
+    expect(api.removePersonPasskeys).toHaveBeenCalledExactlyOnceWith(lan.id);
+    expect(screen.queryByText(heldWords(2))).toBeNull();
+    expect(screen.queryByRole('button', { name: words.person.passkeysRemove })).toBeNull();
+  });
+
+  it('a failed removal is told and the person’s passkeys stay to remove', async () => {
+    openApp(at('EMP-0001'), { cue: 'removePersonPasskeys:503' });
+    await userEvent.click(await screen.findByRole('button', { name: words.person.passkeysRemove }));
+    await userEvent.click(
+      screen.getByRole('button', {
+        name: filled(words.person.passkeysConfirm, { name: lan.name }),
+      }),
+    );
+
+    expect((await screen.findByRole('alert')).textContent).toBe(words.person.passkeysFailed);
+    expect(screen.getByText(heldWords(2))).toBeTruthy();
+    await userEvent.click(screen.getByRole('button', { name: words.person.passkeysRemove }));
+  });
+
+  it('shows no panel where none is held, where passkeys are off, to anyone but the root, or for a person who left', async () => {
+    const none = openApp(at('EMP-0002'));
+    await screen.findByRole('heading', { level: 2, name: 'Trần Văn Hùng' });
+    expect(screen.queryByRole('heading', { name: words.person.passkeysTitle })).toBeNull();
+    expect(none.api.personPasskeys).toHaveBeenCalledOnce();
+    none.unmount();
+
+    const off = openApp(at('EMP-0001'), { override: passkeysOff });
+    await screen.findByRole('heading', { level: 2, name: lan.name });
+    expect(screen.queryByRole('heading', { name: words.person.passkeysTitle })).toBeNull();
+    expect(off.api.personPasskeys).not.toHaveBeenCalled();
+    off.unmount();
+
+    const other = openApp(at('EMP-0001'), { as: 'EMP-0001' });
+    await screen.findByRole('heading', { level: 2, name: lan.name });
+    expect(screen.queryByRole('heading', { name: words.person.passkeysTitle })).toBeNull();
+    expect(other.api.personPasskeys).not.toHaveBeenCalled();
+    other.unmount();
+
+    const left = openApp(at('EMP-0008'));
+    await screen.findByRole('heading', { level: 2, name: 'Hoàng Gia Huy' });
+    expect(screen.queryByRole('heading', { name: words.person.passkeysTitle })).toBeNull();
+    expect(left.api.personPasskeys).not.toHaveBeenCalled();
+  });
+
+  it('a person’s page that cannot read the count says the page could not load, as for any other read', async () => {
+    openApp(at('EMP-0001'), { cue: 'personPasskeys:503' });
+
+    expect(await screen.findByRole('button', { name: words.common.retry })).toBeTruthy();
+  });
+});
+
 describe('a QR code for a person', () => {
-  it('C: The root shows a person a QR code and its link, for one sign-in within 15 minutes; a new code cancels the last', async () => {
+  it('9: The root shows a person a QR code and its link, copies the link, and a new code asks first while one is shown; “Keep this one” keeps it', async () => {
+    const user = userEvent.setup();
     const { api } = openApp(at('EMP-0004'), { signIns: true });
-    await userEvent.click(await screen.findByRole('button', { name: words.person.qrShow }));
+    await user.click(await screen.findByRole('button', { name: words.person.qrShow }));
 
     const link = await screen.findByLabelText<HTMLInputElement>(words.person.qrLink);
     expect(link.readOnly).toBe(true);
@@ -267,10 +412,27 @@ describe('a QR code for a person', () => {
     expect(screen.getByText(words.person.qrOnce)).toBeTruthy();
     expect(api.issueQr).toHaveBeenCalledWith(person('EMP-0004').id);
 
+    // the link is copied by its button
+    await user.click(
+      screen.getByRole('button', { name: new RegExp(`^${words.operator.copyLink}`) }),
+    );
+    expect(await navigator.clipboard.readText()).toBe(link.value);
+
+    // a new code asks first: keeping the one shown asks the BFF for nothing
     const first = link.value;
-    await userEvent.click(screen.getByRole('button', { name: words.person.qrNew }));
+    await user.click(screen.getByRole('button', { name: words.person.qrNew }));
+    expect(screen.getByText(words.person.qrNewAsk)).toBeTruthy();
+    expect(screen.queryByRole('button', { name: words.person.qrNew })).toBeNull();
+    await user.click(screen.getByRole('button', { name: words.person.qrNewCancel }));
+    expect(screen.queryByText(words.person.qrNewAsk)).toBeNull();
+    expect(link.value).toBe(first);
+    expect(api.issueQr).toHaveBeenCalledTimes(1);
+
+    await user.click(screen.getByRole('button', { name: words.person.qrNew }));
+    await user.click(screen.getByRole('button', { name: words.person.qrNewConfirm }));
     await waitFor(() => expect(link.value).not.toBe(first));
     expect(api.issueQr).toHaveBeenCalledTimes(2);
+    expect(screen.queryByText(words.person.qrNewAsk)).toBeNull();
   });
 
   it('C: A QR code that could not be made says so, and the button asks again', async () => {
@@ -282,6 +444,34 @@ describe('a QR code for a person', () => {
     await userEvent.click(screen.getByRole('button', { name: words.person.qrShow }));
     expect(await screen.findByRole('img', { name: words.person.qrImage })).toBeTruthy();
     expect(screen.queryByRole('alert')).toBeNull();
+  });
+});
+
+describe('the door’s QR button', () => {
+  it('8: the card offers “Use a QR code” where the company has it on, and it opens the scan page', async () => {
+    const { api } = openApp('/', { out: true });
+    await userEvent.click(await screen.findByRole('button', { name: words.qrScan.button }));
+    expect(await screen.findByRole('heading', { level: 2, name: words.qrScan.title })).toBeTruthy();
+    expect(api.signInMethods).toHaveBeenCalled();
+  });
+
+  it('8: and none where it is off or the read fails', async () => {
+    const off = openApp('/', {
+      out: true,
+      override: (spied) => spied.signInMethods.mockResolvedValue({ qr: false }),
+    });
+    await screen.findByRole('heading', { level: 2, name: words.auth.title });
+    await waitFor(() => expect(off.api.signInMethods).toHaveBeenCalled());
+    expect(screen.queryByRole('button', { name: words.qrScan.button })).toBeNull();
+    off.unmount();
+
+    const down = openApp('/', {
+      out: true,
+      override: (spied) => spied.signInMethods.mockRejectedValue(new ApiError(503)),
+    });
+    await screen.findByRole('heading', { level: 2, name: words.auth.title });
+    await waitFor(() => expect(down.api.signInMethods).toHaveBeenCalled());
+    expect(screen.queryByRole('button', { name: words.qrScan.button })).toBeNull();
   });
 });
 
@@ -355,7 +545,11 @@ describe('the phone that opens a QR code', () => {
   });
 
   it('C: A company with the QR sign-in off refuses every code', async () => {
-    openApp(link(DEMO_QR_SECRET), { out: true });
+    // the fake's own switch is held in fake.test.tsx; here the refusal is what the phone draws
+    openApp(link(DEMO_QR_SECRET), {
+      out: true,
+      override: (spied) => spied.signInQr.mockRejectedValueOnce(new ApiError(401)),
+    });
 
     expect(
       await screen.findByRole('heading', { level: 2, name: words.qrSignIn.refusedTitle }),

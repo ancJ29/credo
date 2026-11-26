@@ -22,7 +22,9 @@ describe.each(['en', 'vi'] as const)('the operator’s screens 5 to 7, in %s', (
     const menus = screen.getAllByRole('navigation', { name: words.nav.menu });
     expect(within(menus[0]).getAllByRole('link')).toHaveLength(5);
     expect(screen.queryByText('minh-phat')).toBeNull();
-    expect(screen.getAllByRole('row')).toHaveLength(1 + 3);
+    // the waiting company's table (a heading row and its one row) above the clients' (a heading row and three)
+    expect(await screen.findByRole('heading', { name: words.operator.waitingTitle })).toBeTruthy();
+    expect(screen.getAllByRole('row')).toHaveLength(1 + 1 + 1 + 3);
   });
 
   it('Screen 6 is the coming-soon page, reached after the list without a reload', async () => {
@@ -36,6 +38,31 @@ describe.each(['en', 'vi'] as const)('the operator’s screens 5 to 7, in %s', (
     open('/operator/clients', 'listClients:503');
 
     expect((await screen.findByRole('alert')).textContent).toBe(words.common.loadFailed);
+  });
+
+  it('Screens 11 to 13 show the waiting company, ask before refusing it, and approve it into the list', async () => {
+    const first = open('/operator/clients');
+    expect(await screen.findByRole('heading', { name: words.operator.waitingTitle })).toBeTruthy();
+    expect(await screen.findByRole('cell', { name: 'Sơn Hà Vật Liệu' })).toBeTruthy();
+    first.unmount();
+
+    const second = open('/operator/clients');
+    await userEvent.click(
+      await screen.findByRole('button', { name: `${words.operator.refuse}: Sơn Hà Vật Liệu` }),
+    );
+    expect(
+      screen.getByText(words.operator.refuseAsk.replace('{{name}}', 'Sơn Hà Vật Liệu')),
+    ).toBeTruthy();
+    second.unmount();
+
+    open('/operator/clients');
+    await userEvent.click(
+      await screen.findByRole('button', { name: `${words.operator.approve}: Sơn Hà Vật Liệu` }),
+    );
+    expect(
+      await screen.findByText(words.operator.approved.replace('{{name}}', 'Sơn Hà Vật Liệu')),
+    ).toBeTruthy();
+    expect(await screen.findByRole('cell', { name: 'Sơn Hà Vật Liệu' })).toBeTruthy();
   });
 
   it('The join by the link, which the full run does first, ends on the dashboard with the handle kept on the device', async () => {

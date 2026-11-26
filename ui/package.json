@@ -18,6 +18,7 @@
     "@simplewebauthn/browser": "catalog:",
     "@tabler/icons-react": "catalog:",
     "i18next": "catalog:",
+    "jsqr": "catalog:",
     "qrcode.react": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",

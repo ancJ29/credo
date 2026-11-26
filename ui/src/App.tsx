@@ -6,6 +6,7 @@ import { ClientApp } from './ClientApp';
 import { isComputer } from './computer';
 import type { DeviceStore } from './device';
 import { OperatorApp } from './OperatorApp';
+import { SignUpPage } from './pages/SignUpPage';
 import { UnknownClient } from './pages/client/UnknownClient';
 import type { Passkeys } from './passkeys';
 import { type Look, Providers } from './frame/Providers';
@@ -36,6 +37,10 @@ type Props = {
 const isOperatorPath = (pathname: string) =>
   pathname === '/operator' || pathname.startsWith('/operator/');
 
+/** The sign-up page is `/sign-up` at any address: a company asks for its address there, before any
+ * company's boot, since it belongs to none yet. */
+const isSignUpPath = (pathname: string) => pathname === '/sign-up';
+
 /** The design system's gallery sits at `/48b74d079/gallery` and below it; like the operator's door
  * it is drawn outside the client's boot and asks nobody to sign in. */
 const isGalleryPath = (pathname: string) =>
@@ -60,6 +65,18 @@ export function App(props: Props) {
       <Suspense fallback={null}>
         <Gallery />
       </Suspense>
+    );
+  }
+  if (isSignUpPath(pathname)) {
+    return (
+      <Providers
+        {...BEFORE_CONFIG}
+        language={props.device.language() ?? props.device.shownLanguage() ?? BEFORE_CONFIG.language}
+        test={props.test}
+        {...props.look}
+      >
+        <SignUpPage api={props.api} />
+      </Providers>
     );
   }
   return isOperatorPath(pathname) ? <OperatorApp {...props} /> : <ClientApp {...props} />;

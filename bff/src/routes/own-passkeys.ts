@@ -2,17 +2,22 @@ import {
   clientAddress,
   CLIENT_HEADER,
   clientCodeSchema,
+  deviceNameOf,
   ownPasskeyAddRequestSchema,
+  type OwnPasskeyListReply,
+  type StoredOwnPasskey,
+  type StoredUser,
   passkeySignInRequestSchema,
   sha256Hex,
   type SessionReplyBody,
   signInRoutes,
   staffConfig,
 } from '@credo/shared';
+import { randomUUID } from 'node:crypto';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import type { AuthenticationResponseJSON } from '@simplewebauthn/server';
 import { z } from 'zod';
-import { declare, exempt, personOf } from '../audit';
+import { declare, type Entry, exempt, personOf } from '../audit';
 import { createChallenges } from '../calling/challenge';
 import {
   authenticationOptions,
@@ -23,7 +28,12 @@ import {
   verifiedRegistration,
 } from '../calling/passkeys';
 import { HttpError, parse } from '../errors';
-import { addOwnPasskey, readOwnPasskeys, spendOwnPasskey } from '../records/passkeys';
+import {
+  addOwnPasskey,
+  readOwnPasskeys,
+  removeOwnPasskey,
+  spendOwnPasskey,
+} from '../records/passkeys';
 import { readSetup } from '../records/staff-records';
 
 /** How long after its issue a session may still add a passkey: a first passkey has nothing to
@@ -35,7 +45,16 @@ const ADD_FRESH_MS = 10 * 60 * 1000;
 const handleSchema = z.uuid();
 const unauthorized = () => new HttpError(401, 'Unauthorized');
 
-type Deps = {
+/** What the routes read of a signed-in person: who they are, when the session was issued, and the
+ * sign-in record the new generation is written over. */
+type Signed = {
+  name: string;
+  employeeId: string | null;
+  issuedAt: number;
+  signIn: { user: StoredUser };
+};
+
+type Deps<Who extends Signed> = {
   now: () => number;
   /** The address the operator opens (`APP_ORIGIN`), from which a company's own is made. */
   origin: string;
@@ -43,11 +62,7 @@ type Deps = {
   serviceKey: string;
   forClient: { onRequest: (request: FastifyRequest) => Promise<void> };
   /** The person the session names, with the time it was issued; the root has no employee id. */
-  signedIn: (request: FastifyRequest) => Promise<{
-    name: string;
-    employeeId: string | null;
-    issuedAt: number;
-  }>;
+  signedIn: (request: FastifyRequest) => Promise<Who>;
   /** The device a call names, a 400 where it names none. */
   deviceOf: (request: FastifyRequest) => string;
   /** The company's plain name, from its settings, which a new passkey is made for. */
@@ -59,7 +74,24 @@ type Deps = {
     request: FastifyRequest,
     handle: string,
   ) => Promise<(() => Promise<SessionReplyBody>) | null>;
+  /** The person's sign-in record written anew, ending their other sessions, and the session that
+   * replaces the one this device held: as a password change does. */
+  renewed: (
+    request: FastifyRequest,
+    who: Who,
+    device: string,
+    entry: Entry,
+    changed: StoredUser,
+  ) => Promise<SessionReplyBody>;
 };
+
+/** A passkey as its owner is shown it: no secret, and no device where none was named. */
+const itemOf = (passkey: StoredOwnPasskey) => ({
+  id: passkey.id,
+  device: passkey.device ?? null,
+  addedAt: passkey.addedAt,
+  lastUsedAt: passkey.lastUsedAt,
+});
 
 /**
  * A company's person adds their own passkey: the options, then the add, both behind a session and
@@ -68,9 +100,9 @@ type Deps = {
  * made from `APP_ORIGIN` and the code the call names, never the request's host. A person's passkeys
  * are one record under their id (the company's own for the root).
  */
-export function registerOwnPasskeyRoutes(
+export function registerOwnPasskeyRoutes<Who extends Signed>(
   app: FastifyInstance,
-  { now, origin, serviceKey, forClient, signedIn, deviceOf, holder, nameOf }: Deps,
+  { now, origin, serviceKey, forClient, signedIn, deviceOf, holder, nameOf, renewed }: Deps<Who>,
 ) {
   const challenges = createChallenges({ serviceKey, now });
 
@@ -173,15 +205,60 @@ export function registerOwnPasskeyRoutes(
       if (!challenge) throw new HttpError(400, 'Bad request');
       const credential = await verifiedRegistration(relyingOf(request), body.response, challenge);
       if (!credential) throw new HttpError(400, 'Bad request');
-      const outcome = await addOwnPasskey(
-        request.storage,
-        request.tenantId,
-        handle,
-        storedPasskey(credential, now()),
-      );
+      const outcome = await addOwnPasskey(request.storage, request.tenantId, handle, {
+        ...storedPasskey(credential, now()),
+        device: deviceNameOf(request.headers['user-agent']),
+      });
       if (outcome === 'duplicate') throw new HttpError(400, 'Bad request');
       entry.saved(null, null);
       return reply.status(201).send();
+    },
+  );
+
+  app.get(
+    signInRoutes.ownPasskeys,
+    exempt('a list changes no client’s data', forClient),
+    async (request): Promise<OwnPasskeyListReply> => {
+      const who = await signedIn(request);
+      await mustBeOn(request);
+      const held = await readOwnPasskeys(
+        request.storage,
+        request.tenantId,
+        who.employeeId ?? request.tenantId,
+      );
+      return { passkeys: (held?.record.passkeys ?? []).map(itemOf) };
+    },
+  );
+
+  /**
+   * One's own passkey removed, by the session alone: an add can let a thief in, a removal only takes
+   * a way in away, and the password stays. The passkey goes first, so a failure after leaves it
+   * refused; then the sign-in record's new generation ends every other session of the person, and
+   * this device gets the one that replaces its own. A passkey the person does not hold is a 404.
+   */
+  app.delete(
+    signInRoutes.ownPasskey(':id'),
+    { ...forClient, config: { audit: 'employee.passkeyRemove' } },
+    async (
+      request,
+    ): Promise<{ passkeys: OwnPasskeyListReply['passkeys']; session: SessionReplyBody }> => {
+      const who = await signedIn(request);
+      const entry = declare(request, personOf(who));
+      const device = deviceOf(request);
+      await mustBeOn(request);
+      const { id } = parse(z.object({ id: z.string().max(1024) }), request.params);
+      const left = await removeOwnPasskey(
+        request.storage,
+        request.tenantId,
+        who.employeeId ?? request.tenantId,
+        id,
+      );
+      if (left === null) throw new HttpError(404, 'Not found');
+      const session = await renewed(request, who, device, entry, {
+        ...who.signIn.user,
+        generation: randomUUID(),
+      });
+      return { passkeys: left.map(itemOf), session };
     },
   );
 }

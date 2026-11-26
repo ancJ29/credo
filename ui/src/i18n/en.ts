@@ -44,7 +44,7 @@ export const en = {
     language: 'Language',
     signOut: 'Sign out',
     password: 'Change password',
-    passkey: 'Add a passkey',
+    passkey: 'Passkeys',
   },
   settings: {
     title: 'Settings',
@@ -217,6 +217,16 @@ export const en = {
       'Web application is running, but API cannot reach storage. Sign-in and modifications are temporarily disabled.',
     unavailableBff:
       'Web application is running, but API backend is unresponsive. Please try again shortly.',
+    waitingTitle: 'Waiting for approval',
+    colContact: 'Contact',
+    colAsked: 'Asked on',
+    approve: 'Approve',
+    refuse: 'Refuse',
+    refuseAsk: 'Refuse {{name}}? The request is removed and its address freed.',
+    refuseConfirm: 'Refuse this company',
+    refuseCancel: 'Keep it waiting',
+    approved: '{{name}} is approved and open at its address.',
+    approveFailed: 'The company could not be made. Please try again.',
   },
   team: {
     intro:
@@ -552,10 +562,22 @@ export const en = {
       'Display this QR code for the employee to scan. Valid for one mobile sign-in within 15 minutes. Generating a new code voids the previous one.',
     qrShow: 'Show QR code',
     qrNew: 'Generate new QR code',
+    qrNewAsk: 'A new code cancels the one shown. Make a new one?',
+    qrNewConfirm: 'Make a new code',
+    qrNewCancel: 'Keep this one',
     qrImage: 'QR code',
     qrLink: 'QR sign-in link',
     qrOnce: 'Valid for one login within 15 minutes. Generating a new code replaces this one.',
     qrFailed: 'Failed to generate QR code. Please try again.',
+    passkeysTitle: 'Passkeys',
+    passkeysHeld: 'Passkeys held: {{count}}',
+    passkeysText:
+      'If a phone is lost, remove them all: {{name}} is signed out everywhere and signs in again without a passkey.',
+    passkeysRemove: 'Remove all passkeys',
+    passkeysConfirm: 'Remove {{name}}’s passkeys',
+    passkeysCancel: 'Keep them',
+    passkeysRemoved: 'Passkeys removed. {{name}} is signed out everywhere.',
+    passkeysFailed: 'The passkeys could not be removed. Please try again.',
   },
   wait: {
     second: 'Too many failed attempts. Please wait {{count}} second before retrying.',
@@ -586,6 +608,19 @@ export const en = {
     tooOld: 'For your safety, sign out and sign in again, then add a passkey.',
     off: 'Passkeys are switched off for your company.',
   },
+  ownPasskeys: {
+    title: 'Your passkeys',
+    text: 'Each passkey signs you in on its device with your face, fingerprint or PIN. Your password keeps working.',
+    colDevice: 'Device',
+    deviceUnknown: 'Device not recorded',
+    none: 'You have no passkey yet.',
+    remove: 'Remove',
+    removeAsk:
+      'Remove this passkey? It will no longer sign you in, and your other devices will be signed out.',
+    removeConfirm: 'Remove this passkey',
+    removeCancel: 'Keep it',
+    removed: 'Passkey removed. Your other ways to sign in keep working.',
+  },
   qrSignIn: {
     busyTitle: 'Signing you in...',
     busyText: 'Please wait a moment.',
@@ -593,6 +628,22 @@ export const en = {
     refusedText:
       'This QR code has expired or has already been used. Please ask your administrator for a new code.',
     password: 'Sign in with password instead',
+  },
+  qrScan: {
+    button: 'Use a QR code',
+    title: 'Sign in with a QR code',
+    text: "Scan the code your company's root shows you, read a picture of it, or paste its link.",
+    scan: 'Scan QR code',
+    byHand: 'Enter the code by hand',
+    camera: 'Camera',
+    picture: 'Picture',
+    scanning: 'Hold the code inside the frame.',
+    choose: 'Choose a picture',
+    paste: "The code's link",
+    noCamera: 'The camera cannot be used here. Read a picture or paste the link instead.',
+    noCode: 'No QR code was found in this picture.',
+    notACode: 'This is not a sign-in code.',
+    signedIn: 'Signed in.',
   },
   fields: {
     noneChosen: 'None',
@@ -932,6 +983,28 @@ export const en = {
   unknownClient: {
     title: 'Client workspace not found',
     text: 'This domain is not associated with any registered client. Please open the link sent by your company.',
+  },
+  signUp: {
+    title: 'Sign up your company',
+    intro:
+      'Your company gets its own address. A credo operator checks each new company before it opens.',
+    name: 'Company name',
+    code: 'Address',
+    codeHint: 'Small letters, digits and dashes; your company opens at this address.',
+    contactName: 'Your name',
+    contactPhone: 'Your phone, for the operator to call',
+    password: 'Root password',
+    submit: 'Send for approval',
+    taken: 'That address is taken. Choose another.',
+    full: 'Too many companies are waiting. Please try again later.',
+    contactNameInvalid: 'Enter your name, up to 100 characters.',
+    phoneInvalid: 'The phone may hold digits, spaces and + only, up to 20 characters.',
+    refused: 'Something you typed was refused. Check each field and try again.',
+    sentTitle: 'Sent for approval',
+    sentText:
+      'A credo operator will check {{name}} and call you. Once approved, open {{address}} and sign in as root with your password.',
+    waitingTitle: 'Waiting for approval',
+    waitingText: 'This company has signed up and opens once a credo operator approves it.',
   },
 };
 

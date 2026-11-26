@@ -2,9 +2,10 @@ import {
   ATTEMPTS,
   CStorageError,
   recordKeys,
+  type StoredOwnPasskey,
   type StoredOwnPasskeys,
-  storedOwnPasskeysSchema,
   type StoredPasskey,
+  storedOwnPasskeysSchema,
 } from '@credo/shared';
 import { CHALLENGE_MS } from '../calling/challenge';
 import type { RecordStore } from './records';
@@ -33,7 +34,7 @@ export async function addOwnPasskey(
   storage: RecordStore,
   tenantId: string,
   handle: string,
-  passkey: StoredPasskey,
+  passkey: StoredOwnPasskey,
 ): Promise<'added' | 'duplicate'> {
   for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
     const held = await readOwnPasskeys(storage, tenantId, handle);
@@ -46,6 +47,46 @@ export async function addOwnPasskey(
     if ((await storage.putRecord(key, next, held?.tag ?? null)) === 'saved') return 'added';
   }
   throw new CStorageError(412, 'a person’s passkeys moved on every attempt to add one');
+}
+
+/** Removes the passkey `passkeyId` from the ones held, over the tag read; a moved tag reads again,
+ * {@link ATTEMPTS} times at most. Returns the passkeys left (the record stays, empty, when the last
+ * goes), or null where the person holds no such passkey. Nothing else of the record moves. */
+export async function removeOwnPasskey(
+  storage: RecordStore,
+  tenantId: string,
+  handle: string,
+  passkeyId: string,
+): Promise<StoredOwnPasskey[] | null> {
+  for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
+    const held = await readOwnPasskeys(storage, tenantId, handle);
+    if (!held?.record.passkeys.some((kept) => kept.id === passkeyId)) return null;
+    const next: StoredOwnPasskeys = {
+      ...held.record,
+      passkeys: held.record.passkeys.filter((kept) => kept.id !== passkeyId),
+    };
+    const key = recordKeys.tenant(tenantId).passkeys(handle);
+    if ((await storage.putRecord(key, next, held.tag)) === 'saved') return next.passkeys;
+  }
+  throw new CStorageError(412, 'a person’s passkeys moved on every attempt to remove one');
+}
+
+/** Removes every passkey a person holds, over the tag read; a moved tag reads again, {@link ATTEMPTS}
+ * times at most. Returns how many were removed (none where there is no record, which is not made). */
+export async function removeAllOwnPasskeys(
+  storage: RecordStore,
+  tenantId: string,
+  handle: string,
+): Promise<number> {
+  for (let attempt = 0; attempt < ATTEMPTS; attempt++) {
+    const held = await readOwnPasskeys(storage, tenantId, handle);
+    if (!held || held.record.passkeys.length === 0) return 0;
+    const key = recordKeys.tenant(tenantId).passkeys(handle);
+    if ((await storage.putRecord(key, { ...held.record, passkeys: [] }, held.tag)) === 'saved') {
+      return held.record.passkeys.length;
+    }
+  }
+  throw new CStorageError(412, 'a person’s passkeys moved on every attempt to remove them all');
 }
 
 /** The library's verdict on an answer for one passkey: the counter it moves on to, or null where it
