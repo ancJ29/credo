@@ -39,7 +39,7 @@ malformed or unknown stops the call at a 400 or a 404 ([`bff/src/app.ts#L100-L10
 Every key is then built from that id through the layout's one home,
 [`shared/src/records.ts`'s `recordKeys`](../shared/src/records.ts), and a tenant's sessions are its own
 records, so a handle minted under one id names no session under another
-([`app.ts#L92-L93`](../bff/src/app.ts#L92)). A search of the whole product for a record key built
+([`app.ts#L96-L97`](../bff/src/app.ts#L96)). A search of the whole product for a record key built
 by hand outside `records.ts` finds none — only test files assert the strings.
 
 The honest caveat, which a newcomer must not get wrong: **c-storage has no idea what a tenant is.**
