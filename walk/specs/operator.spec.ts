@@ -4,8 +4,8 @@ import { expect, type Locator, type Page, test } from '@playwright/test';
 import { boxFigures, required, shot, WIDTHS } from '../support';
 
 /**
- * The operator's walk: ten screens, each in Vietnamese and in English at the three widths
- * (10 × 2 × 3 = 60). The `operator-fake` project runs it on `pnpm fake -- …`, the UI alone over the
+ * The operator's walk: thirteen screens, each in Vietnamese and in English at the three widths
+ * (13 × 2 × 3 = 78). The `operator-fake` project runs it on `pnpm fake -- …`, the UI alone over the
  * data set, and keeps the pictures as the full run's reference; the `operator-full` project runs it
  * on a stack (`pnpm stack -- …`) and compares them with the bases, or with the fake run's pictures.
  * Each screen opens at an address of its own, so a screen never meets what an earlier one made. The
@@ -121,6 +121,29 @@ async function walk(page: Page, language: Language, width: number) {
   await expect(page.getByRole('alert')).toHaveText(words.common.loadFailed);
   await at('op-7-list-failed');
 
+  // 11. The company waiting for approval, above the clients: the data set's, who asked the day before.
+  await open(page, language, { path: '/operator/clients', operator: true });
+  await expect(
+    page.getByRole('heading', { level: 3, name: words.operator.waitingTitle }),
+  ).toBeVisible();
+  await at('op-11-waiting');
+
+  // 12. Refusing it asks first.
+  await open(page, language, { path: '/operator/clients', operator: true });
+  await press(`${words.operator.refuse}: Sơn Hà Vật Liệu`);
+  await expect(
+    page.getByText(words.operator.refuseAsk.replace('{{name}}', 'Sơn Hà Vật Liệu')),
+  ).toBeVisible();
+  await at('op-12-refuse-asked');
+
+  // 13. Approved: the company is made, and open at its address.
+  await open(page, language, { path: '/operator/clients', operator: true });
+  await press(`${words.operator.approve}: Sơn Hà Vật Liệu`);
+  await expect(
+    page.getByText(words.operator.approved.replace('{{name}}', 'Sơn Hà Vật Liệu')),
+  ).toBeVisible();
+  await at('op-13-approved');
+
   // 2. A new client: its code and the company's name, in the frame.
   await open(page, language, { path: '/operator/clients/new', operator: true });
   await expect(title(words.operator.newTitle)).toBeVisible();
@@ -196,7 +219,7 @@ for (const [device, width] of Object.entries(WIDTHS)) {
       ['vi', 'Vietnamese'],
       ['en', 'English'],
     ] as const) {
-      test(`walks all ten screens in ${name}`, async ({ page }) => {
+      test(`walks all thirteen screens in ${name}`, async ({ page }) => {
         await walk(page, language, width);
       });
     }

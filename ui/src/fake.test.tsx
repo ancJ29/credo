@@ -27,10 +27,18 @@ import {
   issueQrReplySchema,
   joinOptionsReplySchema,
   meReplySchema,
+  ownPasskeyListReplySchema,
+  ownPasskeyRemovedReplySchema,
+  personPasskeysReplySchema,
+  clientLinkPath,
+  SIGN_UP_WAITING,
+  SIGN_UPS_WAITING_MAX,
+  signUpListReplySchema,
   operatorMeReplySchema,
   operatorSessionReplySchema,
   servicesReplySchema,
   optionsReplySchema,
+  signInMethodsReplySchema,
   passkeyListReplySchema,
   photoAddressReplySchema,
   photoAddressRequestOf,
@@ -62,6 +70,8 @@ import {
   DEMO_JOIN_TOKEN,
   DEMO_OPERATOR_ID,
   DEMO_PASSKEYS,
+  DEMO_PERSON_PASSKEYS,
+  DEMO_SIGN_UPS,
   DEMO_ORDERS,
   DEMO_PRODUCTS,
   DEMO_TODAY,
@@ -148,8 +158,22 @@ describe('the fake Api', () => {
     );
     parses('me', meReplySchema, await api.me());
     parses('me staff', meReplySchema, await staff.me());
+    parses('signInMethods', signInMethodsReplySchema, await api.signInMethods());
     parses('passkeyOptions', optionsReplySchema, await api.passkeyOptions());
     parses('ownPasskeyOptions', optionsReplySchema, await api.ownPasskeyOptions());
+    parses('personPasskeys', personPasskeysReplySchema, {
+      count: await api.personPasskeys(DEMO_EMPLOYEES[0]?.id ?? ''),
+    });
+    parses('removePersonPasskeys', personPasskeysReplySchema, {
+      count: await api.removePersonPasskeys(DEMO_EMPLOYEES[0]?.id ?? ''),
+    });
+    const lan = fake('', { client: `fake.session.${DEMO_EMPLOYEES[0]?.id}` });
+    parses('ownPasskeys', ownPasskeyListReplySchema, { passkeys: await lan.ownPasskeys() });
+    parses(
+      'ownPasskeyRemove',
+      ownPasskeyRemovedReplySchema,
+      await lan.ownPasskeyRemove(DEMO_PERSON_PASSKEYS[1]?.id ?? ''),
+    );
     parses('operatorPasskeyOptions', optionsReplySchema, await api.operatorPasskeyOptions());
     parses(
       'operatorPasskeySignIn',
@@ -454,6 +478,14 @@ describe('the fake Api', () => {
         'passkeySignIn',
         'ownPasskeyOptions',
         'ownPasskeyAdd',
+        'ownPasskeys',
+        'ownPasskeyRemove',
+        'personPasskeys',
+        'removePersonPasskeys',
+        'signUp',
+        'listSignUps',
+        'approveSignUp',
+        'refuseSignUp',
         'operatorPasskeyOptions',
         'operatorPasskeySignIn',
         'operatorJoinOptions',
@@ -506,6 +538,7 @@ describe('the fake Api', () => {
         'setEmail',
         'issueQr',
         'signInQr',
+        'signInMethods',
         'changePassword',
         'getPhoto',
         'savePhoto',
@@ -859,6 +892,207 @@ describe('the fake Api', () => {
     expect(await status(root.passkeySignIn(response))).toBe(401);
   });
 
+  it('17: The fake lists a person’s passkeys, names the device an add was made on, removes one, and then refuses its sign-in while the other still signs in', async () => {
+    const lanId = DEMO_EMPLOYEES[0]?.id ?? '';
+    const lan = fake('', { client: `fake.session.${lanId}` });
+    expect((await lan.ownPasskeys()).map((one) => one.id)).toEqual(
+      DEMO_PERSON_PASSKEYS.map((one) => one.id),
+    );
+    // another person holds none, and each list is the person's own
+    const other = fake('', { client: `fake.session.${DEMO_EMPLOYEES[3]?.id}` });
+    expect(await other.ownPasskeys()).toEqual([]);
+
+    // an add names the browser's device, or none; the passkey is listed and signs in
+    vi.spyOn(window.navigator, 'userAgent', 'get').mockReturnValue(
+      'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36',
+    );
+    await other.ownPasskeyAdd({ token: 'fake.token', response: CREDENTIAL });
+    expect(await other.ownPasskeys()).toEqual([
+      {
+        id: CREDENTIAL.id,
+        device: 'Windows · Chrome',
+        addedAt: expect.any(Number) as number,
+        lastUsedAt: null,
+      },
+    ]);
+    expect((await other.passkeySignIn(CONFIRM)).user.root).toBe(false);
+    // the same credential added again is the one passkey
+    await other.ownPasskeyAdd({ token: 'fake.token', response: CREDENTIAL });
+    expect(await other.ownPasskeys()).toHaveLength(1);
+    vi.restoreAllMocks();
+
+    // a removal answers the list left and the session that replaces the held one
+    const removed = await other.ownPasskeyRemove(CREDENTIAL.id);
+    expect(removed.passkeys).toEqual([]);
+    expect(removed.session.authId).toBe(`fake.session.${DEMO_EMPLOYEES[3]?.id}`);
+    expect(await status(other.passkeySignIn(CONFIRM))).toBe(401);
+    expect(await status(other.ownPasskeyRemove(CREDENTIAL.id))).toBe(404);
+
+    // one of two removed leaves the other, and a person’s list is untouched by another’s removal
+    const left = await lan.ownPasskeyRemove(DEMO_PERSON_PASSKEYS[1]?.id ?? '');
+    expect(left.passkeys.map((one) => one.id)).toEqual([DEMO_PERSON_PASSKEYS[0]?.id]);
+    expect(await status(lan.ownPasskeyRemove('someone-elses'))).toBe(404);
+
+    // signed out, and where passkeys are off, the list and the removal are refused
+    const out = fake('');
+    expect(await status(out.ownPasskeys())).toBe(401);
+    expect(await status(out.ownPasskeyRemove('x'))).toBe(401);
+    const root = fake('', { client: 'fake.session' });
+    const held = await root.getStaffSetup();
+    await root.saveStaffSetup(
+      { ...held.setup, fields: { ...staffConfig(held.setup).fields, passkey: false } },
+      held.version,
+    );
+    expect(await status(root.ownPasskeys())).toBe(404);
+    expect(await status(root.ownPasskeyRemove('x'))).toBe(404);
+  });
+
+  it('17: The fake counts a person’s passkeys for the root, removes them all so none signs in, and refuses anyone else, an unknown person and a company with passkeys off', async () => {
+    const lanId = DEMO_EMPLOYEES[0]?.id ?? '';
+    const baoId = DEMO_EMPLOYEES[3]?.id ?? '';
+    // one fake, signed in as whoever `held` says, as a tab is
+    const held: { client?: string } = { client: 'fake.session' };
+    const api = fake('', held);
+    expect(await api.personPasskeys(lanId)).toBe(DEMO_PERSON_PASSKEYS.length);
+    expect(await api.personPasskeys(baoId)).toBe(0);
+
+    // only the root counts and removes; the removal empties the person's list
+    held.client = `fake.session.${lanId}`;
+    expect(await status(api.personPasskeys(lanId))).toBe(403);
+    expect(await status(api.removePersonPasskeys(lanId))).toBe(403);
+    held.client = 'fake.session';
+    expect(await api.removePersonPasskeys(lanId)).toBe(0);
+    expect(await api.personPasskeys(lanId)).toBe(0);
+
+    // a sign-in by a credential removed this way is refused
+    held.client = `fake.session.${baoId}`;
+    await api.ownPasskeyAdd({ token: 'fake.token', response: CREDENTIAL });
+    expect((await api.passkeySignIn(CONFIRM)).user.root).toBe(false);
+    held.client = 'fake.session';
+    expect(await api.personPasskeys(baoId)).toBe(1);
+    expect(await api.removePersonPasskeys(baoId)).toBe(0);
+    expect(await status(api.passkeySignIn(CONFIRM))).toBe(401);
+
+    expect(await status(api.personPasskeys('no-one'))).toBe(404);
+    expect(await status(api.removePersonPasskeys('no-one'))).toBe(404);
+    expect(await status(fake('').personPasskeys(lanId))).toBe(401);
+    expect(await status(fake('').removePersonPasskeys(lanId))).toBe(401);
+    const setup = await api.getStaffSetup();
+    await api.saveStaffSetup(
+      { ...setup.setup, fields: { ...staffConfig(setup.setup).fields, passkey: false } },
+      setup.version,
+    );
+    expect(await status(api.personPasskeys(lanId))).toBe(404);
+    expect(await status(api.removePersonPasskeys(lanId))).toBe(404);
+  });
+
+  it('18: The fake takes a sign-up and shows its address waiting, refuses a taken, a kept and a waiting address, and a full queue', async () => {
+    const held: { client?: string } = {};
+    const code = { current: null as string | null };
+    const api = createFakeApi({
+      device: {
+        authId: () => held.client ?? null,
+        operatorAuthId: () => null,
+        clientCode: () => code.current,
+      },
+      cue: null,
+      signIns: false,
+    });
+    const request = {
+      code: 'phu-quy',
+      name: 'Gạch Men Phú Quý',
+      contactName: 'An',
+      contactPhone: '0901 234',
+      password: 'Correct-horse-9!',
+    };
+
+    // the data set's waiting address is waiting, and an address nobody asked for is the demo's own
+    code.current = DEMO_SIGN_UPS[0]?.code ?? '';
+    await expect(api.getConfig()).rejects.toMatchObject({ status: 404, detail: SIGN_UP_WAITING });
+    code.current = null;
+    expect((await api.getConfig()).config.name).toBe(DEMO_CONFIG.name);
+
+    expect(await api.signUp(request)).toEqual({ kind: 'sent', code: 'phu-quy' });
+    code.current = 'phu-quy';
+    await expect(api.getConfig()).rejects.toMatchObject({ status: 404, detail: SIGN_UP_WAITING });
+    code.current = null;
+
+    for (const taken of [
+      'phu-quy',
+      DEMO_CODE,
+      'hoa-sen',
+      'www',
+      'operator',
+      DEMO_SIGN_UPS[0]?.code,
+    ]) {
+      expect(await api.signUp({ ...request, code: taken ?? '' }), taken).toEqual({ kind: 'taken' });
+    }
+
+    // the queue holds 20: the data set's one, this one, then 18 more, and the next is refused
+    for (let index = 0; index < SIGN_UPS_WAITING_MAX - 2; index += 1) {
+      expect(
+        await api.signUp({ ...request, code: `co-${String(index).padStart(2, '0')}` }),
+      ).toEqual({
+        kind: 'sent',
+        code: `co-${String(index).padStart(2, '0')}`,
+      });
+    }
+    expect(await status(api.signUp({ ...request, code: 'one-more' }))).toBe(503);
+  });
+
+  it('18: The fake lists the waiting companies for an operator, approves one into a company whose address then opens, and refuses one so its address is free again', async () => {
+    const held: { operator?: string } = { operator: 'fake.operator' };
+    const code = { current: null as string | null };
+    const api = createFakeApi({
+      device: {
+        authId: () => null,
+        operatorAuthId: () => held.operator ?? null,
+        clientCode: () => code.current,
+      },
+      cue: null,
+    });
+    const first = DEMO_SIGN_UPS[0];
+    const request = {
+      code: 'phu-quy',
+      name: 'Gạch Men Phú Quý',
+      contactName: 'An',
+      contactPhone: '0901 234',
+      password: 'Correct-horse-9!',
+    };
+
+    expect((await api.listSignUps()).map((one) => one.code)).toEqual([first.code]);
+    expect(signUpListReplySchema.safeParse({ signUps: await api.listSignUps() }).success).toBe(
+      true,
+    );
+    await api.signUp(request);
+    expect((await api.listSignUps()).map((one) => one.code)).toEqual([first.code, 'phu-quy']);
+
+    // approval makes the company, listed and no longer waiting, its address no longer marked
+    const approved = await api.approveSignUp(first.code);
+    expect(approved).toEqual({ kind: 'approved', link: clientLinkPath(first.code) });
+    expect((await api.listClients()).map((one) => one.code)).toContain(first.code);
+    expect((await api.listSignUps()).map((one) => one.code)).toEqual(['phu-quy']);
+    code.current = first.code;
+    expect((await api.getConfig()).config.name).toBe(DEMO_CONFIG.name);
+
+    // a refusal removes the request and frees the address, and the same address may ask again
+    await api.refuseSignUp('phu-quy');
+    expect(await api.listSignUps()).toEqual([]);
+    expect(await api.signUp(request)).toEqual({ kind: 'sent', code: 'phu-quy' });
+
+    // an address made meanwhile is taken: the approval says so and the request stays
+    await api.makeClient('phu-quy', 'Made first');
+    expect(await api.approveSignUp('phu-quy')).toEqual({ kind: 'taken' });
+    expect((await api.listSignUps()).map((one) => one.code)).toEqual(['phu-quy']);
+
+    expect(await status(api.approveSignUp('no-one'))).toBe(404);
+    expect(await status(api.refuseSignUp('no-one'))).toBe(404);
+    held.operator = undefined;
+    expect(await status(api.listSignUps())).toBe(401);
+    expect(await status(api.approveSignUp('phu-quy'))).toBe(401);
+    expect(await status(api.refuseSignUp('phu-quy'))).toBe(401);
+  });
+
   it('C: Two fresh fakes mint the same QR link for the same person, so a screen that shows it reads the same on every build', async () => {
     const bao = DEMO_EMPLOYEES.find((person) => person.code === 'EMP-0004')!;
     const first = await fake('', { client: 'fake.session' }, true).issueQr(bao.id);
@@ -867,7 +1101,7 @@ describe('the fake Api', () => {
     expect(second.link).toBe(first.link);
   });
 
-  it('C: A QR code signs in once as the person it was shown for, a new code cancels the last, and a company with the QR sign-in off shows and accepts none', async () => {
+  it('C: A QR code signs in once as the person it was shown for, a new code cancels the last, and a company whose root saved the QR sign-in off shows and accepts none', async () => {
     const api = fake('', { client: 'fake.session' }, true);
     const bao = DEMO_EMPLOYEES.find((person) => person.code === 'EMP-0004')!;
 
@@ -896,10 +1130,26 @@ describe('the fake Api', () => {
     expect(archivedRead.employee.archived).toBe(true);
     expect(await status(api.signInQr(left.id, secretOf(issued.link)))).toBe(401);
 
-    // the data set turns the QR sign-in off: nothing is shown, and nothing signs in
+    // the root saves the QR sign-in off: nothing is shown, and nothing signs in
     const off = fake('', { client: 'fake.session' });
+    const held = await off.getStaffSetup();
+    await off.saveStaffSetup(
+      { ...held.setup, fields: { ...staffConfig(held.setup).fields, qr: false } },
+      held.version,
+    );
     expect(await status(off.issueQr(bao.id))).toBe(403);
     expect(await status(off.signInQr(bao.id, DEMO_QR_SECRET))).toBe(401);
+  });
+
+  it('10: the door’s read answers whether QR is on by the setup’s switch, on until the root saves it off', async () => {
+    const api = fake('', { client: 'fake.session' });
+    expect(await api.signInMethods()).toEqual({ qr: true });
+    const held = await api.getStaffSetup();
+    await api.saveStaffSetup(
+      { ...held.setup, fields: { ...staffConfig(held.setup).fields, qr: false } },
+      held.version,
+    );
+    expect(await api.signInMethods()).toEqual({ qr: false });
   });
 
   it('C: Anyone signed in changes their own password, a wrong current one is said and not an error, and a password off the rule is a 400', async () => {

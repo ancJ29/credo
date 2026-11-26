@@ -210,7 +210,9 @@ page body, so the person can navigate away.
 - _And a sign-in that fails on the network loses what was typed._ A 401 keeps the form and says
   "Wrong username or password"; **any other failure replaces the whole app with the unavailable
   screen**, and its retry re-boots, so the typed name and password are gone. The same happens to a
-  QR landing whose sign-in fails for any reason but a 401.
+  QR landing whose sign-in fails for any reason but a 401. _The scan page keeps itself:_
+  `ui/src/pages/client/QrScanPage.tsx` signs in by the same call and, on any failure but a 401,
+  says the service is unavailable and keeps the page and what was typed.
 
 ## A screen never guards, so a page the person may not open is never drawn
 

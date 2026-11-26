@@ -7,7 +7,6 @@ import {
   CREDO_COLOUR,
   HOME_BOX,
   isMoving,
-  KEPT_CODES,
   newestFirst,
   type CStorageClient,
   type StoredClient,
@@ -18,6 +17,7 @@ import {
   type TenantConfig,
 } from '@credo/shared';
 import { hashPassword, newPassword } from '../calling/password';
+import { codeIsHeld } from './sign-ups';
 import { type RecordStore, recordTools, type TenantStorage, tenantStorage } from './records';
 
 export const ROOT_NAME = 'root';
@@ -48,6 +48,46 @@ export function startingConfig(name: string, settings: Partial<TenantConfig> = {
   };
 }
 
+type NewClient = {
+  code: string;
+  name: string;
+  madeAt: number;
+  settings?: Partial<TenantConfig>;
+  /** The box the company lives on: its settings and root are written there and its line names
+   * it. None, they sit in `storage` and the line names no box. */
+  box?: { name: string; storage: CStorageClient };
+};
+
+/** The records a company is made of, written in the one order: the settings, the root under the hash
+ * `rootHash` makes, then the code's index, last and only if none. `ownRequest` is the approval of the
+ * sign-up that waits on the code, which then does not hold it against itself. */
+async function writeClient(
+  storage: CStorageClient,
+  { code, name, madeAt, settings = {}, box }: NewClient,
+  rootHash: () => Promise<string>,
+  ownRequest: boolean,
+): Promise<{ id: string } | 'taken'> {
+  // A code kept back, a client's, one a deletion still unfinished holds (or its records would be
+  // left with no way to finish them), or one a sign-up waits on, is taken.
+  if (await codeIsHeld(storage, code, !ownRequest)) return 'taken';
+  const id = randomUUID();
+  const keys = recordKeys.tenant(id);
+  const company = tenantStorage(box?.storage ?? storage, id);
+  const config = startingConfig(name, settings);
+  const root: StoredUser = {
+    passwordHash: await rootHash(),
+    root: true,
+    employeeId: null,
+    passwordAt: 0,
+    generation: '',
+  };
+  await createRecord(company, keys.config, config);
+  await createRecord(company, keys.user(ROOT_NAME), root);
+  const index: StoredClient = { id, name, madeAt, ...(box ? { box: box.name } : {}) };
+  const saved = await storage.putRecord(recordKeys.client(code), index, null);
+  return saved === 'saved' ? { id } : 'taken';
+}
+
 /**
  * Makes a client: its settings and its root under a freshly minted id, then the code's index. The
  * index is written last, and with `If-None-Match: *`, so it alone makes the client: a failure
@@ -61,44 +101,21 @@ export function startingConfig(name: string, settings: Partial<TenantConfig> = {
  */
 export async function createClient(
   storage: CStorageClient,
-  {
-    code,
-    name,
-    madeAt,
-    settings = {},
-    box,
-  }: {
-    code: string;
-    name: string;
-    madeAt: number;
-    settings?: Partial<TenantConfig>;
-    /** The box the company lives on: its settings and root are written there and its line names
-     * it. None, they sit in `storage` and the line names no box. */
-    box?: { name: string; storage: CStorageClient };
-  },
+  client: NewClient,
 ): Promise<{ id: string; password: string } | 'taken'> {
-  if (KEPT_CODES.includes(code)) return 'taken';
-  if (await storage.getRecord(recordKeys.client(code))) return 'taken';
-  // A deletion of an earlier client of this code still unfinished keeps the code, or its records
-  // would be left with no way to finish them.
-  if (await storage.getRecord(recordKeys.clientDeletion(code))) return 'taken';
-  const id = randomUUID();
-  const keys = recordKeys.tenant(id);
-  const company = tenantStorage(box?.storage ?? storage, id);
   const password = newPassword();
-  const config = startingConfig(name, settings);
-  const root: StoredUser = {
-    passwordHash: await hashPassword(password),
-    root: true,
-    employeeId: null,
-    passwordAt: 0,
-    generation: '',
-  };
-  await createRecord(company, keys.config, config);
-  await createRecord(company, keys.user(ROOT_NAME), root);
-  const index: StoredClient = { id, name, madeAt, ...(box ? { box: box.name } : {}) };
-  const saved = await storage.putRecord(recordKeys.client(code), index, null);
-  return saved === 'saved' ? { id, password } : 'taken';
+  const made = await writeClient(storage, client, () => hashPassword(password), false);
+  return made === 'taken' ? 'taken' : { id: made.id, password };
+}
+
+/** The approval of a company's own sign-up: the root's password hash the request carries, unchanged,
+ * so no first password is minted or returned. */
+export async function createClientFromSignUp(
+  storage: CStorageClient,
+  client: NewClient,
+  passwordHash: string,
+): Promise<{ id: string } | 'taken'> {
+  return await writeClient(storage, client, () => Promise.resolve(passwordHash), true);
 }
 
 /**

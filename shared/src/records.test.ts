@@ -9,6 +9,7 @@ import {
   storedClientSchema,
   storedAccountSchema,
   storedLinkSchema,
+  storedOwnPasskeysSchema,
   storedRosterSchema,
   storedSessionSchema,
   storedUserSchema,
@@ -244,5 +245,41 @@ describe('the seed ledger key', () => {
     for (const prefix of listed) expect(tenant.seed.startsWith(prefix)).toBe(false);
     expect(tenant.seed).not.toBe(tenant.config);
     expect(tenant.seed).not.toBe(tenant.staffSetup);
+  });
+});
+
+describe('a company person’s stored passkey', () => {
+  const passkey = {
+    id: 'a',
+    publicKey: 'k',
+    counter: 0,
+    transports: ['internal'],
+    addedAt: 1,
+    lastUsedAt: null,
+  };
+
+  it('2: holds the device named at its add, and one stored before reads none', () => {
+    const named = storedOwnPasskeysSchema.parse({
+      passkeys: [{ ...passkey, device: 'iPhone · Safari' }],
+      spent: [],
+    });
+    expect(named.passkeys[0].device).toBe('iPhone · Safari');
+    const before = storedOwnPasskeysSchema.parse({ passkeys: [passkey], spent: [] });
+    expect(before.passkeys[0].device ?? null).toBeNull();
+    expect(
+      storedOwnPasskeysSchema.parse({ passkeys: [{ ...passkey, device: null }], spent: [] })
+        .passkeys[0].device,
+    ).toBeNull();
+  });
+
+  it('2: the operators’ records do not move: their passkey takes no device', () => {
+    const account = {
+      passkeys: [{ ...passkey, device: 'Windows · Chrome' }],
+      linkHash: null,
+      generation: 0,
+      spent: [],
+    };
+    expect(storedAccountSchema.safeParse(account).success).toBe(false);
+    expect(storedAccountSchema.safeParse({ ...account, passkeys: [passkey] }).success).toBe(true);
   });
 });

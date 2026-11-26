@@ -1,6 +1,12 @@
 import {
   addCustomerRequestSchema,
   addDays,
+  deviceNameOf,
+  KEPT_CODES,
+  SIGN_UP_WAITING,
+  SIGN_UPS_WAITING_MAX,
+  type OwnPasskeyItem,
+  type WaitingSignUp,
   addedNewestFirst,
   addOperatorRequestSchema,
   deleteClientRequestSchema,
@@ -88,6 +94,9 @@ import {
   DEMO_JOIN_TOKEN,
   DEMO_OPERATOR_ID,
   DEMO_PASSKEYS,
+  DEMO_PERSON_PASSKEYS,
+  DEMO_PERSON_PASSKEYS_CODE,
+  DEMO_SIGN_UPS,
   DEMO_PHOTOS,
   DEMO_RECONCILIATIONS,
   DEMO_ROOT_NAME,
@@ -196,7 +205,8 @@ const STAFF_HANDLE = 'fake.session.';
 
 type Options = {
   /** Where the fake finds out whether this device holds a handle. */
-  device: Pick<ReturnType<typeof createDeviceStore>, 'authId' | 'operatorAuthId'>;
+  device: Pick<ReturnType<typeof createDeviceStore>, 'authId' | 'operatorAuthId'> &
+    Partial<Pick<ReturnType<typeof createDeviceStore>, 'clientCode'>>;
   cue: Cue | null;
   /** The company has turned on sign-in by QR code, which the data set leaves off, and saved the email's on. */
   signIns?: boolean;
@@ -336,13 +346,34 @@ export function createFakeApi({
   ];
   const STOP_PRESSES: MoveClientReply[] = [{ phase: 'sweeping', left: 30 }, { phase: 'done' }];
 
+  /** The companies waiting for an operator's approval: the data set's one, then any asked for since
+   * the page loaded, by the code asked. */
+  const waitingSignUps = new Map<string, WaitingSignUp>(
+    DEMO_SIGN_UPS.map((one) => [one.code, { ...one }]),
+  );
+
   /** Every client the operator's list shows: the data set's, then any made since the page loaded. */
   const clients = new Map<string, ClientListItem>(
     DEMO_CLIENTS.map((client) => [client.code, { ...client, link: clientLinkPath(client.code) }]),
   );
 
-  /** Whose the company's one passkey is, by session handle: the last to add one; none until then. */
-  let passkeyHandle: string | null = null;
+  /** Whose the fake's one credential is, by session handle, and its id: the last to add one; none
+   * until then. A sign-in by it holds only while that person still lists it. */
+  let signInCredential: { handle: string; id: string } | null = null;
+  /** Each person's passkeys by session handle, the data set's manager holding hers as it opens. */
+  const ownLists = new Map<string, OwnPasskeyItem[]>();
+  const ownList = (handle: string) => {
+    let held = ownLists.get(handle);
+    if (!held) {
+      const mine = people.get(handle.slice(STAFF_HANDLE.length));
+      held =
+        handle.startsWith(STAFF_HANDLE) && mine?.code === DEMO_PERSON_PASSKEYS_CODE
+          ? DEMO_PERSON_PASSKEYS.map((one) => ({ ...one }))
+          : [];
+      ownLists.set(handle, held);
+    }
+    return held;
+  };
   /** The operator's own passkeys, and whether the data set's join link has been used. */
   let passkeys = DEMO_PASSKEYS.map((passkey) => ({ ...passkey }));
   let added = 0;
@@ -646,7 +677,61 @@ export function createFakeApi({
   const waits = new Map<string, { wrong: number; until: number }>();
 
   const fake: Api = {
-    getConfig: () => call('getConfig', () => ({ config, version: `v${version}` })),
+    getConfig: () =>
+      call('getConfig', () => {
+        // An address a company asked for and waits on says so, as the BFF's 404 marks it.
+        const code = device.clientCode?.();
+        if (code && waitingSignUps.has(code)) {
+          throw new ApiError(404, true, null, SIGN_UP_WAITING);
+        }
+        return { config, version: `v${version}` };
+      }),
+
+    listSignUps: () =>
+      call('listSignUps', () => {
+        if (!device.operatorAuthId()) throw signedOut();
+        return [...waitingSignUps.values()].map((one) => ({ ...one }));
+      }),
+
+    approveSignUp: (code) =>
+      call('approveSignUp', () => {
+        if (!device.operatorAuthId()) throw signedOut();
+        const waiting = waitingSignUps.get(code);
+        if (!waiting) throw notFound();
+        if (clients.has(code)) return { kind: 'taken' as const };
+        clients.set(code, {
+          code,
+          name: waiting.name,
+          madeAt: Date.now(),
+          link: clientLinkPath(code),
+        });
+        waitingSignUps.delete(code);
+        return { kind: 'approved' as const, link: clientLinkPath(code) };
+      }),
+
+    refuseSignUp: (code) =>
+      call('refuseSignUp', () => {
+        if (!device.operatorAuthId()) throw signedOut();
+        if (!waitingSignUps.delete(code)) throw notFound();
+      }),
+
+    signUp: (request) =>
+      call('signUp', () => {
+        const taken =
+          KEPT_CODES.includes(request.code) ||
+          waitingSignUps.has(request.code) ||
+          clients.has(request.code);
+        if (taken) return { kind: 'taken' as const };
+        if (waitingSignUps.size >= SIGN_UPS_WAITING_MAX) throw new ApiError(503, true);
+        waitingSignUps.set(request.code, {
+          code: request.code,
+          name: request.name,
+          contactName: request.contactName,
+          contactPhone: request.contactPhone,
+          sentAt: Date.now(),
+        });
+        return { kind: 'sent' as const, code: request.code };
+      }),
 
     signIn: (name) =>
       call('signIn', () => {
@@ -702,6 +787,8 @@ export function createFakeApi({
         () => ({ kind: 'conflict' as const }),
       ),
 
+    signInMethods: () => call('signInMethods', () => ({ qr: staffConfig(setup).fields.qr })),
+
     passkeyOptions: () =>
       call('passkeyOptions', () => (staffConfig(setup).fields.passkey ? OPTIONS : null)),
 
@@ -709,11 +796,18 @@ export function createFakeApi({
     // none added, or passkeys off, it is refused as a passkey no one holds is.
     passkeySignIn: () =>
       call('passkeySignIn', () => {
-        if (passkeyHandle === null || !staffConfig(setup).fields.passkey) throw signedOut();
+        const held = signInCredential;
+        if (
+          held === null ||
+          !staffConfig(setup).fields.passkey ||
+          !ownList(held.handle).some((one) => one.id === held.id)
+        ) {
+          throw signedOut();
+        }
         return {
-          authId: passkeyHandle,
+          authId: held.handle,
           expiresAt: Date.now() + WEEK,
-          user: signedInUser(passkeyHandle),
+          user: signedInUser(held.handle),
         };
       }),
 
@@ -724,12 +818,61 @@ export function createFakeApi({
         return OPTIONS;
       }),
 
-    ownPasskeyAdd: () =>
+    ownPasskeyAdd: ({ response }) =>
       call('ownPasskeyAdd', () => {
         const handle = device.authId();
         if (!handle) throw signedOut();
         if (!staffConfig(setup).fields.passkey) throw notFound();
-        passkeyHandle = handle;
+        const held = ownList(handle);
+        if (!held.some((one) => one.id === response.id)) {
+          held.push({
+            id: response.id,
+            device: deviceNameOf(window.navigator.userAgent),
+            addedAt: Date.now(),
+            lastUsedAt: null,
+          });
+        }
+        signInCredential = { handle, id: response.id };
+      }),
+
+    ownPasskeys: () =>
+      call('ownPasskeys', () => {
+        const handle = device.authId();
+        if (!handle) throw signedOut();
+        if (!staffConfig(setup).fields.passkey) throw notFound();
+        return ownList(handle).map((one) => ({ ...one }));
+      }),
+
+    ownPasskeyRemove: (id) =>
+      call('ownPasskeyRemove', () => {
+        const handle = device.authId();
+        if (!handle) throw signedOut();
+        if (!staffConfig(setup).fields.passkey) throw notFound();
+        const held = ownList(handle);
+        if (!held.some((one) => one.id === id)) throw notFound();
+        const left = held.filter((one) => one.id !== id);
+        ownLists.set(handle, left);
+        return {
+          passkeys: left.map((one) => ({ ...one })),
+          session: { authId: handle, expiresAt: Date.now() + WEEK, user: signedInUser(handle) },
+        };
+      }),
+
+    personPasskeys: (id) =>
+      call('personPasskeys', () => {
+        if (!device.authId()) throw signedOut();
+        rootOnly();
+        if (!staffConfig(setup).fields.passkey) throw notFound();
+        return ownList(`${STAFF_HANDLE}${person(id).id}`).length;
+      }),
+
+    removePersonPasskeys: (id) =>
+      call('removePersonPasskeys', () => {
+        if (!device.authId()) throw signedOut();
+        rootOnly();
+        if (!staffConfig(setup).fields.passkey) throw notFound();
+        ownLists.set(`${STAFF_HANDLE}${person(id).id}`, []);
+        return 0;
       }),
 
     operatorPasskeyOptions: () => call('operatorPasskeyOptions', () => OPTIONS),

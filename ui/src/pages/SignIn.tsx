@@ -1,6 +1,6 @@
 import type { Language } from '@credo/shared';
 import { Box, Button, Checkbox, Divider, PasswordInput, Stack, TextInput } from '@mantine/core';
-import { IconKey, IconLock, IconUser } from '@tabler/icons-react';
+import { IconKey, IconLock, IconQrcode, IconUser } from '@tabler/icons-react';
 import { type SubmitEvent, type ReactNode, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import type { Brand } from '../brand';
@@ -26,6 +26,8 @@ type Props = {
   /** The passkey's press, with the tick as it stands; the button is drawn only where it is given,
    * the company having passkeys on and the options answered. */
   onPasskey?: (remember: boolean) => void;
+  /** The QR button's press, drawn only where the company has the QR sign-in on; it opens the scan page. */
+  onQr?: () => void;
   /** The languages the company offers, and the caller's handler for a chosen one. */
   languages?: readonly Language[];
   onLanguage?: (language: Language) => void;
@@ -75,6 +77,7 @@ export function SignIn({
   initial,
   onSubmit,
   onPasskey,
+  onQr,
   languages,
   onLanguage,
 }: Props) {
@@ -140,20 +143,29 @@ export function SignIn({
           >
             {t('auth.submit')}
           </Button>
+          {(onPasskey || onQr) && <Divider label={t('auth.or')} />}
           {onPasskey && (
-            <>
-              <Divider label={t('auth.or')} />
-              <Button
-                type="button"
-                variant="default"
-                fullWidth
-                loading={status === 'passkeyBusy'}
-                leftSection={<IconKey size={18} />}
-                onClick={() => onPasskey(remember)}
-              >
-                {t('auth.passkey')}
-              </Button>
-            </>
+            <Button
+              type="button"
+              variant="default"
+              fullWidth
+              loading={status === 'passkeyBusy'}
+              leftSection={<IconKey size={18} />}
+              onClick={() => onPasskey(remember)}
+            >
+              {t('auth.passkey')}
+            </Button>
+          )}
+          {onQr && (
+            <Button
+              type="button"
+              variant="default"
+              fullWidth
+              leftSection={<IconQrcode size={18} />}
+              onClick={onQr}
+            >
+              {t('qrScan.button')}
+            </Button>
           )}
         </Stack>
       </form>

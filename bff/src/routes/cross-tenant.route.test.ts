@@ -16,6 +16,7 @@ import {
   reconciliationRoutes,
   recordKeys,
   ROUTES,
+  signInRoutes,
 } from '@credo/shared';
 import { afterAll, beforeAll, describe, expect, inject, it } from 'vitest';
 import { type RunningCStorage, startCStorage } from '../../tests/c-storage';
@@ -55,7 +56,7 @@ async function twoCompanies() {
   const betaApp = scoped(t.app, 'beta');
   const as = (app: typeof alphaApp, authId: string) => ({
     get: (url: string) => app.inject({ method: 'GET', url, headers: withAuth(authId) }),
-    send: (method: 'POST' | 'PUT', url: string, payload?: unknown) =>
+    send: (method: 'POST' | 'PUT' | 'DELETE', url: string, payload?: unknown) =>
       app.inject({ method, url, headers: withAuth(authId), payload: payload as object }),
   });
   const alpha = as(alphaApp, (await signIn(alphaApp)).body.authId);
@@ -299,6 +300,31 @@ describe('Staff: a second company cannot reach the first one’s', () => {
     );
     expect(after.employee).toMatchObject({ name: 'Mai Linh', archived: false });
     expect(after.version).toBe(w.personVersion);
+  });
+});
+
+describe('A person’s passkeys: a second company’s root cannot count or remove the first one’s', () => {
+  it('row 9: answers 404 to company beta counting or removing company alpha’s person’s passkeys, writes nothing, and the passkeys stay', async () => {
+    const w = await twoCompanies();
+    const key = recordKeys.tenant(w.alphaId).passkeys(w.personId);
+    const held = {
+      passkeys: [
+        { id: 'k', publicKey: 'AA', counter: 0, transports: [], addedAt: 1, lastUsedAt: null },
+      ],
+      spent: [],
+    };
+    await w.client.putRecord(key, held, null);
+    w.writes.length = 0;
+
+    const count = await w.beta.get(signInRoutes.employeePasskeys(w.personId));
+    const removed = await w.beta.send('DELETE', signInRoutes.employeePasskeys(w.personId));
+
+    expect([count.statusCode, removed.statusCode]).toEqual([404, 404]);
+    expect(w.writes).toEqual([]);
+    expect((await w.client.getRecord(key))?.data).toEqual(held);
+    expect((await w.alpha.get(signInRoutes.employeePasskeys(w.personId))).json()).toEqual({
+      count: 1,
+    });
   });
 });
 

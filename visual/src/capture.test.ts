@@ -276,7 +276,13 @@ describe('the walks page’s capture', () => {
   it('builds the page into one folder of the credo root’s walks/, written aside, 0 versions moved by a second build', async () => {
     const { root, worktree } = makeRoot('walks-page');
     const lines: string[] = [];
-    const small = WALKS.filter((one) => !one.screens.some((screen) => screen.scene)).slice(0, 1);
+    // the first walk's screens drawn from the mock alone: a scene needs the app drawn, which this test skips
+    const small = WALKS.map((one) => ({
+      ...one,
+      screens: one.screens.filter((screen) => !screen.scene),
+    }))
+      .filter((one) => one.screens.length > 0)
+      .slice(0, 1);
     const at = new Date('2026-11-03T01:00:00Z');
 
     const folder = await report(worktree, (line) => lines.push(line), {

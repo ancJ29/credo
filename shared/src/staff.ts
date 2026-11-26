@@ -147,8 +147,8 @@ export const staffSetupSchema = z.strictObject({
 });
 export type StaffSetup = z.infer<typeof staffSetupSchema>;
 
-/** What the setup says about a person's fields and codes, whole: off (the email and passkey sign-ins on), none and
- * `EMP-0001` style where it says nothing; a saved `email: false` or `passkey: false` is kept. The one place those
+/** What the setup says about a person's fields and codes, whole: off (the email, QR and passkey sign-ins on), none and
+ * `EMP-0001` style where it says nothing; a saved `email: false`, `qr: false` or `passkey: false` is kept. The one place those
  * defaults are written. */
 export function staffConfig(setup: Partial<StaffSetup>): {
   fields: Required<StaffFields>;
@@ -160,7 +160,7 @@ export function staffConfig(setup: Partial<StaffSetup>): {
       personalPhone: false,
       photo: false,
       email: true,
-      qr: false,
+      qr: true,
       passkey: true,
       startDate: false,
       birthDate: false,

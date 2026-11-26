@@ -4,6 +4,7 @@ import { z } from 'zod';
  * records sit under its minted id, and its code reaches the id through one index record. This is
  * the layout's one home, so no other file builds a key. */
 const clientPrefix = 'client.';
+const signUpPrefix = 'sign-up.';
 export const recordKeys = {
   /** The index: a client's code to its id. Written last, when the client is made. */
   client: (code: string) => `${clientPrefix}${code}`,
@@ -11,6 +12,11 @@ export const recordKeys = {
    * matches: written before the index goes, removed when the sweep of its records ends. A press
    * after the index is gone resumes from it. */
   clientDeletion: (code: string) => `client-deletion.${code}`,
+  /** A company's waiting sign-up, by the code it asked for: one record, not a company, under a prefix
+   * the client index's never matches. */
+  signUp: (code: string) => `${signUpPrefix}${code}`,
+  /** What the operator's list of waiting requests reads: every request's key starts with it. */
+  signUpPrefix,
   /** What the operator's list reads: every index key starts with it, and no other key does. */
   clientPrefix,
   /** Every operator in one record, under one tag: a name taken and "at least one operator" hold
@@ -195,10 +201,18 @@ export const storedAccountSchema = z.strictObject({
 });
 export type StoredAccount = z.infer<typeof storedAccountSchema>;
 
-/** A company person's passkeys: the same stored passkey as an operator's, and the challenges
+/** A company person's passkey: an operator's, and the device it was added on, named by
+ * `deviceNameOf` from the browser's header; null where none was named, and absent where the passkey
+ * was stored before devices were named. An operator's passkey takes none. */
+export const storedOwnPasskeySchema = storedPasskeySchema.extend({
+  device: z.string().nullable().optional(),
+});
+export type StoredOwnPasskey = z.infer<typeof storedOwnPasskeySchema>;
+
+/** A company person's passkeys: those, and the challenges
  * answered in the last five minutes; no link and no generation, the sign-in record holding those. */
 export const storedOwnPasskeysSchema = z.strictObject({
-  passkeys: z.array(storedPasskeySchema),
+  passkeys: z.array(storedOwnPasskeySchema),
   spent: z.array(z.strictObject({ hash: z.string(), at: z.number() })),
 });
 export type StoredOwnPasskeys = z.infer<typeof storedOwnPasskeysSchema>;

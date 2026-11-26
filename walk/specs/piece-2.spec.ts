@@ -7,8 +7,8 @@ import { required, shot, virtualAuthenticator, WIDTHS } from '../support';
 
 /**
  * Piece 2's groups A, B, C and D, four walks in one run: the staff setup and the staff list, the person's
- * pages, the import, the office's and the phone's, forty screens, each in Vietnamese and in English
- * at the three widths (40 × 2 × 3 = 240). The `fake` project runs it on `pnpm fake -- …`, the UI alone over the data set,
+ * pages, the import, the office's and the phone's, fifty-one screens, each in Vietnamese and in English
+ * at the three widths (51 × 2 × 3 = 306). The `fake` project runs it on `pnpm fake -- …`, the UI alone over the data set,
  * and keeps the pictures as the full run's reference; the `full` project runs it on the stack
  * (`pnpm stack -- …`) and compares them with the bases, or with the fake run's pictures. Each screen opens at an address of its own, so a screen never meets
  * what an earlier one changed. Words come from the app's own dictionaries.
@@ -527,6 +527,40 @@ async function walk(page: Page, language: Language, width: number) {
   await at('staff-29-passkey-refused');
   await authenticator?.forget();
 
+  // 30. A person with no passkey yet: told so, and the way to add one.
+  await open(page, language, { path: '/passkeys', as: 'EMP-0002' });
+  await expect(title(words.ownPasskeys.title)).toBeVisible();
+  await expect(page.getByText(words.ownPasskeys.none)).toBeVisible();
+  await at('staff-30-no-passkey');
+
+  // 31. The root on a person's page: the passkeys the person holds, two in the data set.
+  await open(page, language, { path: '/staff' });
+  await personNamed(page, 'Nguyễn Thị Lan');
+  await expect(page.getByText(words.person.passkeysHeld.replace('{{count}}', '2'))).toBeVisible();
+  await at('staff-31-person-passkeys');
+
+  // 32. The press to remove them all asks first.
+  await open(page, language, { path: '/staff' });
+  await personNamed(page, 'Nguyễn Thị Lan');
+  await press(words.person.passkeysRemove);
+  await expect(
+    page.getByRole('button', {
+      name: words.person.passkeysConfirm.replace('{{name}}', 'Nguyễn Thị Lan'),
+      exact: true,
+    }),
+  ).toBeVisible();
+  await at('staff-32-person-passkeys-asked');
+
+  // 33. Removed: the person is signed out everywhere, said by name.
+  await open(page, language, { path: '/staff' });
+  await personNamed(page, 'Nguyễn Thị Lan');
+  await press(words.person.passkeysRemove);
+  await press(words.person.passkeysConfirm.replace('{{name}}', 'Nguyễn Thị Lan'));
+  await expect(page.getByRole('status')).toHaveText(
+    words.person.passkeysRemoved.replace('{{name}}', 'Nguyễn Thị Lan'),
+  );
+  await at('staff-33-person-passkeys-removed');
+
   // The office's walk: people signed in by their code, as their permissions allow.
   await open(page, language, { path: '/staff', as: 'EMP-0001' });
   await expect(title(words.staff.title)).toBeVisible();
@@ -588,6 +622,32 @@ async function walk(page: Page, language: Language, width: number) {
   await unfocus();
   await at('office-7-password-wrong');
 
+  // 8. One's own passkeys: the two the data set holds, an iPhone's used on 3 November and a PC's never.
+  await open(page, language, { path: '/passkeys', as: 'EMP-0001' });
+  await expect(title(words.ownPasskeys.title)).toBeVisible();
+  await expect(page.getByRole('cell', { name: 'Windows · Chrome', exact: true })).toBeVisible();
+  await at('office-8-passkeys');
+
+  // 9. Removing the PC's passkey asks first.
+  await open(page, language, { path: '/passkeys', as: 'EMP-0001' });
+  await press(`${words.ownPasskeys.remove}: Windows · Chrome`);
+  await expect(page.getByText(words.ownPasskeys.removeAsk)).toBeVisible();
+  await at('office-9-passkey-remove-asked');
+
+  // 10. Removed: one row left, and the message that the other ways in keep working.
+  await open(page, language, { path: '/passkeys', as: 'EMP-0001' });
+  await press(`${words.ownPasskeys.remove}: Windows · Chrome`);
+  await press(words.ownPasskeys.removeConfirm);
+  await expect(page.getByRole('status')).toHaveText(words.ownPasskeys.removed);
+  // The Remove click scrolled the table sideways at 768 and the shrunk table keeps whatever offset
+  // is left, a few pixels apart from one pass to the next: back to the left edge, then the picture.
+  const passkeys = page
+    .getByRole('table')
+    .locator('xpath=ancestor::*[contains(@class, "mantine-ScrollArea-viewport")]');
+  await passkeys.evaluate((viewport) => viewport.scrollTo({ left: 0 }));
+  await expect.poll(() => passkeys.evaluate((viewport) => viewport.scrollLeft)).toBe(0);
+  await at('office-10-passkey-removed');
+
   // The phone's walk: a QR code opened on a phone that is signed out.
   await open(page, language, { path: qrAddress(page, false), out: true, signIns: true });
   await expect(title(words.staff.title)).toBeVisible();
@@ -597,6 +657,38 @@ async function walk(page: Page, language: Language, width: number) {
   await open(page, language, { path: qrAddress(page, true), out: true, signIns: true });
   await expect(title(words.qrSignIn.refusedTitle)).toBeVisible();
   await at('phone-2-code-used');
+
+  // 3. The scan page, opened from the door's button: the camera or the code by hand.
+  await open(page, language, { path: '/login/qr', out: true });
+  await expect(title(words.qrScan.title)).toBeVisible();
+  await at('phone-3-scan');
+
+  // 4. A code pasted: signed in, the green tick before the first page. The code is the stack's own,
+  // issued by the root.
+  const pasting = await open(page, language, { path: '/login/qr', out: true });
+  const fresh = new URL(await qrAddress(page, false)(pasting), 'http://x').searchParams.get('qr')!;
+  await press(words.qrScan.byHand);
+  await page.getByLabel(exactly(words.qrScan.paste)).fill(fresh);
+  await press(words.auth.submit);
+  await expect(page.getByRole('status')).toHaveText(words.qrScan.signedIn);
+  await at('phone-4-signed-in');
+
+  // 5. A code used before, pasted: refused in the landing's words, the way back to the password. The
+  // pasted code is minted on the stack, so its field is masked.
+  const refusing = await open(page, language, { path: '/login/qr', out: true });
+  const used = new URL(await qrAddress(page, true)(refusing), 'http://x').searchParams.get('qr')!;
+  await press(words.qrScan.byHand);
+  await page.getByLabel(exactly(words.qrScan.paste)).fill(used);
+  await press(words.auth.submit);
+  await expect(page.getByRole('alert')).toHaveText(words.qrSignIn.refusedText);
+  await at('phone-5-scan-code-used', [page.getByLabel(exactly(words.qrScan.paste))]);
+
+  // 6. No camera to use: told, with the picture and the pasted link left. A browser with no camera or
+  // none allowed refuses the request, which is how the fake's page sees it too.
+  await open(page, language, { path: '/login/qr', out: true });
+  await press(words.qrScan.scan);
+  await expect(page.getByText(words.qrScan.noCamera)).toBeVisible();
+  await at('phone-6-no-camera');
 }
 
 for (const [device, width] of Object.entries(WIDTHS)) {
@@ -607,7 +699,7 @@ for (const [device, width] of Object.entries(WIDTHS)) {
       ['vi', 'Vietnamese'],
       ['en', 'English'],
     ] as const) {
-      test(`walks all forty screens in ${name}`, async ({ page }) => {
+      test(`walks all fifty-one screens in ${name}`, async ({ page }) => {
         await walk(page, language, width);
       });
     }

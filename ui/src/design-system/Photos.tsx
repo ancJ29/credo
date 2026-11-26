@@ -2,6 +2,7 @@ import { Avatar, FileButton, Group, Image, Paper, Stack, Text, Title } from '@ma
 import type { ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActionButton } from '../components/atoms/ActionButton';
+import { CopyText } from '../components/molecules/CopyText';
 import { QrCode } from '../parts/QrCode';
 import { SAMPLES, useLanguage } from './samples';
 import { SPACING } from './tokens';
@@ -19,6 +20,8 @@ export const PhotoStates: { name: string; node: ReactNode }[] = [
   { name: 'A delivery’s proof', node: <DeliveryProof /> },
   { name: 'A company’s logo', node: <CompanyLogo /> },
   { name: 'The sign-in QR code', node: <SignInQr /> },
+  { name: 'The code’s link', node: <SignInLink /> },
+  { name: 'A new code asked', node: <NewCodeAsked /> },
 ];
 
 /** A person's photo at 96 with the button that chooses another, and the avatar drawn where none is held. */
@@ -79,4 +82,34 @@ function CompanyLogo() {
 function SignInQr() {
   const { t } = useTranslation();
   return <QrCode value={SIGN_IN_LINK} label={t('person.qrImage')} />;
+}
+
+/** The code's link in its read-only field with the console's copy button at its right. */
+function SignInLink() {
+  const { t } = useTranslation();
+  const words = SAMPLES[useLanguage()];
+  return (
+    <Stack gap="xs" maw={394}>
+      <CopyText
+        value={SIGN_IN_LINK}
+        label={t('operator.copyLink')}
+        about={words.person}
+        field={t('person.qrLink')}
+      />
+    </Stack>
+  );
+}
+
+/** The question before a new code replaces the one shown, with its two answers. */
+function NewCodeAsked() {
+  const { t } = useTranslation();
+  return (
+    <Stack gap="sm" align="flex-start" maw={394}>
+      <Text>{t('person.qrNewAsk')}</Text>
+      <Group>
+        <ActionButton meaning="main">{t('person.qrNewConfirm')}</ActionButton>
+        <ActionButton meaning="other">{t('person.qrNewCancel')}</ActionButton>
+      </Group>
+    </Stack>
+  );
 }

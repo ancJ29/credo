@@ -328,7 +328,7 @@ describe('the app', () => {
       '/customers',
       '/products',
       '/password',
-      '/passkey',
+      '/passkeys',
     ]);
     expect(device.menuShown()).toBe(true);
 
@@ -336,7 +336,7 @@ describe('the app', () => {
     expect(device.menuShown()).toBe(false);
   });
 
-  it('18: The root’s user menu lists Add a passkey after Change password, and it opens the add page', async () => {
+  it('18: The root’s user menu lists Passkeys after Change password, and it opens the list', async () => {
     setup({}, signedIn);
 
     await userEvent.click(await screen.findByRole('button', { name: 'root' }));
@@ -348,7 +348,7 @@ describe('the app', () => {
     await userEvent.click(screen.getByRole('menuitem', { name: words.user.passkey }));
 
     expect(
-      await screen.findByRole('heading', { level: 2, name: words.ownPasskey.title }),
+      await screen.findByRole('heading', { level: 2, name: words.ownPasskeys.title }),
     ).toBeTruthy();
   });
 
@@ -776,7 +776,7 @@ describe('the app', () => {
       );
       const view = setup({ ...overrides, getConfig }, kept, path);
 
-      expect((await screen.findByRole('heading', { level: 1 })).textContent, path).toBe(
+      expect((await screen.findByRole('heading', { level: 2 })).textContent, path).toBe(
         DICTIONARIES.vi.unknownClient.title,
       );
       expect(document.body.textContent, path).not.toContain('Minh Phát');
