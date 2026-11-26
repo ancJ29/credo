@@ -33,6 +33,8 @@ export const ACTIONS = {
   'employee.email': 'email changed',
   'employee.qr': 'QR sign-in issued',
   'employee.passkey': 'passkey added',
+  'employee.passkeyRemove': 'passkey removed',
+  'employee.passkeysRemove': 'passkeys removed',
   'staff.setup': 'staff setup saved',
   'config.save': 'settings saved',
   'config.picture': 'picture saved',

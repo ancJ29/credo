@@ -36,8 +36,16 @@ export type DeviceWidth = (typeof DEVICE_WIDTH)[Device];
 export type Step =
   /** Presses the button, link, switch or choice with these words; `within` names the group of
    * choices it sits in by the words of its label, `with` fills a word's `{{name}}`; `text` says the
-   * words are the control's own (the signed-in person's name on the menu button), not a key. */
-  | { press: string; within?: string; with?: Record<string, string>; text?: true }
+   * words are the control's own (the signed-in person's name on the menu button), not a key;
+   * `after` is what follows the words in the control's own name, the same in both languages (a
+   * device's name after "Remove"). */
+  | {
+      press: string;
+      within?: string;
+      with?: Record<string, string>;
+      text?: true;
+      after?: string;
+    }
   /** Replaces what is typed in the field with these words by `text`. */
   | { fill: string; text: string }
   /** Chooses, in the list with these words, the option that reads `option`. */
@@ -46,7 +54,7 @@ export type Step =
    * field with these words, as a person's choosing it does. */
   | { attach: string; file: DemoFile }
   /** Waits until the page shows a heading, an alert or a table cell that reads so, and does
-   * nothing to it: the screen's last step when it is about what the page draws after a press or a
+   * nothing to it (a status, as the green tick's, is seen as an alert is): the screen's last step when it is about what the page draws after a press or a
    * load, which the page is not yet still enough to have drawn on a loaded machine. `text` says
    * the words are the cell's own (a name from the data), not a key of the dictionary; `with` fills
    * a word's `{{name}}`. */
@@ -127,6 +135,15 @@ export const PARTS: Part[] = [
 
 /** A data-set person's page, by their code. */
 const personAt = (code: string) => `/staff/${DEMO_EMPLOYEES.find((p) => p.code === code)!.id}`;
+
+/** A company's sign-up form, filled as its asker fills it, the address one the data set does not hold. */
+const SIGN_UP_FILLED: Step[] = [
+  { fill: 'signUp.name', text: 'Gạch Men Phú Quý' },
+  { fill: 'signUp.code', text: 'phu-quy' },
+  { fill: 'signUp.contactName', text: 'Lê Hoàng Nam' },
+  { fill: 'signUp.contactPhone', text: '0903 111 222' },
+  { fill: 'signUp.password', text: 'Gach-Men-2026!' },
+];
 
 /** The add form, filled as the root fills it: the same steps for the form and for what follows. */
 const FILLED_ADD: Step[] = [
@@ -265,6 +282,17 @@ const DRAFT_YESTERDAY_PATH = `/orders/${DRAFT_YESTERDAY.day}/${DRAFT_YESTERDAY.i
  * the secret given. */
 const qrLinkWith = (secret: string, code = 'EMP-0004') =>
   `/login?client-code=demo&qr=${DEMO_EMPLOYEES.find((p) => p.code === code)!.id}.${secret}`;
+
+/** The code part of a QR link, as a person pastes it on the scan page: the person and the secret. */
+const qrCodeWith = (secret: string, code = 'EMP-0004') =>
+  `${DEMO_EMPLOYEES.find((p) => p.code === code)!.id}.${secret}`;
+
+/** The scan page's by-hand view with a code pasted and sent, as the walk's screens 4 and 5 do. */
+const QR_PASTED = (secret: string): Step[] => [
+  { press: 'qrScan.byHand' },
+  { fill: 'qrScan.paste', text: qrCodeWith(secret) },
+  { press: 'auth.submit' },
+];
 
 /** The driver's walk's data, by the data set: the driver `EMP-0005`, the request of theirs that waits
  * today, and the request the data set delivered, with its order fulfilled. */
@@ -516,8 +544,62 @@ export const WALKS: Walk[] = [
           'Does the card show the formatted name and the description as the company would want them?',
       },
       {
-        id: '17-logo-on-colour',
+        id: '17-sign-up',
         number: 17,
+        path: 'main',
+        scene: { path: '/sign-up', steps: SIGN_UP_FILLED },
+        sentence: {
+          en: 'A company asks for its address: the form filled, in credo’s own card',
+          vi: 'Một công ty xin địa chỉ: biểu mẫu đã điền, trong thẻ riêng của credo',
+        },
+        question: 'Would a company know what to fill in, and that an operator checks it first?',
+      },
+      {
+        id: '18-sign-up-taken',
+        number: 18,
+        path: 'wrong',
+        scene: {
+          path: '/sign-up',
+          steps: [
+            ...SIGN_UP_FILLED.filter((step) => !('fill' in step && step.fill === 'signUp.code')),
+            { fill: 'signUp.code', text: 'hoa-sen' },
+            { press: 'signUp.submit' },
+          ],
+        },
+        sentence: {
+          en: 'The address asked for is taken: said on the address itself',
+          vi: 'Địa chỉ xin đã có người dùng: báo ngay ở ô địa chỉ',
+        },
+        question: 'Does it say the address is taken, and where to change it?',
+      },
+      {
+        id: '19-sign-up-sent',
+        number: 19,
+        path: 'main',
+        scene: {
+          path: '/sign-up',
+          steps: [...SIGN_UP_FILLED, { press: 'signUp.submit' }, { see: 'signUp.sentTitle' }],
+        },
+        sentence: {
+          en: 'Sent for approval: what happens next and which address to open',
+          vi: 'Đã gửi chờ duyệt: điều gì xảy ra tiếp theo và mở địa chỉ nào',
+        },
+        question: 'Does it say what happens next, and which address to open once approved?',
+      },
+      {
+        id: '20-address-waiting',
+        number: 20,
+        path: 'wrong',
+        scene: { path: '/login?client-code=son-ha', steps: [{ see: 'signUp.waitingTitle' }] },
+        sentence: {
+          en: 'The address of a company still waiting: no form, and why',
+          vi: 'Địa chỉ của công ty còn đang chờ duyệt: không có biểu mẫu, và lý do',
+        },
+        question: 'Would a person opening it know the company opens once an operator approves it?',
+      },
+      {
+        id: '21-logo-on-colour',
+        number: 21,
         path: 'main',
         mock: { screen: 4, state: 'logo-on-colour' },
         sentence: {
@@ -679,6 +761,54 @@ export const WALKS: Walk[] = [
         },
         question:
           'Would you know which box the company will live on, and how much room each box has left?',
+      },
+      {
+        id: 'op-11-waiting',
+        number: 11,
+        path: 'main',
+        scene: {
+          path: '/operator/clients',
+          operator: true,
+          steps: [{ see: 'operator.waitingTitle' }],
+        },
+        sentence: {
+          en: 'The clients’ page with the company waiting for approval above the list: who asked, the phone, the day',
+          vi: 'Trang khách hàng, công ty đang chờ duyệt nằm trên danh sách: ai xin, số điện thoại, ngày xin',
+        },
+        question: 'Would you see who is waiting, who to call and since when?',
+      },
+      {
+        id: 'op-12-refuse-asked',
+        number: 12,
+        path: 'main',
+        scene: {
+          path: '/operator/clients',
+          operator: true,
+          steps: [{ press: 'operator.refuse', after: ': Sơn Hà Vật Liệu' }],
+        },
+        sentence: {
+          en: 'Refusing a waiting company asks first',
+          vi: 'Từ chối công ty đang chờ thì được hỏi trước',
+        },
+        question: 'Does the question say what refusing does?',
+      },
+      {
+        id: 'op-13-approved',
+        number: 13,
+        path: 'main',
+        scene: {
+          path: '/operator/clients',
+          operator: true,
+          steps: [
+            { press: 'operator.approve', after: ': Sơn Hà Vật Liệu' },
+            { see: 'Sơn Hà Vật Liệu', text: true },
+          ],
+        },
+        sentence: {
+          en: 'An approval: the company is made, and open at its address',
+          vi: 'Đã duyệt: công ty được tạo, và mở tại địa chỉ của mình',
+        },
+        question: 'Does it say the company is approved and open, and is it in the list?',
       },
     ],
   },
@@ -1280,6 +1410,58 @@ export const WALKS: Walk[] = [
         },
         question: 'Would a person whose passkey is not taken know to use their password?',
       },
+      {
+        id: 'staff-30-no-passkey',
+        number: 30,
+        path: 'main',
+        scene: { path: '/passkeys', as: 'EMP-0002', steps: [{ see: 'ownPasskeys.title' }] },
+        sentence: {
+          en: 'A person with no passkey yet: told so, and the way to add one',
+          vi: 'Người chưa có khóa truy cập nào: được báo, và có cách để thêm',
+        },
+        question: 'Would a person with no passkey know how to add one?',
+      },
+      {
+        id: 'staff-31-person-passkeys',
+        number: 31,
+        path: 'main',
+        scene: { path: personAt('EMP-0001'), steps: [{ see: 'person.passkeysTitle' }] },
+        sentence: {
+          en: 'The root on a person’s page: the passkeys they hold, and the way to remove them all',
+          vi: 'Root xem trang của một người: số khóa truy cập họ có, và cách gỡ hết',
+        },
+        question:
+          'Would the root see that this person holds passkeys, and how to remove them for a lost phone?',
+      },
+      {
+        id: 'staff-32-person-passkeys-asked',
+        number: 32,
+        path: 'main',
+        scene: { path: personAt('EMP-0001'), steps: [{ press: 'person.passkeysRemove' }] },
+        sentence: {
+          en: 'Removing a person’s passkeys asks first',
+          vi: 'Gỡ khóa truy cập của một người thì được hỏi trước',
+        },
+        question: 'Does it say the person will be signed out everywhere?',
+      },
+      {
+        id: 'staff-33-person-passkeys-removed',
+        number: 33,
+        path: 'main',
+        scene: {
+          path: personAt('EMP-0001'),
+          steps: [
+            { press: 'person.passkeysRemove' },
+            { press: 'person.passkeysConfirm', with: { name: 'Nguyễn Thị Lan' } },
+            { see: 'person.passkeysTitle' },
+          ],
+        },
+        sentence: {
+          en: 'The person’s passkeys removed, and the person signed out everywhere',
+          vi: 'Đã gỡ khóa truy cập của người đó, và họ bị đăng xuất khỏi mọi nơi',
+        },
+        question: 'Does it say the passkeys are gone and the person signed out?',
+      },
     ],
   },
   {
@@ -1379,6 +1561,51 @@ export const WALKS: Walk[] = [
         },
         question: 'Does this say what to fix?',
       },
+      {
+        id: 'office-8-passkeys',
+        number: 8,
+        path: 'main',
+        scene: { path: '/passkeys', as: 'EMP-0001', steps: [{ see: 'ownPasskeys.title' }] },
+        sentence: {
+          en: 'One’s own passkeys: an iPhone’s, last used on 3 November, and a PC’s, never used',
+          vi: 'Các khóa truy cập của chính mình: của iPhone, dùng lần cuối ngày 3 tháng 11, và của máy tính, chưa dùng lần nào',
+        },
+        question: 'Would a person tell their passkeys apart, and see how to remove one?',
+      },
+      {
+        id: 'office-9-passkey-remove-asked',
+        number: 9,
+        path: 'main',
+        scene: {
+          path: '/passkeys',
+          as: 'EMP-0001',
+          steps: [{ press: 'ownPasskeys.remove', after: ': Windows · Chrome' }],
+        },
+        sentence: {
+          en: 'Removing the PC’s passkey asks first',
+          vi: 'Gỡ khóa truy cập của máy tính thì được hỏi trước',
+        },
+        question: 'Does the question say plainly what removing it does?',
+      },
+      {
+        id: 'office-10-passkey-removed',
+        number: 10,
+        path: 'main',
+        scene: {
+          path: '/passkeys',
+          as: 'EMP-0001',
+          steps: [
+            { press: 'ownPasskeys.remove', after: ': Windows · Chrome' },
+            { press: 'ownPasskeys.removeConfirm' },
+            { see: 'ownPasskeys.title' },
+          ],
+        },
+        sentence: {
+          en: 'The passkey removed: one row left, and the message',
+          vi: 'Đã gỡ khóa truy cập: còn một dòng, kèm thông báo',
+        },
+        question: 'Does it say the passkey is gone and the other ways in still work?',
+      },
     ],
   },
   {
@@ -1408,6 +1635,62 @@ export const WALKS: Walk[] = [
           vi: 'Mã đã dùng rồi, hoặc đã quá 15 phút',
         },
         question: SIGN_IN_LOOK,
+      },
+      {
+        id: 'phone-3-scan',
+        number: 3,
+        path: 'main',
+        scene: { path: '/login/qr', out: true, steps: [{ see: 'qrScan.title' }] },
+        sentence: {
+          en: 'The scan page: scan the code with the camera, or enter it by hand',
+          vi: 'Trang quét mã: quét bằng máy ảnh, hoặc nhập thủ công',
+        },
+        question: 'Would a person know to scan the code the root shows them?',
+      },
+      {
+        id: 'phone-4-signed-in',
+        number: 4,
+        path: 'main',
+        scene: {
+          path: '/login/qr',
+          out: true,
+          steps: [...QR_PASTED(DEMO_QR_SECRET), { see: 'qrScan.signedIn' }],
+        },
+        sentence: {
+          en: 'The code pasted: signed in, with a green tick before the first page',
+          vi: 'Đã dán mã: đăng nhập xong, có dấu tích xanh trước trang đầu tiên',
+        },
+        question: 'Does the tick tell the person they are signed in?',
+      },
+      {
+        id: 'phone-5-scan-code-used',
+        number: 5,
+        path: 'wrong',
+        scene: {
+          path: '/login/qr',
+          out: true,
+          steps: [...QR_PASTED('used-before-qr-code'), { see: 'qrSignIn.refusedText' }],
+        },
+        sentence: {
+          en: 'A code used before, or past its 15 minutes, pasted on the scan page: refused, with the way back to the password',
+          vi: 'Mã đã dùng rồi, hoặc đã quá 15 phút, được dán vào trang quét: bị từ chối, kèm cách quay lại mật khẩu',
+        },
+        question: 'Does this say what to do next?',
+      },
+      {
+        id: 'phone-6-no-camera',
+        number: 6,
+        path: 'wrong',
+        scene: {
+          path: '/login/qr',
+          out: true,
+          steps: [{ press: 'qrScan.scan' }, { see: 'qrScan.noCamera' }],
+        },
+        sentence: {
+          en: 'The camera cannot be used here: told, with the picture and the pasted link left',
+          vi: 'Không dùng được máy ảnh: được báo, còn lại đọc từ ảnh và dán đường dẫn',
+        },
+        question: 'Would a person know to read a picture or paste the link instead?',
       },
     ],
   },

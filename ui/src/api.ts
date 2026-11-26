@@ -90,12 +90,19 @@ import {
   NO_RENEW_QUERY,
   type OptionsReply,
   optionsReplySchema,
+  signInMethodsReplySchema,
+  type SignInMethodsReply,
   type ConfirmAct,
   type Confirmation,
   type PasskeyAddRequest,
   type PasskeyItem,
   passkeyListReplySchema,
   type OwnPasskeyAddRequest,
+  type OwnPasskeyItem,
+  ownPasskeyListReplySchema,
+  type OwnPasskeyRemovedReply,
+  personPasskeysReplySchema,
+  ownPasskeyRemovedReplySchema,
   type PasskeySignInRequest,
   passkeyRoutes,
   type RootPasswordReply,
@@ -123,6 +130,12 @@ import {
   type SessionReply,
   sessionReplySchema,
   type SetEmailRequest,
+  type SignUpRequest,
+  signUpApprovedReplySchema,
+  signUpListReplySchema,
+  type WaitingSignUp,
+  signUpReplySchema,
+  signUpRoutes,
   signInRoutes,
   type SetPasswordReply,
   setPasswordReplySchema,
@@ -143,6 +156,8 @@ export class ApiError extends Error {
     readonly bff = false,
     /** The seconds a 429 in the back end's wait shape asks to wait; null for every other answer. */
     readonly waitSeconds: number | null = null,
+    /** What a 404 of the BFF's own shape marks, as `SIGN_UP_WAITING` marks a company that waits for approval; null for none. */
+    readonly detail: string | null = null,
   ) {
     super(status === null ? 'no usable answer' : `answered ${status}`);
     this.name = 'ApiError';
@@ -189,6 +204,12 @@ export type ChangeCodeResult =
 /** An email given or removed, or one already signing someone in, or the version moved. */
 export type SetEmailResult =
   { kind: 'set'; doc: EmployeeDoc } | { kind: 'taken' } | { kind: 'conflict' };
+
+/** A waiting company made, with the path it signs in at; or its address made meanwhile. */
+export type ApproveSignUpResult = { kind: 'approved'; link: string } | { kind: 'taken' };
+
+/** A company's sign-up sent, with the address it asked for; or that address taken. */
+export type SignUpResult = { kind: 'sent'; code: string } | { kind: 'taken' };
 
 /** One's own password changed, with the session that replaces every other; or the current one wrong. */
 export type ChangePasswordResult =
@@ -292,6 +313,12 @@ export function createApi({
     return new ApiError(response.status, bffErrorSchema.safeParse(body).success);
   }
 
+  /** What a 404 of the BFF's own shape marks in its `details`, or null for none. */
+  async function detailOf(response: Response) {
+    const body = (await response.json().catch(() => null)) as { details?: unknown } | null;
+    return typeof body?.details === 'string' ? body.details : null;
+  }
+
   /** A 429 as the back end shapes it: the wait it asks, or null for any other answer. */
   async function waitOf(response: Response) {
     const parsed = waitReplySchema.safeParse(await response.json().catch(() => null));
@@ -324,6 +351,7 @@ export function createApi({
   return {
     async getConfig(): Promise<ConfigDoc> {
       const response = await send('GET', ROUTES.config);
+      if (response.status === 404) throw new ApiError(404, false, null, await detailOf(response));
       if (!response.ok) throw new ApiError(response.status);
       return await read(response, configDocSchema);
     },
@@ -333,6 +361,13 @@ export function createApi({
       if (response.status === 429) throw new ApiError(429, false, await waitOf(response));
       if (!response.ok) throw new ApiError(response.status);
       return await read(response, sessionReplySchema);
+    },
+
+    /** What the door may know before anyone signs in: whether the company has the QR sign-in on. */
+    async signInMethods(): Promise<SignInMethodsReply> {
+      const response = await send('GET', signInRoutes.methods);
+      if (!response.ok) throw new ApiError(response.status);
+      return await read(response, signInMethodsReplySchema);
     },
 
     /** The options a sign-in by this company's passkey starts from, with the token that binds their
@@ -362,6 +397,69 @@ export function createApi({
     /** Adds the passkey to the signed-in person; a 403 is a session issued too long ago for an add. */
     async ownPasskeyAdd(request: OwnPasskeyAddRequest): Promise<void> {
       const response = await send('POST', signInRoutes.ownPasskeyAdd, request);
+      if (!response.ok) throw new ApiError(response.status);
+    },
+
+    /** The signed-in person's own passkeys; a 404 is passkeys switched off, a 401 no session. */
+    async ownPasskeys(): Promise<OwnPasskeyItem[]> {
+      const response = await send('GET', signInRoutes.ownPasskeys);
+      if (!response.ok) throw new ApiError(response.status);
+      return (await read(response, ownPasskeyListReplySchema)).passkeys;
+    },
+
+    /** Removes one of one's own by its id; the answer holds the list left and the session that
+     * replaces the one held, since every other of the person's is signed out. A 404 is a passkey
+     * not theirs, or gone. */
+    async ownPasskeyRemove(id: string): Promise<OwnPasskeyRemovedReply> {
+      const response = await send('DELETE', signInRoutes.ownPasskey(id));
+      if (!response.ok) throw new ApiError(response.status);
+      return await read(response, ownPasskeyRemovedReplySchema);
+    },
+
+    /** How many passkeys a person holds, for the root alone; a 404 is passkeys switched off or no
+     * such person here. */
+    async personPasskeys(id: string): Promise<number> {
+      const response = await send('GET', signInRoutes.employeePasskeys(id));
+      if (!response.ok) throw new ApiError(response.status);
+      return (await read(response, personPasskeysReplySchema)).count;
+    },
+
+    /** Removes every passkey of a person, for the root alone, and ends their sessions; the answer is
+     * the count left, none. */
+    async removePersonPasskeys(id: string): Promise<number> {
+      const response = await send('DELETE', signInRoutes.employeePasskeys(id));
+      if (!response.ok) throw new ApiError(response.status);
+      return (await read(response, personPasskeysReplySchema)).count;
+    },
+
+    /** A company asks for its address and root, with no session and no company: a 409 is an address
+     * taken, kept or already waiting; a 503 a full queue, for the page to say. */
+    async signUp(request: SignUpRequest): Promise<SignUpResult> {
+      const response = await send('POST', signUpRoutes.send, request);
+      if (response.status === 409) return { kind: 'taken' };
+      if (!response.ok) throw new ApiError(response.status, true);
+      return { kind: 'sent', code: (await read(response, signUpReplySchema)).code };
+    },
+
+    /** The companies waiting for approval, as the operator is shown them, oldest first. */
+    async listSignUps(): Promise<WaitingSignUp[]> {
+      const response = await send('GET', signUpRoutes.list, undefined, 'operator');
+      if (!response.ok) throw new ApiError(response.status);
+      return (await read(response, signUpListReplySchema)).signUps;
+    },
+
+    /** Makes the waiting company, as the console's add does but with the root's chosen password; a
+     * 409 is an address made meanwhile, and the request stays. */
+    async approveSignUp(code: string): Promise<ApproveSignUpResult> {
+      const response = await send('POST', signUpRoutes.approve(code), undefined, 'operator');
+      if (response.status === 409) return { kind: 'taken' };
+      if (!response.ok) throw new ApiError(response.status);
+      return { kind: 'approved', link: (await read(response, signUpApprovedReplySchema)).link };
+    },
+
+    /** Removes a waiting request, freeing its address. */
+    async refuseSignUp(code: string): Promise<void> {
+      const response = await send('DELETE', signUpRoutes.one(code), undefined, 'operator');
       if (!response.ok) throw new ApiError(response.status);
     },
 

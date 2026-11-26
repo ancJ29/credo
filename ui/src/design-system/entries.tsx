@@ -41,6 +41,8 @@ import { CREDO_BRAND } from '../brand';
 import { headerLook } from '../frame/Shell';
 import { LANGUAGE_NAMES } from '../i18n';
 import { Charter } from './Charter';
+import { ScanCard } from './ScanStates';
+import { SignUpCard, UnknownAddressSample } from './SignUpStates';
 import { ColourScope } from './ColourScope';
 import { PALETTES } from './palettes';
 import { WEIGHTS } from './tokens';
@@ -200,28 +202,9 @@ function SignInState() {
         <Button variant="default" fullWidth leftSection={<IconKey size={18} />}>
           {t('auth.passkey')}
         </Button>
-      </Stack>
-    </DoorCard>
-  );
-}
-
-/** The old app's login-link page as the card holds it: the second state. */
-function LinkState() {
-  const words = SAMPLES[useLanguage()];
-  return (
-    <DoorCard name={words.shop} logo={SAMPLE_LOGO}>
-      <Stack gap="md" align="center">
-        <Stack gap={0} w="100%">
-          <DoorHeading title={words.linkTitle} subtitle={words.linkSubtitle} />
-        </Stack>
-        <Button variant="gradient" size="md" fullWidth leftSection={<IconQrcode size={18} />}>
-          {words.scanQr}
+        <Button variant="default" fullWidth leftSection={<IconQrcode size={18} />}>
+          {t('qrScan.button')}
         </Button>
-        <Divider label={words.or} w="100%" />
-        <Button variant="default" fullWidth leftSection={<IconKeyboard size={18} />}>
-          {words.enterCode}
-        </Button>
-        <BackLink href="#">{words.backToSignIn}</BackLink>
       </Stack>
     </DoorCard>
   );
@@ -568,7 +551,7 @@ export const ENTRIES: Entry[] = [
     name: 'Photos and codes',
     kind: 'Mantine’s own',
     description:
-      'Mantine’s own picture as the theme dresses it, with the sign-in QR code beside it: a person’s photo and its choose button, a delivery’s proof, a company’s logo and the code a phone reads to sign in.',
+      'Mantine’s own picture as the theme dresses it, with the sign-in QR code beside it: a person’s photo and its choose button, a delivery’s proof, a company’s logo, the code a phone reads to sign in, its link with the copy button and the question a new code asks first.',
     props: 'Image · FileButton · Avatar · QrCode (value, label)',
     useWhen: [
       'A person’s or a company’s picture is shown, or chosen from a file on the device.',
@@ -1295,14 +1278,34 @@ export const ENTRIES: Entry[] = [
           </Stack>
         ),
       },
-      {
-        name: 'Login link',
+      ...(
+        [
+          ['Login link', 'link'],
+          ['The camera', 'camera'],
+          ['A picture', 'picture'],
+          ['Paste the link', 'paste'],
+          ['Signed in', 'signedIn'],
+          ['A code refused', 'refused'],
+          ['No camera', 'noCamera'],
+        ] as const
+      ).map(([name, state]) => ({
+        name,
         node: (
           <Stack w={474} maw="100%">
-            <LinkState />
+            <ScanCard state={state} />
           </Stack>
         ),
-      },
+      })),
+      ...(['form', 'taken', 'sent'] as const).map((state) => ({
+        name: { form: 'A company’s sign-up', taken: 'An address taken', sent: 'Sent for approval' }[
+          state
+        ],
+        node: (
+          <Stack w={474} maw="100%">
+            <SignUpCard state={state} />
+          </Stack>
+        ),
+      })),
     ],
   },
   {
@@ -1332,6 +1335,8 @@ export const ENTRIES: Entry[] = [
         name: 'One language, no switch',
         node: <DoorPageSample />,
       },
+      { name: 'An address with no company', node: <UnknownAddressSample /> },
+      { name: 'Waiting for approval', node: <UnknownAddressSample waiting /> },
     ],
   },
   {

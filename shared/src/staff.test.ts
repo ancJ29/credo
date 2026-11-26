@@ -26,8 +26,8 @@ const OFF = {
   birthDate: false,
   address: false,
 };
-/** The switches a setup that says nothing reads as: every one off but the email and passkey sign-ins. */
-const DEFAULTS = { ...OFF, email: true, passkey: true };
+/** The switches a setup that says nothing reads as: every one off but the email, QR and passkey sign-ins. */
+const DEFAULTS = { ...OFF, email: true, qr: true, passkey: true };
 const ID = '7f0c9a52-5b2e-4a39-9d5f-0c6a8e1b2d34';
 const person = {
   id: ID,
@@ -301,7 +301,7 @@ describe('staff', () => {
     });
   });
 
-  it('C: A person’s email is optional and kept as a sign-in name is, and the company’s switch for the email sign-in is on until turned off, the QR code’s off until turned on', () => {
+  it('C: A person’s email is optional and kept as a sign-in name is, and the company’s switch for the email sign-in is on until turned off, the QR code’s on until turned off', () => {
     expect(employeeSchema.parse(person).email).toBeUndefined();
     expect(employeeSchema.parse({ ...person, email: null }).email).toBeNull();
     expect(employeeSchema.parse({ ...person, email: '  Lan@Minh-Phat.Example ' }).email).toBe(
@@ -319,6 +319,12 @@ describe('staff', () => {
     expect(staffConfig({ fields: { personalPhone: true, photo: false, qr: true } }).fields).toEqual(
       { ...DEFAULTS, personalPhone: true, qr: true },
     );
+    // the QR sign-in starts on where the switch was never set, and a saved `false` keeps it off
+    expect(staffConfig({}).fields.qr).toBe(true);
+    expect(staffConfig({ fields: { personalPhone: true, photo: false } }).fields.qr).toBe(true);
+    expect(
+      staffConfig({ fields: { personalPhone: false, photo: false, qr: false } }).fields.qr,
+    ).toBe(false);
     // the email sign-in starts on where the switch was never set, and a saved `false` keeps it off
     expect(staffConfig({}).fields.email).toBe(true);
     expect(staffConfig({ fields: { personalPhone: true, photo: false } }).fields.email).toBe(true);

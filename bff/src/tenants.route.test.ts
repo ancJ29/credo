@@ -89,7 +89,10 @@ describe('Every client route needs x-client-code: missing or malformed is a 400,
       expect(answer.json()).toEqual({ error: 'Unknown client' });
     }
     expect(reads.length).toBeGreaterThan(0);
-    expect(reads.every((key) => key === 'client.unknown-co')).toBe(true);
+    // the index, and the one record a waiting sign-up of that address would be (row 2 of the sign-up)
+    expect(reads.every((key) => key === 'client.unknown-co' || key === 'sign-up.unknown-co')).toBe(
+      true,
+    );
   });
 
   it('serves the call of the client the code names, and no other', async () => {

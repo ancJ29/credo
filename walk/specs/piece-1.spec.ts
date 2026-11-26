@@ -9,13 +9,13 @@ import {
   STACK_ENV,
 } from '@credo/shared';
 import { DICTIONARIES, LANGUAGE_NAMES } from '@credo/ui/words';
-import { type APIRequestContext, expect, type Page, test } from '@playwright/test';
+import { type APIRequestContext, expect, type Locator, type Page, test } from '@playwright/test';
 import { required, shot, WIDTHS } from '../support';
 
 /**
- * Piece 1's walk, the client's admin: seventeen screens, each in Vietnamese and in English, each at
+ * Piece 1's walk, the client's admin: twenty-one screens, each in Vietnamese and in English, each at
  * the PC, tablet and phone widths the visual report draws, each saved with Playwright's own
- * screenshot check against its committed base image (17 × 2 × 3 = 102). The stack
+ * screenshot check against its committed base image (21 × 2 × 3 = 126). The stack
  * (`pnpm stack -- …`) gives the address, the demo client's code and the root's sign-in in the
  * environment, and the walk opens the client's link, as its root would. Words come from the app's
  * own dictionaries, so a renamed label turns this red where it was renamed.
@@ -30,6 +30,19 @@ const ROOT = {
   password: required(STACK_ENV.CREDO_ROOT_PASSWORD),
 };
 const SCOPE = { [CLIENT_HEADER]: CODE };
+
+/** A label as a whole, the star of a required one allowed. */
+const exactly = (label: string) =>
+  new RegExp(`^${label.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*\\*?$`);
+
+/** The company the sign-up screens ask for, and the address they ask for. */
+const SIGN_UP_CODE = 'phu-quy';
+const SIGN_UP = {
+  name: 'Gạch Men Phú Quý',
+  contactName: 'Lê Hoàng Nam',
+  contactPhone: '0903 111 222',
+  password: 'Gach-Men-2026!',
+};
 
 const NEW_NAME = 'Minh Phát Sài Gòn';
 /** The formatted name and the description the root types: a bold part, a second colour, a break. */
@@ -93,10 +106,20 @@ test.afterEach(async ({ request }) => {
     );
     expect(removed.ok()).toBe(true);
   }
+  // The company the sign-up screens sent for approval is refused by the operator, so the next test of
+  // this stack meets its address free: a code no request holds is a 404, which is as good.
+  const refused = await request.fetch(`/api/operator/sign-ups/${SIGN_UP_CODE}`, {
+    method: 'DELETE',
+    headers: {
+      [DEVICE_HEADER]: 'device-walk-restore',
+      [AUTH_HEADER]: required(STACK_ENV.CREDO_OPERATOR_HANDLE),
+    },
+  });
+  expect([204, 404]).toContain(refused.status());
 });
 
 async function walk(page: Page, language: Language, width: number) {
-  const at = (screen: string) => shot(page, screen, language, width);
+  const at = (screen: string, mask: Locator[] = []) => shot(page, screen, language, width, mask);
   const words = DICTIONARIES[language];
   await page.addInitScript((chosen) => localStorage.setItem('credo.language', chosen), language);
 
@@ -206,7 +229,7 @@ async function walk(page: Page, language: Language, width: number) {
   await expect(page.locator('header [aria-hidden="true"] b')).toBeVisible();
   await at('15-formatted-saved');
 
-  // 17. The logo for the coloured header chosen: saved at once, and the header and the preview's
+  // 21. The logo for the coloured header chosen: saved at once, and the header and the preview's
   // header wear it. Its screen follows 15 here and is numbered last.
   const light = page.getByText(words.settings.logoOnColour, { exact: true }).locator('xpath=..');
   await light.locator('input[type="file"]').setInputFiles({
@@ -220,7 +243,7 @@ async function walk(page: Page, language: Language, width: number) {
     'src',
     /logo-on-colour/,
   );
-  await at('17-logo-on-colour');
+  await at('21-logo-on-colour');
 
   // 16. Signed out: the card shows the formatted name and the description. Signing in again
   // returns to Settings, for the screens after.
@@ -288,20 +311,56 @@ async function walk(page: Page, language: Language, width: number) {
   // 9. A link that names no company: the BFF's own 404, and credo's colour, never the client's.
   await page.goto(`/login?client-code=${NO_SUCH_COMPANY}`);
   await expect(
-    page.getByRole('heading', { level: 1, name: words.unknownClient.title }),
+    page.getByRole('heading', { level: 2, name: words.unknownClient.title }),
   ).toBeVisible();
   await at('9-unknown-company');
+
+  // 17. A company asks for its address: the form filled, in credo's own card.
+  const fillSignUp = async (code: string) => {
+    await page.getByLabel(exactly(words.signUp.name)).fill(SIGN_UP.name);
+    await page.getByLabel(exactly(words.signUp.code)).fill(code);
+    await page.getByLabel(exactly(words.signUp.contactName)).fill(SIGN_UP.contactName);
+    await page.getByLabel(exactly(words.signUp.contactPhone)).fill(SIGN_UP.contactPhone);
+    await page.getByLabel(exactly(words.signUp.password)).fill(SIGN_UP.password);
+  };
+  await page.goto('/sign-up');
+  await expect(page.getByRole('heading', { level: 2, name: words.signUp.title })).toBeVisible();
+  await fillSignUp(SIGN_UP_CODE);
+  await at('17-sign-up');
+
+  // 18. An address a company holds: the stack's `hoa-sen`, said on the address field.
+  await page.goto('/sign-up');
+  await fillSignUp('hoa-sen');
+  await page.getByRole('button', { name: words.signUp.submit, exact: true }).click();
+  await expect(page.getByText(words.signUp.taken)).toBeVisible();
+  await at('18-sign-up-taken');
+
+  // 19. Sent: what happens next, and the address to open.
+  // The address's port differs on every run: only that element is masked, the sentence stays for the eye. Held by
+  // ui/src/pages/SignUpPage.test.tsx: the stack's port is free on every run.
+  await page.goto('/sign-up');
+  await fillSignUp(SIGN_UP_CODE);
+  await page.getByRole('button', { name: words.signUp.submit, exact: true }).click();
+  await expect(page.getByRole('heading', { level: 2, name: words.signUp.sentTitle })).toBeVisible();
+  await at('19-sign-up-sent', [page.locator('[data-sent-address]')]);
+
+  // 20. The address of the company the stack's data set holds waiting.
+  await page.goto('/login?client-code=son-ha');
+  await expect(
+    page.getByRole('heading', { level: 2, name: words.signUp.waitingTitle }),
+  ).toBeVisible();
+  await at('20-address-waiting');
 }
 
 for (const [device, width] of Object.entries(WIDTHS)) {
   test.describe(`piece 1: the client's admin, on a ${device} (${width})`, () => {
     test.use({ viewport: { width, height: 800 } });
 
-    test('walks all seventeen screens in Vietnamese', async ({ page }) => {
+    test('walks all twenty-one screens in Vietnamese', async ({ page }) => {
       await walk(page, 'vi', width);
     });
 
-    test('walks all seventeen screens in English', async ({ page }) => {
+    test('walks all twenty-one screens in English', async ({ page }) => {
       await walk(page, 'en', width);
     });
   });

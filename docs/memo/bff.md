@@ -428,16 +428,16 @@ is the one gradation there is.
 A person's passkeys are one record under their id (the company's own id for the root), kept in
 the company's box beside the sign-in record and never on it, since each write of the sign-in
 record ends the person's other sessions while each passkey sign-in moves a counter.
-`bff/src/routes/own-passkeys.ts` holds the four routes. The ceremony is checked against the company's
+`bff/src/routes/own-passkeys.ts` holds the routes: the sign-in's options and answer, the add's options and answer, one's own list and the removal of one, and `bff/src/routes/staff.ts` the root's count and removal of all of a person's. The ceremony is checked against the company's
 own address, made from `APP_ORIGIN` and the code the call names (`clientAddress`), never from the
 request's host: a browser refuses a ceremony for another name, and on ridge the operators' address
 is `operator.<Domain>` while a company's is `<code>.<Domain>`. The sign-in answers one 401 for every
 refusal (passkeys off, a spent or foreign challenge, a person who left, a passkey not held, an
 answer the library refuses). The counter, the last use and the challenge's spend go in one write
 over the record's tag; a moved tag reads again, so the same answer sent twice signs in once. The
-add takes a session issued in the last ten minutes, else a 403.
+add takes a session issued in the last ten minutes, else a 403. A removal, one's own or the root's, writes the passkeys first and then ends the person's other sessions, since a session does not know which passkey made it; the removing device keeps the session that replaces its own, and the root's stands.
 
-- *Held by:* `bff/src/passkey-sign-in.route.test.ts`.
+- *Held by:* `bff/src/passkey-sign-in.route.test.ts` and `bff/src/passkeys-kept.route.test.ts`.
 - *Rejected:* one relying party for every company. Item 291's fix needs the same address.
 
 ## A company's picture is the one public reply that is not JSON
@@ -463,6 +463,25 @@ there, a newer upload or a move beside it, is kept), then the settings are rewri
 read, and a moved tag is read again, three times at most before a 503. An interruption between the two writes
 leaves the inline logo and the next read finishes it; no activity entry is written, as no one changed
 anything. *Price of the choice:* a GET that writes, once a company, in return for no script to run on ridge.
+
+## A company signs itself up through one public route, and waits as one bounded record
+
+`POST /api/sign-up` takes no session and no company header, so anyone can call it. It makes no
+company: it writes one record under the requested code, beside the client index
+(`bff/src/records/sign-ups.ts`), holding the name, the contact, the day and a hash of the password the
+requester chose, never the password. Its limits: at most `SIGN_UPS_WAITING_MAX` (20) requests wait,
+counted before any hash is made, past which a 503 writes nothing; every field is bounded by its
+schema; a code kept, taken, being deleted or already waiting is a 409. The route is exempt from the
+audit, since it names no company, and logs nothing of the password. The operator's three routes list
+the waiting requests, approve one (`createClientFromSignUp` makes the company with the request's own
+hash, so no first password is minted, and then removes the request) and refuse one. The bound is a
+hard ceiling, not a throttle: a flood fills 20 requests and is then refused until an operator
+refuses them, and the stage's throttle bounds the rate.
+
+- *Held by:* `bff/src/sign-up.route.test.ts` and `bff/src/sign-up-approval.route.test.ts`.
+- *Hazard for a caller:* the count and the write are not one step, so a burst may pass 20 by the
+  requests in flight.
+- *Rejected:* a mail to the requester, since the new app sends none.
 
 ## Where the rest is
 

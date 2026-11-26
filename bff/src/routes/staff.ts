@@ -44,8 +44,9 @@ import {
 } from '@credo/shared';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import { z } from 'zod';
-import { declare, personOf } from '../audit';
+import { declare, exempt, personOf } from '../audit';
 import { HttpError, parse, replyFor } from '../errors';
+import { readOwnPasskeys, removeAllOwnPasskeys } from '../records/passkeys';
 import { recordTools, type TenantStorage } from '../records/records';
 import { hashPassword, madePassword } from '../calling/password';
 import {
@@ -885,6 +886,50 @@ function registerStaffSignIns(app: FastifyInstance, deps: Deps) {
         }
       }
       throw new CStorageError(412, 'the QR record moved on every attempt to be replaced');
+    },
+  );
+
+  /** The person a root's call names, for their passkeys: the root alone, the person in this company,
+   * and the company's switch on (404 where passkeys are off). */
+  async function passkeysOf(request: FastifyRequest, who: Who) {
+    mustBeRoot(who);
+    const found = await mustFind(request.storage, idOf(request));
+    if (!staffConfig((await setupDoc(request.storage)).setup).fields.passkey) {
+      throw new HttpError(404, 'Not found');
+    }
+    return found.employee;
+  }
+
+  /** How many passkeys a person holds, the root's alone. */
+  app.get(
+    signInRoutes.employeePasskeys(':id'),
+    exempt('a count changes no client’s data', forClient),
+    async (request) => {
+      const { id } = await passkeysOf(request, await signedIn(request));
+      const held = await readOwnPasskeys(request.storage, request.tenantId, id);
+      return { count: held?.record.passkeys.length ?? 0 };
+    },
+  );
+
+  /** Every passkey of a person removed, the root's alone, for a lost phone: the passkeys go first,
+   * so a failure after leaves them refused, then the person's sessions end as an archive's do. The
+   * root's own session stands; the password stays. */
+  app.delete(
+    signInRoutes.employeePasskeys(':id'),
+    { ...forClient, config: { audit: 'employee.passkeysRemove' } },
+    async (request) => {
+      const who = await signedIn(request);
+      const entry = declare(request, personOf(who), paramsOf(request).id);
+      const person = await passkeysOf(request, who);
+      await removeAllOwnPasskeys(request.storage, request.tenantId, person.id);
+      entry.saved(null, null);
+      await endSessions(
+        request.storage,
+        request.tenantId,
+        normaliseSignInName(person.code),
+        (user) => user.employeeId === person.id,
+      );
+      return { count: 0 };
     },
   );
 }

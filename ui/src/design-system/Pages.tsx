@@ -10,12 +10,14 @@ import {
   Radio,
   Stack,
   Switch,
+  Table,
   Text,
   Textarea,
   TextInput,
 } from '@mantine/core';
 import {
   IconBuildingStore,
+  IconFingerprint,
   IconId,
   IconLanguage,
   IconLock,
@@ -35,11 +37,12 @@ import { StatusBadge, type Status } from '../components/atoms/StatusBadge';
 import { ActionRow } from '../components/molecules/ActionRow';
 import { CopyText } from '../components/molecules/CopyText';
 import { DataTable } from '../components/molecules/DataTable';
+import { TableScroll } from '../components/molecules/TableScroll';
 import { FormMessage } from '../components/molecules/FormMessage';
 import { PageHeader } from '../components/organisms/PageHeader';
 import { PageState } from '../components/organisms/PageState';
 import { Panel } from '../components/organisms/Panel';
-import { shownDay } from '../day';
+import { dayOf, shownDay } from '../day';
 import { LANGUAGE_NAMES } from '../i18n';
 import { LISTS } from '../listSheet';
 import { numberOf, priceOf } from '../number';
@@ -47,11 +50,12 @@ import { ListTable } from '../parts/ListTable';
 import { BrandPreview } from '../parts/BrandPreview';
 import { IdentityFields } from '../parts/IdentityFields';
 import { PictureField } from '../parts/PictureField';
-import { DetailColumns, FieldPair } from '../parts/DetailCards';
+import { DetailCard, DetailColumns, FieldPair } from '../parts/DetailCards';
 import { PageShell } from '../parts/PageShell';
 import { SectionCard } from '../components/organisms/SectionCard';
 import { MAX_LOGO_BYTES } from '@credo/shared';
 import { FilterBar } from './Fields';
+import { WaitingRows } from './SignUpStates';
 import { PALETTES } from './palettes';
 import { PICTURE, PICTURE_ON_COLOUR } from './Photos';
 import { SAMPLES, useLanguage } from './samples';
@@ -345,7 +349,7 @@ function Cards() {
   );
 }
 
-/** The list page's six states: a list, filtered with a status, empty, loading, failed, and at the phone's width. */
+/** The list page's eight states: a list, filtered with a status, empty, loading, failed, at the phone's width, then the console's list of companies waiting for approval and a refusal asked. */
 export const ListPageStates = [
   { name: 'A list', node: <ListState state="list" /> },
   { name: 'Filtered, with a status', node: <Filtered /> },
@@ -353,6 +357,8 @@ export const ListPageStates = [
   { name: 'Loading', node: <ListState state="loading" /> },
   { name: 'Failed', node: <ListState state="failed" /> },
   { name: 'At the phone', node: <Cards />, phone: true as const },
+  { name: 'Waiting for approval', node: <WaitingRows /> },
+  { name: 'A refusal asked', node: <WaitingRows asked /> },
 ];
 
 /** The form page as the staff member's add draws it: the way back above the title, fields in titled blocks two a row, one main at the foot; `refused` adds a whole-form message above the blocks and the code's refusal on its field. */
@@ -792,7 +798,7 @@ function MenuPage({ others }: { others: boolean }) {
       <Panel>
         <Stack gap={0}>
           <MenuRow to="/password">{t('user.password')}</MenuRow>
-          <MenuRow to="/passkey">{t('user.passkey')}</MenuRow>
+          <MenuRow to="/passkeys">{t('user.passkey')}</MenuRow>
           <MenuRow>{t('user.signOut')}</MenuRow>
         </Stack>
       </Panel>
@@ -891,6 +897,9 @@ function PasskeyToAdd() {
         <ActionButton meaning="main" submit>
           {t('ownPasskey.submit')}
         </ActionButton>
+        <ActionButton meaning="other" to="/passkeys">
+          {t('ownPasskeys.title')}
+        </ActionButton>
       </ActionRow>
     </Stack>
   );
@@ -904,17 +913,140 @@ function PasskeyAdded() {
       <PageHeader title={t('ownPasskey.title')} />
       <FormMessage kind="success">{t('ownPasskey.added')}</FormMessage>
       <Text>{t('ownPasskey.addedText')}</Text>
+      <ActionRow>
+        <ActionButton meaning="other" to="/passkeys">
+          {t('ownPasskeys.title')}
+        </ActionButton>
+      </ActionRow>
     </Stack>
   );
 }
 
-/** The confirm page's five states: a delete, a change, and made, then the add-a-passkey page's two at the phone's width. */
+/** The days the passkey samples show: fixed at noon UTC, no real person's. */
+const PASSKEY_DAYS = [
+  Date.UTC(2026, 9, 5, 12),
+  Date.UTC(2026, 10, 3, 12),
+  Date.UTC(2026, 10, 20, 12),
+];
+
+/** The devices and days of the three passkeys the list's samples hold: one used, one never, one added before devices were named. */
+const PASSKEYS = [
+  { device: 'iPhone · Safari', added: PASSKEY_DAYS[0], used: PASSKEY_DAYS[1] },
+  { device: 'Windows · Chrome', added: PASSKEY_DAYS[1], used: null },
+  { device: null, added: PASSKEY_DAYS[2], used: PASSKEY_DAYS[2] },
+];
+
+/** A person's own passkeys, each with its device, day added and day last used and a Remove; `asked` puts the question under the list, `removed` says so above it and draws one row fewer, `empty` draws no table and the way to add one. */
+function PasskeyList({ state }: { state: 'list' | 'asked' | 'removed' | 'empty' }) {
+  const { t } = useTranslation();
+  const language = useLanguage();
+  const rows = state === 'removed' ? PASSKEYS.slice(0, 2) : PASSKEYS;
+  return (
+    <Stack p="md" gap="lg">
+      <PageHeader title={t('ownPasskeys.title')} />
+      <Text c="dimmed">{t('ownPasskeys.text')}</Text>
+      {state === 'removed' && <FormMessage kind="success">{t('ownPasskeys.removed')}</FormMessage>}
+      {state === 'empty' ? (
+        <>
+          <Text>{t('ownPasskeys.none')}</Text>
+          <ActionRow>
+            <ActionButton meaning="main" to="/passkey" icon={<IconFingerprint size={18} />}>
+              {t('ownPasskey.submit')}
+            </ActionButton>
+          </ActionRow>
+        </>
+      ) : (
+        <TableScroll>
+          <Table>
+            <Table.Thead>
+              <Table.Tr>
+                <Table.Th>{t('ownPasskeys.colDevice')}</Table.Th>
+                <Table.Th>{t('passkey.colAdded')}</Table.Th>
+                <Table.Th>{t('passkey.colLastUsed')}</Table.Th>
+                <Table.Th />
+              </Table.Tr>
+            </Table.Thead>
+            <Table.Tbody>
+              {rows.map((row) => {
+                const device = row.device ?? t('ownPasskeys.deviceUnknown');
+                return (
+                  <Table.Tr key={row.added}>
+                    <Table.Td>{device}</Table.Td>
+                    <Table.Td>{dayOf(row.added, language)}</Table.Td>
+                    <Table.Td>
+                      {row.used === null ? t('passkey.never') : dayOf(row.used, language)}
+                    </Table.Td>
+                    <Table.Td ta="right">
+                      <ActionButton meaning="other" label={`${t('ownPasskeys.remove')}: ${device}`}>
+                        {t('ownPasskeys.remove')}
+                      </ActionButton>
+                    </Table.Td>
+                  </Table.Tr>
+                );
+              })}
+            </Table.Tbody>
+          </Table>
+        </TableScroll>
+      )}
+      {state !== 'empty' && (
+        <ActionRow>
+          <ActionButton meaning="other" to="/passkey">
+            {t('ownPasskey.submit')}
+          </ActionButton>
+        </ActionRow>
+      )}
+      {state === 'asked' && (
+        <Panel>
+          <Stack gap="sm">
+            <Text>{t('ownPasskeys.removeAsk')}</Text>
+            <ActionRow>
+              <ActionButton meaning="main">{t('ownPasskeys.removeConfirm')}</ActionButton>
+              <ActionButton meaning="other">{t('ownPasskeys.removeCancel')}</ActionButton>
+            </ActionRow>
+          </Stack>
+        </Panel>
+      )}
+    </Stack>
+  );
+}
+
+/** The root's passkeys panel on a person's page: how many they hold, why to remove them all, and the one press; `asked` swaps the press for the question's confirm and its way back. */
+function PersonPasskeys({ asked }: { asked: boolean }) {
+  const { t } = useTranslation();
+  const name = SAMPLES[useLanguage()].person;
+  return (
+    <Stack p="md" gap="lg">
+      <DetailCard icon={<IconFingerprint size={14} />} title={t('person.passkeysTitle')}>
+        <Stack gap="sm" align="flex-start">
+          <Text fw={WEIGHTS.label}>{t('person.passkeysHeld', { count: 2 })}</Text>
+          <Text c="dimmed">{t('person.passkeysText', { name })}</Text>
+          {asked ? (
+            <ActionRow>
+              <ActionButton meaning="main">{t('person.passkeysConfirm', { name })}</ActionButton>
+              <ActionButton meaning="other">{t('person.passkeysCancel')}</ActionButton>
+            </ActionRow>
+          ) : (
+            <ActionButton meaning="other">{t('person.passkeysRemove')}</ActionButton>
+          )}
+        </Stack>
+      </DetailCard>
+    </Stack>
+  );
+}
+
+/** The confirm page's eleven states: a delete, a change, and made, then the add-a-passkey page's two and the passkey list's four at the phone's width, then the root's panel on a person's page and its question at a PC's. */
 export const ConfirmPageStates = [
   { name: 'A delete', node: <Confirm erase /> },
   { name: 'A change', node: <Confirm erase={false} /> },
   { name: 'Made', node: <ConfirmMade /> },
   { name: 'A passkey to add', node: <PasskeyToAdd />, phone: true as const },
   { name: 'A passkey added', node: <PasskeyAdded />, phone: true as const },
+  { name: 'Your passkeys', node: <PasskeyList state="list" />, phone: true as const },
+  { name: 'A removal asked', node: <PasskeyList state="asked" />, phone: true as const },
+  { name: 'A passkey removed', node: <PasskeyList state="removed" />, phone: true as const },
+  { name: 'No passkey yet', node: <PasskeyList state="empty" />, phone: true as const },
+  { name: 'A person’s passkeys', node: <PersonPasskeys asked={false} /> },
+  { name: 'Their removal asked', node: <PersonPasskeys asked /> },
 ];
 
 /** The settings page as the company's own draws it: four titled blocks (the name with its formatted name and description, the two logos from the photos, each with its choose and remove, the palette, the colour and the three switches, the languages) beside a preview of the header and the sign-in card, which comes first on a phone; `saved` says so above the blocks, `refused` says why above them and under the logo. */

@@ -14,6 +14,7 @@ import {
   bffErrorSchema,
   type ClientListItem,
   clientAddress,
+  companyOwnAddress,
   clientLinkPath,
   clientListReplySchema,
   companyOfAddress,
@@ -223,6 +224,37 @@ describe('a company’s own address', () => {
     );
     expect(clientAddress('https://operator.example', 'acme')).toBe(
       'https://operator.example/login?client-code=acme',
+    );
+    // The operator's function tells the query link at a company's own host, even for another code: the sign-up card needs `companyOwnAddress`.
+    expect(clientAddress('https://phuquy.ridge.example.test', 'phu-quy')).toBe(
+      'https://phuquy.ridge.example.test/login?client-code=phu-quy',
+    );
+  });
+});
+
+describe('3: the address a company is opened at, from any host that reaches the sign-up page', () => {
+  it('is the code under the rest of a host of three parts or more, and today’s link where the host names no company’s place', () => {
+    expect(companyOwnAddress('https://www.ridge.example.test', 'phu-quy')).toBe(
+      'https://phu-quy.ridge.example.test/login',
+    );
+    // A mistyped company's host: the card still tells the address that opens the company asked for.
+    expect(companyOwnAddress('https://phuquy.ridge.example.test:8443', 'phu-quy')).toBe(
+      'https://phu-quy.ridge.example.test:8443/login',
+    );
+    expect(companyOwnAddress('https://operator.ridge.example.test', 'phu-quy')).toBe(
+      'https://phu-quy.ridge.example.test/login',
+    );
+    expect(companyOwnAddress('http://localhost:5173', 'phu-quy')).toBe(
+      'http://localhost:5173/login?client-code=phu-quy',
+    );
+    expect(companyOwnAddress('http://10.0.0.7:5173', 'phu-quy')).toBe(
+      'http://10.0.0.7:5173/login?client-code=phu-quy',
+    );
+    expect(companyOwnAddress('https://d111111abcdef8.cloudfront.net', 'phu-quy')).toBe(
+      'https://d111111abcdef8.cloudfront.net/login?client-code=phu-quy',
+    );
+    expect(companyOwnAddress('https://www.example', 'phu-quy')).toBe(
+      'https://www.example/login?client-code=phu-quy',
     );
   });
 });

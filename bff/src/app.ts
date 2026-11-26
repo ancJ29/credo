@@ -28,8 +28,10 @@ import {
   saveConfigRequestSchema,
   sha256Hex,
   type SessionReplyBody,
+  type SignInMethodsReply,
   signInQrRequestSchema,
   signInRequestSchema,
+  SIGN_UP_WAITING,
   signInRoutes,
   staffConfig,
   storedClientSchema,
@@ -44,7 +46,7 @@ import { companiesByBox, createClient, listClients, ROOT_NAME } from './records/
 import { type StoreOfLine, type TenantStorage, tenantStorage } from './records/records';
 import { clearWait, countTry, waitKeyFrom } from './records/sign-in-wait';
 import { HttpError, parse, replyFor } from './errors';
-import { type Declared, declare, exempt, operatorOf, personOf } from './audit';
+import { type Declared, declare, type Entry, exempt, operatorOf, personOf } from './audit';
 import { constantTimeEqual } from './calling/constant-time';
 import { hashPassword, verifyAgainstNobody, verifyPassword } from './calling/password';
 import { createSessions } from './calling/sessions';
@@ -59,6 +61,7 @@ import {
 } from './records/staff-records';
 import { registerOperatorAuth } from './routes/operator-auth';
 import { registerOwnPasskeyRoutes } from './routes/own-passkeys';
+import { registerSignUpRoutes } from './routes/sign-up';
 import { registerListRoutes } from './routes/lists';
 import { registerDeliveryPhotoRoutes } from './routes/delivery-photo';
 import { registerOrderRoutes } from './routes/orders';
@@ -227,7 +230,11 @@ export function buildApp({
    * its company this way, from the address and no header. */
   async function tenantOfCode(code: string, request: FastifyRequest) {
     const found = await storage.getRecord(recordKeys.client(code));
-    if (!found) throw new HttpError(404, 'Unknown client');
+    if (!found) {
+      // An address a company signed up for and waits on says so, in the 404's detail, and no more.
+      const waiting = await storage.getRecord(recordKeys.signUp(code));
+      throw new HttpError(404, 'Unknown client', waiting ? { details: SIGN_UP_WAITING } : {});
+    }
     const line = storedClientSchema.parse(found.data);
     return {
       tenantId: line.id,
@@ -376,6 +383,26 @@ export function buildApp({
     if (typeof kept === 'string') await sessions.end(kept);
   }
 
+  /** The person's sign-in record written anew, its new generation ending every session issued
+   * before it; this device gets the session that replaces the one it held. A record that moved
+   * since the session read it has ended the session: a 401. */
+  async function renewed(
+    request: FastifyRequest,
+    who: Awaited<ReturnType<typeof signedIn>>,
+    device: string,
+    entry: Entry,
+    changed: StoredUser,
+  ): Promise<SessionReplyBody> {
+    const key = recordKeys.tenant(request.tenantId).user(who.signInName);
+    if ((await request.storage.putRecord(key, changed, who.signIn.tag)) === 'moved')
+      throw unauthorized();
+    entry.saved(null, null);
+    const sessions = sessionsOf(request.storage);
+    await endKept(request, sessions);
+    const issued = await sessions.issue(device, who.signInName, changed.generation);
+    return { ...issued, user: userViewOf(who) };
+  }
+
   function deviceOf(request: FastifyRequest) {
     const device = deviceIdSchema.safeParse(request.headers[DEVICE_HEADER]);
     if (!device.success) throw new HttpError(400, 'Bad request', { details: DEVICE_HEADER });
@@ -520,6 +547,13 @@ export function buildApp({
     },
   );
 
+  /** What the door may know before anyone signs in: whether the company has the QR sign-in on, and
+   * nothing else of its setup. A read, so it changes nothing and needs no exemption. */
+  app.get(signInRoutes.methods, forClient, async (request): Promise<SignInMethodsReply> => {
+    const setup = await readSetup(request.storage, request.storage.tenantId);
+    return { qr: staffConfig(setup.setup).fields.qr };
+  });
+
   /** Whether `password` is the one a sign-in record holds. A record with none (a person who has only
    * come in by a QR code) still spends the check, so it takes as long as a wrong one. */
   async function holdsPassword(user: StoredUser, password: string) {
@@ -549,20 +583,12 @@ export function buildApp({
         throw seconds > 0 ? waitError(seconds) : forbidden();
       }
       await clearWait(request.storage, waitKey, who.signInName);
-      const changed: StoredUser = {
+      return await renewed(request, who, device, entry, {
         ...who.signIn.user,
         passwordHash: await hashPassword(body.password),
         passwordAt: now(),
         generation: randomUUID(),
-      };
-      const key = recordKeys.tenant(request.tenantId).user(who.signInName);
-      if ((await request.storage.putRecord(key, changed, who.signIn.tag)) === 'moved')
-        throw unauthorized();
-      entry.saved(null, null);
-      const sessions = sessionsOf(request.storage);
-      await endKept(request, sessions);
-      const issued = await sessions.issue(device, who.signInName, changed.generation);
-      return { ...issued, user: userViewOf(who) };
+      });
     },
   );
 
@@ -613,6 +639,7 @@ export function buildApp({
     signedIn,
     deviceOf,
     holder,
+    renewed,
   });
 
   const { operatorSignedIn, confirmed } = registerOperatorAuth(app, {
@@ -625,6 +652,7 @@ export function buildApp({
   registerDeleteClientRoutes(app, { storage, storeOfLine, now, operatorSignedIn, confirmed });
   registerMoveClientRoutes(app, { storage, boxStorage, now, operatorSignedIn, confirmed });
   registerOperatorTeamRoutes(app, { storage, now, operatorSignedIn, confirmed });
+  registerSignUpRoutes(app, { storage, now, operatorSignedIn });
 
   app.get(ROUTES.operatorClients, async (request): Promise<ClientListReply> => {
     await operatorSignedIn(request);

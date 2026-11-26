@@ -58,6 +58,30 @@ const HEADINGS: Record<string, string> = {
 };
 
 const BASE = '/48b74d079/gallery';
+/** The confirm page's six states 241.4 added after the add page's two, in drawing order. */
+/** The door card's states: the two it began with, the scan page's six after them, then 241.5's three for a company's sign-up. */
+const DOOR_CARD_STATES = [
+  'Sign-in',
+  'Login link',
+  'The camera',
+  'A picture',
+  'Paste the link',
+  'Signed in',
+  'A code refused',
+  'No camera',
+  'A company’s sign-up',
+  'An address taken',
+  'Sent for approval',
+];
+
+const NEW_PASSKEY_STATES = [
+  'Your passkeys',
+  'A removal asked',
+  'A passkey removed',
+  'No passkey yet',
+  'A person’s passkeys',
+  'Their removal asked',
+];
 
 function open(path: string) {
   return render(
@@ -136,7 +160,7 @@ describe('Gallery', () => {
         'name: string · logo?: string · formatted?: string · description?: string · children: ReactNode',
       ),
     ).toBeDefined();
-    expect(stateNames()).toEqual(['Sign-in', 'Login link']);
+    expect(stateNames()).toEqual(DOOR_CARD_STATES);
     expect(screen.queryByRole('heading', { level: 2, name: 'FieldLabel' })).toBeNull();
     expect(screen.getAllByRole('article')).toHaveLength(1);
   });
@@ -223,13 +247,13 @@ describe('Gallery', () => {
     const user = userEvent.setup();
     open(`${BASE}/organisms/door-card`);
 
-    expect(stateNames()).toEqual(['Sign-in', 'Login link']);
+    expect(stateNames()).toEqual(DOOR_CARD_STATES);
     await user.click(screen.getByRole('button', { name: 'One at a time' }));
     expect(stateNames()).toEqual(['Sign-in']);
     await user.click(screen.getByRole('button', { name: 'Login link' }));
     expect(stateNames()).toEqual(['Login link']);
     await user.click(screen.getByRole('button', { name: 'Side by side' }));
-    expect(stateNames()).toEqual(['Sign-in', 'Login link']);
+    expect(stateNames()).toEqual(DOOR_CARD_STATES);
 
     await user.click(screen.getByRole('button', { name: 'One at a time' }));
     await user.click(list().getByRole('link', { name: 'PageHeader' }));
@@ -460,6 +484,8 @@ describe('Gallery', () => {
       'Company, two languages',
       'Credo, no logo',
       'One language, no switch',
+      'An address with no company',
+      'Waiting for approval',
     ]);
     const plate = (name: string) => within(part().getByRole('figure', { name }));
     const switchOf = (name: string) =>
@@ -471,8 +497,8 @@ describe('Gallery', () => {
     expect(plate('Company, two languages').getAllByRole('img')).toHaveLength(1);
     expect(plate('Credo, no logo').queryAllByRole('img')).toHaveLength(0);
     expect(plate('Credo, no logo').getByText('Credo')).toBeDefined();
-    // Each plate's card sits in a screen the brand's gradient sweeps.
-    for (const name of stateNames()) {
+    // Each of the three door plates' cards sits in a screen the brand's gradient sweeps; the two after them are 241.5's, with no field.
+    for (const name of stateNames().slice(0, 3)) {
       const screenOf = plate(name!)
         .getByRole('textbox')
         .closest<HTMLElement>('[style*="gradient"]');
@@ -546,7 +572,7 @@ describe('Gallery', () => {
         row.textContent,
         row.getAttribute('href'),
       ]),
-    ).toContainEqual([en.user.passkey, '/passkey']);
+    ).toContainEqual([en.user.passkey, '/passkeys']);
     cleanup();
     // 4. The confirm page: two phone states, the one press to add, then the added message.
     const confirm = ENTRIES.find((each) => each.name === 'The confirm page')!;
@@ -556,8 +582,9 @@ describe('Gallery', () => {
       'Made',
       'A passkey to add',
       'A passkey added',
+      ...NEW_PASSKEY_STATES,
     ]);
-    expect(confirm.states.slice(3).map((state) => 'phone' in state && state.phone)).toEqual([
+    expect(confirm.states.slice(3, 5).map((state) => 'phone' in state && state.phone)).toEqual([
       true,
       true,
     ]);
@@ -575,14 +602,184 @@ describe('Gallery', () => {
     const add = toAdd.getByRole('button', { name: en.ownPasskey.submit });
     expect(add.getAttribute('data-variant')).toBe('filled');
     expect(toAdd.getAllByRole('button')).toHaveLength(1);
+    expect(toAdd.getByRole('link', { name: en.ownPasskeys.title }).getAttribute('href')).toBe(
+      '/passkeys',
+    );
     expect(toAdd.queryByRole('status')).toBeNull();
     const added = bodyOf('A passkey added');
     expect(added.getByRole('status').textContent).toContain(en.ownPasskey.added);
     expect(added.getByText(en.ownPasskey.addedText)).toBeDefined();
     expect(added.queryByRole('button', { name: en.ownPasskey.submit })).toBeNull();
+    expect(added.getByRole('link', { name: en.ownPasskeys.title }).getAttribute('href')).toBe(
+      '/passkeys',
+    );
     expect(words.ownPasskey.submit).toBe('Thêm khóa truy cập');
-    expect(words.user.passkey).toBe('Thêm khóa truy cập');
-    expect(en.user.passkey).toBe('Add a passkey');
+    expect(words.user.passkey).toBe('Khóa truy cập');
+    expect(en.user.passkey).toBe('Passkeys');
+  });
+
+  it('241.4 case 18: the gallery draws the passkey list’s states, the removal’s question and the person’s panel in the dictionary’s words', () => {
+    const { en, vi: words } = DICTIONARIES;
+    const confirm = ENTRIES.find((each) => each.name === 'The confirm page')!;
+    expect(confirm.states.slice(5).map((state) => state.name)).toEqual(NEW_PASSKEY_STATES);
+    expect(confirm.states.slice(5).map((state) => 'phone' in state && state.phone)).toEqual([
+      true,
+      true,
+      true,
+      true,
+      false,
+      false,
+    ]);
+    drawn(confirm);
+    const bodyOf = (name: string, phone: boolean) => {
+      if (!phone) return within(part().getByRole('figure', { name }));
+      const frame = part().getByTitle<HTMLIFrameElement>(`${name}, at the phone’s width`);
+      act(() => {
+        fireEvent.load(frame);
+      });
+      return within(frame.contentDocument!.body);
+    };
+    // 1. The list: the heading, what a passkey is, three rows by device, added and last used, each its Remove.
+    const list = bodyOf('Your passkeys', true);
+    expect(list.getByRole('heading', { level: 2, name: en.ownPasskeys.title })).toBeDefined();
+    expect(list.getByText(en.ownPasskeys.text)).toBeDefined();
+    expect(list.getAllByRole('columnheader').map((cell) => cell.textContent)).toEqual([
+      en.ownPasskeys.colDevice,
+      en.passkey.colAdded,
+      en.passkey.colLastUsed,
+      '',
+    ]);
+    expect(list.getAllByRole('row')).toHaveLength(4);
+    expect(list.getAllByRole('row')[1].textContent).toContain('iPhone · Safari');
+    expect(list.getAllByRole('row')[2].textContent).toContain(en.passkey.never);
+    expect(list.getAllByRole('row')[3].textContent).toContain(en.ownPasskeys.deviceUnknown);
+    expect(
+      list.getAllByRole('button', { name: new RegExp(`^${en.ownPasskeys.remove}`) }),
+    ).toHaveLength(3);
+    expect(list.queryByText(en.ownPasskeys.removeAsk)).toBeNull();
+    expect(list.queryByRole('status')).toBeNull();
+    // 2. The question: what removing does, the press and the way to keep it.
+    const asked = bodyOf('A removal asked', true);
+    expect(asked.getByText(en.ownPasskeys.removeAsk)).toBeDefined();
+    expect(
+      asked
+        .getByRole('button', { name: en.ownPasskeys.removeConfirm })
+        .getAttribute('data-variant'),
+    ).toBe('filled');
+    expect(asked.getByRole('button', { name: en.ownPasskeys.removeCancel })).toBeDefined();
+    // 3. Removed: the message, one row fewer.
+    const removed = bodyOf('A passkey removed', true);
+    expect(removed.getByRole('status').textContent).toContain(en.ownPasskeys.removed);
+    expect(removed.getAllByRole('row')).toHaveLength(3);
+    expect(removed.queryByText(en.ownPasskeys.removeAsk)).toBeNull();
+    // 4. None yet: the line and the way to add, no table.
+    const none = bodyOf('No passkey yet', true);
+    expect(none.getByText(en.ownPasskeys.none)).toBeDefined();
+    expect(none.queryByRole('table')).toBeNull();
+    expect(none.getByRole('link', { name: en.ownPasskey.submit }).getAttribute('href')).toBe(
+      '/passkey',
+    );
+    // 5. The root's panel on a person's page, then its question, at a PC's width.
+    const name = SAMPLES.en.person;
+    const panel = bodyOf('A person’s passkeys', false);
+    expect(panel.getByRole('heading', { name: en.person.passkeysTitle })).toBeDefined();
+    expect(panel.getByText(en.person.passkeysHeld.replace('{{count}}', '2'))).toBeDefined();
+    expect(panel.getByText(en.person.passkeysText.replace('{{name}}', name))).toBeDefined();
+    expect(panel.getByRole('button', { name: en.person.passkeysRemove })).toBeDefined();
+    expect(panel.queryByRole('button', { name: en.person.passkeysCancel })).toBeNull();
+    const theirs = bodyOf('Their removal asked', false);
+    expect(
+      theirs.getByRole('button', { name: en.person.passkeysConfirm.replace('{{name}}', name) }),
+    ).toBeDefined();
+    expect(theirs.getByRole('button', { name: en.person.passkeysCancel })).toBeDefined();
+    expect(theirs.queryByRole('button', { name: en.person.passkeysRemove })).toBeNull();
+    // 6. The words: Vietnamese beside English, and the removal's question names the other devices.
+    expect(words.ownPasskeys.title).toBe('Khóa truy cập của bạn');
+    expect(words.person.passkeysCancel).toBe('Giữ lại');
+    expect(en.ownPasskeys.removeAsk).toContain('other devices will be signed out');
+    expect(en.person.passkeysFailed).toContain('could not be removed');
+  });
+
+  it('241.5 case 19: the gallery draws the sign-up’s three states, the unknown and waiting screens and the console’s waiting rows in the dictionary’s words', () => {
+    window.localStorage.clear();
+    const { vi: words } = DICTIONARIES;
+    const fill = (text: string, values: Record<string, string>) =>
+      Object.entries(values).reduce((made, [name, v]) => made.replaceAll(`{{${name}}}`, v), text);
+    const NAME = 'Gạch Men Phú Quý';
+    // 1. The door card's three: the form, the address taken, the card sent.
+    open(`${BASE}/organisms/door-card`);
+    const card = (name: string) => within(part().getByRole('figure', { name }));
+    expect(stateNames().slice(8)).toEqual(DOOR_CARD_STATES.slice(8));
+    const form = card('A company’s sign-up');
+    expect(form.getByRole('heading', { name: words.signUp.title })).toBeDefined();
+    expect(form.getByText(words.signUp.intro)).toBeDefined();
+    for (const label of [
+      words.signUp.name,
+      words.signUp.code,
+      words.signUp.contactName,
+      words.signUp.contactPhone,
+    ]) {
+      expect(form.getByRole('textbox', { name: label }), label).toBeDefined();
+    }
+    expect(form.getByLabelText(words.signUp.password, { exact: false })).toBeDefined();
+    expect(form.getByText(words.signUp.codeHint)).toBeDefined();
+    expect(form.getByRole('button', { name: words.signUp.submit })).toBeDefined();
+    expect(form.queryByText(words.signUp.taken)).toBeNull();
+    const taken = card('An address taken');
+    expect(taken.getByText(words.signUp.taken)).toBeDefined();
+    expect(taken.getByRole('button', { name: words.signUp.submit })).toBeDefined();
+    const sent = card('Sent for approval');
+    expect(sent.getByRole('heading', { name: words.signUp.sentTitle })).toBeDefined();
+    expect(
+      sent.getByText(fill(words.signUp.sentText, { name: NAME, address: 'phu-quy.example.test' })),
+    ).toBeDefined();
+    expect(sent.queryByRole('textbox')).toBeNull();
+    cleanup();
+    // 2. The unknown address and the waiting screen, on the door's page.
+    const doorPage = ENTRIES.find((each) => each.name === 'DoorPage')!;
+    expect(doorPage.states.slice(3).map((state) => state.name)).toEqual([
+      'An address with no company',
+      'Waiting for approval',
+    ]);
+    drawn(doorPage);
+    // The door plates' language is the one the page last picked, which an earlier test may have
+    // changed: read it off the plate.
+    const unknown = card('An address with no company');
+    const shown = unknown.getAllByRole('heading', { level: 2 })[0]?.textContent;
+    const dict = shown === DICTIONARIES.en.unknownClient.title ? DICTIONARIES.en : words;
+    expect(unknown.getByText(dict.unknownClient.title)).toBeDefined();
+    expect(unknown.getByRole('link', { name: dict.signUp.title }).getAttribute('href')).toBe(
+      '/sign-up',
+    );
+    const waiting = card('Waiting for approval');
+    expect(waiting.getByRole('heading', { name: dict.signUp.waitingTitle })).toBeDefined();
+    expect(waiting.getByText(dict.signUp.waitingText)).toBeDefined();
+    expect(waiting.queryByRole('link')).toBeNull();
+    cleanup();
+    // 3. The list page's two: the waiting rows above the companies, and a refusal asked.
+    const list = ENTRIES.find((each) => each.name === 'The list page')!;
+    expect(list.states.slice(6).map((state) => state.name)).toEqual([
+      'Waiting for approval',
+      'A refusal asked',
+    ]);
+    drawn(list);
+    const rows = card('Waiting for approval');
+    expect(rows.getByRole('heading', { name: dict.operator.waitingTitle })).toBeDefined();
+    expect(rows.getAllByRole('columnheader').map((cell) => cell.textContent)).toEqual(
+      expect.arrayContaining([dict.operator.colContact, dict.operator.colAsked]),
+    );
+    expect(rows.getByText(NAME)).toBeDefined();
+    expect(rows.getByRole('button', { name: `${dict.operator.approve}: ${NAME}` })).toBeDefined();
+    expect(rows.getByRole('button', { name: `${dict.operator.refuse}: ${NAME}` })).toBeDefined();
+    expect(rows.queryByText(fill(dict.operator.refuseAsk, { name: NAME }))).toBeNull();
+    const asked = card('A refusal asked');
+    expect(asked.getByText(fill(dict.operator.refuseAsk, { name: NAME }))).toBeDefined();
+    expect(asked.getByRole('button', { name: dict.operator.refuseConfirm })).toBeDefined();
+    expect(asked.getByRole('button', { name: dict.operator.refuseCancel })).toBeDefined();
+    // 4. The words: Vietnamese beside English.
+    expect(words.signUp.title).toBe('Đăng ký công ty của bạn');
+    expect(words.operator.approve).toBe('Duyệt');
+    expect(words.signUp.waitingTitle).toBe(words.operator.waitingTitle);
   });
 
   it('241.1 case 18: DoorCard and DoorPage say they are built and in use, and no line says a screen draws a card of its own', () => {
@@ -637,6 +834,8 @@ describe('Gallery', () => {
       'A delivery’s proof',
       'A company’s logo',
       'The sign-in QR code',
+      'The code’s link',
+      'A new code asked',
     ]);
     const { vi: words } = DICTIONARIES;
     const person = within(part().getByRole('figure', { name: 'A person’s photo' }));
@@ -671,6 +870,49 @@ describe('Gallery', () => {
     ).toBe('');
     const code = within(part().getByRole('figure', { name: 'The sign-in QR code' }));
     expect(code.getByRole('img', { name: words.person.qrImage })).toBeDefined();
+  });
+
+  it('241.3 case 11: the gallery draws the card’s QR button, the scan page’s seven views and the panel’s copy button and question in the dictionary’s words', () => {
+    window.localStorage.clear();
+    const { vi: words } = DICTIONARIES;
+    // 1. The card: "Use a QR code" under the same "or" as the passkey button.
+    const card = open(`${BASE}/organisms/door-card`);
+    const view = (name: string) => within(part().getByRole('figure', { name }));
+    expect(view('Sign-in').getByRole('button', { name: words.qrScan.button })).toBeDefined();
+    // 2. The scan page: the first view's two choices, then each state's own words.
+    const first = view('Login link');
+    expect(first.getByRole('heading', { name: words.qrScan.title })).toBeDefined();
+    expect(first.getByText(words.qrScan.text)).toBeDefined();
+    expect(first.getByRole('button', { name: words.qrScan.scan })).toBeDefined();
+    expect(first.getByRole('button', { name: words.qrScan.byHand })).toBeDefined();
+    const camera = view('The camera');
+    expect(camera.getByText(words.qrScan.scanning)).toBeDefined();
+    expect(camera.queryByRole('button', { name: words.qrScan.scan })).toBeNull();
+    expect(view('A picture').getByRole('button', { name: words.qrScan.choose })).toBeDefined();
+    const paste = view('Paste the link');
+    expect(paste.getByRole('textbox', { name: words.qrScan.paste })).toBeDefined();
+    expect(paste.getByRole('button', { name: words.auth.submit })).toBeDefined();
+    expect(view('Signed in').getByText(words.qrScan.signedIn)).toBeDefined();
+    const refused = view('A code refused');
+    expect(refused.getByRole('heading', { name: words.qrSignIn.refusedTitle })).toBeDefined();
+    expect(refused.getByText(words.qrSignIn.refusedText)).toBeDefined();
+    expect(refused.getByRole('link', { name: words.qrSignIn.password })).toBeDefined();
+    const none = view('No camera');
+    expect(none.getByText(words.qrScan.noCamera)).toBeDefined();
+    expect(none.getByRole('button', { name: words.qrScan.choose })).toBeDefined();
+    expect(none.getByRole('textbox', { name: words.qrScan.paste })).toBeDefined();
+    card.unmount();
+    // 3. The panel: the link with its copy button, then the question a new code asks first.
+    open(`${BASE}/foundations/photos-and-codes`);
+    const link = within(part().getByRole('figure', { name: 'The code’s link' }));
+    expect(link.getByRole('textbox', { name: words.person.qrLink })).toBeDefined();
+    expect(
+      link.getByRole('button', { name: new RegExp(`^${words.operator.copyLink}`) }),
+    ).toBeDefined();
+    const asked = within(part().getByRole('figure', { name: 'A new code asked' }));
+    expect(asked.getByText(words.person.qrNewAsk)).toBeDefined();
+    expect(asked.getByRole('button', { name: words.person.qrNewConfirm })).toBeDefined();
+    expect(asked.getByRole('button', { name: words.person.qrNewCancel })).toBeDefined();
   });
 
   it('231 case 12: Links draws a name link in a row, a phone link and a link in a sentence', () => {
@@ -721,13 +963,18 @@ describe('Gallery', () => {
     await waitFor(() => expect(state.queryByRole('dialog')).toBeNull());
   });
 
-  it('11: draws the door card in two states, the sign-in and the link page, in sentence case', () => {
+  it('11: draws the door card’s sign-in and its scan page’s first view in sentence case', () => {
     open(`${BASE}/organisms/door-card`);
 
     expect(part().getByRole('heading', { name: 'Đăng nhập vào tài khoản của bạn' })).toBeDefined();
-    expect(part().getByRole('heading', { name: 'Đăng nhập bằng liên kết' })).toBeDefined();
+    expect(part().getByRole('heading', { name: DICTIONARIES.vi.qrScan.title })).toBeDefined();
     expect(part().getAllByText('hoặc')).toHaveLength(2);
-    expect(part().getByRole('link', { name: 'Quay lại đăng nhập' })).toBeDefined();
+    // The scan page's way back is the password sign-in's own words, drawn on its first view.
+    expect(
+      within(part().getByRole('figure', { name: 'Login link' })).getByRole('link', {
+        name: DICTIONARIES.vi.qrSignIn.password,
+      }),
+    ).toBeDefined();
   });
 
   it('213 case 7: a rule says in words what holds it and whether the app follows it, or the item that moves it', () => {
@@ -2130,18 +2377,14 @@ describe('Gallery', () => {
       { words: 'Customers', href: '/customers', arrow: true },
       { words: 'Products', href: '/products', arrow: true },
       { words: 'Change password', href: '/password', arrow: true },
-      { words: 'Add a passkey', href: '/passkey', arrow: true },
+      { words: 'Passkeys', href: '/passkeys', arrow: true },
       { words: 'Sign out', href: null, arrow: false },
     ]);
     expect(more.panels[1].lastElementChild!.textContent).toContain('Sign out');
     // 2. No other pages: the one panel of the person's link and sign-out.
     const bare = rowsOf('No other pages');
     expect(bare.panels).toHaveLength(1);
-    expect(bare.rows.map((row) => row.words)).toEqual([
-      'Change password',
-      'Add a passkey',
-      'Sign out',
-    ]);
+    expect(bare.rows.map((row) => row.words)).toEqual(['Change password', 'Passkeys', 'Sign out']);
   });
 
   it('236 case 11: the confirm page draws the warning first, red only on a delete, the made value with its copy button', () => {
@@ -2153,6 +2396,7 @@ describe('Gallery', () => {
       'Made',
       'A passkey to add',
       'A passkey added',
+      ...NEW_PASSKEY_STATES,
     ]);
     drawn(entry);
     const figure = (name: string) => within(part().getByRole('figure', { name }));

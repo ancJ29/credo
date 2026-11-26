@@ -386,7 +386,7 @@ In the order they would meet it, not in order of how hard each is.
 1. **Fixed 2026-11-08 (open item 135, [recap](recaps/2026-11-08-add-records.md)): a clerk with `orders.canEdit` now adds either from the list's Add button; the import is still the root's alone. As the page found it:** a clerk could not add a customer or a product. The only way a record enters either list
    is the Excel import, and the import is the root's alone:
    [`bff/src/routes/lists.ts#L141`](../bff/src/routes/lists.ts#L141) calls `mustBeRoot`, and
-   [`ui/src/ClientApp.tsx#L393`](../ui/src/ClientApp.tsx#L393) says so in its own comment — "Only
+   [`ui/src/ClientApp.tsx#L395`](../ui/src/ClientApp.tsx#L395) says so in its own comment — "Only
    the root imports (case-table row 22): no permission allows it." There is no Add on either list
    page, and the Import button is drawn for the root only
    ([`ui/src/pages/client/ListPage.tsx`](../ui/src/pages/client/ListPage.tsx)'s `ListPage`), so a clerk sees no path whatsoever.

@@ -751,6 +751,7 @@ describe('C: A QR code is 32 random bytes kept as their hash, in one record per 
   it('C: The QR code is issued by the root alone, and only while the company has the QR sign-in on', async () => {
     const t = await staffTenant(cs);
     const bao = await person(t, { code: 'EMP-0004' });
+    await t.setup({ fields: { qr: false } });
     const off = await issue(t, bao.id);
     await t.setup({ fields: { qr: true } });
     const everything = {
@@ -765,6 +766,35 @@ describe('C: A QR code is 32 random bytes kept as their hash, in one record per 
 
     expect([off.statusCode, notRoot.statusCode, nobody.statusCode]).toEqual([403, 403, 404]);
     expect(await t.client.getRecord(t.keys.signInQr(bao.id))).toBeNull();
+  });
+
+  it('2: The door’s read tells anyone at the company’s address whether the QR sign-in is on, and nothing else of the setup', async () => {
+    const t = await staffTenant(cs);
+    const read = () =>
+      t.app.inject({
+        method: 'GET',
+        url: '/api/auth/methods',
+        headers: { 'x-device-id': DEVICE },
+      });
+
+    // no session, and a setup that never said: on
+    const first = await read();
+    expect(first.statusCode).toBe(200);
+    expect(first.json()).toEqual({ qr: true });
+
+    await t.setup({ fields: { qr: false, email: true, passkey: true } });
+    expect((await read()).json()).toEqual({ qr: false });
+    await t.setup({ fields: { qr: true } });
+    expect((await read()).json()).toEqual({ qr: true });
+  });
+
+  it('3: A code opened where the setup never set the QR switch signs in once, and the same code again is the one 401', async () => {
+    const t = await staffTenant(cs);
+    const bao = await person(t, { code: 'EMP-0004' });
+    const code = await issued(t, bao.id);
+
+    expect((await openQr(t, bao.id, code.secret)).statusCode).toBe(200);
+    expect((await openQr(t, bao.id, code.secret)).statusCode).toBe(401);
   });
 
   it('C: A company that turns the QR sign-in off refuses the codes it issued, and they stay unspent', async () => {
