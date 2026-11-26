@@ -24,8 +24,8 @@ flowchart LR
 ## Where it stands
 
 - Point 1, the gallery: yes, 25 November.
-- Point 2, the walks page, and point 3, on ridge: open.
-- <!-- FILL: the landing on `pre-merge` and its result -->
-- <!-- FILL: the whole check and its result -->
-- <!-- FILL: the review before `main` and its findings -->
-- <!-- FILL: the push and the deploy to ridge -->
+- Points 2 and 3, the walks page and ridge: yes, 26 November.
+- Landed on `pre-merge` as `aef40884`, 26 November; its second landing, `8b4191a0`, carried the review's fixes.
+- The whole check of `aef40884`, 14:48 to 14:57, ended green: exit 0.
+- The review before `main` read red, three blocks, all words: stale readiness pages, the products state, 24 moved line pointers. One fix pass, `ee6b3ea2`, closed them; its two later rows are items 700 and 701, deferred.
+- Pushed: `main` is `8b4191a0`; GitHub's run and ridge's deploy are green by your word.
