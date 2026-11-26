@@ -6,9 +6,9 @@ import { DICTIONARIES } from '../../i18n';
 
 const words = DICTIONARIES.en.settings;
 
-const TAB = 'data:image/png;base64,TAB';
-const APP = 'data:image/png;base64,APP';
-const SMALL = 'data:image/png;base64,SMALL';
+const TAB = 'data:image/png;base64,TAB=';
+const APP = 'data:image/png;base64,APP=';
+const SMALL = 'data:image/png;base64,SMAL';
 
 // jsdom has no canvas: the browser's resizing is stood in for, the rest is the app on the fake.
 vi.mock('../../icons', async (original) => ({

@@ -103,6 +103,8 @@ export const en = {
     iconDrawn:
       'None uploaded: a mark drawn from the color and the first letter of the name is used.',
     iconTooSmall: 'The picture must be at least 512 pixels on its shorter side.',
+    iconTooLarge:
+      'The icon made from this picture is over {{max}} KB. Please choose a simpler picture.',
     iconPreviewTab: "In the browser's tab",
     iconPreviewHome: "On a phone's home screen",
     formattedName: 'Name with formatting',

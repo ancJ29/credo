@@ -5,6 +5,7 @@ import {
   type Language,
   LANGUAGES,
   languagesAreValid,
+  logoIsValid,
   MAX_LOGO_BYTES,
   type PictureKind,
   type Pictures,
@@ -62,7 +63,7 @@ type Props = {
   makeIcon?: (file: File, kind: IconKind) => Promise<MadeIcon>;
 };
 
-type LogoRefusal = 'logoNotImage' | 'logoTooLarge' | 'iconTooSmall';
+type LogoRefusal = 'logoNotImage' | 'logoTooLarge' | 'iconTooSmall' | 'iconTooLarge';
 
 /** What each outcome of a picture's save says, and in which kind of message. */
 const PICTURE_OUTCOMES = {
@@ -112,11 +113,22 @@ function SettingsForm({
     if (!isIconKind(kind))
       return void readAsDataUrl(file).then((picture) => onPicture(kind, picture));
     // An icon is made the sides its kind asks, in the browser, and saved at once with its second size.
+    // The made icon's bytes are bounded as the save bounds them, so a refusal here has a word of its own.
     void makeIcon(file, kind).then(
       (made) =>
-        made === 'tooSmall' ? refuse('iconTooSmall') : onPicture(kind, made.picture, made.small),
+        made === 'tooSmall'
+          ? refuse('iconTooSmall')
+          : !logoIsValid(made.picture) || (made.small !== undefined && !logoIsValid(made.small))
+            ? refuse('iconTooLarge')
+            : onPicture(kind, made.picture, made.small),
       () => refuse('logoNotImage'),
     );
+  };
+
+  /** A removal saves, so the refusal of the file chosen before it is cleared with it. */
+  const remove = (kind: PictureKind) => {
+    setRefused((was) => ({ ...was, [kind]: null }));
+    onPicture(kind, null);
   };
 
   /** An icon's address where one is stored: the drawn one, which has no version, is no picture to remove. */
@@ -212,7 +224,7 @@ function SettingsForm({
                     remove={t('settings.logoRemove')}
                     message={messageOf('logo')}
                     onChoose={choosePicture('logo')}
-                    onRemove={() => onPicture('logo', null)}
+                    onRemove={() => remove('logo')}
                   />
                   <PictureField
                     label={t('settings.logoOnColour')}
@@ -223,7 +235,7 @@ function SettingsForm({
                     remove={t('settings.logoOnColourRemove')}
                     message={messageOf('logo-on-colour')}
                     onChoose={choosePicture('logo-on-colour')}
-                    onRemove={() => onPicture('logo-on-colour', null)}
+                    onRemove={() => remove('logo-on-colour')}
                   />
                   <PictureField
                     label={t('settings.tabIcon')}
@@ -234,7 +246,7 @@ function SettingsForm({
                     remove={t('settings.tabIconRemove')}
                     message={messageOf('tab-icon')}
                     onChoose={choosePicture('tab-icon')}
-                    onRemove={() => onPicture('tab-icon', null)}
+                    onRemove={() => remove('tab-icon')}
                   />
                   <PictureField
                     label={t('settings.appIcon')}
@@ -245,7 +257,7 @@ function SettingsForm({
                     remove={t('settings.appIconRemove')}
                     message={messageOf('app-icon')}
                     onChoose={choosePicture('app-icon')}
-                    onRemove={() => onPicture('app-icon', null)}
+                    onRemove={() => remove('app-icon')}
                   />
                 </Stack>
               </DetailCard>

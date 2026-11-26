@@ -11,6 +11,7 @@ import {
   type ServicesReply,
   type ConfigDoc,
   PICTURE_KINDS,
+  type Pictures,
   isIconKind,
   pictureAddress,
   createClientRequestSchema,
@@ -360,21 +361,23 @@ export function buildApp({
             const held = await storage.getRecord(keys.picture(kind));
             // An icon none is stored for is the drawn one, at the settings' version, with no picture's version.
             if (!held)
-              return isIconKind(kind)
-                ? { address: pictureAddress(code, kind, found.tag), version: '' }
-                : null;
-            return { address: pictureAddress(code, kind, held.tag), version: held.tag };
+              return [
+                kind,
+                isIconKind(kind)
+                  ? { address: pictureAddress(code, kind, found.tag), version: '' }
+                  : null,
+              ] as const;
+            return [
+              kind,
+              { address: pictureAddress(code, kind, held.tag), version: held.tag },
+            ] as const;
           }),
         );
         return {
           config: tenantConfigSchema.parse(stored),
           version: found.tag,
-          pictures: {
-            logo: views[0] ?? null,
-            'logo-on-colour': views[1] ?? null,
-            'tab-icon': views[2]!,
-            'app-icon': views[3]!,
-          },
+          // Named by kind, never by position: a kind inserted in the list moves no other's address.
+          pictures: Object.fromEntries(views) as Pictures,
         };
       }
       // A logo of null is dropped alike: nothing to keep. A picture there is kept over this one.
