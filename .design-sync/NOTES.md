@@ -14,6 +14,7 @@ The design system synced to Claude Design is credo's gallery parts (`ui/src/desi
 ## Gotchas met
 
 - **A Vite library build inlines CommonJS packages that call `require("react")`** (`use-sync-external-store/shim`); the converter's React is a page global, so the bundle threw at load. `vite.config.ts` aliases it to `react-sync-store.js`. Load `_ds_bundle.js` once in jsdom with `window.React` set before any browser run.
+- **The library is built on React 19, a Claude Design canvas runs React 18:** Mantine 9 calls `useEffectEvent`, `use` and `Activity` and renders contexts as their own providers, so every artboard threw "d is not a function". `vite.config.ts` sends every `react` import through `lib/react-compat.js`, which fills those four in on React 18 and is React itself on 19.
 - **A second router throws** ("cannot render a Router inside another Router"): `CredoProvider` reuses an existing one.
 - **`LogoTile` draws nothing without a logo, by design:** its `NoLogo` preview carries a caption so the cell is not blank.
 - **Cards wider than the grid cell are cropped:** `cardMode: column` is set for the parts with fixed-width samples (see `overrides`).
