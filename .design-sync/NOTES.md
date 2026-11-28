@@ -1,6 +1,7 @@
 # Design sync notes
 
-The design system synced to Claude Design is credo's gallery parts (`ui/src/design-system/`), package shape, no Storybook. Project id is pinned in `config.json`.
+The design system synced to Claude Design is credo's gallery parts (`ui/src/design-system/`), package shape, no Storybook.
+Since 2026-11-28 it syncs to a **Design System artifact** on claude.ai, named in `artifact.json`: the claude.ai/design project (`projectId` in `config.json`, kept as the record of where it came from) moved there, and claude.ai/design closes by 2026-12-14.
 
 ## How the build is made
 
@@ -19,9 +20,17 @@ The design system synced to Claude Design is credo's gallery parts (`ui/src/desi
 - **`LogoTile` draws nothing without a logo, by design:** its `NoLogo` preview carries a caption so the cell is not blank.
 - **Cards wider than the grid cell are cropped:** `cardMode: column` is set for the parts with fixed-width samples (see `overrides`).
 
+## Publishing to the artifact
+
+- **The first sync to the artifact (2026-11-28) re-verified all 46 parts** (no anchor there yet) and replaced the 98 files the move had brought; it left the move's other files where they are (`archived/`, `components/general/*/*.jsx`, one `<Name>.d.ts` per part, `fonts/*.woff2`, `components/lib/react-dom.js`, `components/Cover/preview.html`, `assets/notes/`, `_ds_manifest.json`): a sync never removes a file no sync put there, so they go only by hand, on the artifact's page.
+- **The artifact's page is read-only since that sync** (`editing: code`): the design system changes in the code, then `/design-sync`.
+- **Every file is read once before it is sent**, about 400 thousand tokens for a full send, split across reading agents; the stylesheet's eight inlined Noto Sans fonts (588 KB of base64) are checked byte for byte against `@fontsource-variable/noto-sans/files/` instead of read. A re-sync that changes only some files sends and reads only those.
+- **The browser run is the human's:** a one-off script in the credo root's `one-off/` runs the driver on the shared test lock (about 2 minutes for 46 parts); the agent then grades the sheets, plans and publishes from the sandbox.
+
 ## Known render warns
 
 - `[TOKENS_MISSING]` 80 variables, set at runtime by the theme provider.
+- `[THEME_SKIPPED]` twice, at the layout: Mantine's `:root[data-mantine-color-scheme=light|dark]` rules are not read as themes, so the artifact's token pages show the light `:root` set only; the previews still apply both rules.
 - `[RENDER_SKIPPED]` appears only on a run with `--no-render-check` (the sandbox's own validate); the human's run is the real check (46 of 46 clean at the first sync).
 
 ## Re-sync risks
@@ -31,4 +40,4 @@ The design system synced to Claude Design is credo's gallery parts (`ui/src/desi
 - **Previews hold sample words in English, typed in the file;** the dictionary is not read.
 - **Grades are not in git;** the uploaded `_ds_sync.json` is the anchor, so a re-sync fetches it first (`--remote`).
 - **Toolchain:** Node 26, pnpm 12, Vite 8, Mantine 9, React 19; the library build is only as reproducible as `pnpm-lock.yaml`.
-- **The conventions header (`conventions.md`) names tokens and parts by hand;** re-validate it against a fresh build on every re-sync.
+- **The conventions header (`conventions.md`) names tokens and parts by hand;** re-validate it against a fresh build on every re-sync. Its file paths are the artifact's (`components/bundle.css`, `components/<Name>/README.md`, `components/index.d.ts`); `node .ds-sync/artifact-layout.mjs ./ds-bundle` prints `[README_STALE_PATH]` for any it names that the artifact does not have.

@@ -17,7 +17,7 @@ const { CredoProvider } = window.Credo;
 root.render(<CredoProvider colour="#3e618c" language="en">{/* the whole screen */}</CredoProvider>);
 ```
 
-Fonts are Noto Sans Variable (`fonts/`, reached from `styles.css`); link `styles.css` once.
+Fonts are Noto Sans Variable, carried inside `components/bundle.css`; link that stylesheet once.
 
 ## The idiom
 
@@ -45,8 +45,9 @@ Fonts are Noto Sans Variable (`fonts/`, reached from `styles.css`); link `styles
 
 ## Where the truth lives
 
-Read `styles.css` and the `_ds_bundle.css` it imports before styling, and for each part its
-`components/general/<Name>/<Name>.prompt.md` (props, examples) and `<Name>.d.ts`.
+Read `components/bundle.css` before styling (`tokens.css` and `tokens.json` list its static tokens;
+the `--credo-*` roles are set by `CredoProvider` as it renders), and for each part its
+`components/<Name>/README.md` (props, examples) and its `<Name>Props` in `components/index.d.ts`.
 
 ## One idiomatic screen
 
